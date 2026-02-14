@@ -1,0 +1,12 @@
+node_modules/
+dist/
+data/
+*.db
+*.sqlite
+.env
+.DS_Store
+*.log
+*.pem
+*.key
+.vscode/
+.idea/

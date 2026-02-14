@@ -1,0 +1,54 @@
+# Contributing to ClawStash
+
+Thanks for your interest in contributing to ClawStash! Here's how to get started.
+
+## Development Setup
+
+**Prerequisites:** Node.js 18+
+
+```bash
+git clone https://github.com/fo0/clawstash.git
+cd clawstash
+npm install
+npm run dev
+```
+
+This starts the Vite frontend on port 3000 and the Express backend on port 3001. The frontend proxies API requests to the backend automatically.
+
+## Making Changes
+
+1. Fork the repository and create a feature branch from `main`
+2. Make your changes
+3. Run the build to verify everything compiles: `npm run build`
+4. Commit with a clear, descriptive message
+5. Open a pull request against `main`
+
+## Project Structure
+
+- `server/` — Express backend (TypeScript, ESM)
+- `src/` — React frontend (TypeScript, Vite)
+- `src/components/` — React components organized by feature
+- `src/utils/` — Shared utility functions
+- `src/hooks/` — Shared React hooks
+
+See `CLAUDE.md` for detailed architecture documentation.
+
+## Code Style
+
+- TypeScript with strict mode
+- 2-space indentation, single quotes
+- Functional React components with TypeScript interfaces for props
+- Global CSS with CSS custom properties (no CSS-in-JS)
+- Named imports, `.js` extensions for server-side ESM
+
+## Reporting Issues
+
+Please use [GitHub Issues](https://github.com/fo0/clawstash/issues) to report bugs or request features. Include:
+
+- Steps to reproduce (for bugs)
+- Expected vs. actual behavior
+- Environment details (Node.js version, OS, browser)
+
+## License
+
+By contributing, you agree that your contributions will be licensed under the [MIT License](LICENSE).

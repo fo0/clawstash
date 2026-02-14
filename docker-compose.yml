@@ -1,0 +1,18 @@
+services:
+  clawstash:
+    # Local build:
+    build: .
+    # Or use pre-built GHCR image (comment out build, uncomment image):
+    # image: ghcr.io/fo0/clawstash:latest
+    ports:
+      - "${PORT:-3001}:3001"
+    volumes:
+      - clawstash-data:/app/data
+    environment:
+      - NODE_ENV=production
+      - PORT=3001
+      - DATABASE_PATH=/app/data/clawstash.db
+    restart: unless-stopped
+
+volumes:
+  clawstash-data:
