@@ -15,6 +15,8 @@ Review findings not immediately fixed. **Only work on these upon explicit reques
 | 7 | 2026-02-13 | Performance | P2 | src/components/GraphViewer.tsx:319 | `getGlowThreshold()` sorts count array every frame (~60fps) — should cache until nodes change | Deferred | Feature: Graph Enhance |
 | 8 | 2026-02-15 | Performance | P2 | server/db.ts:getStashVersions | `getStashVersions()` returns all versions without pagination — could become slow with thousands of versions per stash | Deferred | Feature: Version History |
 | 9 | 2026-02-15 | Code Smells | P2 | src/components/VersionHistory.tsx | Errors in version fetch/view/compare silently ignored — should show error state to user | Deferred | Feature: Version History |
+| 10 | 2026-02-15 | Dependency | P1 | package.json | **Zod 4 upgrade blocked** (PR #7): `@modelcontextprotocol/sdk` v1.x uses `zod-to-json-schema` which is incompatible with Zod v4 (`_parse is not a function`). Zod v4 has native `z.toJSONSchema()` replacement. Revisit when MCP SDK v2 ships (expected Q1 2026). Also requires replacing `zodToJsonSchema()` in `server/mcp-spec.ts` with built-in `z.toJSONSchema({ target: 'openapi-3.0' })` | Deferred | Dependabot PR #7 review |
+| 11 | 2026-02-15 | Dependency | P2 | Dockerfile | **Node 25 Docker image not recommended** (PR #1): Node 25 is non-LTS (odd version). Project targets Node 22 LTS (supported until April 2027). Risk: native addon compatibility (better-sqlite3), undocumented behavior changes. Wait for Node 24 LTS or Node 26 LTS. CI workflow also hardcodes `node-version: "22"` — must be updated in sync | Accepted | Dependabot PR #1 review |
 
 ## Done
 
