@@ -484,7 +484,7 @@ export default function StashViewer({ stash, onEdit, onDelete, onBack, onStashUp
         <VersionHistory
           stashId={stash.id}
           currentVersion={stash.version}
-          onRestore={(restored) => onStashUpdated?.(restored as Stash)}
+          onRestore={(restored) => onStashUpdated?.(restored)}
         />
       )}
     </div>

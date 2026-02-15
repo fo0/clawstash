@@ -162,8 +162,8 @@ npm run preview            # Preview production build via Vite
 - **Version History**: `stash_versions` + `stash_version_files` tables track every version of a stash
 - `stashes` table has `version` column (integer, starts at 1, incremented on every update)
 - `updateStash()` snapshots the current state into `stash_versions` before applying changes (within transaction)
-- `createStash()` creates initial version record (v1)
-- Auto-migration: existing stashes get `version=1` and initial version records seeded on first run
+- `createStash()` sets `version=1` but does NOT create a version record (the stash IS v1; history starts on first update)
+- Auto-migration: existing stashes get `version=1` column added
 - `getStashVersions(id)` returns version list (descending) with file counts and sizes
 - `getStashVersion(id, version)` returns full version snapshot with file content
 - `restoreStashVersion(id, version)` restores an old version as a new update (creates new version)

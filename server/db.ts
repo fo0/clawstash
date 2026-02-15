@@ -261,38 +261,6 @@ export class ClawStashDB {
     const hasVersion = columns.some(c => c.name === 'version');
     if (!hasVersion) {
       this.db.exec('ALTER TABLE stashes ADD COLUMN version INTEGER NOT NULL DEFAULT 1');
-      // Seed initial version records for all existing stashes
-      const stashes = this.db.prepare('SELECT * FROM stashes').all() as Record<string, unknown>[];
-      const insertVersion = this.db.prepare(`
-        INSERT INTO stash_versions (id, stash_id, name, description, tags, metadata, version, created_by, created_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-      `);
-      const insertVersionFile = this.db.prepare(`
-        INSERT INTO stash_version_files (id, version_id, filename, content, language, sort_order)
-        VALUES (?, ?, ?, ?, ?, ?)
-      `);
-      const seedTransaction = this.db.transaction(() => {
-        for (const stash of stashes) {
-          const versionId = uuidv4();
-          insertVersion.run(
-            versionId,
-            stash.id as string,
-            stash.name as string,
-            stash.description as string,
-            stash.tags as string,
-            stash.metadata as string,
-            1,
-            'system',
-            stash.created_at as string
-          );
-          const files = this.db.prepare('SELECT * FROM stash_files WHERE stash_id = ? ORDER BY sort_order')
-            .all(stash.id as string) as StashFile[];
-          for (const file of files) {
-            insertVersionFile.run(uuidv4(), versionId, file.filename, file.content, file.language, file.sort_order);
-          }
-        }
-      });
-      seedTransaction();
     }
   }
 
@@ -350,16 +318,6 @@ export class ClawStashDB {
       VALUES (?, ?, ?, ?, ?, ?)
     `);
 
-    const insertVersion = this.db.prepare(`
-      INSERT INTO stash_versions (id, stash_id, name, description, tags, metadata, version, created_by, created_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `);
-
-    const insertVersionFile = this.db.prepare(`
-      INSERT INTO stash_version_files (id, version_id, filename, content, language, sort_order)
-      VALUES (?, ?, ?, ?, ?, ?)
-    `);
-
     const transaction = this.db.transaction(() => {
       insertStash.run(
         id,
@@ -386,18 +344,6 @@ export class ClawStashDB {
           language,
           sort_order: i,
         });
-      }
-
-      // Create initial version record
-      const versionId = uuidv4();
-      insertVersion.run(
-        versionId, id,
-        input.name || '', input.description || '',
-        JSON.stringify(input.tags || []), JSON.stringify(input.metadata || {}),
-        1, 'system', now
-      );
-      for (const file of files) {
-        insertVersionFile.run(uuidv4(), versionId, file.filename, file.content, file.language, file.sort_order);
       }
 
       return files;
