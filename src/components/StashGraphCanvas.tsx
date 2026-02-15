@@ -302,13 +302,15 @@ export default function StashGraphCanvas({ onSelectStash, analyzeStashId, onAnal
     // Start with analysed stashes
     for (const sid of analysed) visibleIds.add(sid);
 
-    // BFS from analysed stashes to expand tags and find reachable nodes via active edges
+    // BFS from analysed stashes using only tag-based edges (has_tag, shared_tags)
+    // temporal_proximity and version_of edges are supplementary and should not expand the reachable set
+    const tagBasedEdges = activeEdges.filter(e => e.type === 'has_tag' || e.type === 'shared_tags');
     const queue: { id: string; depth: number }[] = [];
     for (const sid of analysed) queue.push({ id: sid, depth: 0 });
     while (queue.length > 0) {
       const { id, depth } = queue.shift()!;
       if (depth >= defaultDepth) continue;
-      for (const e of activeEdges) {
+      for (const e of tagBasedEdges) {
         const neighbor = e.source === id ? e.target : e.target === id ? e.source : null;
         if (neighbor && !visibleIds.has(neighbor)) {
           visibleIds.add(neighbor);
@@ -322,7 +324,7 @@ export default function StashGraphCanvas({ onSelectStash, analyzeStashId, onAnal
     let changed = true;
     while (changed) {
       changed = false;
-      for (const e of activeEdges) {
+      for (const e of tagBasedEdges) {
         if (e.type !== 'shared_tags') continue;
         const hasSource = visibleIds.has(e.source);
         const hasTarget = visibleIds.has(e.target);
