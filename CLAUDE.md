@@ -321,6 +321,8 @@ npm run preview            # Preview production build via Vite
 - Tool input schemas auto-derived from Zod schemas in `tool-defs.ts` via `zodToJsonSchema()` (no hand-written JSON Schema)
 - Pulls data type schemas from OpenAPI spec (`getOpenApiSpec()`) for shared data model definitions
 - Served at `/api/mcp-spec` as `text/plain`
+- `getMcpOnboardingText(baseUrl)` wraps the MCP spec with self-onboarding instructions (quick start, recommended workflow)
+- Onboarding served at `/api/mcp-onboarding` as `text/plain` (no auth required) and via MCP `onboard` tool
 
 ## Coding Conventions
 
@@ -363,6 +365,7 @@ npm run preview            # Preview production build via Vite
 | `/api/admin/session` | GET | Check admin session status |
 | `/api/openapi` | GET | OpenAPI 3.0 schema |
 | `/api/mcp-spec` | GET | MCP specification (markdown with tool schemas and data types) |
+| `/api/mcp-onboarding` | GET | MCP onboarding guide for AI self-onboarding (wraps mcp-spec with quick start and workflow) |
 | `/api/mcp-tools` | GET | MCP tool summaries (JSON, derived from tool-defs.ts) |
 | `/mcp` | POST | MCP Streamable HTTP endpoint (stateless, auth required) |
 
@@ -382,6 +385,7 @@ npm run preview            # Preview production build via Vite
 | `get_stats` | Get storage statistics. |
 | `get_rest_api_spec` | Get the full OpenAPI 3.0 REST API specification (JSON). |
 | `get_mcp_spec` | Get the full MCP specification (markdown with tool schemas and data types). |
+| `onboard` | Self-onboarding tool — returns the full MCP onboarding guide with quick start, workflows, and spec. |
 
 ### Token-Efficient MCP Data Flow
 

@@ -214,6 +214,22 @@ Use this to understand all available MCP tools and how to use them optimally.`,
     schema: z.object({}),
     returns: 'Markdown text with full MCP specification',
   },
+  {
+    name: 'onboard',
+    description: `Self-onboarding tool — returns the full ClawStash MCP onboarding guide.
+
+Call this tool when you first connect to learn all available tools, their schemas, data types, connection details, and recommended workflows.
+Call it again periodically to refresh your knowledge — tool definitions and capabilities may change over time.
+
+The response includes:
+- Quick start instructions (endpoint, auth, first steps)
+- Recommended workflow for discovering and accessing stashes
+- Complete tool reference with input schemas and return types
+- Data type definitions
+- Token-efficient usage patterns`,
+    schema: z.object({}),
+    returns: 'Markdown text with full MCP onboarding guide and specification',
+  },
 ] satisfies ToolDef[];
 
 // ---------------------------------------------------------------------------
