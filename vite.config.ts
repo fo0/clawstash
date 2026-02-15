@@ -1,19 +1,23 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
-import { readFileSync } from 'fs';
 import { execSync } from 'child_process';
 
 function getBuildInfo() {
-  const pkg = JSON.parse(readFileSync('./package.json', 'utf-8'));
   let branch = '';
+  let commitHash = '';
   try {
     branch = execSync('git rev-parse --abbrev-ref HEAD', { encoding: 'utf-8' }).trim();
   } catch {
     // Not a git repo or git not available
   }
+  try {
+    commitHash = execSync('git rev-parse --short HEAD', { encoding: 'utf-8' }).trim();
+  } catch {
+    // Not a git repo or git not available
+  }
   return {
-    version: pkg.version as string,
     branch,
+    commitHash,
     buildDate: new Date().toISOString(),
   };
 }
