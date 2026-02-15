@@ -217,6 +217,8 @@ export default function StashGraphCanvas({ onSelectStash, analyzeStashId, onAnal
   const [hoveredLabel, setHoveredLabel] = useState<string | null>(null);
   const [analysedStashes, setAnalysedStashes] = useState<Set<string>>(new Set());
   const [defaultDepth, setDefaultDepth] = useState(1);
+  const [ignoredTags, setIgnoredTags] = useState<Set<string>>(new Set());
+  const ignoredTagsRef = useRef<Set<string>>(new Set());
   const allNodesRef = useRef<RenderNode[]>([]);
   const allEdgesRef = useRef<StashGraphEdge[]>([]);
   const analysedStashesRef = useRef<Set<string>>(new Set());
@@ -245,13 +247,21 @@ export default function StashGraphCanvas({ onSelectStash, analyzeStashId, onAnal
     targetPanRef.current = { x: -cx * zoom, y: -cy * zoom };
   }, []);
 
-  // Filter nodes/edges based on analysed stashes
-  const applyVisibilityFilter = useCallback((allNodes: RenderNode[], allEdges: StashGraphEdge[], analysed: Set<string>) => {
+  // Filter nodes/edges based on analysed stashes (ignoring tags in ignoredTags)
+  const applyVisibilityFilter = useCallback((allNodes: RenderNode[], allEdges: StashGraphEdge[], analysed: Set<string>, ignored: Set<string>) => {
+    // Build a set of ignored tag node IDs
+    const ignoredTagIds = new Set<string>();
+    for (const n of allNodes) {
+      if (n.type === 'tag' && ignored.has(n.label)) ignoredTagIds.add(n.id);
+    }
+    // Filter edges that connect to ignored tags
+    const activeEdges = allEdges.filter(e => !ignoredTagIds.has(e.source) && !ignoredTagIds.has(e.target));
+
     if (analysed.size === 0) {
       // Show only stash nodes and shared_tags edges between stashes
       const visibleNodes = allNodes.filter(n => n.type === 'stash');
       const visibleIds = new Set(visibleNodes.map(n => n.id));
-      const visibleEdges = allEdges.filter(e => e.type === 'shared_tags' && visibleIds.has(e.source) && visibleIds.has(e.target));
+      const visibleEdges = activeEdges.filter(e => e.type === 'shared_tags' && visibleIds.has(e.source) && visibleIds.has(e.target));
       return { nodes: visibleNodes, edges: visibleEdges };
     }
     // Show analysed stashes with their tags up to defaultDepth
@@ -260,13 +270,13 @@ export default function StashGraphCanvas({ onSelectStash, analyzeStashId, onAnal
     for (const n of allNodes) {
       if (n.type === 'stash') visibleIds.add(n.id);
     }
-    // BFS from analysed stashes to expand tags
+    // BFS from analysed stashes to expand tags (skip ignored tags)
     const queue: { id: string; depth: number }[] = [];
     for (const sid of analysed) queue.push({ id: sid, depth: 0 });
     while (queue.length > 0) {
       const { id, depth } = queue.shift()!;
       if (depth >= defaultDepth) continue;
-      for (const e of allEdges) {
+      for (const e of activeEdges) {
         const neighbor = e.source === id ? e.target : e.target === id ? e.source : null;
         if (neighbor && !visibleIds.has(neighbor)) {
           visibleIds.add(neighbor);
@@ -275,7 +285,7 @@ export default function StashGraphCanvas({ onSelectStash, analyzeStashId, onAnal
       }
     }
     const visibleNodes = allNodes.filter(n => visibleIds.has(n.id));
-    const visibleEdges = allEdges.filter(e => visibleIds.has(e.source) && visibleIds.has(e.target));
+    const visibleEdges = activeEdges.filter(e => visibleIds.has(e.source) && visibleIds.has(e.target));
     return { nodes: visibleNodes, edges: visibleEdges };
   }, [defaultDepth]);
 
@@ -316,7 +326,7 @@ export default function StashGraphCanvas({ onSelectStash, analyzeStashId, onAnal
           onAnalyzeStashConsumed?.();
         }
 
-        const { nodes: filtered, edges: filteredEdges } = applyVisibilityFilter(nodes, edges, initialAnalysed);
+        const { nodes: filtered, edges: filteredEdges } = applyVisibilityFilter(nodes, edges, initialAnalysed, ignoredTagsRef.current);
         nodesRef.current = filtered;
         edgesRef.current = filteredEdges;
         setNodeCount(filtered.length);
@@ -335,14 +345,14 @@ export default function StashGraphCanvas({ onSelectStash, analyzeStashId, onAnal
   // Re-filter when analysedStashes or defaultDepth changes
   useEffect(() => {
     if (allNodesRef.current.length === 0) return;
-    const { nodes, edges } = applyVisibilityFilter(allNodesRef.current, allEdgesRef.current, analysedStashes);
+    const { nodes, edges } = applyVisibilityFilter(allNodesRef.current, allEdgesRef.current, analysedStashes, ignoredTags);
     nodesRef.current = nodes;
     edgesRef.current = edges;
     setNodeCount(nodes.length);
     setEdgeCount(edges.length);
     alphaRef.current = 1;
     autoFitDoneRef.current = false;
-  }, [analysedStashes, defaultDepth, applyVisibilityFilter]);
+  }, [analysedStashes, defaultDepth, ignoredTags, applyVisibilityFilter]);
 
   const screenToWorld = useCallback((sx: number, sy: number, canvas: HTMLCanvasElement) => {
     const cx = canvas.width / (2 * devicePixelRatio), cy = canvas.height / (2 * devicePixelRatio);
@@ -689,6 +699,22 @@ export default function StashGraphCanvas({ onSelectStash, analyzeStashId, onAnal
     const empty = new Set<string>();
     analysedStashesRef.current = empty;
     setAnalysedStashes(empty);
+    const emptyTags = new Set<string>();
+    ignoredTagsRef.current = emptyTags;
+    setIgnoredTags(emptyTags);
+  };
+
+  const handleToggleIgnoreTag = (tagName: string) => {
+    setIgnoredTags(prev => {
+      const next = new Set(prev);
+      if (next.has(tagName)) {
+        next.delete(tagName);
+      } else {
+        next.add(tagName);
+      }
+      ignoredTagsRef.current = next;
+      return next;
+    });
   };
 
   return (
@@ -718,6 +744,14 @@ export default function StashGraphCanvas({ onSelectStash, analyzeStashId, onAnal
             </svg>
             Analyse zurücksetzen ({analysedStashes.size})
           </button>
+        )}
+        {ignoredTags.size > 0 && (
+          <span className="graph-ignored-tags-info">
+            <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor" opacity="0.6">
+              <path d="M1 7.775V2.75C1 1.784 1.784 1 2.75 1h5.025c.464 0 .91.184 1.238.513l6.25 6.25a1.75 1.75 0 0 1 0 2.474l-5.026 5.026a1.75 1.75 0 0 1-2.474 0l-6.25-6.25A1.752 1.752 0 0 1 1 7.775Zm1.5 0c0 .066.026.13.073.177l6.25 6.25a.25.25 0 0 0 .354 0l5.025-5.025a.25.25 0 0 0 0-.354l-6.25-6.25a.25.25 0 0 0-.177-.073H2.75a.25.25 0 0 0-.25.25ZM6 5a1 1 0 1 1 0 2 1 1 0 0 1 0-2Z" />
+            </svg>
+            {ignoredTags.size} Tag{ignoredTags.size !== 1 ? 's' : ''} ignoriert
+          </span>
         )}
         {hoveredLabel && !popup && (
           <span className="graph-hover-info">
@@ -809,10 +843,22 @@ export default function StashGraphCanvas({ onSelectStash, analyzeStashId, onAnal
 
             {popup.node.tags && popup.node.tags.length > 0 && (
               <div className="graph-popup-section">
-                <div className="graph-popup-section-title">Tags</div>
+                <div className="graph-popup-section-title">Tags <span style={{ fontSize: '0.75em', opacity: 0.5 }}>(Klick zum Ignorieren)</span></div>
                 <div className="graph-popup-connections">
                   {popup.node.tags.map(t => (
-                    <span key={t} className="graph-popup-conn-tag">{t}</span>
+                    <span
+                      key={t}
+                      className={`graph-popup-conn-tag graph-popup-conn-tag-toggle${ignoredTags.has(t) ? ' graph-popup-conn-tag-ignored' : ''}`}
+                      onClick={() => handleToggleIgnoreTag(t)}
+                      title={ignoredTags.has(t) ? `Tag "${t}" wieder berücksichtigen` : `Tag "${t}" ignorieren`}
+                    >
+                      {t}
+                      {ignoredTags.has(t) && (
+                        <svg width="10" height="10" viewBox="0 0 16 16" fill="currentColor" style={{ marginLeft: 4, opacity: 0.6 }}>
+                          <path d="M3.72 3.72a.75.75 0 0 1 1.06 0L8 6.94l3.22-3.22a.749.749 0 0 1 1.275.326.749.749 0 0 1-.215.734L9.06 8l3.22 3.22a.749.749 0 0 1-.326 1.275.749.749 0 0 1-.734-.215L8 9.06l-3.22 3.22a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042L6.94 8 3.72 4.78a.75.75 0 0 1 0-1.06Z" />
+                        </svg>
+                      )}
+                    </span>
                   ))}
                 </div>
               </div>

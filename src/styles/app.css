@@ -2979,6 +2979,41 @@ body {
   color: var(--text-secondary);
 }
 
+.graph-popup-conn-tag-toggle {
+  cursor: pointer;
+  transition: all 0.15s;
+  user-select: none;
+}
+
+.graph-popup-conn-tag-toggle:hover {
+  border-color: var(--border-light);
+  background: var(--bg-card-hover);
+}
+
+.graph-popup-conn-tag-ignored {
+  opacity: 0.45;
+  text-decoration: line-through;
+  background: var(--bg-primary);
+  color: var(--text-muted);
+  border-style: dashed;
+}
+
+.graph-popup-conn-tag-ignored:hover {
+  opacity: 0.7;
+}
+
+.graph-ignored-tags-info {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  color: var(--text-muted);
+  padding: 2px 8px;
+  background: var(--bg-secondary);
+  border: 1px dashed var(--border-color);
+  border-radius: 12px;
+}
+
 .graph-popup-conn-weight {
   font-size: 10px;
   color: var(--text-muted);
