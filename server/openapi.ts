@@ -187,12 +187,29 @@ export function getOpenApiSpec(baseUrl: string): OpenApiSpec {
         },
         VersionInfo: {
           type: 'object',
-          description: 'Current and latest version information',
+          description: 'Current build info and latest available version from GitHub',
           properties: {
-            current_version: { type: 'string', description: 'Currently running ClawStash version' },
-            latest_version: { type: 'string', nullable: true, description: 'Latest version available on GitHub (null if check failed)' },
-            update_available: { type: 'boolean', description: 'True if the latest version is newer than the current version' },
-            release_url: { type: 'string', nullable: true, description: 'URL to the latest release page on GitHub (null if unavailable)' },
+            current: {
+              type: 'object',
+              description: 'Currently running build',
+              properties: {
+                version: { type: 'string', description: 'Date-based build version (e.g. "v20260215-1628")' },
+                commit_sha: { type: 'string', description: 'Short commit hash of this build' },
+                build_date: { type: 'string', format: 'date-time', description: 'Build timestamp (ISO 8601)' },
+                branch: { type: 'string', description: 'Git branch this was built from' },
+              },
+            },
+            latest: {
+              type: 'object',
+              nullable: true,
+              description: 'Latest commit on the GitHub main branch (null if check failed)',
+              properties: {
+                commit_sha: { type: 'string', description: 'Short commit hash of the latest commit on main' },
+                commit_date: { type: 'string', format: 'date-time', description: 'Commit date (ISO 8601)' },
+                commit_message: { type: 'string', description: 'First line of the commit message' },
+              },
+            },
+            update_available: { type: 'boolean', description: 'True if the latest commit SHA differs from the current build SHA' },
             github_url: { type: 'string', description: 'GitHub repository URL' },
             checked_at: { type: 'string', format: 'date-time', description: 'Timestamp of the last GitHub check' },
           },
