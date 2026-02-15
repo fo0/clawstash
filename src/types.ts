@@ -131,6 +131,40 @@ export interface TagGraphResult {
   filter?: { tag: string; depth: number };
 }
 
+export interface StashGraphNode {
+  id: string;
+  type: 'stash' | 'tag' | 'version';
+  label: string;
+  created_at?: string;
+  updated_at?: string;
+  version?: number;
+  file_count?: number;
+  total_size?: number;
+  tags?: string[];
+  count?: number;
+  version_number?: number;
+  created_by?: string;
+  change_summary?: Record<string, unknown>;
+}
+
+export interface StashGraphEdge {
+  source: string;
+  target: string;
+  type: 'has_tag' | 'shared_tags' | 'version_of' | 'temporal_proximity';
+  weight: number;
+  metadata?: {
+    shared_tags?: string[];
+    time_delta_hours?: number;
+  };
+}
+
+export interface StashGraphResult {
+  nodes: StashGraphNode[];
+  edges: StashGraphEdge[];
+  time_range: { min: string; max: string };
+  total_stashes: number;
+}
+
 export interface StashVersionListItem {
   id: string;
   stash_id: string;

@@ -155,6 +155,150 @@ export interface TagGraphResult {
   filter?: { tag: string; depth: number };
 }
 
+export interface StashGraphOptions {
+  mode?: 'relations' | 'timeline' | 'versions';
+  since?: string;
+  until?: string;
+  tag?: string;
+  limit?: number;
+  include_versions?: boolean;
+  min_shared_tags?: number;
+}
+
+export interface StashGraphNode {
+  id: string;
+  type: 'stash' | 'tag' | 'version';
+  label: string;
+  created_at?: string;
+  updated_at?: string;
+  version?: number;
+  file_count?: number;
+  total_size?: number;
+  tags?: string[];
+  count?: number;
+  version_number?: number;
+  created_by?: string;
+  change_summary?: Record<string, unknown>;
+}
+
+export interface StashGraphEdge {
+  source: string;
+  target: string;
+  type: 'has_tag' | 'shared_tags' | 'version_of' | 'temporal_proximity';
+  weight: number;
+  metadata?: {
+    shared_tags?: string[];
+    time_delta_hours?: number;
+  };
+}
+
+export interface StashGraphResult {
+  nodes: StashGraphNode[];
+  edges: StashGraphEdge[];
+  time_range: { min: string; max: string };
+  total_stashes: number;
+}
+
+interface Migration {
+  version: number;
+  name: string;
+  up: (db: Database.Database) => void;
+}
+
+const MIGRATIONS: Migration[] = [
+  {
+    version: 1,
+    name: 'add_stashes_version_column',
+    up: (db) => {
+      const columns = db.prepare("PRAGMA table_info(stashes)").all() as { name: string }[];
+      if (!columns.some(c => c.name === 'version')) {
+        db.exec('ALTER TABLE stashes ADD COLUMN version INTEGER NOT NULL DEFAULT 1');
+      }
+    }
+  },
+  {
+    version: 2,
+    name: 'add_stash_change_summary',
+    up: (db) => {
+      const columns = db.prepare("PRAGMA table_info(stash_versions)").all() as { name: string }[];
+      if (!columns.some(c => c.name === 'change_summary')) {
+        db.exec("ALTER TABLE stash_versions ADD COLUMN change_summary TEXT NOT NULL DEFAULT '{}'");
+      }
+    }
+  },
+  {
+    version: 3,
+    name: 'add_stash_graph_indexes',
+    up: (db) => {
+      db.exec(`
+        CREATE INDEX IF NOT EXISTS idx_stashes_tags ON stashes(tags);
+        CREATE INDEX IF NOT EXISTS idx_stash_versions_created_at ON stash_versions(created_at);
+      `);
+    }
+  },
+  {
+    version: 4,
+    name: 'add_stash_relations_table',
+    up: (db) => {
+      db.exec(`
+        CREATE TABLE IF NOT EXISTS stash_relations (
+          id TEXT PRIMARY KEY,
+          source_stash_id TEXT NOT NULL REFERENCES stashes(id) ON DELETE CASCADE,
+          target_stash_id TEXT NOT NULL REFERENCES stashes(id) ON DELETE CASCADE,
+          relation_type TEXT NOT NULL CHECK(relation_type IN ('shared_tags', 'temporal', 'manual')),
+          weight REAL NOT NULL DEFAULT 1.0,
+          metadata TEXT NOT NULL DEFAULT '{}',
+          created_at TEXT NOT NULL DEFAULT (datetime('now')),
+          UNIQUE(source_stash_id, target_stash_id, relation_type)
+        );
+
+        CREATE INDEX IF NOT EXISTS idx_stash_relations_source ON stash_relations(source_stash_id);
+        CREATE INDEX IF NOT EXISTS idx_stash_relations_target ON stash_relations(target_stash_id);
+        CREATE INDEX IF NOT EXISTS idx_stash_relations_type ON stash_relations(relation_type);
+      `);
+    }
+  },
+  {
+    version: 5,
+    name: 'add_graph_cache_table',
+    up: (db) => {
+      db.exec(`
+        CREATE TABLE IF NOT EXISTS graph_cache (
+          cache_key TEXT PRIMARY KEY,
+          data TEXT NOT NULL,
+          created_at TEXT NOT NULL DEFAULT (datetime('now')),
+          expires_at TEXT NOT NULL
+        );
+
+        CREATE INDEX IF NOT EXISTS idx_graph_cache_expires ON graph_cache(expires_at);
+      `);
+    }
+  },
+  {
+    version: 6,
+    name: 'backfill_stash_relations',
+    up: (db) => {
+      const stashes = db.prepare('SELECT id, tags FROM stashes').all() as { id: string; tags: string }[];
+      const parsed = stashes.map(s => ({ id: s.id, tags: JSON.parse(s.tags) as string[] }));
+
+      const insert = db.prepare(`
+        INSERT OR IGNORE INTO stash_relations (id, source_stash_id, target_stash_id, relation_type, weight, metadata)
+        VALUES (?, ?, ?, 'shared_tags', ?, ?)
+      `);
+
+      for (let i = 0; i < parsed.length; i++) {
+        for (let j = i + 1; j < parsed.length; j++) {
+          const shared = parsed[i].tags.filter(t => parsed[j].tags.includes(t));
+          if (shared.length > 0) {
+            const [src, tgt] = [parsed[i].id, parsed[j].id].sort();
+            insert.run(uuidv4(), src, tgt, shared.length, JSON.stringify({ shared_tags: shared }));
+          }
+        }
+      }
+    }
+  }
+];
+
 export class ClawStashDB {
   private db: Database.Database;
 
@@ -256,12 +400,39 @@ export class ClawStashDB {
   }
 
   private migrate() {
-    // Add version column to stashes if it doesn't exist
-    const columns = this.db.prepare("PRAGMA table_info(stashes)").all() as { name: string }[];
-    const hasVersion = columns.some(c => c.name === 'version');
-    if (!hasVersion) {
-      this.db.exec('ALTER TABLE stashes ADD COLUMN version INTEGER NOT NULL DEFAULT 1');
-    }
+    // Ensure schema_migrations table exists
+    this.db.exec(`
+      CREATE TABLE IF NOT EXISTS schema_migrations (
+        version INTEGER PRIMARY KEY,
+        name TEXT NOT NULL,
+        applied_at TEXT NOT NULL DEFAULT (datetime('now'))
+      );
+    `);
+
+    // Load already-applied versions
+    const applied = new Set(
+      (this.db.prepare('SELECT version FROM schema_migrations').all() as { version: number }[])
+        .map(r => r.version)
+    );
+
+    // Run pending migrations in a transaction
+    const pending = MIGRATIONS.filter(m => !applied.has(m.version))
+      .sort((a, b) => a.version - b.version);
+
+    if (pending.length === 0) return;
+
+    const runMigrations = this.db.transaction(() => {
+      for (const migration of pending) {
+        console.log(`[DB] Running migration ${migration.version}: ${migration.name}`);
+        migration.up(this.db);
+        this.db.prepare(
+          'INSERT INTO schema_migrations (version, name, applied_at) VALUES (?, ?, ?)'
+        ).run(migration.version, migration.name, new Date().toISOString());
+      }
+    });
+
+    runMigrations();
+    console.log(`[DB] ${pending.length} migration(s) applied successfully`);
   }
 
   private rowToStash(row: Record<string, unknown>): Omit<Stash, 'files'> {
@@ -350,6 +521,9 @@ export class ClawStashDB {
     });
 
     const files = transaction();
+
+    // Update stash relations for new stash
+    this.updateStashRelations(id, input.tags || []);
 
     return {
       id,
@@ -449,17 +623,36 @@ export class ClawStashDB {
     const now = new Date().toISOString();
     const newVersion = existing.version + 1;
 
+    // Compute change summary
+    const changeSummary: Record<string, unknown> = {};
+    if (input.name !== undefined && input.name !== existing.name) changeSummary.name = true;
+    if (input.description !== undefined && input.description !== existing.description) changeSummary.description = true;
+    if (input.tags !== undefined) {
+      const oldTags = new Set(existing.tags);
+      const newTags = new Set(input.tags);
+      const added = input.tags.filter(t => !oldTags.has(t));
+      const removed = existing.tags.filter(t => !newTags.has(t));
+      if (added.length || removed.length) {
+        changeSummary.tags = true;
+        changeSummary.tags_added = added;
+        changeSummary.tags_removed = removed;
+      }
+    }
+    if (input.files !== undefined) changeSummary.files = true;
+    if (input.metadata !== undefined) changeSummary.metadata = true;
+
     const transaction = this.db.transaction(() => {
       // Snapshot current state into stash_versions before applying changes
       const versionId = uuidv4();
       this.db.prepare(`
-        INSERT INTO stash_versions (id, stash_id, name, description, tags, metadata, version, created_by, created_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        INSERT INTO stash_versions (id, stash_id, name, description, tags, metadata, version, created_by, created_at, change_summary)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `).run(
         versionId, id,
         existing.name, existing.description,
         JSON.stringify(existing.tags), JSON.stringify(existing.metadata),
-        existing.version, createdBy, now
+        existing.version, createdBy, now,
+        JSON.stringify(changeSummary)
       );
       const insertVersionFile = this.db.prepare(`
         INSERT INTO stash_version_files (id, version_id, filename, content, language, sort_order)
@@ -508,6 +701,11 @@ export class ClawStashDB {
     });
 
     transaction();
+
+    // Update stash relations if tags changed
+    const finalTags = input.tags !== undefined ? input.tags : existing.tags;
+    this.updateStashRelations(id, finalTags);
+
     return this.getStash(id);
   }
 
@@ -629,6 +827,210 @@ export class ClawStashDB {
       result.filter = { tag, depth: clampedDepth };
     }
     return result;
+  }
+
+  // === Stash Relations ===
+
+  private updateStashRelations(stashId: string, tags: string[]): void {
+    // Delete old shared_tags relations for this stash
+    this.db.prepare(
+      "DELETE FROM stash_relations WHERE (source_stash_id = ? OR target_stash_id = ?) AND relation_type = 'shared_tags'"
+    ).run(stashId, stashId);
+
+    if (tags.length === 0) return;
+
+    const rows = this.db.prepare('SELECT id, tags FROM stashes WHERE id != ?').all(stashId) as { id: string; tags: string }[];
+    const tagSet = new Set(tags);
+
+    const insert = this.db.prepare(`
+      INSERT OR REPLACE INTO stash_relations (id, source_stash_id, target_stash_id, relation_type, weight, metadata)
+      VALUES (?, ?, ?, 'shared_tags', ?, ?)
+    `);
+
+    for (const row of rows) {
+      const otherTags: string[] = JSON.parse(row.tags);
+      const shared = otherTags.filter(t => tagSet.has(t));
+      if (shared.length > 0) {
+        const [src, tgt] = [stashId, row.id].sort();
+        insert.run(uuidv4(), src, tgt, shared.length, JSON.stringify({ shared_tags: shared }));
+      }
+    }
+  }
+
+  // === Stash Graph ===
+
+  getStashGraph(options: StashGraphOptions = {}): StashGraphResult {
+    const { mode = 'relations', since, until, tag, limit = 200, include_versions = false, min_shared_tags = 1 } = options;
+
+    // Fetch stashes with optional filters
+    let query = 'SELECT s.id, s.name, s.tags, s.created_at, s.updated_at, s.version, COUNT(sf.id) as file_count, COALESCE(SUM(LENGTH(sf.content)), 0) as total_size FROM stashes s LEFT JOIN stash_files sf ON sf.stash_id = s.id';
+    const conditions: string[] = [];
+    const params: unknown[] = [];
+
+    if (since) {
+      conditions.push('s.created_at >= ?');
+      params.push(since);
+    }
+    if (until) {
+      conditions.push('s.created_at <= ?');
+      params.push(until);
+    }
+    if (tag) {
+      conditions.push("s.tags LIKE ? ESCAPE '\\'");
+      const escapedTag = tag.replace(/[\\%_]/g, '\\$&');
+      params.push(`%"${escapedTag}"%`);
+    }
+
+    if (conditions.length > 0) {
+      query += ' WHERE ' + conditions.join(' AND ');
+    }
+    query += ' GROUP BY s.id ORDER BY s.updated_at DESC';
+    if (limit > 0) {
+      query += ' LIMIT ?';
+      params.push(limit);
+    }
+
+    const stashRows = this.db.prepare(query).all(...params) as {
+      id: string; name: string; tags: string; created_at: string; updated_at: string;
+      version: number; file_count: number; total_size: number;
+    }[];
+
+    if (stashRows.length === 0) {
+      return { nodes: [], edges: [], time_range: { min: '', max: '' }, total_stashes: 0 };
+    }
+
+    const stashIds = new Set(stashRows.map(r => r.id));
+    const nodes: StashGraphNode[] = [];
+    const edges: StashGraphEdge[] = [];
+
+    // Time range
+    const timestamps = stashRows.map(r => r.created_at).sort();
+    const timeRange = { min: timestamps[0], max: timestamps[timestamps.length - 1] };
+
+    // Add stash nodes
+    const tagCounts = new Map<string, number>();
+    const stashTagMap = new Map<string, string[]>();
+
+    for (const row of stashRows) {
+      const stashTags: string[] = JSON.parse(row.tags);
+      stashTagMap.set(row.id, stashTags);
+
+      nodes.push({
+        id: row.id,
+        type: 'stash',
+        label: row.name || 'Untitled',
+        created_at: row.created_at,
+        updated_at: row.updated_at,
+        version: row.version,
+        file_count: row.file_count,
+        total_size: row.total_size,
+        tags: stashTags,
+      });
+
+      for (const t of stashTags) {
+        tagCounts.set(t, (tagCounts.get(t) || 0) + 1);
+      }
+    }
+
+    // Add tag nodes (only tags used by multiple stashes or in focus)
+    for (const [tagName, count] of tagCounts) {
+      nodes.push({
+        id: `tag:${tagName}`,
+        type: 'tag',
+        label: tagName,
+        count,
+      });
+    }
+
+    // Add stash→tag edges
+    for (const row of stashRows) {
+      const stashTags = stashTagMap.get(row.id) || [];
+      for (const t of stashTags) {
+        edges.push({
+          source: row.id,
+          target: `tag:${t}`,
+          type: 'has_tag',
+          weight: 1,
+        });
+      }
+    }
+
+    // Add shared_tags edges from precomputed relations
+    const relations = this.db.prepare(`
+      SELECT source_stash_id, target_stash_id, weight, metadata
+      FROM stash_relations
+      WHERE relation_type = 'shared_tags' AND weight >= ?
+    `).all(min_shared_tags) as { source_stash_id: string; target_stash_id: string; weight: number; metadata: string }[];
+
+    for (const rel of relations) {
+      if (stashIds.has(rel.source_stash_id) && stashIds.has(rel.target_stash_id)) {
+        const meta = JSON.parse(rel.metadata);
+        edges.push({
+          source: rel.source_stash_id,
+          target: rel.target_stash_id,
+          type: 'shared_tags',
+          weight: rel.weight,
+          metadata: { shared_tags: meta.shared_tags },
+        });
+      }
+    }
+
+    // Temporal proximity edges (stashes created/updated within 24h of each other)
+    if (mode === 'timeline' || mode === 'relations') {
+      const TEMPORAL_WINDOW_MS = 24 * 60 * 60 * 1000; // 24 hours
+      for (let i = 0; i < stashRows.length; i++) {
+        for (let j = i + 1; j < stashRows.length; j++) {
+          const t1 = new Date(stashRows[i].created_at).getTime();
+          const t2 = new Date(stashRows[j].created_at).getTime();
+          const delta = Math.abs(t1 - t2);
+          if (delta <= TEMPORAL_WINDOW_MS && delta > 0) {
+            edges.push({
+              source: stashRows[i].id,
+              target: stashRows[j].id,
+              type: 'temporal_proximity',
+              weight: Math.max(0.1, 1 - delta / TEMPORAL_WINDOW_MS),
+              metadata: { time_delta_hours: Math.round(delta / (60 * 60 * 1000) * 10) / 10 },
+            });
+          }
+        }
+      }
+    }
+
+    // Version nodes & edges
+    if (include_versions) {
+      for (const row of stashRows) {
+        const versions = this.db.prepare(`
+          SELECT id, version, created_by, created_at, change_summary
+          FROM stash_versions WHERE stash_id = ? ORDER BY version ASC
+        `).all(row.id) as { id: string; version: number; created_by: string; created_at: string; change_summary: string }[];
+
+        let prevNodeId = row.id; // current stash is the "head"
+        for (let vi = versions.length - 1; vi >= 0; vi--) {
+          const v = versions[vi];
+          const vNodeId = `version:${v.id}`;
+          nodes.push({
+            id: vNodeId,
+            type: 'version',
+            label: `v${v.version}`,
+            version_number: v.version,
+            created_by: v.created_by,
+            created_at: v.created_at,
+            change_summary: JSON.parse(v.change_summary || '{}'),
+          });
+          edges.push({
+            source: vNodeId,
+            target: prevNodeId,
+            type: 'version_of',
+            weight: 1,
+          });
+          prevNodeId = vNodeId;
+        }
+      }
+    }
+
+    const totalStashes = (this.db.prepare('SELECT COUNT(*) as c FROM stashes').get() as { c: number }).c;
+
+    return { nodes, edges, time_range: timeRange, total_stashes: totalStashes };
   }
 
   getStats(): { totalStashes: number; totalFiles: number; topLanguages: { language: string; count: number }[] } {
@@ -801,6 +1203,89 @@ export class ClawStashDB {
     const now = new Date().toISOString();
     const result = this.db.prepare("DELETE FROM admin_sessions WHERE expires_at IS NOT NULL AND expires_at < ?").run(now);
     return result.changes;
+  }
+
+  // === Data Export/Import ===
+
+  exportAllData(): {
+    stashes: Record<string, unknown>[];
+    stash_files: Record<string, unknown>[];
+    stash_versions: Record<string, unknown>[];
+    stash_version_files: Record<string, unknown>[];
+  } {
+    const stashes = this.db.prepare('SELECT * FROM stashes').all() as Record<string, unknown>[];
+    const stash_files = this.db.prepare('SELECT * FROM stash_files').all() as Record<string, unknown>[];
+    const stash_versions = this.db.prepare('SELECT * FROM stash_versions').all() as Record<string, unknown>[];
+    const stash_version_files = this.db.prepare('SELECT * FROM stash_version_files').all() as Record<string, unknown>[];
+    return { stashes, stash_files, stash_versions, stash_version_files };
+  }
+
+  importAllData(data: {
+    stashes: Record<string, unknown>[];
+    stash_files: Record<string, unknown>[];
+    stash_versions?: Record<string, unknown>[];
+    stash_version_files?: Record<string, unknown>[];
+  }): { stashes: number; files: number; versions: number; versionFiles: number } {
+    const tx = this.db.transaction(() => {
+      // Clear existing data (order matters for foreign keys)
+      this.db.exec('DELETE FROM stash_version_files');
+      this.db.exec('DELETE FROM stash_versions');
+      this.db.exec('DELETE FROM access_log');
+      this.db.exec('DELETE FROM stash_files');
+      this.db.exec('DELETE FROM stashes');
+
+      // Also clear stash_relations if it exists
+      try { this.db.exec('DELETE FROM stash_relations'); } catch (_) { /* table may not exist */ }
+
+      let stashCount = 0;
+      let fileCount = 0;
+      let versionCount = 0;
+      let versionFileCount = 0;
+
+      // Insert stashes
+      for (const s of data.stashes) {
+        this.db.prepare(`
+          INSERT INTO stashes (id, name, description, tags, metadata, created_at, updated_at)
+          VALUES (?, ?, ?, ?, ?, ?, ?)
+        `).run(s.id, s.name, s.description, s.tags, s.metadata, s.created_at, s.updated_at);
+        stashCount++;
+      }
+
+      // Insert stash files
+      for (const f of data.stash_files) {
+        this.db.prepare(`
+          INSERT INTO stash_files (id, stash_id, filename, content, language, sort_order)
+          VALUES (?, ?, ?, ?, ?, ?)
+        `).run(f.id, f.stash_id, f.filename, f.content, f.language, f.sort_order);
+        fileCount++;
+      }
+
+      // Insert stash versions
+      if (data.stash_versions) {
+        for (const v of data.stash_versions) {
+          this.db.prepare(`
+            INSERT INTO stash_versions (id, stash_id, name, description, tags, metadata, version, created_by, created_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+          `).run(v.id, v.stash_id, v.name, v.description, v.tags, v.metadata, v.version, v.created_by, v.created_at);
+          versionCount++;
+        }
+      }
+
+      // Insert stash version files
+      if (data.stash_version_files) {
+        for (const vf of data.stash_version_files) {
+          this.db.prepare(`
+            INSERT INTO stash_version_files (id, version_id, filename, content, language, sort_order)
+            VALUES (?, ?, ?, ?, ?, ?)
+          `).run(vf.id, vf.version_id, vf.filename, vf.content, vf.language, vf.sort_order);
+          versionFileCount++;
+        }
+      }
+
+      return { stashes: stashCount, files: fileCount, versions: versionCount, versionFiles: versionFileCount };
+    });
+
+    return tx();
   }
 
   close() {
