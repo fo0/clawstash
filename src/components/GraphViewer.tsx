@@ -345,6 +345,8 @@ export default function GraphViewer({ stashes, tags, onFilterTag, onSelectStash,
   const [focusDepth, setFocusDepth] = useState(2);
   const hasManyCluster = useRef(false);
   const autoFitDoneRef = useRef(false);
+  const targetZoomRef = useRef<number | null>(null);
+  const targetPanRef = useRef<{ x: number; y: number } | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [searchOpen, setSearchOpen] = useState(false);
   const [highlightTag, setHighlightTag] = useState<string | null>(null);
@@ -359,7 +361,7 @@ export default function GraphViewer({ stashes, tags, onFilterTag, onSelectStash,
     ? tags.filter(t => t.tag.toLowerCase().includes(searchQuery.toLowerCase())).slice(0, 8)
     : [];
 
-  // Auto-fit: compute zoom/pan to show all nodes within the viewport
+  // Auto-fit: compute zoom/pan to show all nodes within the viewport (smooth)
   const autoFit = useCallback(() => {
     const canvas = canvasRef.current;
     const nodes = nodesRef.current;
@@ -372,7 +374,7 @@ export default function GraphViewer({ stashes, tags, onFilterTag, onSelectStash,
 
     let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
     for (const node of nodes) {
-      const pad = node.radius + 25; // space for label below
+      const pad = node.radius + 25;
       minX = Math.min(minX, node.x - pad);
       maxX = Math.max(maxX, node.x + pad);
       minY = Math.min(minY, node.y - pad);
@@ -384,18 +386,17 @@ export default function GraphViewer({ stashes, tags, onFilterTag, onSelectStash,
     if (graphW <= 0 || graphH <= 0) return;
 
     const padding = 60;
-    const zoom = Math.min(
+    const zoom = Math.max(0.2, Math.min(
       (w - padding * 2) / graphW,
       (h - padding * 2) / graphH,
-      1.5 // don't zoom in too much for small graphs
-    );
+      1.5
+    ));
 
     const cx = (minX + maxX) / 2;
     const cy = (minY + maxY) / 2;
 
-    zoomRef.current = Math.max(0.2, zoom);
-    panRef.current.x = -cx * zoomRef.current;
-    panRef.current.y = -cy * zoomRef.current;
+    targetZoomRef.current = zoom;
+    targetPanRef.current = { x: -cx * zoom, y: -cy * zoom };
   }, []);
 
   // Compute top 20% threshold for glow effect
@@ -598,7 +599,7 @@ export default function GraphViewer({ stashes, tags, onFilterTag, onSelectStash,
       }
 
       // Label below node
-      const fontSize = Math.max(10, Math.min(14, node.radius * 0.9));
+      const fontSize = Math.max(15, Math.min(19, node.radius * 1.1));
       ctx.font = `500 ${fontSize}px -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif`;
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
@@ -645,6 +646,31 @@ export default function GraphViewer({ stashes, tags, onFilterTag, onSelectStash,
           autoFit();
         }
       }
+
+      // Smooth interpolation toward target zoom/pan
+      const lerpSpeed = 0.08;
+      if (targetZoomRef.current !== null) {
+        const dz = targetZoomRef.current - zoomRef.current;
+        if (Math.abs(dz) < 0.001) {
+          zoomRef.current = targetZoomRef.current;
+          targetZoomRef.current = null;
+        } else {
+          zoomRef.current += dz * lerpSpeed;
+        }
+      }
+      if (targetPanRef.current !== null) {
+        const dx = targetPanRef.current.x - panRef.current.x;
+        const dy = targetPanRef.current.y - panRef.current.y;
+        if (Math.abs(dx) < 0.5 && Math.abs(dy) < 0.5) {
+          panRef.current.x = targetPanRef.current.x;
+          panRef.current.y = targetPanRef.current.y;
+          targetPanRef.current = null;
+        } else {
+          panRef.current.x += dx * lerpSpeed;
+          panRef.current.y += dy * lerpSpeed;
+        }
+      }
+
       draw();
       animRef.current = requestAnimationFrame(tick);
     };
@@ -720,6 +746,9 @@ export default function GraphViewer({ stashes, tags, onFilterTag, onSelectStash,
     if (!canvas) return;
 
     const onMouseDown = (e: MouseEvent) => {
+      // Cancel smooth animation on user interaction
+      targetZoomRef.current = null;
+      targetPanRef.current = null;
       const rect = canvas.getBoundingClientRect();
       const sx = e.clientX - rect.left;
       const sy = e.clientY - rect.top;
@@ -792,6 +821,9 @@ export default function GraphViewer({ stashes, tags, onFilterTag, onSelectStash,
 
     const onWheel = (e: WheelEvent) => {
       e.preventDefault();
+      // Cancel smooth animation on user zoom
+      targetZoomRef.current = null;
+      targetPanRef.current = null;
       const factor = e.deltaY > 0 ? 0.9 : 1.1;
       const newZoom = Math.max(0.2, Math.min(5, zoomRef.current * factor));
 
@@ -842,6 +874,8 @@ export default function GraphViewer({ stashes, tags, onFilterTag, onSelectStash,
   }, [closePopup]);
 
   const handleResetView = () => {
+    targetZoomRef.current = null;
+    targetPanRef.current = null;
     panRef.current = { x: 0, y: 0 };
     zoomRef.current = 1;
     alphaRef.current = 1;
@@ -864,6 +898,8 @@ export default function GraphViewer({ stashes, tags, onFilterTag, onSelectStash,
   const handleFocusTag = (tag: string) => {
     setPopup(null);
     setHighlightTag(null);
+    targetZoomRef.current = null;
+    targetPanRef.current = null;
     panRef.current = { x: 0, y: 0 };
     zoomRef.current = 1;
     setFocusTag(tag);
@@ -871,6 +907,8 @@ export default function GraphViewer({ stashes, tags, onFilterTag, onSelectStash,
 
   const handleClearFocus = () => {
     setFocusTag(null);
+    targetZoomRef.current = null;
+    targetPanRef.current = null;
     panRef.current = { x: 0, y: 0 };
     zoomRef.current = 1;
     alphaRef.current = 1;
