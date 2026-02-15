@@ -416,7 +416,7 @@ export default function GraphViewer({ stashes, tags, onFilterTag, onSelectStash,
     hasManyCluster.current = new Set(nodes.map(n => n.cluster)).size > 1;
     alphaRef.current = 1;
     autoFitDoneRef.current = false;
-  }, [stashes, tags, focusTag]);
+  }, [stashes, tags, focusTag, graphTab]);
 
   // Focus mode: fetch subgraph from server
   useEffect(() => {
@@ -651,7 +651,7 @@ export default function GraphViewer({ stashes, tags, onFilterTag, onSelectStash,
 
     animRef.current = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(animRef.current);
-  }, [draw, autoFit]);
+  }, [draw, autoFit, graphTab]);
 
   // Resize
   useEffect(() => {
@@ -672,7 +672,7 @@ export default function GraphViewer({ stashes, tags, onFilterTag, onSelectStash,
     const observer = new ResizeObserver(resize);
     observer.observe(container);
     return () => observer.disconnect();
-  }, []);
+  }, [graphTab]);
 
   // Get connections for a node
   const getConnections = useCallback((nodeId: string): { tag: string; weight: number }[] => {
@@ -825,7 +825,7 @@ export default function GraphViewer({ stashes, tags, onFilterTag, onSelectStash,
       canvas.removeEventListener('click', onClick);
       canvas.removeEventListener('wheel', onWheel);
     };
-  }, [screenToWorld, findNodeAt, showPopup, closePopup]);
+  }, [screenToWorld, findNodeAt, showPopup, closePopup, graphTab]);
 
   // Close popup on Escape
   useEffect(() => {
