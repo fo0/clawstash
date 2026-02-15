@@ -7,7 +7,7 @@ import { createStashRouter } from './routes/stashes.js';
 import { createTokenRouter } from './routes/tokens.js';
 import { createAdminRouter } from './routes/admin.js';
 import { getOpenApiSpec } from './openapi.js';
-import { getMcpSpecText } from './mcp-spec.js';
+import { getMcpSpecText, getMcpOnboardingText } from './mcp-spec.js';
 import { getToolSummaries } from './tool-defs.js';
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
 import { createMcpServer } from './mcp-server.js';
@@ -45,6 +45,11 @@ app.get('/api/openapi', (req, res) => {
 // MCP spec (human/AI-readable, includes data types from OpenAPI)
 app.get('/api/mcp-spec', (req, res) => {
   res.type('text/plain; charset=utf-8').send(getMcpSpecText(getBaseUrl(req)));
+});
+
+// MCP onboarding (AI self-onboarding guide with full spec, no auth required)
+app.get('/api/mcp-onboarding', (req, res) => {
+  res.type('text/plain; charset=utf-8').send(getMcpOnboardingText(getBaseUrl(req)));
 });
 
 // MCP tool summaries (structured JSON for frontend, derived from tool-defs.ts)

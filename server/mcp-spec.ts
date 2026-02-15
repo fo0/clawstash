@@ -82,3 +82,49 @@ ${dataTypesSection}`;
   mcpSpecCache.set(baseUrl, result);
   return result;
 }
+
+// ---------------------------------------------------------------------------
+// MCP Onboarding Text — wraps the spec with self-onboarding instructions
+// ---------------------------------------------------------------------------
+
+const onboardingCache = new Map<string, string>();
+
+export function getMcpOnboardingText(baseUrl: string): string {
+  const cached = onboardingCache.get(baseUrl);
+  if (cached) return cached;
+
+  const spec = getMcpSpecText(baseUrl);
+
+  const result = `# ClawStash MCP Onboarding Guide
+
+## How to Use This Document
+You are reading the ClawStash MCP onboarding specification. This document contains everything you need to connect and interact with this ClawStash instance via MCP (Model Context Protocol).
+
+**Re-read this document periodically** by calling the \`onboard\` MCP tool or fetching \`${baseUrl}/api/mcp-onboarding\` — tool definitions and capabilities may change over time.
+
+## Quick Start
+
+1. **Endpoint:** \`POST ${baseUrl}/mcp\`
+2. **Transport:** Streamable HTTP (stateless)
+3. **Auth:** \`Authorization: Bearer <token>\` — token needs \`mcp\` scope
+4. **First steps after connecting:**
+   - Call \`get_stats\` to see what's stored
+   - Call \`list_tags\` to discover content categories
+   - Call \`list_stashes\` to browse available stashes
+   - Call \`search_stashes\` to find specific content by keyword
+
+## Recommended Workflow
+
+1. **Discover** — Use \`list_stashes\`, \`list_tags\`, or \`search_stashes\` to find relevant stashes (returns summaries only, no file content).
+2. **Inspect** — Use \`read_stash\` to get metadata and file list with sizes (no content by default).
+3. **Read** — Use \`read_stash_file\` to selectively read only the files you need (most token-efficient).
+4. **Store** — Use \`create_stash\` or \`update_stash\` to save new data. Use descriptive names, descriptions, and tags for discoverability.
+5. **Refresh** — Call the \`onboard\` tool again whenever you need to re-check available tools and capabilities.
+
+---
+
+${spec}`;
+
+  onboardingCache.set(baseUrl, result);
+  return result;
+}
