@@ -13,6 +13,8 @@ Review findings not immediately fixed. **Only work on these upon explicit reques
 | 5 | 2026-02-13 | Security | P2 | server/index.ts:16-21 | `getBaseUrl()` trusts `X-Forwarded-Proto/Host` headers without Express `trust proxy` config — potential for URL injection into specs when not behind trusted proxy | Deferred | Review: Spec DRY refactor |
 | 6 | 2026-02-13 | Code Smells | P2 | src/components/api/McpTab.tsx:158 | Examples section duplicates Streamable HTTP config that already appears in Client Configuration section above | Deferred | Review: Spec DRY refactor |
 | 7 | 2026-02-13 | Performance | P2 | src/components/GraphViewer.tsx:319 | `getGlowThreshold()` sorts count array every frame (~60fps) — should cache until nodes change | Deferred | Feature: Graph Enhance |
+| 8 | 2026-02-15 | Performance | P2 | server/db.ts:getStashVersions | `getStashVersions()` returns all versions without pagination — could become slow with thousands of versions per stash | Deferred | Feature: Version History |
+| 9 | 2026-02-15 | Code Smells | P2 | src/components/VersionHistory.tsx | Errors in version fetch/view/compare silently ignored — should show error state to user | Deferred | Feature: Version History |
 
 ## Done
 

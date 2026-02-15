@@ -13,6 +13,7 @@ export interface Stash {
   description: string;
   tags: string[];
   metadata: Record<string, unknown>;
+  version: number;
   created_at: string;
   updated_at: string;
   files: StashFile[];
@@ -23,6 +24,7 @@ export interface StashListItem {
   name: string;
   description: string;
   tags: string[];
+  version: number;
   created_at: string;
   updated_at: string;
   total_size: number;
@@ -127,4 +129,36 @@ export interface TagGraphResult {
   edges: TagGraphEdge[];
   stash_count: number;
   filter?: { tag: string; depth: number };
+}
+
+export interface StashVersionListItem {
+  id: string;
+  stash_id: string;
+  name: string;
+  description: string;
+  version: number;
+  created_by: string;
+  created_at: string;
+  file_count: number;
+  total_size: number;
+}
+
+export interface StashVersionFile {
+  filename: string;
+  content: string;
+  language: string;
+  sort_order: number;
+}
+
+export interface StashVersion {
+  id: string;
+  stash_id: string;
+  name: string;
+  description: string;
+  tags: string[];
+  metadata: Record<string, unknown>;
+  version: number;
+  created_by: string;
+  created_at: string;
+  files: StashVersionFile[];
 }

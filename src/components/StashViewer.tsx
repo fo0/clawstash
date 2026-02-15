@@ -5,6 +5,7 @@ import { highlightCode, resolvePrismLanguage, detectLanguageFromContent, isRende
 import { formatRelativeTime } from '../utils/format';
 import { useClipboard, useClipboardWithKey } from '../hooks/useClipboard';
 import { CopyIcon, CheckIcon, XIcon } from './shared/icons';
+import VersionHistory from './VersionHistory';
 import { Marked } from 'marked';
 
 interface Props {
@@ -12,6 +13,7 @@ interface Props {
   onEdit: () => void;
   onDelete: (id: string) => void;
   onBack: () => void;
+  onStashUpdated?: (stash: Stash) => void;
 }
 
 function SourceBadge({ source }: { source: string }) {
@@ -119,8 +121,8 @@ function CopyButtonContent({ copied, failed, size = 12, labelCopy = 'Copy', labe
   return <><CopyIcon size={size} /> {labelCopy}</>;
 }
 
-export default function StashViewer({ stash, onEdit, onDelete, onBack }: Props) {
-  const [activeTab, setActiveTab] = useState<'content' | 'metadata' | 'access-log'>('content');
+export default function StashViewer({ stash, onEdit, onDelete, onBack, onStashUpdated }: Props) {
+  const [activeTab, setActiveTab] = useState<'content' | 'metadata' | 'access-log' | 'history'>('content');
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [accessLog, setAccessLog] = useState<AccessLogEntry[]>([]);
   const [logLoading, setLogLoading] = useState(false);
@@ -297,6 +299,17 @@ export default function StashViewer({ stash, onEdit, onDelete, onBack }: Props) 
           </svg>
           Access Log
         </button>
+        <button
+          className={`tab ${activeTab === 'history' ? 'active' : ''}`}
+          onClick={() => setActiveTab('history')}
+          title="View version history and compare changes"
+        >
+          <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor" style={{ marginRight: 6, verticalAlign: -2 }}>
+            <path d="M8 .25a.75.75 0 0 1 .673.418l1.882 3.815 4.21.612a.75.75 0 0 1 .416 1.279l-3.046 2.97.719 4.192a.751.751 0 0 1-1.088.791L8 12.347l-3.766 1.98a.75.75 0 0 1-1.088-.79l.72-4.194L.818 6.374a.75.75 0 0 1 .416-1.28l4.21-.611L7.327.668A.75.75 0 0 1 8 .25Z" />
+          </svg>
+          History
+          <span className="version-count-badge">v{stash.version}</span>
+        </button>
       </div>
 
       {activeTab === 'content' && (
@@ -465,6 +478,14 @@ export default function StashViewer({ stash, onEdit, onDelete, onBack }: Props) 
             </div>
           )}
         </div>
+      )}
+
+      {activeTab === 'history' && (
+        <VersionHistory
+          stashId={stash.id}
+          currentVersion={stash.version}
+          onRestore={(restored) => onStashUpdated?.(restored as Stash)}
+        />
       )}
     </div>
   );
