@@ -64,6 +64,68 @@ export function createStashRouter(db: ClawStashDB): Router {
     }));
   });
 
+  // Get version history for a stash
+  router.get('/:id/versions', requireScope('read'), (req: Request<{ id: string }>, res: Response) => {
+    if (!db.stashExists(req.params.id)) {
+      res.status(404).json({ error: 'Stash not found' });
+      return;
+    }
+    res.json(db.getStashVersions(req.params.id));
+  });
+
+  // Compare two versions (diff)
+  router.get('/:id/versions/diff', requireScope('read'), (req: Request<{ id: string }>, res: Response) => {
+    if (!db.stashExists(req.params.id)) {
+      res.status(404).json({ error: 'Stash not found' });
+      return;
+    }
+    const v1 = parseInt(req.query.v1 as string, 10);
+    const v2 = parseInt(req.query.v2 as string, 10);
+    if (!Number.isInteger(v1) || v1 < 1 || !Number.isInteger(v2) || v2 < 1 || v1 === v2) {
+      res.status(400).json({ error: 'Provide two different positive version numbers as v1 and v2 query parameters' });
+      return;
+    }
+    const version1 = db.getStashVersion(req.params.id, v1);
+    const version2 = db.getStashVersion(req.params.id, v2);
+    if (!version1 || !version2) {
+      res.status(404).json({ error: 'One or both versions not found' });
+      return;
+    }
+    res.json({ v1: version1, v2: version2 });
+  });
+
+  // Get a specific version of a stash
+  router.get('/:id/versions/:version', requireScope('read'), (req: Request<{ id: string; version: string }>, res: Response) => {
+    const version = parseInt(req.params.version, 10);
+    if (!Number.isInteger(version) || version < 1) {
+      res.status(400).json({ error: 'Invalid version number' });
+      return;
+    }
+    const versionData = db.getStashVersion(req.params.id, version);
+    if (!versionData) {
+      res.status(404).json({ error: 'Version not found' });
+      return;
+    }
+    res.json(versionData);
+  });
+
+  // Restore a specific version
+  router.post('/:id/versions/:version/restore', requireScope('write'), (req: Request<{ id: string; version: string }>, res: Response) => {
+    const version = parseInt(req.params.version, 10);
+    if (!Number.isInteger(version) || version < 1) {
+      res.status(400).json({ error: 'Invalid version number' });
+      return;
+    }
+    const source = getAccessSource(req);
+    const stash = db.restoreStashVersion(req.params.id, version, source);
+    if (!stash) {
+      res.status(404).json({ error: 'Stash or version not found' });
+      return;
+    }
+    db.logAccess(stash.id, source, `restore_version:${version}`, req.ip, req.headers['user-agent']);
+    res.json(stash);
+  });
+
   // Get single stash
   router.get('/:id', requireScope('read'), (req: Request<{ id: string }>, res: Response) => {
     const stash = db.getStash(req.params.id);
@@ -124,7 +186,8 @@ export function createStashRouter(db: ClawStashDB): Router {
   // Update stash
   router.patch('/:id', requireScope('write'), (req: Request<{ id: string }>, res: Response) => {
     const { name, description, tags, metadata, files } = req.body;
-    const stash = db.updateStash(req.params.id, { name, description, tags, metadata, files });
+    const source = getAccessSource(req);
+    const stash = db.updateStash(req.params.id, { name, description, tags, metadata, files }, source);
     if (!stash) {
       res.status(404).json({ error: 'Stash not found' });
       return;
