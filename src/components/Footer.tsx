@@ -2,6 +2,12 @@ import { useState } from 'react';
 
 const buildInfo = __BUILD_INFO__;
 
+function formatBuildVersion(isoDate: string): string {
+  const d = new Date(isoDate);
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return `v${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(d.getDate())}-${pad(d.getHours())}${pad(d.getMinutes())}`;
+}
+
 export default function Footer() {
   const [showDetails, setShowDetails] = useState(false);
 
@@ -15,13 +21,14 @@ export default function Footer() {
     hour: '2-digit',
     minute: '2-digit',
   });
+  const buildVersion = formatBuildVersion(buildInfo.buildDate);
 
   return (
     <footer className="app-footer">
       <div className="footer-row">
         <div className="footer-left">
-          <span className="footer-title" title={`ClawStash v${buildInfo.version}`}>
-            ClawStash <span className="footer-version">v{buildInfo.version}</span>
+          <span className="footer-title" title={`ClawStash ${buildVersion}`}>
+            ClawStash <span className="footer-version">{buildVersion}</span>
           </span>
           <button
             type="button"
@@ -36,7 +43,9 @@ export default function Footer() {
             </svg>
             <span className="footer-info-label">Build Info</span>
           </button>
+        </div>
 
+        <div className="footer-right">
           {showDetails && (
             <div className="footer-details-desktop">
               {buildInfo.branch && (
@@ -50,6 +59,16 @@ export default function Footer() {
                   {buildInfo.branch}
                 </span>
               )}
+              {buildInfo.commitHash && (
+                <span className="footer-detail" title={`Commit: ${buildInfo.commitHash}`}>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <circle cx="12" cy="12" r="3" />
+                    <line x1="3" x2="9" y1="12" y2="12" />
+                    <line x1="15" x2="21" y1="12" y2="12" />
+                  </svg>
+                  {buildInfo.commitHash}
+                </span>
+              )}
               <span className="footer-detail" title={`Built: ${formattedDate} ${formattedTime}`}>
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                   <rect width="18" height="18" x="3" y="4" rx="2" ry="2" />
@@ -61,9 +80,6 @@ export default function Footer() {
               </span>
             </div>
           )}
-        </div>
-
-        <div className="footer-right">
           <a
             href="https://github.com/fo0/clawstash"
             target="_blank"
@@ -84,6 +100,12 @@ export default function Footer() {
             <div className="footer-mobile-row">
               <span className="footer-mobile-label">Branch:</span>
               <span>{buildInfo.branch}</span>
+            </div>
+          )}
+          {buildInfo.commitHash && (
+            <div className="footer-mobile-row">
+              <span className="footer-mobile-label">Commit:</span>
+              <span>{buildInfo.commitHash}</span>
             </div>
           )}
           <div className="footer-mobile-row">

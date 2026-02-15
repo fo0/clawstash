@@ -1,8 +1,8 @@
 /// <reference types="vite/client" />
 
 interface BuildInfo {
-  version: string;
   branch: string;
+  commitHash: string;
   buildDate: string;
 }
 
