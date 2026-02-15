@@ -9,6 +9,7 @@ import { createAdminRouter } from './routes/admin.js';
 import { getOpenApiSpec } from './openapi.js';
 import { getMcpSpecText, getMcpOnboardingText } from './mcp-spec.js';
 import { getToolSummaries } from './tool-defs.js';
+import { checkVersion } from './version.js';
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
 import { createMcpServer } from './mcp-server.js';
 import { requireScopeAuth } from './auth.js';
@@ -55,6 +56,12 @@ app.get('/api/mcp-onboarding', (req, res) => {
 // MCP tool summaries (structured JSON for frontend, derived from tool-defs.ts)
 app.get('/api/mcp-tools', (_req, res) => {
   res.json(getToolSummaries());
+});
+
+// Version check (current version + latest available from GitHub)
+app.get('/api/version', async (_req, res) => {
+  const info = await checkVersion();
+  res.json(info);
 });
 
 // MCP Streamable HTTP endpoint (stateless mode)
