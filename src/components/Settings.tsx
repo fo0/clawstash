@@ -228,6 +228,10 @@ function StorageSection() {
   const [stats, setStats] = useState<Stats | null>(null);
   const [tags, setTags] = useState<TagInfo[]>([]);
   const [loading, setLoading] = useState(true);
+  const [exporting, setExporting] = useState(false);
+  const [importing, setImporting] = useState(false);
+  const [importResult, setImportResult] = useState<string | null>(null);
+  const [importError, setImportError] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -250,6 +254,52 @@ function StorageSection() {
     load();
     return () => { cancelled = true; };
   }, []);
+
+  const handleExport = async () => {
+    setExporting(true);
+    setImportResult(null);
+    setImportError(null);
+    try {
+      const blob = await api.exportData();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+      a.download = `clawstash-export-${timestamp}.zip`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      setImportError(err instanceof Error ? err.message : 'Export failed');
+    } finally {
+      setExporting(false);
+    }
+  };
+
+  const handleImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    e.target.value = '';
+
+    if (!confirm('This will replace ALL existing stash data. Are you sure?')) return;
+
+    setImporting(true);
+    setImportResult(null);
+    setImportError(null);
+    try {
+      const result = await api.importData(file);
+      setImportResult(`Import successful: ${result.imported.stashes} stashes, ${result.imported.files} files, ${result.imported.versions} versions imported.`);
+      // Reload stats
+      const [statsData, tagsData] = await Promise.all([api.getStats(), api.getTags()]);
+      setStats(statsData);
+      setTags(tagsData);
+    } catch (err) {
+      setImportError(err instanceof Error ? err.message : 'Import failed');
+    } finally {
+      setImporting(false);
+    }
+  };
 
   if (loading) {
     return (
@@ -326,6 +376,58 @@ function StorageSection() {
           )}
         </>
       )}
+
+      {/* Data Export / Import */}
+      <div className="settings-card">
+        <div className="settings-card-header">
+          <h3>Data Export / Import</h3>
+        </div>
+        <p className="api-hint">
+          Export all stash data as a ZIP archive or import a previously exported ZIP to restore data.
+          Import will <strong>replace all existing data</strong>.
+        </p>
+
+        <div className="settings-export-import-actions">
+          <button
+            className="settings-option-btn active"
+            onClick={handleExport}
+            disabled={exporting || importing}
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+              <polyline points="7 10 12 15 17 10" />
+              <line x1="12" x2="12" y1="15" y2="3" />
+            </svg>
+            {exporting ? 'Exporting…' : 'Export Data'}
+          </button>
+
+          <label
+            className={`settings-option-btn${importing ? ' active' : ''}`}
+            style={{ cursor: importing ? 'wait' : 'pointer' }}
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+              <polyline points="17 8 12 3 7 8" />
+              <line x1="12" x2="12" y1="3" y2="15" />
+            </svg>
+            {importing ? 'Importing…' : 'Import Data'}
+            <input
+              type="file"
+              accept=".zip"
+              onChange={handleImport}
+              disabled={exporting || importing}
+              style={{ display: 'none' }}
+            />
+          </label>
+        </div>
+
+        {importResult && (
+          <div className="settings-import-success">{importResult}</div>
+        )}
+        {importError && (
+          <div className="settings-import-error">{importError}</div>
+        )}
+      </div>
 
       {!stats && (
         <div className="settings-card">

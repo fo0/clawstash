@@ -1,0 +1,820 @@
+import { useRef, useEffect, useCallback, useState } from 'react';
+import type { StashGraphNode, StashGraphEdge, StashGraphResult } from '../types';
+import { api } from '../api';
+
+interface Props {
+  onSelectStash: (id: string) => void;
+  analyzeStashId?: string | null;
+  onAnalyzeStashConsumed?: () => void;
+}
+
+interface RenderNode extends StashGraphNode {
+  x: number;
+  y: number;
+  vx: number;
+  vy: number;
+  radius: number;
+  cluster: number;
+  degree: number;
+}
+
+interface PopupState {
+  node: StashGraphNode;
+  screenX: number;
+  screenY: number;
+  connections: { id: string; label: string; type: string; weight: number }[];
+}
+
+const COLORS = {
+  stash: '#58a6ff',
+  tag: '#238636',
+  version: '#d29922',
+  has_tag: 'rgba(35, 134, 54, 0.3)',
+  shared_tags: 'rgba(88, 166, 255, 0.5)',
+  version_of: 'rgba(210, 153, 34, 0.5)',
+  temporal_proximity: 'rgba(188, 140, 255, 0.25)',
+};
+
+function edgeColor(type: string): string {
+  return COLORS[type as keyof typeof COLORS] || 'rgba(139, 148, 158, 0.3)';
+}
+
+function computeRadius(node: StashGraphNode): number {
+  if (node.type === 'stash') return Math.max(10, Math.min(28, 10 + Math.sqrt(node.file_count || 1) * 4));
+  if (node.type === 'tag') return Math.max(6, Math.min(20, 6 + Math.sqrt(node.count || 1) * 3));
+  return 5; // version
+}
+
+function buildRenderNodes(data: StashGraphResult): { nodes: RenderNode[]; edges: StashGraphEdge[] } {
+  const nodes: RenderNode[] = data.nodes.map((n, i) => ({
+    ...n,
+    x: Math.cos(2 * Math.PI * i / data.nodes.length) * 200,
+    y: Math.sin(2 * Math.PI * i / data.nodes.length) * 200,
+    vx: 0,
+    vy: 0,
+    radius: computeRadius(n),
+    cluster: 0,
+    degree: 0,
+  }));
+
+  // Compute degrees
+  const degMap = new Map<string, number>();
+  for (const e of data.edges) {
+    degMap.set(e.source, (degMap.get(e.source) || 0) + 1);
+    degMap.set(e.target, (degMap.get(e.target) || 0) + 1);
+  }
+  for (const n of nodes) n.degree = degMap.get(n.id) || 0;
+
+  return { nodes, edges: data.edges };
+}
+
+function simulate(nodes: RenderNode[], edges: StashGraphEdge[], alpha: number, _timelineMode: boolean, _timeRange: { min: number; max: number }, _canvasW: number) {
+  const nodeMap = new Map(nodes.map(n => [n.id, n]));
+
+  // Center gravity
+  for (const node of nodes) {
+    const gravity = 0.006 * (1 + node.degree * 0.2) * alpha;
+    node.vx -= node.x * gravity;
+    node.vy -= node.y * gravity;
+  }
+
+  // Repulsion
+  for (let i = 0; i < nodes.length; i++) {
+    for (let j = i + 1; j < nodes.length; j++) {
+      const a = nodes[i], b = nodes[j];
+      const dx = b.x - a.x, dy = b.y - a.y;
+      const dist = Math.sqrt(dx * dx + dy * dy) || 1;
+      const minDist = a.radius + b.radius + 15;
+      const degFactor = (a.degree + 1) * (b.degree + 1);
+      const force = degFactor * 30 * alpha / dist;
+      const fx = (dx / dist) * force, fy = (dy / dist) * force;
+      a.vx -= fx; a.vy -= fy;
+      b.vx += fx; b.vy += fy;
+      if (dist < minDist) {
+        const overlap = (minDist - dist) * 0.5;
+        const ox = (dx / dist) * overlap, oy = (dy / dist) * overlap;
+        a.x -= ox; a.y -= oy; b.x += ox; b.y += oy;
+      }
+    }
+  }
+
+  // Edge attraction
+  for (const edge of edges) {
+    const a = nodeMap.get(edge.source), b = nodeMap.get(edge.target);
+    if (!a || !b) continue;
+    const dx = b.x - a.x, dy = b.y - a.y;
+    const dist = Math.sqrt(dx * dx + dy * dy) || 1;
+    const strength = edge.type === 'has_tag' ? 0.005 : edge.type === 'shared_tags' ? 0.01 : edge.type === 'version_of' ? 0.02 : 0.002;
+    const idealDist = edge.type === 'version_of' ? 40 : edge.type === 'has_tag' ? 80 : 100;
+    const force = (dist - idealDist) * strength * alpha * Math.sqrt(edge.weight);
+    const fx = (dx / dist) * force, fy = (dy / dist) * force;
+    a.vx += fx; a.vy += fy; b.vx -= fx; b.vy -= fy;
+  }
+
+  // Damping + update
+  for (const node of nodes) {
+    node.vx *= 0.55; node.vy *= 0.55;
+    const speed = Math.sqrt(node.vx * node.vx + node.vy * node.vy);
+    if (speed > 12) { node.vx = (node.vx / speed) * 12; node.vy = (node.vy / speed) * 12; }
+    node.x += node.vx; node.y += node.vy;
+  }
+}
+
+function drawStashNode(ctx: CanvasRenderingContext2D, node: RenderNode, isActive: boolean, isConnected: boolean, dimmed: boolean, isAnalysed: boolean) {
+  const w = node.radius * 2.2, h = node.radius * 1.6, r = 4;
+  const x = node.x - w / 2, y = node.y - h / 2;
+
+  // Glow effect for analysed stashes
+  if (isAnalysed) {
+    ctx.save();
+    ctx.shadowColor = '#58a6ff';
+    ctx.shadowBlur = 18;
+    ctx.beginPath();
+    ctx.roundRect(x - 3, y - 3, w + 6, h + 6, r + 2);
+    ctx.fillStyle = 'rgba(88, 166, 255, 0.12)';
+    ctx.fill();
+    ctx.restore();
+  }
+
+  ctx.beginPath();
+  ctx.roundRect(x, y, w, h, r);
+  ctx.fillStyle = isAnalysed ? '#79c0ff' : isActive ? '#79c0ff' : isConnected ? 'rgba(88, 166, 255, 0.7)' : dimmed ? 'rgba(88, 166, 255, 0.2)' : COLORS.stash;
+  ctx.fill();
+  ctx.strokeStyle = isAnalysed ? '#a5d6ff' : isActive ? '#fff' : 'rgba(255,255,255,0.15)';
+  ctx.lineWidth = isAnalysed ? 2.5 : isActive ? 2 : 1;
+  ctx.stroke();
+
+  // Version badge
+  if (node.version && node.version > 1) {
+    const badge = `v${node.version}`;
+    ctx.font = '600 8px -apple-system, BlinkMacSystemFont, sans-serif';
+    const bw = ctx.measureText(badge).width + 6;
+    ctx.fillStyle = 'rgba(210, 153, 34, 0.9)';
+    ctx.beginPath();
+    ctx.roundRect(node.x + w / 2 - bw + 2, y - 4, bw, 12, 2);
+    ctx.fill();
+    ctx.fillStyle = '#fff';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(badge, node.x + w / 2 - bw / 2 + 2, y + 2);
+  }
+}
+
+function drawTagNode(ctx: CanvasRenderingContext2D, node: RenderNode, isActive: boolean, isConnected: boolean, dimmed: boolean) {
+  ctx.beginPath();
+  ctx.arc(node.x, node.y, node.radius, 0, Math.PI * 2);
+  ctx.fillStyle = isActive ? '#3fb950' : isConnected ? 'rgba(35, 134, 54, 0.7)' : dimmed ? 'rgba(35, 134, 54, 0.2)' : COLORS.tag;
+  ctx.fill();
+  ctx.strokeStyle = isActive ? '#fff' : 'rgba(255,255,255,0.15)';
+  ctx.lineWidth = isActive ? 2 : 1;
+  ctx.stroke();
+
+  if (node.radius >= 8 && node.count) {
+    ctx.font = `700 ${Math.max(7, node.radius * 0.65)}px -apple-system, BlinkMacSystemFont, sans-serif`;
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillStyle = 'rgba(255,255,255,0.9)';
+    ctx.fillText(String(node.count), node.x, node.y);
+  }
+}
+
+function drawVersionNode(ctx: CanvasRenderingContext2D, node: RenderNode, isActive: boolean, isConnected: boolean, dimmed: boolean) {
+  const s = node.radius * 1.2;
+  ctx.save();
+  ctx.translate(node.x, node.y);
+  ctx.rotate(Math.PI / 4);
+  ctx.beginPath();
+  ctx.rect(-s / 2, -s / 2, s, s);
+  ctx.fillStyle = isActive ? '#ffa657' : isConnected ? 'rgba(210, 153, 34, 0.7)' : dimmed ? 'rgba(210, 153, 34, 0.2)' : COLORS.version;
+  ctx.fill();
+  ctx.strokeStyle = isActive ? '#fff' : 'rgba(255,255,255,0.15)';
+  ctx.lineWidth = isActive ? 2 : 1;
+  ctx.stroke();
+  ctx.restore();
+}
+
+export default function StashGraphCanvas({ onSelectStash, analyzeStashId, onAnalyzeStashConsumed }: Props) {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const nodesRef = useRef<RenderNode[]>([]);
+  const edgesRef = useRef<StashGraphEdge[]>([]);
+  const animRef = useRef<number>(0);
+  const alphaRef = useRef(1);
+  const panRef = useRef({ x: 0, y: 0 });
+  const zoomRef = useRef(1);
+  const dragRef = useRef<{ node: RenderNode; offsetX: number; offsetY: number } | null>(null);
+  const isPanningRef = useRef(false);
+  const didDragRef = useRef(false);
+  const panStartRef = useRef({ x: 0, y: 0, panX: 0, panY: 0 });
+  const hoveredRef = useRef<RenderNode | null>(null);
+  const autoFitDoneRef = useRef(false);
+
+  const [popup, setPopup] = useState<PopupState | null>(null);
+  const [nodeCount, setNodeCount] = useState(0);
+  const [edgeCount, setEdgeCount] = useState(0);
+  const [loading, setLoading] = useState(true);
+  const [hoveredLabel, setHoveredLabel] = useState<string | null>(null);
+  const [analysedStashes, setAnalysedStashes] = useState<Set<string>>(new Set());
+  const [defaultDepth, setDefaultDepth] = useState(1);
+  const allNodesRef = useRef<RenderNode[]>([]);
+  const allEdgesRef = useRef<StashGraphEdge[]>([]);
+  const analysedStashesRef = useRef<Set<string>>(new Set());
+
+  // Auto-fit
+  const autoFit = useCallback(() => {
+    const canvas = canvasRef.current;
+    const nodes = nodesRef.current;
+    if (!canvas || nodes.length === 0) return;
+    const dpr = devicePixelRatio;
+    const w = canvas.width / dpr, h = canvas.height / dpr;
+    if (w <= 0 || h <= 0) return;
+
+    let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+    for (const node of nodes) {
+      const pad = node.radius + 25;
+      minX = Math.min(minX, node.x - pad); maxX = Math.max(maxX, node.x + pad);
+      minY = Math.min(minY, node.y - pad); maxY = Math.max(maxY, node.y + pad);
+    }
+    const graphW = maxX - minX, graphH = maxY - minY;
+    if (graphW <= 0 || graphH <= 0) return;
+    const padding = 60;
+    const zoom = Math.min((w - padding * 2) / graphW, (h - padding * 2) / graphH, 1.5);
+    const cx = (minX + maxX) / 2, cy = (minY + maxY) / 2;
+    zoomRef.current = Math.max(0.2, zoom);
+    panRef.current.x = -cx * zoomRef.current;
+    panRef.current.y = -cy * zoomRef.current;
+  }, []);
+
+  // Filter nodes/edges based on analysed stashes
+  const applyVisibilityFilter = useCallback((allNodes: RenderNode[], allEdges: StashGraphEdge[], analysed: Set<string>) => {
+    if (analysed.size === 0) {
+      // Show only stash nodes and shared_tags edges between stashes
+      const visibleNodes = allNodes.filter(n => n.type === 'stash');
+      const visibleIds = new Set(visibleNodes.map(n => n.id));
+      const visibleEdges = allEdges.filter(e => e.type === 'shared_tags' && visibleIds.has(e.source) && visibleIds.has(e.target));
+      return { nodes: visibleNodes, edges: visibleEdges };
+    }
+    // Show analysed stashes with their tags up to defaultDepth
+    const visibleIds = new Set<string>();
+    // Always show all stash nodes
+    for (const n of allNodes) {
+      if (n.type === 'stash') visibleIds.add(n.id);
+    }
+    // BFS from analysed stashes to expand tags
+    const queue: { id: string; depth: number }[] = [];
+    for (const sid of analysed) queue.push({ id: sid, depth: 0 });
+    while (queue.length > 0) {
+      const { id, depth } = queue.shift()!;
+      if (depth >= defaultDepth) continue;
+      for (const e of allEdges) {
+        const neighbor = e.source === id ? e.target : e.target === id ? e.source : null;
+        if (neighbor && !visibleIds.has(neighbor)) {
+          visibleIds.add(neighbor);
+          queue.push({ id: neighbor, depth: depth + 1 });
+        }
+      }
+    }
+    const visibleNodes = allNodes.filter(n => visibleIds.has(n.id));
+    const visibleEdges = allEdges.filter(e => visibleIds.has(e.source) && visibleIds.has(e.target));
+    return { nodes: visibleNodes, edges: visibleEdges };
+  }, [defaultDepth]);
+
+  // Handle analyzeStashId from external navigation
+  useEffect(() => {
+    if (analyzeStashId && allNodesRef.current.length > 0) {
+      const stashNode = allNodesRef.current.find(n => n.id === analyzeStashId && n.type === 'stash');
+      if (stashNode) {
+        setAnalysedStashes(prev => {
+          const next = new Set(prev);
+          next.add(analyzeStashId);
+          analysedStashesRef.current = next;
+          return next;
+        });
+      }
+      onAnalyzeStashConsumed?.();
+    }
+  }, [analyzeStashId, onAnalyzeStashConsumed]);
+
+  // Fetch data
+  useEffect(() => {
+    setLoading(true);
+    api.getStashGraph({ mode: 'relations' })
+      .then(data => {
+        const { nodes, edges } = buildRenderNodes(data);
+        allNodesRef.current = nodes;
+        allEdgesRef.current = edges;
+
+        // If there's a pending analyzeStashId, apply it now
+        let initialAnalysed = analysedStashes;
+        if (analyzeStashId) {
+          const stashNode = nodes.find(n => n.id === analyzeStashId && n.type === 'stash');
+          if (stashNode) {
+            initialAnalysed = new Set([analyzeStashId]);
+            analysedStashesRef.current = initialAnalysed;
+            setAnalysedStashes(initialAnalysed);
+          }
+          onAnalyzeStashConsumed?.();
+        }
+
+        const { nodes: filtered, edges: filteredEdges } = applyVisibilityFilter(nodes, edges, initialAnalysed);
+        nodesRef.current = filtered;
+        edgesRef.current = filteredEdges;
+        setNodeCount(filtered.length);
+        setEdgeCount(filteredEdges.length);
+
+        alphaRef.current = 1;
+        autoFitDoneRef.current = false;
+        setLoading(false);
+      })
+      .catch(err => {
+        console.error('Failed to load stash graph:', err);
+        setLoading(false);
+      });
+  }, [applyVisibilityFilter]);
+
+  // Re-filter when analysedStashes or defaultDepth changes
+  useEffect(() => {
+    if (allNodesRef.current.length === 0) return;
+    const { nodes, edges } = applyVisibilityFilter(allNodesRef.current, allEdgesRef.current, analysedStashes);
+    nodesRef.current = nodes;
+    edgesRef.current = edges;
+    setNodeCount(nodes.length);
+    setEdgeCount(edges.length);
+    alphaRef.current = 1;
+    autoFitDoneRef.current = false;
+  }, [analysedStashes, defaultDepth, applyVisibilityFilter]);
+
+  const screenToWorld = useCallback((sx: number, sy: number, canvas: HTMLCanvasElement) => {
+    const cx = canvas.width / (2 * devicePixelRatio), cy = canvas.height / (2 * devicePixelRatio);
+    return { x: (sx - cx - panRef.current.x) / zoomRef.current, y: (sy - cy - panRef.current.y) / zoomRef.current };
+  }, []);
+
+  const findNodeAt = useCallback((wx: number, wy: number) => {
+    for (let i = nodesRef.current.length - 1; i >= 0; i--) {
+      const node = nodesRef.current[i];
+      const hitR = node.type === 'stash' ? Math.max(node.radius * 1.1, node.radius + 4) : node.radius + 4;
+      const dx = node.x - wx, dy = node.y - wy;
+      if (dx * dx + dy * dy <= hitR * hitR) return node;
+    }
+    return null;
+  }, []);
+
+  const getConnections = useCallback((nodeId: string) => {
+    const conns: { id: string; label: string; type: string; weight: number }[] = [];
+    const nodeMap = new Map(nodesRef.current.map(n => [n.id, n]));
+    for (const edge of edgesRef.current) {
+      if (edge.source === nodeId) {
+        const t = nodeMap.get(edge.target);
+        if (t) conns.push({ id: t.id, label: t.label, type: edge.type, weight: edge.weight });
+      } else if (edge.target === nodeId) {
+        const s = nodeMap.get(edge.source);
+        if (s) conns.push({ id: s.id, label: s.label, type: edge.type, weight: edge.weight });
+      }
+    }
+    return conns.sort((a, b) => b.weight - a.weight).slice(0, 8);
+  }, []);
+
+  // Draw
+  const draw = useCallback(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+    const dpr = devicePixelRatio;
+    const w = canvas.width / dpr, h = canvas.height / dpr;
+
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.clearRect(0, 0, w, h);
+    ctx.save();
+    ctx.translate(w / 2 + panRef.current.x, h / 2 + panRef.current.y);
+    ctx.scale(zoomRef.current, zoomRef.current);
+
+    const nodes = nodesRef.current;
+    const edges = edgesRef.current;
+    const hovered = hoveredRef.current;
+    const zoom = zoomRef.current;
+
+    // Draw edges
+    const nodeMap = new Map(nodes.map(n => [n.id, n]));
+    for (const edge of edges) {
+      const a = nodeMap.get(edge.source);
+      const b = nodeMap.get(edge.target);
+      if (!a || !b) continue;
+      const isActive = hovered && (hovered.id === edge.source || hovered.id === edge.target);
+
+      ctx.beginPath();
+      ctx.moveTo(a.x, a.y);
+      ctx.lineTo(b.x, b.y);
+
+      if (edge.type === 'temporal_proximity' || (edge.type === 'has_tag' && !isActive)) {
+        ctx.setLineDash([3, 3]);
+      } else {
+        ctx.setLineDash([]);
+      }
+
+      ctx.strokeStyle = isActive ? 'rgba(88, 166, 255, 0.7)' : edgeColor(edge.type);
+      ctx.lineWidth = Math.min(1 + edge.weight * 0.6, 4) * (isActive ? 1.5 : 1);
+      ctx.stroke();
+      ctx.setLineDash([]);
+
+      // Arrow for version_of
+      if (edge.type === 'version_of') {
+        const dx = b.x - a.x, dy = b.y - a.y;
+        const mx = a.x + dx * 0.7, my = a.y + dy * 0.7;
+        const angle = Math.atan2(dy, dx);
+        const arrowLen = 6;
+        ctx.beginPath();
+        ctx.moveTo(mx, my);
+        ctx.lineTo(mx - arrowLen * Math.cos(angle - 0.4), my - arrowLen * Math.sin(angle - 0.4));
+        ctx.moveTo(mx, my);
+        ctx.lineTo(mx - arrowLen * Math.cos(angle + 0.4), my - arrowLen * Math.sin(angle + 0.4));
+        ctx.strokeStyle = isActive ? 'rgba(210, 153, 34, 0.9)' : 'rgba(210, 153, 34, 0.5)';
+        ctx.lineWidth = 1.5;
+        ctx.stroke();
+      }
+    }
+
+    // Draw nodes
+    for (const node of nodes) {
+      const isHovered = hovered && hovered.id === node.id;
+      const isConnected = hovered && edges.some(
+        e => (e.source === hovered.id && e.target === node.id) || (e.target === hovered.id && e.source === node.id)
+      );
+      const dimmed = !!hovered && !isHovered && !isConnected;
+
+      const isAnalysed = node.type === 'stash' && analysedStashesRef.current.has(node.id);
+      if (node.type === 'stash') drawStashNode(ctx, node, !!isHovered, !!isConnected, dimmed, isAnalysed);
+      else if (node.type === 'tag') drawTagNode(ctx, node, !!isHovered, !!isConnected, dimmed);
+      else drawVersionNode(ctx, node, !!isHovered, !!isConnected, dimmed);
+
+      // Label
+      const fontSize = node.type === 'stash' ? Math.max(12, Math.min(16, node.radius * 0.85)) : Math.max(10, Math.min(14, node.radius * 0.95));
+      ctx.font = `${isAnalysed ? '600' : '500'} ${fontSize}px -apple-system, BlinkMacSystemFont, sans-serif`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      const labelY = node.y + node.radius + fontSize + 3;
+
+      if (zoom < 0.35) {
+        // Very far out: only show hovered or analysed
+        if (isHovered || isAnalysed) { ctx.fillStyle = isAnalysed ? '#a5d6ff' : '#e6edf3'; ctx.fillText(node.label, node.x, labelY); }
+      } else if (zoom < 0.55) {
+        // Medium-far: show hovered, analysed, and stash names
+        if (isHovered || isAnalysed || (node.type === 'stash' && !dimmed)) {
+          ctx.fillStyle = isAnalysed ? '#a5d6ff' : isHovered ? '#e6edf3' : 'rgba(230, 237, 243, 0.5)';
+          const label = node.type === 'stash' && node.label.length > 20 ? node.label.slice(0, 18) + '…' : node.label;
+          ctx.fillText(label, node.x, labelY);
+        }
+      } else if (!dimmed || isHovered || isConnected || isAnalysed) {
+        ctx.fillStyle = isAnalysed ? '#a5d6ff' : isHovered ? '#e6edf3' : 'rgba(230, 237, 243, 0.7)';
+        const label = node.type === 'stash' && node.label.length > 20 ? node.label.slice(0, 18) + '…' : node.label;
+        ctx.fillText(label, node.x, labelY);
+      }
+    }
+
+    ctx.restore();
+  }, []);
+
+  // Animation loop
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const tick = () => {
+      const cw = (canvas.width || 800) / devicePixelRatio;
+      if (alphaRef.current > 0.001) {
+        simulate(nodesRef.current, edgesRef.current, alphaRef.current, false, { min: 0, max: 0 }, cw);
+        alphaRef.current *= 0.993;
+        if (!autoFitDoneRef.current && alphaRef.current < 0.7) {
+          autoFitDoneRef.current = true;
+          autoFit();
+        }
+      }
+      draw();
+      animRef.current = requestAnimationFrame(tick);
+    };
+    animRef.current = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(animRef.current);
+  }, [draw, autoFit]);
+
+  // Resize
+  useEffect(() => {
+    const container = containerRef.current;
+    const canvas = canvasRef.current;
+    if (!container || !canvas) return;
+    const resize = () => {
+      const dpr = devicePixelRatio;
+      const rect = container.getBoundingClientRect();
+      canvas.width = rect.width * dpr;
+      canvas.height = rect.height * dpr;
+      canvas.style.width = rect.width + 'px';
+      canvas.style.height = rect.height + 'px';
+    };
+    resize();
+    const observer = new ResizeObserver(resize);
+    observer.observe(container);
+    return () => observer.disconnect();
+  }, []);
+
+  // Mouse events
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    const onMouseDown = (e: MouseEvent) => {
+      const rect = canvas.getBoundingClientRect();
+      const sx = e.clientX - rect.left, sy = e.clientY - rect.top;
+      const { x: wx, y: wy } = screenToWorld(sx, sy, canvas);
+      const node = findNodeAt(wx, wy);
+      didDragRef.current = false;
+      if (node) {
+        dragRef.current = { node, offsetX: wx - node.x, offsetY: wy - node.y };
+        alphaRef.current = Math.max(alphaRef.current, 0.3);
+      } else {
+        isPanningRef.current = true;
+        panStartRef.current = { x: e.clientX, y: e.clientY, panX: panRef.current.x, panY: panRef.current.y };
+        setPopup(null);
+      }
+    };
+
+    const onMouseMove = (e: MouseEvent) => {
+      const rect = canvas.getBoundingClientRect();
+      const sx = e.clientX - rect.left, sy = e.clientY - rect.top;
+      if (dragRef.current) {
+        didDragRef.current = true;
+        const { x: wx, y: wy } = screenToWorld(sx, sy, canvas);
+        dragRef.current.node.x = wx - dragRef.current.offsetX;
+        dragRef.current.node.y = wy - dragRef.current.offsetY;
+        dragRef.current.node.vx = 0; dragRef.current.node.vy = 0;
+        alphaRef.current = Math.max(alphaRef.current, 0.1);
+        return;
+      }
+      if (isPanningRef.current) {
+        didDragRef.current = true;
+        panRef.current.x = panStartRef.current.panX + (e.clientX - panStartRef.current.x);
+        panRef.current.y = panStartRef.current.panY + (e.clientY - panStartRef.current.y);
+        return;
+      }
+      const { x: wx, y: wy } = screenToWorld(sx, sy, canvas);
+      const node = findNodeAt(wx, wy);
+      if (node !== hoveredRef.current) {
+        hoveredRef.current = node;
+        canvas.style.cursor = node ? 'pointer' : 'grab';
+        setHoveredLabel(node ? node.label : null);
+      }
+    };
+
+    const onMouseUp = () => { dragRef.current = null; isPanningRef.current = false; };
+
+    const onClick = (e: MouseEvent) => {
+      if (didDragRef.current) return;
+      const rect = canvas.getBoundingClientRect();
+      const sx = e.clientX - rect.left, sy = e.clientY - rect.top;
+      const { x: wx, y: wy } = screenToWorld(sx, sy, canvas);
+      const node = findNodeAt(wx, wy);
+      if (node) {
+        if (node.type === 'stash') {
+          setPopup({ node, screenX: e.clientX, screenY: e.clientY, connections: getConnections(node.id) });
+        }
+      }
+    };
+
+    const onWheel = (e: WheelEvent) => {
+      e.preventDefault();
+      const factor = e.deltaY > 0 ? 0.9 : 1.1;
+      const newZoom = Math.max(0.2, Math.min(5, zoomRef.current * factor));
+      const rect = canvas.getBoundingClientRect();
+      const sx = e.clientX - rect.left, sy = e.clientY - rect.top;
+      const cx = canvas.width / (2 * devicePixelRatio), cy = canvas.height / (2 * devicePixelRatio);
+      const wx = sx - cx - panRef.current.x, wy = sy - cy - panRef.current.y;
+      panRef.current.x -= wx * (newZoom / zoomRef.current - 1);
+      panRef.current.y -= wy * (newZoom / zoomRef.current - 1);
+      zoomRef.current = newZoom;
+    };
+
+    canvas.addEventListener('mousedown', onMouseDown);
+    canvas.addEventListener('mousemove', onMouseMove);
+    canvas.addEventListener('mouseup', onMouseUp);
+    canvas.addEventListener('mouseleave', onMouseUp);
+    canvas.addEventListener('click', onClick);
+    canvas.addEventListener('wheel', onWheel, { passive: false });
+    return () => {
+      canvas.removeEventListener('mousedown', onMouseDown);
+      canvas.removeEventListener('mousemove', onMouseMove);
+      canvas.removeEventListener('mouseup', onMouseUp);
+      canvas.removeEventListener('mouseleave', onMouseUp);
+      canvas.removeEventListener('click', onClick);
+      canvas.removeEventListener('wheel', onWheel);
+    };
+  }, [screenToWorld, findNodeAt, getConnections]);
+
+  // Escape to close popup
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => { if (e.key === 'Escape') setPopup(null); };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, []);
+
+  const handleReset = () => {
+    panRef.current = { x: 0, y: 0 };
+    zoomRef.current = 1;
+    alphaRef.current = 1;
+    autoFitDoneRef.current = false;
+    setPopup(null);
+  };
+
+  const getPopupStyle = (): React.CSSProperties => {
+    if (!popup) return { display: 'none' };
+    const container = containerRef.current;
+    if (!container) return { display: 'none' };
+    const rect = container.getBoundingClientRect();
+    const popupWidth = 300;
+    let left = popup.screenX - rect.left + 12;
+    let top = popup.screenY - rect.top - 20;
+    if (left + popupWidth > rect.width) left = left - popupWidth - 24;
+    if (left < 8) left = 8;
+    if (top + 340 > rect.height) top = rect.height - 348;
+    if (top < 8) top = 8;
+    return { left, top };
+  };
+
+  const formatSize = (bytes: number) => bytes < 1024 ? `${bytes} B` : bytes < 1024 * 1024 ? `${(bytes / 1024).toFixed(1)} KB` : `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+
+  const handleAnalyse = (stashId: string) => {
+    setAnalysedStashes(prev => {
+      const next = new Set(prev);
+      if (next.has(stashId)) {
+        next.delete(stashId);
+      } else {
+        next.add(stashId);
+      }
+      analysedStashesRef.current = next;
+      return next;
+    });
+    setPopup(null);
+  };
+
+  const handleClearAnalysis = () => {
+    const empty = new Set<string>();
+    analysedStashesRef.current = empty;
+    setAnalysedStashes(empty);
+  };
+
+  return (
+    <>
+      <div className="graph-actions" style={{ marginBottom: 12 }}>
+        <span className="graph-stats">{nodeCount} nodes · {edgeCount} edges</span>
+        <div className="stash-graph-depth-control">
+          <label>Tiefe:</label>
+          <button
+            className="graph-depth-btn"
+            onClick={() => setDefaultDepth(d => Math.max(1, d - 1))}
+            disabled={defaultDepth <= 1}
+            title="Tiefe verringern"
+          >-</button>
+          <span className="stash-graph-depth-value">{defaultDepth}</span>
+          <button
+            className="graph-depth-btn"
+            onClick={() => setDefaultDepth(d => Math.min(5, d + 1))}
+            disabled={defaultDepth >= 5}
+            title="Tiefe erhöhen"
+          >+</button>
+        </div>
+        {analysedStashes.size > 0 && (
+          <button className="btn graph-reset-btn" onClick={handleClearAnalysis} title="Analyse zurücksetzen">
+            <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
+              <path d="M3.72 3.72a.75.75 0 0 1 1.06 0L8 6.94l3.22-3.22a.749.749 0 0 1 1.275.326.749.749 0 0 1-.215.734L9.06 8l3.22 3.22a.749.749 0 0 1-.326 1.275.749.749 0 0 1-.734-.215L8 9.06l-3.22 3.22a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042L6.94 8 3.72 4.78a.75.75 0 0 1 0-1.06Z" />
+            </svg>
+            Analyse zurücksetzen ({analysedStashes.size})
+          </button>
+        )}
+        {hoveredLabel && !popup && (
+          <span className="graph-hover-info">
+            <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
+              <path d="M1 7.775V2.75C1 1.784 1.784 1 2.75 1h5.025c.464 0 .91.184 1.238.513l6.25 6.25a1.75 1.75 0 0 1 0 2.474l-5.026 5.026a1.75 1.75 0 0 1-2.474 0l-6.25-6.25A1.752 1.752 0 0 1 1 7.775Zm1.5 0c0 .066.026.13.073.177l6.25 6.25a.25.25 0 0 0 .354 0l5.025-5.025a.25.25 0 0 0 0-.354l-6.25-6.25a.25.25 0 0 0-.177-.073H2.75a.25.25 0 0 0-.25.25ZM6 5a1 1 0 1 1 0 2 1 1 0 0 1 0-2Z" />
+            </svg>
+            {hoveredLabel}
+          </span>
+        )}
+        <button className="btn graph-reset-btn" onClick={handleReset} title="Reset graph layout and zoom">
+          <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
+            <path d="M3.38 8A4.62 4.62 0 0 1 8 3.38a4.63 4.63 0 0 1 3.27 1.35L9.74 6.26h4.51V1.75l-1.49 1.49A6.12 6.12 0 0 0 8 1.88 6.13 6.13 0 0 0 1.88 8Z" />
+            <path d="M12.62 8A4.62 4.62 0 0 1 8 12.62a4.63 4.63 0 0 1-3.27-1.35l1.53-1.53H1.75v4.51l1.49-1.49A6.12 6.12 0 0 0 8 14.12 6.13 6.13 0 0 0 14.12 8Z" />
+          </svg>
+          Reset
+        </button>
+      </div>
+      <div className="graph-canvas-container" ref={containerRef} style={{ flex: 1, minHeight: 0 }}>
+        <canvas ref={canvasRef} className="graph-canvas" style={{ cursor: 'grab' }} />
+
+        {loading && (
+          <div className="graph-empty">
+            <p>Loading stash graph...</p>
+          </div>
+        )}
+
+        {!loading && nodeCount === 0 && (
+          <div className="graph-empty">
+            <svg width="36" height="36" viewBox="0 0 16 16" fill="currentColor" opacity="0.3">
+              <path d="M2 1.75C2 .784 2.784 0 3.75 0h6.586c.464 0 .909.184 1.237.513l2.914 2.914c.329.328.513.773.513 1.237v9.586A1.75 1.75 0 0 1 13.25 16h-9.5A1.75 1.75 0 0 1 2 14.25Zm1.75-.25a.25.25 0 0 0-.25.25v12.5c0 .138.112.25.25.25h9.5a.25.25 0 0 0 .25-.25V6h-2.75A1.75 1.75 0 0 1 9 4.25V1.5Zm6.75.062V4.25c0 .138.112.25.25.25h2.688l-.011-.013-2.914-2.914-.013-.011Z" />
+            </svg>
+            <p>No stashes to visualize. Create stashes to see the graph.</p>
+          </div>
+        )}
+
+        {/* Legend */}
+        {!loading && nodeCount > 0 && (
+          <div className="stash-graph-legend">
+            <div className="stash-graph-legend-item">
+              <span className="stash-graph-legend-rect" style={{ background: COLORS.stash }} />
+              <span>Stash</span>
+            </div>
+            {analysedStashes.size > 0 && (
+              <div className="stash-graph-legend-item">
+                <span className="stash-graph-legend-circle" style={{ background: COLORS.tag }} />
+                <span>Tag</span>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Popup */}
+        {popup && (
+          <div className="graph-node-popup" style={getPopupStyle()} role="dialog">
+            <div className="graph-popup-header">
+              <div className="graph-popup-tag">
+                <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
+                  <path d="M2 1.75C2 .784 2.784 0 3.75 0h6.586c.464 0 .909.184 1.237.513l2.914 2.914c.329.328.513.773.513 1.237v9.586A1.75 1.75 0 0 1 13.25 16h-9.5A1.75 1.75 0 0 1 2 14.25Zm1.75-.25a.25.25 0 0 0-.25.25v12.5c0 .138.112.25.25.25h9.5a.25.25 0 0 0 .25-.25V6h-2.75A1.75 1.75 0 0 1 9 4.25V1.5Zm6.75.062V4.25c0 .138.112.25.25.25h2.688l-.011-.013-2.914-2.914-.013-.011Z" />
+                </svg>
+                <strong>{popup.node.label}</strong>
+              </div>
+              <button className="graph-popup-close" onClick={() => setPopup(null)} title="Close">
+                <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
+                  <path d="M3.72 3.72a.75.75 0 0 1 1.06 0L8 6.94l3.22-3.22a.749.749 0 0 1 1.275.326.749.749 0 0 1-.215.734L9.06 8l3.22 3.22a.749.749 0 0 1-.326 1.275.749.749 0 0 1-.734-.215L8 9.06l-3.22 3.22a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042L6.94 8 3.72 4.78a.75.75 0 0 1 0-1.06Z" />
+                </svg>
+              </button>
+            </div>
+
+            <div className="stash-graph-popup-meta">
+              {popup.node.file_count !== undefined && (
+                <span>{popup.node.file_count} {popup.node.file_count === 1 ? 'file' : 'files'}</span>
+              )}
+              {popup.node.total_size !== undefined && (
+                <span>{formatSize(popup.node.total_size)}</span>
+              )}
+              {popup.node.version !== undefined && popup.node.version > 1 && (
+                <span className="stash-graph-popup-version">v{popup.node.version}</span>
+              )}
+            </div>
+
+            {popup.node.created_at && (
+              <div className="stash-graph-popup-times">
+                <div>Created: {new Date(popup.node.created_at).toLocaleString('de-DE')}</div>
+                {popup.node.updated_at && popup.node.updated_at !== popup.node.created_at && (
+                  <div>Updated: {new Date(popup.node.updated_at).toLocaleString('de-DE')}</div>
+                )}
+              </div>
+            )}
+
+            {popup.node.tags && popup.node.tags.length > 0 && (
+              <div className="graph-popup-section">
+                <div className="graph-popup-section-title">Tags</div>
+                <div className="graph-popup-connections">
+                  {popup.node.tags.map(t => (
+                    <span key={t} className="graph-popup-conn-tag">{t}</span>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {popup.connections.length > 0 && (
+              <div className="graph-popup-section">
+                <div className="graph-popup-section-title">Connections</div>
+                <div className="graph-popup-connections">
+                  {popup.connections.filter(c => c.type === 'shared_tags').map(c => (
+                    <span key={c.id} className="graph-popup-conn-tag">
+                      {c.label}
+                      <span className="graph-popup-conn-weight">{c.weight}</span>
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            <div className="graph-popup-actions">
+              <button className="graph-popup-action-btn graph-popup-action-analyse" onClick={() => handleAnalyse(popup.node.id)}>
+                <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor">
+                  <path d="M8 2a6 6 0 1 0 0 12A6 6 0 0 0 8 2Zm0 1.5a4.5 4.5 0 1 1 0 9 4.5 4.5 0 0 1 0-9Zm0 2a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5Z" />
+                </svg>
+                {analysedStashes.has(popup.node.id) ? 'Analyse beenden' : 'Analyse'}
+              </button>
+              <button className="graph-popup-action-btn graph-popup-action-filter" onClick={() => { setPopup(null); onSelectStash(popup.node.id); }}>
+                <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor">
+                  <path d="M1.5 8a6.5 6.5 0 1 1 13 0 6.5 6.5 0 0 1-13 0ZM8 0a8 8 0 1 0 0 16A8 8 0 0 0 8 0Zm.75 4.75a.75.75 0 0 0-1.5 0v2.5h-2.5a.75.75 0 0 0 0 1.5h2.5v2.5a.75.75 0 0 0 1.5 0v-2.5h2.5a.75.75 0 0 0 0-1.5h-2.5Z" />
+                </svg>
+                Open Stash
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+    </>
+  );
+}

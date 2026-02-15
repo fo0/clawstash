@@ -13,6 +13,7 @@ interface Props {
   onEdit: () => void;
   onDelete: (id: string) => void;
   onBack: () => void;
+  onAnalyzeStash: (id: string) => void;
   onStashUpdated?: (stash: Stash) => void;
 }
 
@@ -121,7 +122,7 @@ function CopyButtonContent({ copied, failed, size = 12, labelCopy = 'Copy', labe
   return <><CopyIcon size={size} /> {labelCopy}</>;
 }
 
-export default function StashViewer({ stash, onEdit, onDelete, onBack, onStashUpdated }: Props) {
+export default function StashViewer({ stash, onEdit, onDelete, onBack, onAnalyzeStash, onStashUpdated }: Props) {
   const [activeTab, setActiveTab] = useState<'content' | 'metadata' | 'access-log' | 'history'>('content');
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [accessLog, setAccessLog] = useState<AccessLogEntry[]>([]);
@@ -309,6 +310,16 @@ export default function StashViewer({ stash, onEdit, onDelete, onBack, onStashUp
           </svg>
           History
           <span className="version-count-badge">v{stash.version}</span>
+        </button>
+        <button
+          className="tab tab-analyze"
+          onClick={() => onAnalyzeStash(stash.id)}
+          title="Analyze connections in the stash graph"
+        >
+          <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor" style={{ marginRight: 6, verticalAlign: -2 }}>
+            <path d="M8 2a6 6 0 1 0 0 12A6 6 0 0 0 8 2Zm0 1.5a4.5 4.5 0 1 1 0 9 4.5 4.5 0 0 1 0-9Zm0 2a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5Z" />
+          </svg>
+          Analyze
         </button>
       </div>
 

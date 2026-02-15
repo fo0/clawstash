@@ -64,6 +64,20 @@ export function createStashRouter(db: ClawStashDB): Router {
     }));
   });
 
+  // Get stash graph (stash nodes with relations, timeline, and version edges)
+  router.get('/graph/stashes', requireScope('read'), (req: Request, res: Response) => {
+    const { mode, since, until, tag, limit, include_versions, min_shared_tags } = req.query;
+    res.json(db.getStashGraph({
+      mode: (mode as 'relations' | 'timeline' | 'versions') || undefined,
+      since: since as string | undefined,
+      until: until as string | undefined,
+      tag: tag as string | undefined,
+      limit: limit ? parseInt(limit as string, 10) : undefined,
+      include_versions: include_versions === 'true',
+      min_shared_tags: min_shared_tags ? parseInt(min_shared_tags as string, 10) : undefined,
+    }));
+  });
+
   // Get version history for a stash
   router.get('/:id/versions', requireScope('read'), (req: Request<{ id: string }>, res: Response) => {
     if (!db.stashExists(req.params.id)) {

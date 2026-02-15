@@ -1,7 +1,10 @@
 import { Router, Request, Response } from 'express';
 import crypto from 'crypto';
+import archiver from 'archiver';
+import AdmZip from 'adm-zip';
+import multer from 'multer';
 import { ClawStashDB } from '../db.js';
-import { ADMIN_PASSWORD, ADMIN_SESSION_HOURS, extractToken, validateAuth, isAuthEnabled } from '../auth.js';
+import { ADMIN_PASSWORD, ADMIN_SESSION_HOURS, extractToken, validateAuth, isAuthEnabled, requireAdminAuth } from '../auth.js';
 
 export function createAdminRouter(db: ClawStashDB): Router {
   const router = Router();
@@ -85,6 +88,89 @@ export function createAdminRouter(db: ClawStashDB): Router {
       scopes: auth.scopes,
       expiresAt: auth.expiresAt ?? null,
     });
+  });
+
+  // GET /api/admin/export - Export all stash data as ZIP
+  router.get('/export', (req: Request, res: Response) => {
+    const auth = requireAdminAuth(db, req);
+    if (!auth) {
+      res.status(401).json({ error: 'Admin access required' });
+      return;
+    }
+
+    try {
+      const data = db.exportAllData();
+      const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+
+      res.setHeader('Content-Type', 'application/zip');
+      res.setHeader('Content-Disposition', `attachment; filename="clawstash-export-${timestamp}.zip"`);
+
+      const archive = archiver('zip', { zlib: { level: 9 } });
+      archive.on('error', (err: Error) => {
+        console.error('Archive error:', err);
+        if (!res.headersSent) {
+          res.status(500).json({ error: 'Failed to create export archive' });
+        }
+      });
+
+      archive.pipe(res);
+      archive.append(JSON.stringify(data.stashes, null, 2), { name: 'stashes.json' });
+      archive.append(JSON.stringify(data.stash_files, null, 2), { name: 'stash_files.json' });
+      archive.append(JSON.stringify(data.stash_versions, null, 2), { name: 'stash_versions.json' });
+      archive.append(JSON.stringify(data.stash_version_files, null, 2), { name: 'stash_version_files.json' });
+      archive.append(JSON.stringify({ exportedAt: new Date().toISOString(), version: '1.0' }), { name: 'manifest.json' });
+      archive.finalize();
+    } catch (err) {
+      console.error('Export error:', err);
+      if (!res.headersSent) {
+        res.status(500).json({ error: 'Failed to export data' });
+      }
+    }
+  });
+
+  // POST /api/admin/import - Import stash data from ZIP
+  const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 100 * 1024 * 1024 } });
+  router.post('/import', upload.single('file'), (req: Request, res: Response) => {
+    const auth = requireAdminAuth(db, req);
+    if (!auth) {
+      res.status(401).json({ error: 'Admin access required' });
+      return;
+    }
+
+    if (!req.file) {
+      res.status(400).json({ error: 'No file uploaded' });
+      return;
+    }
+
+    try {
+      const zip = new AdmZip(req.file.buffer);
+      const entries = zip.getEntries();
+
+      const readJson = (name: string): unknown[] => {
+        const entry = entries.find(e => e.entryName === name);
+        if (!entry) return [];
+        return JSON.parse(entry.getData().toString('utf8'));
+      };
+
+      const stashes = readJson('stashes.json') as Record<string, unknown>[];
+      const stash_files = readJson('stash_files.json') as Record<string, unknown>[];
+      const stash_versions = readJson('stash_versions.json') as Record<string, unknown>[];
+      const stash_version_files = readJson('stash_version_files.json') as Record<string, unknown>[];
+
+      if (stashes.length === 0) {
+        res.status(400).json({ error: 'No stash data found in ZIP file' });
+        return;
+      }
+
+      const result = db.importAllData({ stashes, stash_files, stash_versions, stash_version_files });
+      res.json({
+        message: 'Import successful',
+        imported: result,
+      });
+    } catch (err) {
+      console.error('Import error:', err);
+      res.status(400).json({ error: 'Failed to import data. Make sure the ZIP file is a valid ClawStash export.' });
+    }
   });
 
   return router;

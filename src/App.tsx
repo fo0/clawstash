@@ -59,6 +59,7 @@ export default function App() {
   const [adminToken, setAdminToken] = useState<string>(getStoredAdminToken);
   const [adminSession, setAdminSession] = useState<AdminSessionInfo | null>(null);
   const [searchOpen, setSearchOpen] = useState(false);
+  const [analyzeStashId, setAnalyzeStashId] = useState<string | null>(null);
 
   // Global Alt+K shortcut for quick search
   useEffect(() => {
@@ -270,6 +271,14 @@ export default function App() {
 
   const handleGraphView = () => {
     setSelectedStash(null);
+    setAnalyzeStashId(null);
+    setView('graph');
+    pushUrl('/graph');
+  };
+
+  const handleAnalyzeStash = (id: string) => {
+    setSelectedStash(null);
+    setAnalyzeStashId(id);
     setView('graph');
     pushUrl('/graph');
   };
@@ -338,6 +347,7 @@ export default function App() {
               onEdit={handleEditStash}
               onDelete={handleDeleteStash}
               onBack={handleGoHome}
+              onAnalyzeStash={handleAnalyzeStash}
               onStashUpdated={(stash) => {
                 setSelectedStash(stash);
                 loadStashes();
@@ -366,6 +376,8 @@ export default function App() {
               onFilterTag={handleGraphFilterTag}
               onSelectStash={handleSelectStash}
               onGoHome={handleGoHome}
+              analyzeStashId={analyzeStashId}
+              onAnalyzeStashConsumed={() => setAnalyzeStashId(null)}
             />
           )}
         </main>

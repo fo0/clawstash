@@ -1,6 +1,7 @@
 import { useRef, useEffect, useCallback, useState } from 'react';
 import type { StashListItem, TagInfo, TagGraphResult } from '../types';
 import { api } from '../api';
+import StashGraphCanvas from './StashGraphCanvas';
 
 interface Props {
   stashes: StashListItem[];
@@ -8,6 +9,8 @@ interface Props {
   onFilterTag: (tag: string) => void;
   onSelectStash: (id: string) => void;
   onGoHome: () => void;
+  analyzeStashId?: string | null;
+  onAnalyzeStashConsumed?: () => void;
 }
 
 interface GraphNode {
@@ -320,7 +323,8 @@ function simulate(nodes: GraphNode[], edges: GraphEdge[], alpha: number) {
   }
 }
 
-export default function GraphViewer({ stashes, tags, onFilterTag, onSelectStash, onGoHome }: Props) {
+export default function GraphViewer({ stashes, tags, onFilterTag, onSelectStash, onGoHome, analyzeStashId, onAnalyzeStashConsumed }: Props) {
+  const [graphTab, setGraphTab] = useState<'tags' | 'stashes'>('stashes');
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const nodesRef = useRef<GraphNode[]>([]);
@@ -926,6 +930,33 @@ export default function GraphViewer({ stashes, tags, onFilterTag, onSelectStash,
     ? nodesRef.current.length
     : tags.length;
 
+  const isStashTab = graphTab === 'stashes';
+
+  const tabSwitcher = (
+    <div className="graph-tab-switcher">
+      <button className={`graph-tab-btn ${isStashTab ? 'active' : ''}`} onClick={() => setGraphTab('stashes')}>Stashes</button>
+      <button className={`graph-tab-btn ${!isStashTab ? 'active' : ''}`} onClick={() => setGraphTab('tags')}>Tags</button>
+    </div>
+  );
+
+  if (isStashTab) {
+    return (
+      <div className="graph-viewer">
+        <div className="graph-header">
+          <div className="graph-title">
+            <button className="graph-back-btn" onClick={onGoHome} title="Back to dashboard">
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+                <path d="M7.78 12.53a.75.75 0 0 1-1.06 0L2.47 8.28a.75.75 0 0 1 0-1.06l4.25-4.25a.75.75 0 0 1 1.06 1.06L4.81 7h7.44a.75.75 0 0 1 0 1.5H4.81l2.97 2.97a.75.75 0 0 1 0 1.06Z" />
+              </svg>
+            </button>
+            {tabSwitcher}
+          </div>
+        </div>
+        <StashGraphCanvas onSelectStash={onSelectStash} analyzeStashId={analyzeStashId} onAnalyzeStashConsumed={onAnalyzeStashConsumed} />
+      </div>
+    );
+  }
+
   return (
     <div className="graph-viewer">
       <div className="graph-header">
@@ -935,7 +966,7 @@ export default function GraphViewer({ stashes, tags, onFilterTag, onSelectStash,
               <path d="M7.78 12.53a.75.75 0 0 1-1.06 0L2.47 8.28a.75.75 0 0 1 0-1.06l4.25-4.25a.75.75 0 0 1 1.06 1.06L4.81 7h7.44a.75.75 0 0 1 0 1.5H4.81l2.97 2.97a.75.75 0 0 1 0 1.06Z" />
             </svg>
           </button>
-          <h1>Tag Graph</h1>
+          {tabSwitcher}
           <span className="graph-stats">{nodeCount} tags · {edgeCount} connections</span>
         </div>
         <div className="graph-actions">

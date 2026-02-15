@@ -1,0 +1,244 @@
+### Beispieldaten für ClawStash - 20 Stashes mit vollen Metadaten
+### Server muss auf localhost:3001 laufen
+
+@baseUrl = http://localhost:3001/api/stashes
+
+### 1 - Python Utils
+POST {{baseUrl}}
+Content-Type: application/json
+
+{
+  "name": "Python String Utils",
+  "description": "Hilfsfunktionen für String-Manipulation in Python",
+  "tags": ["python", "utils", "strings"],
+  "metadata": {"project": "toolbox", "priority": "high", "author": "anna"},
+  "files": [{"filename": "string_utils.py", "content": "def slugify(text: str) -> str:\n    import re\n    text = text.lower().strip()\n    return re.sub(r'[\\W_]+', '-', text)\n\ndef truncate(text: str, length: int = 100) -> str:\n    return text[:length] + '...' if len(text) > length else text", "language": "python"}]
+}
+
+### 2 - React Hook
+POST {{baseUrl}}
+Content-Type: application/json
+
+{
+  "name": "useLocalStorage Hook",
+  "description": "Custom React Hook für localStorage mit TypeScript",
+  "tags": ["react", "typescript", "hooks"],
+  "metadata": {"project": "frontend-lib", "priority": "medium", "author": "max"},
+  "files": [{"filename": "useLocalStorage.ts", "content": "import { useState, useEffect } from 'react';\n\nexport function useLocalStorage<T>(key: string, initial: T) {\n  const [value, setValue] = useState<T>(() => {\n    const stored = localStorage.getItem(key);\n    return stored ? JSON.parse(stored) : initial;\n  });\n  useEffect(() => localStorage.setItem(key, JSON.stringify(value)), [key, value]);\n  return [value, setValue] as const;\n}", "language": "typescript"}]
+}
+
+### 3 - Docker Compose Template
+POST {{baseUrl}}
+Content-Type: application/json
+
+{
+  "name": "Docker Compose PostgreSQL + Redis",
+  "description": "Standard Docker Compose Setup mit PostgreSQL und Redis",
+  "tags": ["docker", "postgres", "redis", "devops"],
+  "metadata": {"project": "infrastructure", "priority": "high", "author": "anna"},
+  "files": [{"filename": "docker-compose.yml", "content": "version: '3.8'\nservices:\n  db:\n    image: postgres:16\n    environment:\n      POSTGRES_PASSWORD: secret\n    ports:\n      - '5432:5432'\n    volumes:\n      - pgdata:/var/lib/postgresql/data\n  redis:\n    image: redis:7-alpine\n    ports:\n      - '6379:6379'\nvolumes:\n  pgdata:", "language": "yaml"}]
+}
+
+### 4 - SQL Migrations
+POST {{baseUrl}}
+Content-Type: application/json
+
+{
+  "name": "User Table Migration",
+  "description": "SQL Migration für User-Tabelle mit Rollen",
+  "tags": ["sql", "postgres", "migration"],
+  "metadata": {"project": "backend-api", "priority": "high", "author": "tom"},
+  "files": [{"filename": "001_users.sql", "content": "CREATE TABLE users (\n  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),\n  email VARCHAR(255) UNIQUE NOT NULL,\n  name VARCHAR(100),\n  role VARCHAR(20) DEFAULT 'user',\n  created_at TIMESTAMPTZ DEFAULT NOW()\n);\nCREATE INDEX idx_users_email ON users(email);", "language": "sql"}, {"filename": "002_sessions.sql", "content": "CREATE TABLE sessions (\n  id UUID PRIMARY KEY,\n  user_id UUID REFERENCES users(id),\n  token TEXT NOT NULL,\n  expires_at TIMESTAMPTZ NOT NULL\n);", "language": "sql"}]
+}
+
+### 5 - Bash Deploy Script
+POST {{baseUrl}}
+Content-Type: application/json
+
+{
+  "name": "Deploy Script",
+  "description": "Automatisiertes Deployment-Script für Production",
+  "tags": ["bash", "devops", "deployment"],
+  "metadata": {"project": "infrastructure", "priority": "critical", "author": "anna"},
+  "files": [{"filename": "deploy.sh", "content": "#!/bin/bash\nset -euo pipefail\necho \"Deploying to production...\"\ngit pull origin main\nnpm ci --production\nnpm run build\npm2 restart all\necho \"Deploy complete!\"", "language": "bash"}]
+}
+
+### 6 - TypeScript API Client
+POST {{baseUrl}}
+Content-Type: application/json
+
+{
+  "name": "Fetch API Wrapper",
+  "description": "Typsicherer Fetch-Wrapper mit Error Handling",
+  "tags": ["typescript", "api", "utils"],
+  "metadata": {"project": "frontend-lib", "priority": "high", "author": "max"},
+  "files": [{"filename": "api-client.ts", "content": "type Method = 'GET' | 'POST' | 'PUT' | 'DELETE';\n\nasync function request<T>(url: string, method: Method = 'GET', body?: unknown): Promise<T> {\n  const res = await fetch(url, {\n    method,\n    headers: { 'Content-Type': 'application/json' },\n    body: body ? JSON.stringify(body) : undefined,\n  });\n  if (!res.ok) throw new Error(`HTTP ${res.status}`);\n  return res.json();\n}", "language": "typescript"}]
+}
+
+### 7 - CSS Grid Layout
+POST {{baseUrl}}
+Content-Type: application/json
+
+{
+  "name": "Responsive Dashboard Grid",
+  "description": "CSS Grid Layout für ein responsives Dashboard",
+  "tags": ["css", "layout", "responsive"],
+  "metadata": {"project": "frontend-lib", "priority": "medium", "author": "lisa"},
+  "files": [{"filename": "dashboard.css", "content": ".dashboard {\n  display: grid;\n  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));\n  gap: 1.5rem;\n  padding: 2rem;\n}\n.card {\n  background: var(--surface);\n  border-radius: 12px;\n  padding: 1.5rem;\n  box-shadow: 0 2px 8px rgba(0,0,0,0.1);\n}", "language": "css"}]
+}
+
+### 8 - Python FastAPI Endpoint
+POST {{baseUrl}}
+Content-Type: application/json
+
+{
+  "name": "FastAPI CRUD Router",
+  "description": "Vollständiger CRUD Router für FastAPI mit Pydantic",
+  "tags": ["python", "fastapi", "api"],
+  "metadata": {"project": "backend-api", "priority": "high", "author": "tom"},
+  "files": [{"filename": "router.py", "content": "from fastapi import APIRouter, HTTPException\nfrom pydantic import BaseModel\n\nrouter = APIRouter(prefix='/items')\n\nclass Item(BaseModel):\n    name: str\n    price: float\n\nitems: dict[str, Item] = {}\n\n@router.get('/')\ndef list_items():\n    return list(items.values())\n\n@router.post('/', status_code=201)\ndef create_item(item: Item):\n    items[item.name] = item\n    return item", "language": "python"}]
+}
+
+### 9 - GitHub Actions CI
+POST {{baseUrl}}
+Content-Type: application/json
+
+{
+  "name": "GitHub Actions Node CI",
+  "description": "CI Pipeline für Node.js Projekte mit Tests und Lint",
+  "tags": ["devops", "ci", "github-actions"],
+  "metadata": {"project": "infrastructure", "priority": "medium", "author": "anna"},
+  "files": [{"filename": "ci.yml", "content": "name: CI\non: [push, pull_request]\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: actions/checkout@v4\n      - uses: actions/setup-node@v4\n        with:\n          node-version: 20\n      - run: npm ci\n      - run: npm run lint\n      - run: npm test", "language": "yaml"}]
+}
+
+### 10 - Rust Error Handling
+POST {{baseUrl}}
+Content-Type: application/json
+
+{
+  "name": "Rust Custom Error Type",
+  "description": "Custom Error Type mit thiserror für Rust",
+  "tags": ["rust", "error-handling", "utils"],
+  "metadata": {"project": "toolbox", "priority": "medium", "author": "tom"},
+  "files": [{"filename": "error.rs", "content": "use thiserror::Error;\n\n#[derive(Error, Debug)]\npub enum AppError {\n    #[error(\"Not found: {0}\")]\n    NotFound(String),\n    #[error(\"Unauthorized\")]\n    Unauthorized,\n    #[error(\"Database error: {0}\")]\n    Database(#[from] sqlx::Error),\n}", "language": "rust"}]
+}
+
+### 11 - React Component
+POST {{baseUrl}}
+Content-Type: application/json
+
+{
+  "name": "Modal Component",
+  "description": "Wiederverwendbare Modal-Komponente mit Portal",
+  "tags": ["react", "typescript", "components"],
+  "metadata": {"project": "frontend-lib", "priority": "medium", "author": "lisa"},
+  "files": [{"filename": "Modal.tsx", "content": "import { ReactNode } from 'react';\nimport { createPortal } from 'react-dom';\n\ninterface Props {\n  open: boolean;\n  onClose: () => void;\n  children: ReactNode;\n}\n\nexport function Modal({ open, onClose, children }: Props) {\n  if (!open) return null;\n  return createPortal(\n    <div className=\"modal-overlay\" onClick={onClose}>\n      <div className=\"modal-content\" onClick={e => e.stopPropagation()}>\n        {children}\n      </div>\n    </div>,\n    document.body\n  );\n}", "language": "typescript"}]
+}
+
+### 12 - Python Logging Config
+POST {{baseUrl}}
+Content-Type: application/json
+
+{
+  "name": "Structured Logging Setup",
+  "description": "Strukturiertes Logging mit structlog für Python",
+  "tags": ["python", "logging", "config"],
+  "metadata": {"project": "backend-api", "priority": "low", "author": "anna"},
+  "files": [{"filename": "logging_config.py", "content": "import structlog\nimport logging\n\ndef setup_logging(level='INFO'):\n    structlog.configure(\n        processors=[\n            structlog.stdlib.filter_by_level,\n            structlog.stdlib.add_log_level,\n            structlog.processors.TimeStamper(fmt='iso'),\n            structlog.processors.JSONRenderer()\n        ],\n        wrapper_class=structlog.stdlib.BoundLogger,\n        logger_factory=structlog.stdlib.LoggerFactory(),\n    )\n    logging.basicConfig(level=getattr(logging, level))", "language": "python"}]
+}
+
+### 13 - Nginx Config
+POST {{baseUrl}}
+Content-Type: application/json
+
+{
+  "name": "Nginx Reverse Proxy",
+  "description": "Nginx Konfiguration als Reverse Proxy mit SSL",
+  "tags": ["devops", "nginx", "config"],
+  "metadata": {"project": "infrastructure", "priority": "high", "author": "tom"},
+  "files": [{"filename": "nginx.conf", "content": "server {\n    listen 443 ssl;\n    server_name example.com;\n    ssl_certificate /etc/ssl/cert.pem;\n    ssl_certificate_key /etc/ssl/key.pem;\n\n    location / {\n        proxy_pass http://localhost:3000;\n        proxy_set_header Host $host;\n        proxy_set_header X-Real-IP $remote_addr;\n    }\n\n    location /api {\n        proxy_pass http://localhost:3001;\n    }\n}", "language": "nginx"}]
+}
+
+### 14 - Go HTTP Handler
+POST {{baseUrl}}
+Content-Type: application/json
+
+{
+  "name": "Go JSON Handler",
+  "description": "HTTP Handler Pattern in Go mit JSON Response",
+  "tags": ["go", "api", "utils"],
+  "metadata": {"project": "toolbox", "priority": "medium", "author": "max"},
+  "files": [{"filename": "handler.go", "content": "package main\n\nimport (\n\t\"encoding/json\"\n\t\"net/http\"\n)\n\nfunc jsonResponse(w http.ResponseWriter, data any, status int) {\n\tw.Header().Set(\"Content-Type\", \"application/json\")\n\tw.WriteHeader(status)\n\tjson.NewEncoder(w).Encode(data)\n}\n\nfunc healthHandler(w http.ResponseWriter, r *http.Request) {\n\tjsonResponse(w, map[string]string{\"status\": \"ok\"}, 200)\n}", "language": "go"}]
+}
+
+### 15 - Jest Test Utils
+POST {{baseUrl}}
+Content-Type: application/json
+
+{
+  "name": "Jest Test Helpers",
+  "description": "Hilfsfunktionen und Custom Matchers für Jest Tests",
+  "tags": ["typescript", "testing", "utils"],
+  "metadata": {"project": "frontend-lib", "priority": "low", "author": "lisa"},
+  "files": [{"filename": "test-utils.ts", "content": "import { render, RenderOptions } from '@testing-library/react';\nimport { ReactElement } from 'react';\n\nexport function renderWithProviders(ui: ReactElement, options?: RenderOptions) {\n  return render(ui, { ...options });\n}\n\nexport function mockFetch(data: unknown, status = 200) {\n  global.fetch = jest.fn().mockResolvedValue({\n    ok: status < 400,\n    status,\n    json: async () => data,\n  });\n}", "language": "typescript"}]
+}
+
+### 16 - Kubernetes Deployment
+POST {{baseUrl}}
+Content-Type: application/json
+
+{
+  "name": "K8s Deployment Manifest",
+  "description": "Kubernetes Deployment und Service für eine Web-App",
+  "tags": ["devops", "kubernetes", "docker"],
+  "metadata": {"project": "infrastructure", "priority": "critical", "author": "anna"},
+  "files": [{"filename": "deployment.yaml", "content": "apiVersion: apps/v1\nkind: Deployment\nmetadata:\n  name: web-app\nspec:\n  replicas: 3\n  selector:\n    matchLabels:\n      app: web-app\n  template:\n    metadata:\n      labels:\n        app: web-app\n    spec:\n      containers:\n        - name: app\n          image: myapp:latest\n          ports:\n            - containerPort: 3000", "language": "yaml"}, {"filename": "service.yaml", "content": "apiVersion: v1\nkind: Service\nmetadata:\n  name: web-app-svc\nspec:\n  type: LoadBalancer\n  ports:\n    - port: 80\n      targetPort: 3000\n  selector:\n    app: web-app", "language": "yaml"}]
+}
+
+### 17 - Python Data Pipeline
+POST {{baseUrl}}
+Content-Type: application/json
+
+{
+  "name": "CSV Data Pipeline",
+  "description": "Einfache ETL-Pipeline für CSV-Daten mit pandas",
+  "tags": ["python", "data", "etl"],
+  "metadata": {"project": "data-tools", "priority": "high", "author": "tom"},
+  "files": [{"filename": "pipeline.py", "content": "import pandas as pd\nfrom pathlib import Path\n\ndef extract(path: str) -> pd.DataFrame:\n    return pd.read_csv(path)\n\ndef transform(df: pd.DataFrame) -> pd.DataFrame:\n    df = df.dropna()\n    df['created'] = pd.to_datetime(df['created'])\n    return df.sort_values('created')\n\ndef load(df: pd.DataFrame, output: str):\n    Path(output).parent.mkdir(parents=True, exist_ok=True)\n    df.to_parquet(output, index=False)", "language": "python"}]
+}
+
+### 18 - Tailwind Config
+POST {{baseUrl}}
+Content-Type: application/json
+
+{
+  "name": "Tailwind + Dark Mode Config",
+  "description": "Tailwind CSS Konfiguration mit Custom Theme und Dark Mode",
+  "tags": ["css", "config", "responsive"],
+  "metadata": {"project": "frontend-lib", "priority": "low", "author": "lisa"},
+  "files": [{"filename": "tailwind.config.js", "content": "/** @type {import('tailwindcss').Config} */\nmodule.exports = {\n  darkMode: 'class',\n  content: ['./src/**/*.{ts,tsx}'],\n  theme: {\n    extend: {\n      colors: {\n        primary: { 500: '#6366f1', 600: '#4f46e5' },\n        surface: { light: '#ffffff', dark: '#1e1e2e' },\n      },\n      fontFamily: { sans: ['Inter', 'sans-serif'] },\n    },\n  },\n  plugins: [],\n};", "language": "javascript"}]
+}
+
+### 19 - Rust CLI Parser
+POST {{baseUrl}}
+Content-Type: application/json
+
+{
+  "name": "Clap CLI Argument Parser",
+  "description": "CLI Argument Parsing mit clap für Rust",
+  "tags": ["rust", "cli", "utils"],
+  "metadata": {"project": "toolbox", "priority": "medium", "author": "max"},
+  "files": [{"filename": "cli.rs", "content": "use clap::Parser;\n\n#[derive(Parser, Debug)]\n#[command(name = \"mytool\", about = \"A useful CLI tool\")]\npub struct Cli {\n    /// Input file path\n    #[arg(short, long)]\n    pub input: String,\n\n    /// Output format\n    #[arg(short, long, default_value = \"json\")]\n    pub format: String,\n\n    /// Verbose output\n    #[arg(short, long)]\n    pub verbose: bool,\n}", "language": "rust"}]
+}
+
+### 20 - SQL Analytics Queries
+POST {{baseUrl}}
+Content-Type: application/json
+
+{
+  "name": "Analytics SQL Queries",
+  "description": "Nützliche SQL Queries für User-Analytics und Reporting",
+  "tags": ["sql", "data", "postgres"],
+  "metadata": {"project": "data-tools", "priority": "high", "author": "anna"},
+  "files": [{"filename": "analytics.sql", "content": "-- Daily active users\nSELECT DATE(created_at) as day, COUNT(DISTINCT user_id) as dau\nFROM events\nWHERE created_at >= NOW() - INTERVAL '30 days'\nGROUP BY day ORDER BY day;\n\n-- Retention cohort\nSELECT\n  DATE_TRUNC('week', u.created_at) as cohort,\n  COUNT(DISTINCT u.id) as users,\n  COUNT(DISTINCT e.user_id) as retained\nFROM users u\nLEFT JOIN events e ON u.id = e.user_id\n  AND e.created_at >= u.created_at + INTERVAL '7 days'\nGROUP BY cohort ORDER BY cohort;", "language": "sql"}, {"filename": "funnel.sql", "content": "-- Conversion funnel\nWITH steps AS (\n  SELECT user_id,\n    MAX(CASE WHEN event = 'visit' THEN 1 END) as visited,\n    MAX(CASE WHEN event = 'signup' THEN 1 END) as signed_up,\n    MAX(CASE WHEN event = 'purchase' THEN 1 END) as purchased\n  FROM events GROUP BY user_id\n)\nSELECT\n  COUNT(*) as total,\n  SUM(visited) as visits,\n  SUM(signed_up) as signups,\n  SUM(purchased) as purchases\nFROM steps;", "language": "sql"}]
+}

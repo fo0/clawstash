@@ -1,4 +1,4 @@
-import type { Stash, StashListResponse, CreateStashInput, UpdateStashInput, TagInfo, Stats, AccessLogEntry, TokenListItem, NewlyCreatedToken, TokenScope, AdminSessionInfo, AdminLoginResponse, TagGraphResult, StashVersionListItem, StashVersion } from './types';
+import type { Stash, StashListResponse, CreateStashInput, UpdateStashInput, TagInfo, Stats, AccessLogEntry, TokenListItem, NewlyCreatedToken, TokenScope, AdminSessionInfo, AdminLoginResponse, TagGraphResult, StashGraphResult, StashVersionListItem, StashVersion } from './types';
 
 const BASE = '/api/stashes';
 
@@ -98,6 +98,18 @@ export const api = {
     return request(`${BASE}/graph${qs.toString() ? `?${qs}` : ''}`, { headers: getHeaders() });
   },
 
+  getStashGraph(params?: { mode?: string; since?: string; until?: string; tag?: string; limit?: number; include_versions?: boolean; min_shared_tags?: number }): Promise<StashGraphResult> {
+    const qs = new URLSearchParams();
+    if (params?.mode) qs.set('mode', params.mode);
+    if (params?.since) qs.set('since', params.since);
+    if (params?.until) qs.set('until', params.until);
+    if (params?.tag) qs.set('tag', params.tag);
+    if (params?.limit) qs.set('limit', String(params.limit));
+    if (params?.include_versions) qs.set('include_versions', 'true');
+    if (params?.min_shared_tags) qs.set('min_shared_tags', String(params.min_shared_tags));
+    return request(`${BASE}/graph/stashes${qs.toString() ? `?${qs}` : ''}`, { headers: getHeaders() });
+  },
+
   // Token management
   listTokens(): Promise<{ tokens: TokenListItem[] }> {
     return request('/api/tokens', { headers: getHeaders() });
@@ -139,5 +151,39 @@ export const api = {
   // MCP tool summaries (structured, derived from server tool-defs.ts)
   getMcpTools(): Promise<Array<{ name: string; description: string }>> {
     return request('/api/mcp-tools');
+  },
+
+  // Data export (returns blob)
+  async exportData(): Promise<Blob> {
+    const headers: Record<string, string> = {};
+    if (_authToken) {
+      headers['Authorization'] = `Bearer ${_authToken}`;
+    }
+    const res = await fetch('/api/admin/export', { headers });
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({}));
+      throw new Error(body.error || `HTTP ${res.status}`);
+    }
+    return res.blob();
+  },
+
+  // Data import (upload ZIP file)
+  async importData(file: File): Promise<{ message: string; imported: { stashes: number; files: number; versions: number; versionFiles: number } }> {
+    const formData = new FormData();
+    formData.append('file', file);
+    const headers: Record<string, string> = {};
+    if (_authToken) {
+      headers['Authorization'] = `Bearer ${_authToken}`;
+    }
+    const res = await fetch('/api/admin/import', {
+      method: 'POST',
+      headers,
+      body: formData,
+    });
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({}));
+      throw new Error(body.error || `HTTP ${res.status}`);
+    }
+    return res.json();
   },
 };

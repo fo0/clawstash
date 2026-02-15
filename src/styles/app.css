@@ -4552,3 +4552,215 @@ body {
   color: var(--text-muted);
   font-size: 14px;
 }
+
+/* === Graph Tab Switcher === */
+.graph-tab-switcher {
+  display: flex;
+  gap: 2px;
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius);
+  padding: 2px;
+}
+
+.graph-tab-btn {
+  padding: 5px 14px;
+  border: none;
+  border-radius: calc(var(--radius) - 2px);
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.graph-tab-btn:hover {
+  color: var(--text-primary);
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.graph-tab-btn.active {
+  background: var(--accent-blue);
+  color: #fff;
+}
+
+/* === Stash Graph Mode Tabs === */
+.stash-graph-mode-tabs {
+  display: flex;
+  gap: 2px;
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius);
+  padding: 2px;
+}
+
+.stash-graph-mode-tab {
+  padding: 4px 12px;
+  border: none;
+  border-radius: calc(var(--radius) - 2px);
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.stash-graph-mode-tab:hover {
+  color: var(--text-primary);
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.stash-graph-mode-tab.active {
+  background: rgba(88, 166, 255, 0.15);
+  color: var(--accent-blue);
+}
+
+/* === Stash Graph Depth Control === */
+.stash-graph-depth-control {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--text-secondary);
+  user-select: none;
+}
+
+.stash-graph-depth-control label {
+  font-weight: 500;
+  color: var(--text-secondary);
+}
+
+.stash-graph-depth-value {
+  min-width: 18px;
+  text-align: center;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+/* === Stash Graph Analyse Button === */
+.graph-popup-action-analyse {
+  background: rgba(35, 134, 54, 0.15) !important;
+  color: #3fb950 !important;
+  border-color: rgba(35, 134, 54, 0.3) !important;
+}
+
+.graph-popup-action-analyse:hover {
+  background: rgba(35, 134, 54, 0.25) !important;
+}
+
+/* === Stash Viewer Analyze Tab === */
+.tab.tab-analyze {
+  color: #3fb950;
+  border-color: rgba(35, 134, 54, 0.3);
+}
+
+.tab.tab-analyze:hover {
+  background: rgba(35, 134, 54, 0.1);
+  color: #3fb950;
+}
+
+/* === Stash Graph Legend === */
+.stash-graph-legend {
+  position: absolute;
+  bottom: 12px;
+  left: 12px;
+  display: flex;
+  gap: 12px;
+  padding: 6px 12px;
+  background: rgba(22, 27, 34, 0.85);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius);
+  font-size: 11px;
+  color: var(--text-secondary);
+  backdrop-filter: blur(4px);
+}
+
+.stash-graph-legend-item {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.stash-graph-legend-rect {
+  display: inline-block;
+  width: 14px;
+  height: 10px;
+  border-radius: 2px;
+}
+
+.stash-graph-legend-circle {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+}
+
+.stash-graph-legend-diamond {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  transform: rotate(45deg);
+  border-radius: 1px;
+}
+
+/* === Stash Graph Popup Meta === */
+.stash-graph-popup-meta {
+  display: flex;
+  gap: 8px;
+  padding: 4px 0 8px;
+  font-size: 12px;
+  color: var(--text-secondary);
+  flex-wrap: wrap;
+}
+
+.stash-graph-popup-meta span {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 2px 8px;
+  background: var(--bg-tertiary);
+  border-radius: var(--radius);
+  border: 1px solid var(--border-color);
+}
+
+.stash-graph-popup-version {
+  background: rgba(210, 153, 34, 0.15) !important;
+  color: #d29922 !important;
+  border-color: rgba(210, 153, 34, 0.3) !important;
+}
+
+.stash-graph-popup-times {
+  font-size: 11px;
+  color: var(--text-muted);
+  padding: 4px 0 8px;
+  line-height: 1.6;
+}
+
+/* === Data Export / Import === */
+.settings-export-import-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.settings-import-success {
+  margin-top: 12px;
+  padding: 10px 14px;
+  background: rgba(63, 185, 80, 0.12);
+  color: var(--accent-green, #3fb950);
+  border: 1px solid rgba(63, 185, 80, 0.3);
+  border-radius: 6px;
+  font-size: 13px;
+}
+
+.settings-import-error {
+  margin-top: 12px;
+  padding: 10px 14px;
+  background: rgba(248, 81, 73, 0.12);
+  color: #f85149;
+  border: 1px solid rgba(248, 81, 73, 0.3);
+  border-radius: 6px;
+  font-size: 13px;
+}
