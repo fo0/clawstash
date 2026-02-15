@@ -229,6 +229,16 @@ The response includes:
     schema: z.object({}),
     returns: 'Markdown text with current MCP tool specification',
   },
+  {
+    name: 'check_version',
+    description: `Check the current ClawStash version and whether a newer version is available on GitHub.
+
+Returns the running version, the latest release version (if available), and whether an update is possible. Useful for automated upgrade checks and monitoring.
+
+The latest version is fetched from GitHub releases (with fallback to tags) and cached for 1 hour.`,
+    schema: z.object({}),
+    returns: '{ current_version, latest_version, update_available, release_url, github_url, checked_at }',
+  },
 ] satisfies ToolDef[];
 
 // ---------------------------------------------------------------------------
