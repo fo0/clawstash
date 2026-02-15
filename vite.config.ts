@@ -5,18 +5,30 @@ import { writeFileSync } from 'fs';
 import path from 'path';
 
 function getBuildInfo() {
-  let branch = '';
-  let commitHash = '';
-  try {
-    branch = execSync('git rev-parse --abbrev-ref HEAD', { encoding: 'utf-8' }).trim();
-  } catch {
-    // Not a git repo or git not available
+  let branch = process.env.BUILD_BRANCH || '';
+  let commitHash = process.env.BUILD_COMMIT_SHA || '';
+
+  // Fallback to git when env vars are not set (local development)
+  if (!branch) {
+    try {
+      branch = execSync('git rev-parse --abbrev-ref HEAD', { encoding: 'utf-8' }).trim();
+    } catch {
+      // Not a git repo or git not available
+    }
   }
-  try {
-    commitHash = execSync('git rev-parse --short HEAD', { encoding: 'utf-8' }).trim();
-  } catch {
-    // Not a git repo or git not available
+  if (!commitHash) {
+    try {
+      commitHash = execSync('git rev-parse --short HEAD', { encoding: 'utf-8' }).trim();
+    } catch {
+      // Not a git repo or git not available
+    }
   }
+
+  // Normalize to short hash (env var may provide full SHA)
+  if (commitHash.length > 7) {
+    commitHash = commitHash.substring(0, 7);
+  }
+
   return {
     branch,
     commitHash,
