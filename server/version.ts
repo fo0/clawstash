@@ -61,6 +61,12 @@ function loadBuildInfo(): BuildInfo {
   } catch {
     // git not available
   }
+
+  // Normalize to 7-char short hash (git may return more for uniqueness)
+  if (commitHash.length > 7) {
+    commitHash = commitHash.substring(0, 7);
+  }
+
   return { branch, commitHash, buildDate: new Date().toISOString() };
 }
 
