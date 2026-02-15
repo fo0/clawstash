@@ -231,7 +231,10 @@ npm run preview            # Preview production build via Vite
 ### Footer (src/components/Footer.tsx)
 
 - Build info injected at compile time via Vite `define` (`__BUILD_INFO__` global)
-- Build info includes: version (from package.json), git branch, build date (ISO string)
+- Build info includes: git branch, commit hash (short), build date (ISO string)
+- Version displayed as date-based format `vYYYYMMDD-HHMM` (derived from build date, not package.json)
+- Build details (branch, commit, date) shown on the right side when toggled, next to GitHub link
+- Mobile: build details shown in separate panel below footer row
 - Type declaration for `__BUILD_INFO__` in `src/vite-env.d.ts`
 
 ### Graph Viewer (src/components/GraphViewer.tsx)
