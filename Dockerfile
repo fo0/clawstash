@@ -3,6 +3,12 @@ FROM node:22-slim AS builder
 
 WORKDIR /app
 
+# Git info passed as build args (used by Vite for build-info.json + frontend)
+ARG BUILD_COMMIT_SHA=""
+ARG BUILD_BRANCH=""
+ENV BUILD_COMMIT_SHA=${BUILD_COMMIT_SHA}
+ENV BUILD_BRANCH=${BUILD_BRANCH}
+
 # Build tools for better-sqlite3 native addon
 RUN apt-get update && apt-get install -y python3 make g++ && rm -rf /var/lib/apt/lists/*
 
