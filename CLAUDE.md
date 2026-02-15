@@ -17,6 +17,7 @@
 - Access log tracking via API, MCP, and UI
 - Admin login gate with session management
 - Settings area with API management, token CRUD, and storage statistics
+- Version history with diff comparison and restore functionality
 
 ## Tech Stack
 
@@ -30,6 +31,7 @@
 | Validation | Zod | 3.24 |
 | Code Editor | react-simple-code-editor, PrismJS | 0.13, 1.30 |
 | Markdown Rendering | marked | 17 |
+| Text Diffing | diff (jsdiff) | 7 |
 | Module System | ESM (`"type": "module"`) | — |
 | Containerization | Docker (multi-stage) | — |
 | CI/CD | GitHub Actions → GHCR | — |
@@ -86,7 +88,9 @@ clawstash/
 │   │   ├── Dashboard.tsx       # Home view with grid/list of stash cards
 │   │   ├── GraphViewer.tsx     # Force-directed tag graph visualization (canvas-based)
 │   │   ├── StashCard.tsx       # Individual stash card component
-│   │   ├── StashViewer.tsx     # Stash detail view with file display + access log tab
+│   │   ├── StashViewer.tsx     # Stash detail view with file display, access log, version history tabs
+│   │   ├── VersionHistory.tsx  # Version history list, detail view, compare selector, restore button
+│   │   ├── VersionDiff.tsx     # GitHub-style diff view (green/red) using jsdiff library
 │   │   ├── SearchOverlay.tsx    # Alt+K quick search overlay with keyboard navigation
 │   │   ├── LoginScreen.tsx     # Password login gate
 │   │   ├── Settings.tsx        # Settings/admin area (general, API, storage, about)
@@ -155,6 +159,14 @@ npm run preview            # Preview production build via Vite
 - `getTagGraph(options?)` returns tag nodes with counts + co-occurrence edges; supports focus tag with BFS depth traversal, min_weight, min_count, and limit filters
 - `access_log` table tracks all read/write access per stash (source: api/mcp/ui)
 - `api_tokens` table stores API tokens (SHA-256 hashed, with scopes and prefix)
+- **Version History**: `stash_versions` + `stash_version_files` tables track every version of a stash
+- `stashes` table has `version` column (integer, starts at 1, incremented on every update)
+- `updateStash()` snapshots the current state into `stash_versions` before applying changes (within transaction)
+- `createStash()` creates initial version record (v1)
+- Auto-migration: existing stashes get `version=1` and initial version records seeded on first run
+- `getStashVersions(id)` returns version list (descending) with file counts and sizes
+- `getStashVersion(id, version)` returns full version snapshot with file content
+- `restoreStashVersion(id, version)` restores an old version as a new update (creates new version)
 
 ### Authentication (server/auth.ts)
 
@@ -338,6 +350,10 @@ npm run preview            # Preview production build via Vite
 | `/api/stashes/:id` | DELETE | Delete a stash |
 | `/api/stashes/:id/files/:filename/raw` | GET | Get raw file content |
 | `/api/stashes/:id/access-log` | GET | Get access log for a stash (`?limit=`) |
+| `/api/stashes/:id/versions` | GET | List all versions of a stash (descending) |
+| `/api/stashes/:id/versions/diff` | GET | Compare two versions (`?v1=&v2=`) |
+| `/api/stashes/:id/versions/:version` | GET | Get a specific version snapshot with files |
+| `/api/stashes/:id/versions/:version/restore` | POST | Restore an old version as current (creates new version) |
 | `/api/tokens` | GET | List API tokens (admin-protected) |
 | `/api/tokens` | POST | Create API token (admin-protected) |
 | `/api/tokens/:id` | DELETE | Delete API token (admin-protected) |
