@@ -1,6 +1,16 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 
-const buildInfo = __BUILD_INFO__;
+interface BuildInfo {
+  buildDate: string;
+  commitHash: string;
+  branch: string;
+}
+
+const DEFAULT_BUILD_INFO: BuildInfo = {
+  buildDate: new Date().toISOString(),
+  commitHash: '',
+  branch: '',
+};
 
 function formatBuildVersion(isoDate: string): string {
   const d = new Date(isoDate);
@@ -10,6 +20,16 @@ function formatBuildVersion(isoDate: string): string {
 
 export default function Footer() {
   const [showDetails, setShowDetails] = useState(false);
+  const [buildInfo, setBuildInfo] = useState<BuildInfo>(DEFAULT_BUILD_INFO);
+
+  useEffect(() => {
+    fetch('/api/version')
+      .then(r => r.json())
+      .then(data => {
+        if (data.buildDate) setBuildInfo(data);
+      })
+      .catch(() => { /* use defaults */ });
+  }, []);
 
   const buildDate = new Date(buildInfo.buildDate);
   const formattedDate = buildDate.toLocaleDateString(undefined, {

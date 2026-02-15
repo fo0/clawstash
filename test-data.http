@@ -1,7 +1,7 @@
 ### Beispieldaten für ClawStash - 20 Stashes mit vollen Metadaten
-### Server muss auf localhost:3001 laufen
+### Server muss auf localhost:3000 laufen
 
-@baseUrl = http://localhost:3001/api/stashes
+@baseUrl = http://localhost:3000/api/stashes
 
 ### 1 - Python Utils
 POST {{baseUrl}}
@@ -156,7 +156,7 @@ Content-Type: application/json
   "description": "Nginx Konfiguration als Reverse Proxy mit SSL",
   "tags": ["devops", "nginx", "config"],
   "metadata": {"project": "infrastructure", "priority": "high", "author": "tom"},
-  "files": [{"filename": "nginx.conf", "content": "server {\n    listen 443 ssl;\n    server_name example.com;\n    ssl_certificate /etc/ssl/cert.pem;\n    ssl_certificate_key /etc/ssl/key.pem;\n\n    location / {\n        proxy_pass http://localhost:3000;\n        proxy_set_header Host $host;\n        proxy_set_header X-Real-IP $remote_addr;\n    }\n\n    location /api {\n        proxy_pass http://localhost:3001;\n    }\n}", "language": "nginx"}]
+  "files": [{"filename": "nginx.conf", "content": "server {\n    listen 443 ssl;\n    server_name example.com;\n    ssl_certificate /etc/ssl/cert.pem;\n    ssl_certificate_key /etc/ssl/key.pem;\n\n    location / {\n        proxy_pass http://localhost:3000;\n        proxy_set_header Host $host;\n        proxy_set_header X-Real-IP $remote_addr;\n    }\n\n    location /api {\n        proxy_pass http://localhost:3000;\n    }\n}", "language": "nginx"}]
 }
 
 ### 14 - Go HTTP Handler

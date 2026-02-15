@@ -24,16 +24,16 @@
 | Component | Technology | Version |
 |-----------|-----------|---------|
 | Language | TypeScript (strict mode) | 5.7 |
-| Frontend | React, Vite | 19, 6 |
-| Backend | Express, Node.js | 4, 22 |
-| Database | SQLite (better-sqlite3) | 11 |
+| Framework | Next.js (App Router) | 16 |
+| Frontend | React | 19 |
+| Database | SQLite (better-sqlite3) | 12 |
 | MCP Server | @modelcontextprotocol/sdk | 1.12 |
 | Validation | Zod | 3.24 |
-| Code Editor | react-simple-code-editor, PrismJS | 0.13, 1.30 |
+| Code Editor | react-simple-code-editor, PrismJS | 0.14, 1.30 |
 | Markdown Rendering | marked | 17 |
-| Text Diffing | diff (jsdiff) | 7 |
+| Text Diffing | diff (jsdiff) | 8 |
 | Module System | ESM (`"type": "module"`) | — |
-| Containerization | Docker (multi-stage) | — |
+| Containerization | Docker (multi-stage, standalone output) | — |
 | CI/CD | GitHub Actions → GHCR | — |
 | Linter/Formatter | — (not configured) | — |
 | Test Framework | — (not configured) | — |
@@ -42,11 +42,10 @@
 
 ```
 clawstash/
-├── index.html                  # Vite entry point
 ├── package.json                # Dependencies and scripts
-├── tsconfig.json               # TypeScript config (strict, ES2022, ESNext modules)
-├── vite.config.ts              # Vite config with API proxy, build info injection (port 3000 → 3001)
-├── Dockerfile                  # Multi-stage Docker build (Node 22-slim)
+├── tsconfig.json               # TypeScript config (strict, ES2022, Next.js plugin, @/* path alias)
+├── next.config.ts              # Next.js config (standalone output, better-sqlite3 external)
+├── Dockerfile                  # Multi-stage Docker build (Node 22-slim, Next.js standalone)
 ├── docker-compose.yml          # Docker Compose deployment
 ├── .env.example                # Environment variables template
 ├── BACKLOG.md                  # Deferred review findings tracker
@@ -56,43 +55,78 @@ clawstash/
 ├── .github/
 │   └── workflows/
 │       └── docker-publish.yml  # CI: Type-check, build, push to GHCR
-├── server/                     # Backend
-│   ├── index.ts                # Express server entry point (includes MCP HTTP endpoint)
-│   ├── db.ts                   # SQLite database layer (ClawStashDB class)
-│   ├── auth.ts                 # Shared auth utility (token extraction, validation, scope checking)
-│   ├── shared-text.ts          # Shared text constants (PURPOSE, TOKEN_EFFICIENT_GUIDE) used across specs
-│   ├── tool-defs.ts            # MCP tool definitions — single source of truth (Zod schemas + descriptions)
-│   ├── mcp-server.ts           # MCP server factory (imports tool-defs.ts, defines handlers)
-│   ├── mcp-spec.ts             # MCP spec generator (uses tool-defs.ts + zodToJsonSchema + OpenAPI data types)
-│   ├── mcp.ts                  # MCP server stdio transport entry point
-│   ├── openapi.ts              # OpenAPI 3.0 schema generator (uses shared-text.ts for description)
-│   ├── version.ts              # Version check utility (build info + GitHub latest commit comparison)
-│   └── routes/
-│       ├── admin.ts            # Admin auth routes (login/logout/session)
-│       ├── stashes.ts          # REST API route handlers
-│       └── tokens.ts           # API token management routes
-├── src/                        # Frontend (React)
-│   ├── main.tsx                # React entry point
-│   ├── vite-env.d.ts           # Vite client types + BuildInfo global declaration
+├── public/                     # Next.js static assets
+├── src/
+│   ├── app/                    # Next.js App Router
+│   │   ├── layout.tsx          # Root layout with metadata + global CSS
+│   │   ├── page.tsx            # Client component wrapper for <App />
+│   │   ├── mcp/
+│   │   │   └── route.ts        # MCP Streamable HTTP endpoint (POST/GET/DELETE)
+│   │   └── api/                # API Route Handlers
+│   │       ├── _helpers.ts     # Shared utilities (checkScope, checkAdmin, getBaseUrl)
+│   │       ├── stashes/
+│   │       │   ├── route.ts            # GET (list), POST (create)
+│   │       │   ├── stats/route.ts      # GET storage statistics
+│   │       │   ├── tags/route.ts       # GET all tags with counts
+│   │       │   ├── metadata-keys/route.ts  # GET unique metadata keys
+│   │       │   ├── graph/route.ts      # GET tag relationship graph
+│   │       │   ├── graph/stashes/route.ts  # GET stash relationship graph
+│   │       │   └── [id]/
+│   │       │       ├── route.ts        # GET, PATCH, DELETE single stash
+│   │       │       ├── access-log/route.ts  # GET access log
+│   │       │       ├── files/[filename]/raw/route.ts  # GET raw file content
+│   │       │       └── versions/
+│   │       │           ├── route.ts    # GET version list
+│   │       │           ├── diff/route.ts  # GET version diff
+│   │       │           └── [version]/
+│   │       │               ├── route.ts       # GET specific version
+│   │       │               └── restore/route.ts  # POST restore version
+│   │       ├── tokens/
+│   │       │   ├── route.ts            # GET (list), POST (create)
+│   │       │   ├── [id]/route.ts       # DELETE
+│   │       │   └── validate/route.ts   # POST validate token
+│   │       ├── admin/
+│   │       │   ├── auth/route.ts       # POST login
+│   │       │   ├── logout/route.ts     # POST logout
+│   │       │   ├── session/route.ts    # GET session status
+│   │       │   ├── export/route.ts     # GET ZIP download
+│   │       │   └── import/route.ts     # POST ZIP upload
+│   │       ├── openapi/route.ts        # GET OpenAPI schema
+│   │       ├── version/route.ts        # GET version info
+│   │       ├── mcp-spec/route.ts       # GET MCP specification
+│   │       ├── mcp-onboarding/route.ts # GET MCP onboarding guide
+│   │       └── mcp-tools/route.ts      # GET MCP tool summaries
+│   ├── server/                 # Server-side logic (used by API route handlers)
+│   │   ├── db.ts               # SQLite database layer (ClawStashDB class)
+│   │   ├── singleton.ts        # DB singleton with globalThis for HMR protection
+│   │   ├── auth.ts             # Auth utility (token extraction, validation, scope checking)
+│   │   ├── shared-text.ts      # Shared text constants (PURPOSE, TOKEN_EFFICIENT_GUIDE)
+│   │   ├── tool-defs.ts        # MCP tool definitions (Zod schemas + descriptions)
+│   │   ├── mcp-server.ts       # MCP server factory (imports tool-defs.ts, defines handlers)
+│   │   ├── mcp-spec.ts         # MCP spec generator (zodToJsonSchema + OpenAPI data types)
+│   │   ├── mcp.ts              # MCP server stdio transport entry point
+│   │   ├── openapi.ts          # OpenAPI 3.0 schema generator
+│   │   └── version.ts          # Version check utility (build info + GitHub latest commit)
 │   ├── App.tsx                 # Main app component, state management
 │   ├── api.ts                  # API client (fetch wrapper)
 │   ├── types.ts                # Shared TypeScript interfaces
-│   ├── languages.ts            # PrismJS language detection, mapping, and highlighting utility
+│   ├── languages.ts            # PrismJS language detection, mapping, highlighting
 │   ├── hooks/
 │   │   └── useClipboard.ts     # useClipboard + useClipboardWithKey hooks
 │   ├── utils/
 │   │   ├── clipboard.ts        # Copy-to-clipboard with fallback for non-HTTPS
 │   │   └── format.ts           # Date formatting (formatDate, formatDateTime, formatRelativeTime)
 │   ├── components/
-│   │   ├── Sidebar.tsx         # Left sidebar with search, tag filter, stash list, settings nav, graph button
-│   │   ├── Footer.tsx          # App footer with version, build info toggle, GitHub link
+│   │   ├── Sidebar.tsx         # Left sidebar with search, tag filter, stash list, settings nav
+│   │   ├── Footer.tsx          # App footer with version (fetched from /api/version), build info toggle
 │   │   ├── Dashboard.tsx       # Home view with grid/list of stash cards
 │   │   ├── GraphViewer.tsx     # Force-directed tag graph visualization (canvas-based)
 │   │   ├── StashCard.tsx       # Individual stash card component
-│   │   ├── StashViewer.tsx     # Stash detail view with file display, access log, version history tabs
-│   │   ├── VersionHistory.tsx  # Version history list, detail view, compare selector, restore button
-│   │   ├── VersionDiff.tsx     # GitHub-style diff view (green/red) using jsdiff library
-│   │   ├── SearchOverlay.tsx    # Alt+K quick search overlay with keyboard navigation
+│   │   ├── StashViewer.tsx     # Stash detail view with file display, access log, version history
+│   │   ├── StashGraphCanvas.tsx # Stash graph canvas component
+│   │   ├── VersionHistory.tsx  # Version history list, compare selector, restore button
+│   │   ├── VersionDiff.tsx     # GitHub-style diff view (green/red) using jsdiff
+│   │   ├── SearchOverlay.tsx   # Alt+K quick search overlay with keyboard navigation
 │   │   ├── LoginScreen.tsx     # Password login gate
 │   │   ├── Settings.tsx        # Settings/admin area (general, API, storage, about)
 │   │   ├── shared/
@@ -104,7 +138,9 @@ clawstash/
 │   │   │   ├── RestTab.tsx     # REST API docs, Swagger explorer, examples
 │   │   │   ├── McpTab.tsx      # MCP Server config, tools, examples
 │   │   │   ├── SwaggerViewer.tsx # Swagger UI lazy-loader
-│   │   │   └── api-data.ts     # Static data: endpoints, tools, scope labels, spec generators
+│   │   │   ├── api-data.ts    # Static data: endpoints, tools, scope labels, spec generators
+│   │   │   ├── icons.tsx       # API-specific icons
+│   │   │   └── useCopyToast.ts # Copy toast hook
 │   │   └── editor/             # Stash editor sub-components
 │   │       ├── StashEditor.tsx # Main create/edit form with file management
 │   │       ├── FileCodeEditor.tsx # PrismJS code editor wrapper
@@ -122,18 +158,17 @@ clawstash/
 npm install                # Install dependencies
 
 # Development
-npm run dev                # Start dev (Vite frontend + Express backend concurrently)
+npm run dev                # Start Next.js dev server (frontend + API on port 3000)
 
 # Automated Checks (in this order)
 npx tsc --noEmit           # Type checking
-npm run build              # Production build (Vite)
+npm run build              # Production build (Next.js)
 
 # Production
-npm start                  # Start production server (serves API + static frontend)
+npm start                  # Start production server (Next.js)
 
 # Other
 npm run mcp                # Start MCP server (stdio transport)
-npm run preview            # Preview production build via Vite
 ```
 
 > **Note:** No linter or test framework configured yet. When added, extend automated checks:
@@ -144,7 +179,7 @@ npm run preview            # Preview production build via Vite
 
 ## Key Patterns
 
-### Database Layer (server/db.ts)
+### Database Layer (src/server/db.ts)
 
 - Single `ClawStashDB` class encapsulates all database operations
 - SQLite with WAL mode for concurrent read performance
@@ -169,19 +204,34 @@ npm run preview            # Preview production build via Vite
 - `getStashVersion(id, version)` returns full version snapshot with file content
 - `restoreStashVersion(id, version)` restores an old version as a new update (creates new version)
 
-### Authentication (server/auth.ts)
+### DB Singleton (src/server/singleton.ts)
 
-- Shared auth utility used by all protected routes (stashes, tokens, MCP)
+- Uses `globalThis` to persist DB instance across Next.js HMR reloads in development
+- Single `getDb()` function returns the shared `ClawStashDB` instance
+- Prevents multiple DB connections during hot module replacement
+
+### Authentication (src/server/auth.ts)
+
+- Shared auth utility used by all protected API route handlers
 - Two token types: Admin sessions (`csa_` prefix) and API tokens (`cs_` prefix)
 - Admin login via `ADMIN_PASSWORD` env variable (password-based, not static token)
 - Session duration configurable via `ADMIN_SESSION_HOURS` (default: 24, 0 = unlimited)
 - Admin sessions stored as SHA-256 hashes in `admin_sessions` table with expiry
 - Scope hierarchy: admin implies all, write implies read
-- Stash routes use `requireScope()` Express middleware factory: GET requires `read` scope, POST/PATCH/DELETE require `write` scope
-- MCP endpoint requires `mcp` or `admin` scope
+- Auth functions work with `NextRequest` objects (adapted from Express middleware)
 - When `ADMIN_PASSWORD` is not set, all features are open (dev mode)
 
-### API Token Management (server/routes/tokens.ts)
+### API Route Handlers (src/app/api/)
+
+- Next.js Route Handlers replace Express routes
+- Shared helpers in `src/app/api/_helpers.ts`: `checkScope()`, `checkAdmin()`, `getBaseUrl()`
+- `checkScope(req, scope)` validates auth and returns `{ db, source }` or error `NextResponse`
+- `checkAdmin(req)` validates admin-level auth
+- `getBaseUrl(req)` extracts base URL from request headers for OpenAPI schema
+- All handlers use `NextRequest`/`NextResponse` from `next/server`
+- Dynamic route parameters via `params` promise (Next.js 16 convention)
+
+### API Token Management (src/app/api/tokens/)
 
 - Token format: `cs_` prefix + 48 hex chars (24 random bytes)
 - Tokens stored as SHA-256 hashes in the database
@@ -190,14 +240,14 @@ npm run preview            # Preview production build via Vite
 
 ### Spec Architecture (Single Source of Truth)
 
-- **`server/shared-text.ts`**: Shared text constants (`CLAWSTASH_PURPOSE`, `CLAWSTASH_PURPOSE_PLAIN`, `TOKEN_EFFICIENT_GUIDE`) used by OpenAPI, MCP spec, and MCP server description
-- **`server/tool-defs.ts`**: Single source of truth for all MCP tool definitions (name, description, Zod schema, return type). Consumed by mcp-server.ts, mcp-spec.ts, and `/api/mcp-tools`
-- **`server/mcp-spec.ts`**: Uses `zodToJsonSchema()` to auto-convert Zod schemas from tool-defs.ts to JSON Schema for the spec output. Pulls data types from OpenAPI. No hand-written JSON Schema.
-- **`server/openapi.ts`**: Uses `CLAWSTASH_PURPOSE_PLAIN` from shared-text.ts for `info.description`
+- **`src/server/shared-text.ts`**: Shared text constants (`CLAWSTASH_PURPOSE`, `CLAWSTASH_PURPOSE_PLAIN`, `TOKEN_EFFICIENT_GUIDE`) used by OpenAPI, MCP spec, and MCP server description
+- **`src/server/tool-defs.ts`**: Single source of truth for all MCP tool definitions (name, description, Zod schema, return type). Consumed by mcp-server.ts, mcp-spec.ts, and `/api/mcp-tools`
+- **`src/server/mcp-spec.ts`**: Uses `zodToJsonSchema()` to auto-convert Zod schemas from tool-defs.ts to JSON Schema for the spec output. Pulls data types from OpenAPI. No hand-written JSON Schema.
+- **`src/server/openapi.ts`**: Uses `CLAWSTASH_PURPOSE_PLAIN` from shared-text.ts for `info.description`
 - **`src/components/api/api-data.ts`**: Contains only frontend-specific helpers (scope labels, config builders, `getRestConfigText()` which derives endpoints from OpenAPI JSON). No hardcoded tool or endpoint lists — those come from the server.
 - **Data flow**: tool-defs.ts → mcp-server.ts (registration) + mcp-spec.ts (JSON Schema) + /api/mcp-tools (summaries) → frontend
 
-### OpenAPI Schema (server/openapi.ts)
+### OpenAPI Schema (src/server/openapi.ts)
 
 - Dynamic base URL from request headers
 - Documents all stash, token, and system endpoints
@@ -227,16 +277,15 @@ npm run preview            # Preview production build via Vite
 - Layout persisted to localStorage
 - Settings navigation integrated into sidebar (section state in App.tsx), default section: 'welcome' (Admin Dashboard)
 - Logout button in sidebar footer (only shown when auth is required)
+- SSR safety: `getStoredPreference`, `getStoredAdminToken`, `getInitialRoute` guard against `window` being undefined
 
 ### Footer (src/components/Footer.tsx)
 
-- Build info injected at compile time via Vite `define` (`__BUILD_INFO__` global)
+- Build info fetched at runtime via `useEffect` from `/api/version` endpoint
 - Build info includes: git branch, commit hash (short), build date (ISO string)
-- Vite build plugin also writes `dist/build-info.json` for server-side access (used by `server/version.ts`)
-- Version displayed as date-based format `vYYYYMMDD-HHMM` (derived from build date, not package.json)
+- Version displayed as date-based format `vYYYYMMDD-HHMM` (derived from build date)
 - Build details (branch, commit, date) shown on the right side when toggled, next to GitHub link
 - Mobile: build details shown in separate panel below footer row
-- Type declaration for `__BUILD_INFO__` in `src/vite-env.d.ts`
 
 ### Graph Viewer (src/components/GraphViewer.tsx)
 
@@ -309,18 +358,18 @@ npm run preview            # Preview production build via Vite
 - `isRenderableLanguage(lang)`: Check if a language supports rendered preview (markdown, markup/HTML)
 - `getLanguageDisplayName(lang)`: Human-readable label for PrismJS language keys
 
-### MCP Server (server/mcp-server.ts, server/mcp.ts)
+### MCP Server (src/server/mcp-server.ts, src/server/mcp.ts)
 
 - Factory function `createMcpServer(db)` in `mcp-server.ts` registers all tools
 - Tool definitions (name, description, Zod schema) imported from `tool-defs.ts` — only handlers are defined in mcp-server.ts
 - Passes `def.schema.shape` to `server.tool()` (MCP SDK expects raw Zod shape, not ZodObject)
-- Streamable HTTP transport at `/mcp` endpoint (stateless, integrated in Express server)
-- Stdio transport via `npm run mcp` for local CLI integration
+- Streamable HTTP transport at `/mcp` endpoint (Next.js route handler in `src/app/mcp/route.ts`)
+- Stdio transport via `npm run mcp` for local CLI integration (`src/server/mcp.ts`)
 - Token-efficient design: `read_stash` returns metadata + file sizes by default (no content)
 - `read_stash_file` for selective single-file content access
 - `create_stash`/`update_stash` return confirmation summaries, not echoed content
 
-### MCP Spec Generator (server/mcp-spec.ts)
+### MCP Spec Generator (src/server/mcp-spec.ts)
 
 - Generates comprehensive MCP specification as markdown text
 - Tool input schemas auto-derived from Zod schemas in `tool-defs.ts` via `zodToJsonSchema()` (no hand-written JSON Schema)
@@ -336,13 +385,13 @@ npm run preview            # Preview production build via Vite
 - **Language**: All UI text and documentation in English
 - **Module System**: ESM (`"type": "module"` in package.json)
 - **Formatting**: 2-space indentation, single quotes in TS
-- **Imports**: Named imports, `.js` extensions for server-side ESM
+- **Imports**: Named imports, `@/*` path aliases for server-side imports in route handlers
 - **Components**: Functional React components with TypeScript interfaces for props
 - **Component Organization**: Complex features split into sub-directories (`api/`, `editor/`) with focused, single-responsibility files. Shared components in `shared/`, utilities in `utils/`.
-- **Backend Middleware**: Auth checks use Express middleware factory pattern (`requireScope('read')`) instead of inline guard functions
+- **API Route Handlers**: Use `checkScope()`/`checkAdmin()` helper functions for auth instead of Express middleware
 - **CSS**: Global CSS with CSS custom properties (no CSS-in-JS), BEM-like class naming
 - **Error Handling**: Try/catch in async handlers, error state in UI components
-- **TypeScript**: Strict mode enabled, `noEmit` (Vite handles bundling), target ES2022
+- **TypeScript**: Strict mode enabled, `noEmit`, target ES2022, Next.js plugin
 
 ## API Endpoints
 
@@ -354,6 +403,7 @@ npm run preview            # Preview production build via Vite
 | `/api/stashes/tags` | GET | List all tags with counts |
 | `/api/stashes/metadata-keys` | GET | List all unique metadata keys |
 | `/api/stashes/graph` | GET | Get tag relationship graph (query: `?tag=&depth=&min_weight=&min_count=&limit=`) |
+| `/api/stashes/graph/stashes` | GET | Get stash relationship graph |
 | `/api/stashes/:id` | GET | Get a single stash with all files |
 | `/api/stashes/:id` | PATCH | Update a stash |
 | `/api/stashes/:id` | DELETE | Delete a stash |
@@ -370,12 +420,14 @@ npm run preview            # Preview production build via Vite
 | `/api/admin/auth` | POST | Admin login with password |
 | `/api/admin/logout` | POST | Invalidate admin session |
 | `/api/admin/session` | GET | Check admin session status |
+| `/api/admin/export` | GET | Export all data as ZIP |
+| `/api/admin/import` | POST | Import data from ZIP |
 | `/api/openapi` | GET | OpenAPI 3.0 schema |
 | `/api/mcp-spec` | GET | MCP specification (markdown with tool schemas and data types) |
 | `/api/mcp-onboarding` | GET | MCP onboarding guide for AI self-onboarding (wraps mcp-spec with quick start and workflow) |
 | `/api/mcp-tools` | GET | MCP tool summaries (JSON, derived from tool-defs.ts) |
 | `/api/version` | GET | Version check — current version and latest available from GitHub |
-| `/mcp` | POST | MCP Streamable HTTP endpoint (stateless, auth required) |
+| `/mcp` | POST/GET/DELETE | MCP Streamable HTTP endpoint (stateless, auth required) |
 
 ## MCP Tools
 
@@ -408,9 +460,8 @@ npm run preview            # Preview production build via Vite
 
 | Variable | Description | Default | Required |
 |----------|-------------|---------|----------|
-| `PORT` | Server port | `3001` | No |
+| `PORT` | Server port | `3000` | No |
 | `DATABASE_PATH` | Path to SQLite database file | `./data/clawstash.db` | No |
-| `CORS_ORIGIN` | CORS allowed origin | `*` | No |
 | `NODE_ENV` | Environment mode | `development` | No |
 | `ADMIN_PASSWORD` | Admin password for login (unset = open access) | — | No |
 | `ADMIN_SESSION_HOURS` | Admin session duration in hours (0 = unlimited) | `24` | No |
@@ -419,16 +470,18 @@ npm run preview            # Preview production build via Vite
 
 **Currently no test framework is configured.** Recommended setup:
 
-- **Framework**: Vitest (natural fit with Vite build system)
-- **Priority areas for tests**: Database layer (`server/db.ts`), authentication (`server/auth.ts`), API routes (`server/routes/`)
+- **Framework**: Vitest or Jest (both work well with Next.js)
+- **Priority areas for tests**: Database layer (`src/server/db.ts`), authentication (`src/server/auth.ts`), API route handlers (`src/app/api/`)
 - **CI integration**: The GitHub Actions workflow already supports conditional test execution (`npm test` or `npm run test:run`)
 
 ## Development Notes
 
-- In development, Vite runs on port 3000 and proxies `/api/*` and `/mcp` to Express on port 3001
-- In production, Express serves both the API and the built static frontend
+- Next.js dev server runs on port 3000 with both frontend and API routes in one process
+- In production, `next start` serves the full application (no separate frontend/backend)
+- Next.js standalone output mode used for Docker (minimal `node server.js` deployment)
 - The SQLite database auto-creates in the `data/` directory on first run
-- MCP is available as Streamable HTTP at `/mcp` (integrated in Express) and as stdio via `npm run mcp`
+- DB singleton uses `globalThis` to survive Next.js HMR reloads in development
+- MCP is available as Streamable HTTP at `/mcp` (Next.js route handler) and as stdio via `npm run mcp`
 - Docker uses multi-stage build with Node 22-slim; requires python3/make/g++ for better-sqlite3 native addon compilation
 - Docker volume maps to `/app/data` for database persistence
 - CI/CD pipeline: type-check → (optional lint) → (optional test) → build → Docker push to GHCR
@@ -437,8 +490,8 @@ npm run preview            # Preview production build via Vite
 
 Refactoring does NOT happen automatically. Only upon explicit user request, when repeated code smells emerge across multiple files in review, or when a feature implementation is significantly harder than expected due to code structure. See `agent_docs/review_process.md` for principles.
 
-- **`server/db.ts` (~610 lines)**: Largest file. Token/session management methods could be extracted into a separate `TokenStore` or `AuthStore` class. The `detectLanguage()` function could move to a shared utility.
-- **`server/openapi.ts` (~560 lines)**: Large schema definition. Could adopt `@asteasolutions/zod-to-openapi` to generate from Zod schemas in `tool-defs.ts` (currently only MCP spec uses zodToJsonSchema; OpenAPI schemas are still hand-written).
+- **`src/server/db.ts` (~610 lines)**: Largest file. Token/session management methods could be extracted into a separate `TokenStore` or `AuthStore` class. The `detectLanguage()` function could move to a shared utility.
+- **`src/server/openapi.ts` (~560 lines)**: Large schema definition. Could adopt `@asteasolutions/zod-to-openapi` to generate from Zod schemas in `tool-defs.ts` (currently only MCP spec uses zodToJsonSchema; OpenAPI schemas are still hand-written).
 - **`src/components/StashViewer.tsx` (~471 lines)**: Largest frontend component. File display, access log tab, and metadata display sections could be extracted into sub-components.
 - **`src/components/Settings.tsx` (~444 lines)**: Could extract Welcome Dashboard and Storage Stats sections into dedicated sub-components within a `settings/` directory.
 - **`src/languages.ts` (~334 lines)**: Extension map (65+ entries) and content-based detection heuristics are large but stable. Low priority.
