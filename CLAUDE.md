@@ -321,6 +321,10 @@ npm run preview            # Preview production build via Vite
 - Tool input schemas auto-derived from Zod schemas in `tool-defs.ts` via `zodToJsonSchema()` (no hand-written JSON Schema)
 - Pulls data type schemas from OpenAPI spec (`getOpenApiSpec()`) for shared data model definitions
 - Served at `/api/mcp-spec` as `text/plain`
+- `getMcpOnboardingText(baseUrl)` wraps the MCP spec with self-onboarding instructions (quick start, recommended workflow)
+- Onboarding served at `/api/mcp-onboarding` as `text/plain` (no auth required) for initial AI self-onboarding via REST
+- `getMcpRefreshText(baseUrl)` wraps the MCP spec with update-focused framing for connected AI agents
+- MCP `refresh_tools` tool returns the refresh text so connected AIs can periodically update their tool knowledge
 
 ## Coding Conventions
 
@@ -363,6 +367,7 @@ npm run preview            # Preview production build via Vite
 | `/api/admin/session` | GET | Check admin session status |
 | `/api/openapi` | GET | OpenAPI 3.0 schema |
 | `/api/mcp-spec` | GET | MCP specification (markdown with tool schemas and data types) |
+| `/api/mcp-onboarding` | GET | MCP onboarding guide for AI self-onboarding (wraps mcp-spec with quick start and workflow) |
 | `/api/mcp-tools` | GET | MCP tool summaries (JSON, derived from tool-defs.ts) |
 | `/mcp` | POST | MCP Streamable HTTP endpoint (stateless, auth required) |
 
@@ -382,6 +387,7 @@ npm run preview            # Preview production build via Vite
 | `get_stats` | Get storage statistics. |
 | `get_rest_api_spec` | Get the full OpenAPI 3.0 REST API specification (JSON). |
 | `get_mcp_spec` | Get the full MCP specification (markdown with tool schemas and data types). |
+| `refresh_tools` | Tool update — returns the current MCP tool specification for connected AI agents to stay up-to-date. |
 
 ### Token-Efficient MCP Data Flow
 

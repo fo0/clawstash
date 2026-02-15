@@ -527,6 +527,16 @@ export function getOpenApiSpec(baseUrl: string): OpenApiSpec {
           },
         },
       },
+      '/api/mcp-onboarding': {
+        get: {
+          tags: ['System'],
+          summary: 'MCP onboarding guide for AI self-onboarding',
+          description: 'Returns the full MCP onboarding guide as markdown text. Includes quick start instructions, recommended workflows, and the complete MCP specification with all tool definitions, input schemas, return types, and data types. No authentication required — designed for AI agents to discover and onboard themselves. The equivalent MCP tool is `onboard`.',
+          responses: {
+            200: { description: 'MCP onboarding guide as text/plain (markdown)' },
+          },
+        },
+      },
       '/api/mcp-tools': {
         get: {
           tags: ['System'],
