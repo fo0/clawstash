@@ -84,9 +84,9 @@ function simulate(nodes: RenderNode[], edges: StashGraphEdge[], alpha: number, _
       const a = nodes[i], b = nodes[j];
       const dx = b.x - a.x, dy = b.y - a.y;
       const dist = Math.sqrt(dx * dx + dy * dy) || 1;
-      const minDist = a.radius + b.radius + 15;
+      const minDist = a.radius + b.radius + 8;
       const degFactor = (a.degree + 1) * (b.degree + 1);
-      const force = degFactor * 30 * alpha / dist;
+      const force = degFactor * 15 * alpha / dist;
       const fx = (dx / dist) * force, fy = (dy / dist) * force;
       a.vx -= fx; a.vy -= fy;
       b.vx += fx; b.vy += fy;
@@ -104,8 +104,8 @@ function simulate(nodes: RenderNode[], edges: StashGraphEdge[], alpha: number, _
     if (!a || !b) continue;
     const dx = b.x - a.x, dy = b.y - a.y;
     const dist = Math.sqrt(dx * dx + dy * dy) || 1;
-    const strength = edge.type === 'has_tag' ? 0.005 : edge.type === 'shared_tags' ? 0.01 : edge.type === 'version_of' ? 0.02 : 0.002;
-    const idealDist = edge.type === 'version_of' ? 40 : edge.type === 'has_tag' ? 80 : 100;
+    const strength = edge.type === 'has_tag' ? 0.012 : edge.type === 'shared_tags' ? 0.01 : edge.type === 'version_of' ? 0.02 : 0.002;
+    const idealDist = edge.type === 'version_of' ? 20 : edge.type === 'has_tag' ? 20 : 50;
     const force = (dist - idealDist) * strength * alpha * Math.sqrt(edge.weight);
     const fx = (dx / dist) * force, fy = (dy / dist) * force;
     a.vx += fx; a.vy += fy; b.vx -= fx; b.vy -= fy;
@@ -230,6 +230,8 @@ export default function StashGraphCanvas({ onSelectStash, analyzeStashId, onAnal
   const [defaultDepth, setDefaultDepth] = useState(1);
   const [ignoredTags, setIgnoredTags] = useState<Set<string>>(new Set());
   const ignoredTagsRef = useRef<Set<string>>(new Set());
+  const [trackedTags, setTrackedTags] = useState<Set<string>>(new Set());
+  const trackedTagsRef = useRef<Set<string>>(new Set());
   const allNodesRef = useRef<RenderNode[]>([]);
   const allEdgesRef = useRef<StashGraphEdge[]>([]);
   const analysedStashesRef = useRef<Set<string>>(new Set());
@@ -340,8 +342,18 @@ export default function StashGraphCanvas({ onSelectStash, analyzeStashId, onAnal
     }
 
     const visibleNodes = allNodes.filter(n => visibleIds.has(n.id));
+    // Build node type map for efficient lookup
+    const nodeTypeMap = new Map(allNodes.map(n => [n.id, n.type]));
     // Combine active edges + ignored tag edges (both filtered to visible nodes)
-    const visibleActiveEdges = activeEdges.filter(e => visibleIds.has(e.source) && visibleIds.has(e.target));
+    // In analysis mode: only show has_tag edges connecting to analysed (root) stashes
+    const visibleActiveEdges = activeEdges.filter(e => {
+      if (!visibleIds.has(e.source) || !visibleIds.has(e.target)) return false;
+      if (analysed.size > 0 && e.type === 'has_tag') {
+        const stashEnd = nodeTypeMap.get(e.source) === 'stash' ? e.source : nodeTypeMap.get(e.target) === 'stash' ? e.target : null;
+        if (stashEnd && !analysed.has(stashEnd)) return false;
+      }
+      return true;
+    });
     const visibleIgnoredEdges = ignoredTagEdges.filter(e => visibleIds.has(e.source) && visibleIds.has(e.target));
     const visibleEdges = [...visibleActiveEdges, ...visibleIgnoredEdges];
     return { nodes: visibleNodes, edges: visibleEdges };
@@ -464,6 +476,57 @@ export default function StashGraphCanvas({ onSelectStash, analyzeStashId, onAnal
 
     // Draw edges
     const nodeMap = new Map(nodes.map(n => [n.id, n]));
+
+    // When hovering a tag OR tracking tags in analysis mode: compute highlight paths (tag → root → referenced stashes)
+    const hoveredTagPaths: { rootId: string; stashId: string }[] = [];
+    // Collect tag IDs to highlight: hovered tag + all tracked tags
+    const highlightTagIds = new Set<string>();
+    if (hovered && hovered.type === 'tag' && analysedStashesRef.current.size > 0) {
+      highlightTagIds.add(hovered.id);
+    }
+    // Add tracked tag node IDs
+    if (trackedTagsRef.current.size > 0 && analysedStashesRef.current.size > 0) {
+      for (const n of nodes) {
+        if (n.type === 'tag' && trackedTagsRef.current.has(n.label)) {
+          highlightTagIds.add(n.id);
+        }
+      }
+    }
+    // Compute paths for all highlighted tags
+    if (highlightTagIds.size > 0) {
+      const allEdges = allEdgesRef.current;
+      for (const tagId of highlightTagIds) {
+        const connectedStashIds: string[] = [];
+        const rootStashIds: string[] = [];
+        for (const e of allEdges) {
+          if (e.type !== 'has_tag') continue;
+          const isSource = e.source === tagId;
+          const isTarget = e.target === tagId;
+          if (!isSource && !isTarget) continue;
+          const stashEnd = isSource ? e.target : e.source;
+          if (analysedStashesRef.current.has(stashEnd)) {
+            rootStashIds.push(stashEnd);
+          } else {
+            connectedStashIds.push(stashEnd);
+          }
+        }
+        for (const rootId of rootStashIds) {
+          for (const stashId of connectedStashIds) {
+            if (nodeMap.has(stashId)) {
+              hoveredTagPaths.push({ rootId, stashId });
+            }
+          }
+        }
+      }
+    }
+    // Build set of tracked tag node IDs for edge coloring
+    const trackedTagNodeIds = new Set<string>();
+    for (const n of nodes) {
+      if (n.type === 'tag' && trackedTagsRef.current.has(n.label)) {
+        trackedTagNodeIds.add(n.id);
+      }
+    }
+
     for (const edge of edges) {
       const a = nodeMap.get(edge.source);
       const b = nodeMap.get(edge.target);
@@ -485,7 +548,10 @@ export default function StashGraphCanvas({ onSelectStash, analyzeStashId, onAnal
         ctx.setLineDash([]);
       }
 
-      ctx.strokeStyle = edgeToIgnoredTag ? 'rgba(110, 118, 129, 0.25)' : isActive ? 'rgba(88, 166, 255, 0.7)' : edgeColor(edge.type);
+      // Green highlight for edges connected to hovered tag or tracked tags
+      const isHoveredTagEdge = hovered && hovered.type === 'tag' && isActive;
+      const isTrackedTagEdge = trackedTagNodeIds.has(edge.source) || trackedTagNodeIds.has(edge.target);
+      ctx.strokeStyle = edgeToIgnoredTag ? 'rgba(110, 118, 129, 0.25)' : (isHoveredTagEdge || isTrackedTagEdge) ? 'rgba(35, 134, 54, 0.85)' : isActive ? 'rgba(88, 166, 255, 0.7)' : edgeColor(edge.type);
       ctx.lineWidth = edgeToIgnoredTag ? 1 : Math.min(1 + edge.weight * 0.6, 4) * (isActive ? 1.5 : 1);
       ctx.stroke();
       ctx.setLineDash([]);
@@ -507,11 +573,34 @@ export default function StashGraphCanvas({ onSelectStash, analyzeStashId, onAnal
       }
     }
 
+    // Draw hover-highlight paths for tag hover: root stash → referenced stash (dashed, highlighted)
+    for (const { rootId, stashId } of hoveredTagPaths) {
+      const rootNode = nodeMap.get(rootId);
+      const stashNode = nodeMap.get(stashId);
+      if (!rootNode || !stashNode) continue;
+      ctx.beginPath();
+      ctx.moveTo(rootNode.x, rootNode.y);
+      ctx.lineTo(stashNode.x, stashNode.y);
+      ctx.setLineDash([5, 4]);
+      ctx.strokeStyle = 'rgba(35, 134, 54, 0.7)';
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+      ctx.setLineDash([]);
+    }
+
+    // Build set of node IDs highlighted by tag-hover paths (root stashes + referenced stashes)
+    const tagHoverHighlightIds = new Set<string>();
+    for (const { rootId, stashId } of hoveredTagPaths) {
+      tagHoverHighlightIds.add(rootId);
+      tagHoverHighlightIds.add(stashId);
+    }
+
     // Draw nodes
     for (const node of nodes) {
       const isHovered = hovered && hovered.id === node.id;
-      const isConnected = hovered && edges.some(
-        e => (e.source === hovered.id && e.target === node.id) || (e.target === hovered.id && e.source === node.id)
+      const isConnected = hovered && (
+        edges.some(e => (e.source === hovered.id && e.target === node.id) || (e.target === hovered.id && e.source === node.id))
+        || tagHoverHighlightIds.has(node.id)
       );
       const dimmed = !!hovered && !isHovered && !isConnected;
 
@@ -679,7 +768,7 @@ export default function StashGraphCanvas({ onSelectStash, analyzeStashId, onAnal
         if (node.type === 'stash') {
           setPopup({ node, screenX: e.clientX, screenY: e.clientY, connections: getConnections(node.id) });
         } else if (node.type === 'tag') {
-          handleToggleIgnoreTag(node.label);
+          setPopup({ node, screenX: e.clientX, screenY: e.clientY, connections: getConnections(node.id) });
         }
       }
     };
@@ -771,6 +860,22 @@ export default function StashGraphCanvas({ onSelectStash, analyzeStashId, onAnal
     const emptyTags = new Set<string>();
     ignoredTagsRef.current = emptyTags;
     setIgnoredTags(emptyTags);
+    const emptyTracked = new Set<string>();
+    trackedTagsRef.current = emptyTracked;
+    setTrackedTags(emptyTracked);
+  };
+
+  const handleToggleTrackTag = (tagName: string) => {
+    setTrackedTags(prev => {
+      const next = new Set(prev);
+      if (next.has(tagName)) {
+        next.delete(tagName);
+      } else {
+        next.add(tagName);
+      }
+      trackedTagsRef.current = next;
+      return next;
+    });
   };
 
   const handleToggleIgnoreTag = (tagName: string) => {
@@ -813,6 +918,14 @@ export default function StashGraphCanvas({ onSelectStash, analyzeStashId, onAnal
             </svg>
             Analyse zurücksetzen ({analysedStashes.size})
           </button>
+        )}
+        {trackedTags.size > 0 && (
+          <span className="graph-ignored-tags-info" style={{ color: 'rgba(35, 134, 54, 0.9)' }}>
+            <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor" opacity="0.8">
+              <path d="M1 7.775V2.75C1 1.784 1.784 1 2.75 1h5.025c.464 0 .91.184 1.238.513l6.25 6.25a1.75 1.75 0 0 1 0 2.474l-5.026 5.026a1.75 1.75 0 0 1-2.474 0l-6.25-6.25A1.752 1.752 0 0 1 1 7.775Zm1.5 0c0 .066.026.13.073.177l6.25 6.25a.25.25 0 0 0 .354 0l5.025-5.025a.25.25 0 0 0 0-.354l-6.25-6.25a.25.25 0 0 0-.177-.073H2.75a.25.25 0 0 0-.25.25ZM6 5a1 1 0 1 1 0 2 1 1 0 0 1 0-2Z" />
+            </svg>
+            {trackedTags.size} Tag{trackedTags.size !== 1 ? 's' : ''} verfolgt
+          </span>
         )}
         {ignoredTags.size > 0 && (
           <span className="graph-ignored-tags-info">
@@ -873,7 +986,7 @@ export default function StashGraphCanvas({ onSelectStash, analyzeStashId, onAnal
         )}
 
         {/* Popup */}
-        {popup && (
+        {popup && popup.node.type === 'stash' && (
           <div className="graph-node-popup" style={getPopupStyle()} role="dialog">
             <div className="graph-popup-header">
               <div className="graph-popup-tag">
@@ -959,6 +1072,57 @@ export default function StashGraphCanvas({ onSelectStash, analyzeStashId, onAnal
                   <path d="M1.5 8a6.5 6.5 0 1 1 13 0 6.5 6.5 0 0 1-13 0ZM8 0a8 8 0 1 0 0 16A8 8 0 0 0 8 0Zm.75 4.75a.75.75 0 0 0-1.5 0v2.5h-2.5a.75.75 0 0 0 0 1.5h2.5v2.5a.75.75 0 0 0 1.5 0v-2.5h2.5a.75.75 0 0 0 0-1.5h-2.5Z" />
                 </svg>
                 Open Stash
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Tag Popup */}
+        {popup && popup.node.type === 'tag' && (
+          <div className="graph-node-popup" style={getPopupStyle()} role="dialog">
+            <div className="graph-popup-header">
+              <div className="graph-popup-tag">
+                <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
+                  <path d="M1 7.775V2.75C1 1.784 1.784 1 2.75 1h5.025c.464 0 .91.184 1.238.513l6.25 6.25a1.75 1.75 0 0 1 0 2.474l-5.026 5.026a1.75 1.75 0 0 1-2.474 0l-6.25-6.25A1.752 1.752 0 0 1 1 7.775Zm1.5 0c0 .066.026.13.073.177l6.25 6.25a.25.25 0 0 0 .354 0l5.025-5.025a.25.25 0 0 0 0-.354l-6.25-6.25a.25.25 0 0 0-.177-.073H2.75a.25.25 0 0 0-.25.25ZM6 5a1 1 0 1 1 0 2 1 1 0 0 1 0-2Z" />
+                </svg>
+                <strong>{popup.node.label}</strong>
+              </div>
+              <button className="graph-popup-close" onClick={() => setPopup(null)} title="Close">
+                <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
+                  <path d="M3.72 3.72a.75.75 0 0 1 1.06 0L8 6.94l3.22-3.22a.749.749 0 0 1 1.275.326.749.749 0 0 1-.215.734L9.06 8l3.22 3.22a.749.749 0 0 1-.326 1.275.749.749 0 0 1-.734-.215L8 9.06l-3.22 3.22a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042L6.94 8 3.72 4.78a.75.75 0 0 1 0-1.06Z" />
+                </svg>
+              </button>
+            </div>
+
+            {popup.node.count !== undefined && (
+              <div className="stash-graph-popup-meta">
+                <span>{popup.node.count} Stash{popup.node.count !== 1 ? 'es' : ''}</span>
+              </div>
+            )}
+
+            <div className="graph-popup-actions">
+              <button
+                className={`graph-popup-action-btn ${ignoredTags.has(popup.node.label) ? 'graph-popup-action-analyse' : 'graph-popup-action-filter'}`}
+                onClick={() => { handleToggleIgnoreTag(popup.node.label); setPopup(null); }}
+              >
+                <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor">
+                  {ignoredTags.has(popup.node.label) ? (
+                    <path d="M8 2a6 6 0 1 0 0 12A6 6 0 0 0 8 2Zm0 1.5a4.5 4.5 0 1 1 0 9 4.5 4.5 0 0 1 0-9Zm0 2a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5Z" />
+                  ) : (
+                    <path d="M3.72 3.72a.75.75 0 0 1 1.06 0L8 6.94l3.22-3.22a.749.749 0 0 1 1.275.326.749.749 0 0 1-.215.734L9.06 8l3.22 3.22a.749.749 0 0 1-.326 1.275.749.749 0 0 1-.734-.215L8 9.06l-3.22 3.22a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042L6.94 8 3.72 4.78a.75.75 0 0 1 0-1.06Z" />
+                  )}
+                </svg>
+                {ignoredTags.has(popup.node.label) ? 'Aktivieren' : 'Deaktivieren'}
+              </button>
+              <button
+                className={`graph-popup-action-btn ${trackedTags.has(popup.node.label) ? 'graph-popup-action-filter' : 'graph-popup-action-analyse'}`}
+                style={trackedTags.has(popup.node.label) ? { background: 'rgba(35, 134, 54, 0.15)', borderColor: 'rgba(35, 134, 54, 0.4)' } : {}}
+                onClick={() => { handleToggleTrackTag(popup.node.label); setPopup(null); }}
+              >
+                <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor">
+                  <path d="M8.75 1.75a.75.75 0 0 0-1.5 0V5H4a.75.75 0 0 0 0 1.5h3.25v3.25a.75.75 0 0 0 1.5 0V6.5H12A.75.75 0 0 0 12 5H8.75V1.75ZM4 13a.75.75 0 0 0 0 1.5h8a.75.75 0 0 0 0-1.5H4Z" />
+                </svg>
+                {trackedTags.has(popup.node.label) ? 'Nicht mehr verfolgen' : 'Verfolgen'}
               </button>
             </div>
           </div>
