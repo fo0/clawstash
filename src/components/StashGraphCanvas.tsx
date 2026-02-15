@@ -207,6 +207,8 @@ export default function StashGraphCanvas({ onSelectStash, analyzeStashId, onAnal
   const panStartRef = useRef({ x: 0, y: 0, panX: 0, panY: 0 });
   const hoveredRef = useRef<RenderNode | null>(null);
   const autoFitDoneRef = useRef(false);
+  const targetZoomRef = useRef<number | null>(null);
+  const targetPanRef = useRef<{ x: number; y: number } | null>(null);
 
   const [popup, setPopup] = useState<PopupState | null>(null);
   const [nodeCount, setNodeCount] = useState(0);
@@ -219,7 +221,7 @@ export default function StashGraphCanvas({ onSelectStash, analyzeStashId, onAnal
   const allEdgesRef = useRef<StashGraphEdge[]>([]);
   const analysedStashesRef = useRef<Set<string>>(new Set());
 
-  // Auto-fit
+  // Auto-fit (smooth: sets targets, animation loop interpolates)
   const autoFit = useCallback(() => {
     const canvas = canvasRef.current;
     const nodes = nodesRef.current;
@@ -237,11 +239,10 @@ export default function StashGraphCanvas({ onSelectStash, analyzeStashId, onAnal
     const graphW = maxX - minX, graphH = maxY - minY;
     if (graphW <= 0 || graphH <= 0) return;
     const padding = 60;
-    const zoom = Math.min((w - padding * 2) / graphW, (h - padding * 2) / graphH, 1.5);
+    const zoom = Math.max(0.2, Math.min((w - padding * 2) / graphW, (h - padding * 2) / graphH, 1.5));
     const cx = (minX + maxX) / 2, cy = (minY + maxY) / 2;
-    zoomRef.current = Math.max(0.2, zoom);
-    panRef.current.x = -cx * zoomRef.current;
-    panRef.current.y = -cy * zoomRef.current;
+    targetZoomRef.current = zoom;
+    targetPanRef.current = { x: -cx * zoom, y: -cy * zoom };
   }, []);
 
   // Filter nodes/edges based on analysed stashes
@@ -447,7 +448,7 @@ export default function StashGraphCanvas({ onSelectStash, analyzeStashId, onAnal
       else drawVersionNode(ctx, node, !!isHovered, !!isConnected, dimmed);
 
       // Label
-      const fontSize = node.type === 'stash' ? Math.max(12, Math.min(16, node.radius * 0.85)) : Math.max(10, Math.min(14, node.radius * 0.95));
+      const fontSize = node.type === 'stash' ? Math.max(16, Math.min(20, node.radius * 1.05)) : Math.max(14, Math.min(18, node.radius * 1.15));
       ctx.font = `${isAnalysed ? '600' : '500'} ${fontSize}px -apple-system, BlinkMacSystemFont, sans-serif`;
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
@@ -487,6 +488,31 @@ export default function StashGraphCanvas({ onSelectStash, analyzeStashId, onAnal
           autoFit();
         }
       }
+
+      // Smooth interpolation toward target zoom/pan
+      const lerpSpeed = 0.08;
+      if (targetZoomRef.current !== null) {
+        const dz = targetZoomRef.current - zoomRef.current;
+        if (Math.abs(dz) < 0.001) {
+          zoomRef.current = targetZoomRef.current;
+          targetZoomRef.current = null;
+        } else {
+          zoomRef.current += dz * lerpSpeed;
+        }
+      }
+      if (targetPanRef.current !== null) {
+        const dx = targetPanRef.current.x - panRef.current.x;
+        const dy = targetPanRef.current.y - panRef.current.y;
+        if (Math.abs(dx) < 0.5 && Math.abs(dy) < 0.5) {
+          panRef.current.x = targetPanRef.current.x;
+          panRef.current.y = targetPanRef.current.y;
+          targetPanRef.current = null;
+        } else {
+          panRef.current.x += dx * lerpSpeed;
+          panRef.current.y += dy * lerpSpeed;
+        }
+      }
+
       draw();
       animRef.current = requestAnimationFrame(tick);
     };
@@ -519,6 +545,9 @@ export default function StashGraphCanvas({ onSelectStash, analyzeStashId, onAnal
     if (!canvas) return;
 
     const onMouseDown = (e: MouseEvent) => {
+      // Cancel smooth animation on user interaction
+      targetZoomRef.current = null;
+      targetPanRef.current = null;
       const rect = canvas.getBoundingClientRect();
       const sx = e.clientX - rect.left, sy = e.clientY - rect.top;
       const { x: wx, y: wy } = screenToWorld(sx, sy, canvas);
@@ -578,6 +607,9 @@ export default function StashGraphCanvas({ onSelectStash, analyzeStashId, onAnal
 
     const onWheel = (e: WheelEvent) => {
       e.preventDefault();
+      // Cancel smooth animation on user zoom
+      targetZoomRef.current = null;
+      targetPanRef.current = null;
       const factor = e.deltaY > 0 ? 0.9 : 1.1;
       const newZoom = Math.max(0.2, Math.min(5, zoomRef.current * factor));
       const rect = canvas.getBoundingClientRect();
@@ -613,6 +645,8 @@ export default function StashGraphCanvas({ onSelectStash, analyzeStashId, onAnal
   }, []);
 
   const handleReset = () => {
+    targetZoomRef.current = null;
+    targetPanRef.current = null;
     panRef.current = { x: 0, y: 0 };
     zoomRef.current = 1;
     alphaRef.current = 1;
