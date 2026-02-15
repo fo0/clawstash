@@ -1,4 +1,4 @@
-import type { Stash, StashListResponse, CreateStashInput, UpdateStashInput, TagInfo, Stats, AccessLogEntry, TokenListItem, NewlyCreatedToken, TokenScope, AdminSessionInfo, AdminLoginResponse, TagGraphResult } from './types';
+import type { Stash, StashListResponse, CreateStashInput, UpdateStashInput, TagInfo, Stats, AccessLogEntry, TokenListItem, NewlyCreatedToken, TokenScope, AdminSessionInfo, AdminLoginResponse, TagGraphResult, StashVersionListItem, StashVersion } from './types';
 
 const BASE = '/api/stashes';
 
@@ -70,6 +70,22 @@ export const api = {
   getAccessLog(id: string, limit?: number): Promise<AccessLogEntry[]> {
     const qs = limit ? `?limit=${limit}` : '';
     return request(`${BASE}/${id}/access-log${qs}`, { headers: getHeaders() });
+  },
+
+  getVersions(id: string): Promise<StashVersionListItem[]> {
+    return request(`${BASE}/${id}/versions`, { headers: getHeaders() });
+  },
+
+  getVersion(id: string, version: number): Promise<StashVersion> {
+    return request(`${BASE}/${id}/versions/${version}`, { headers: getHeaders() });
+  },
+
+  getVersionDiff(id: string, v1: number, v2: number): Promise<{ v1: StashVersion; v2: StashVersion }> {
+    return request(`${BASE}/${id}/versions/diff?v1=${v1}&v2=${v2}`, { headers: getHeaders() });
+  },
+
+  restoreVersion(id: string, version: number): Promise<Stash> {
+    return request(`${BASE}/${id}/versions/${version}/restore`, { method: 'POST', headers: getHeaders() });
   },
 
   getTagGraph(params?: { tag?: string; depth?: number; min_weight?: number; min_count?: number; limit?: number }): Promise<TagGraphResult> {

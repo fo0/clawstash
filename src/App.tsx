@@ -338,6 +338,10 @@ export default function App() {
               onEdit={handleEditStash}
               onDelete={handleDeleteStash}
               onBack={handleGoHome}
+              onStashUpdated={(stash) => {
+                setSelectedStash(stash);
+                loadStashes();
+              }}
             />
           )}
           {(view === 'new' || view === 'edit') && (
