@@ -214,6 +214,21 @@ Use this to understand all available MCP tools and how to use them optimally.`,
     schema: z.object({}),
     returns: 'Markdown text with full MCP specification',
   },
+  {
+    name: 'refresh_tools',
+    description: `Tool update — returns the current MCP tool specification so you can refresh your knowledge.
+
+Call this tool periodically to stay up-to-date. Tool definitions, schemas, and capabilities may change over time.
+This is the MCP-side equivalent of the REST onboarding endpoint (GET /api/mcp-onboarding) — use that for initial onboarding before connecting via MCP.
+
+The response includes:
+- Current tool reference with input schemas and return types
+- Data type definitions
+- Token-efficient usage patterns
+- Connection and authentication details`,
+    schema: z.object({}),
+    returns: 'Markdown text with current MCP tool specification',
+  },
 ] satisfies ToolDef[];
 
 // ---------------------------------------------------------------------------

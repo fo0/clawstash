@@ -1,7 +1,7 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import type { ClawStashDB } from './db.js';
 import { getOpenApiSpec } from './openapi.js';
-import { getMcpSpecText } from './mcp-spec.js';
+import { getMcpSpecText, getMcpOnboardingText, getMcpRefreshText } from './mcp-spec.js';
 import { TOKEN_EFFICIENT_GUIDE } from './shared-text.js';
 import { getToolDef } from './tool-defs.js';
 
@@ -244,6 +244,20 @@ ${TOKEN_EFFICIENT_GUIDE}`,
       const spec = getMcpSpecText(baseUrl || `http://localhost:${process.env.PORT || '3001'}`);
       return {
         content: [{ type: 'text', text: spec }],
+      };
+    }
+  );
+
+  // Refresh tools — current spec for already-connected AI agents to stay up-to-date
+  const refreshDef = getToolDef('refresh_tools');
+  server.tool(
+    refreshDef.name,
+    refreshDef.description,
+    refreshDef.schema.shape,
+    async () => {
+      const text = getMcpRefreshText(baseUrl || `http://localhost:${process.env.PORT || '3001'}`);
+      return {
+        content: [{ type: 'text', text }],
       };
     }
   );
