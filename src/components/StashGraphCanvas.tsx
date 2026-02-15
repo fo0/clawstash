@@ -160,19 +160,30 @@ function drawStashNode(ctx: CanvasRenderingContext2D, node: RenderNode, isActive
   }
 }
 
-function drawTagNode(ctx: CanvasRenderingContext2D, node: RenderNode, isActive: boolean, isConnected: boolean, dimmed: boolean) {
+function drawTagNode(ctx: CanvasRenderingContext2D, node: RenderNode, isActive: boolean, isConnected: boolean, dimmed: boolean, isIgnored: boolean) {
   ctx.beginPath();
   ctx.arc(node.x, node.y, node.radius, 0, Math.PI * 2);
-  ctx.fillStyle = isActive ? '#3fb950' : isConnected ? 'rgba(35, 134, 54, 0.7)' : dimmed ? 'rgba(35, 134, 54, 0.2)' : COLORS.tag;
+  if (isIgnored) {
+    ctx.fillStyle = 'rgba(110, 118, 129, 0.25)';
+  } else {
+    ctx.fillStyle = isActive ? '#3fb950' : isConnected ? 'rgba(35, 134, 54, 0.7)' : dimmed ? 'rgba(35, 134, 54, 0.2)' : COLORS.tag;
+  }
   ctx.fill();
-  ctx.strokeStyle = isActive ? '#fff' : 'rgba(255,255,255,0.15)';
-  ctx.lineWidth = isActive ? 2 : 1;
+  if (isIgnored) {
+    ctx.strokeStyle = 'rgba(110, 118, 129, 0.4)';
+    ctx.lineWidth = 1;
+    ctx.setLineDash([3, 3]);
+  } else {
+    ctx.strokeStyle = isActive ? '#fff' : 'rgba(255,255,255,0.15)';
+    ctx.lineWidth = isActive ? 2 : 1;
+  }
   ctx.stroke();
+  ctx.setLineDash([]);
 
   if (node.radius >= 8 && node.count) {
     ctx.font = `700 ${Math.max(7, node.radius * 0.65)}px -apple-system, BlinkMacSystemFont, sans-serif`;
     ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-    ctx.fillStyle = 'rgba(255,255,255,0.9)';
+    ctx.fillStyle = isIgnored ? 'rgba(255,255,255,0.35)' : 'rgba(255,255,255,0.9)';
     ctx.fillText(String(node.count), node.x, node.y);
   }
 }
@@ -254,8 +265,29 @@ export default function StashGraphCanvas({ onSelectStash, analyzeStashId, onAnal
     for (const n of allNodes) {
       if (n.type === 'tag' && ignored.has(n.label)) ignoredTagIds.add(n.id);
     }
-    // Filter edges that connect to ignored tags
-    const activeEdges = allEdges.filter(e => !ignoredTagIds.has(e.source) && !ignoredTagIds.has(e.target));
+    // Active edges: edges NOT connected to ignored tags (used for BFS & relationships)
+    let activeEdges = allEdges.filter(e => !ignoredTagIds.has(e.source) && !ignoredTagIds.has(e.target));
+
+    // If tags are ignored, re-check shared_tags edges using edge metadata
+    // Remove edges where all shared tags are ignored (or metadata missing)
+    if (ignored.size > 0) {
+      activeEdges = activeEdges.filter(e => {
+        if (e.type !== 'shared_tags') return true;
+        const sharedTagNames = e.metadata?.shared_tags || [];
+        // If no metadata, we can't verify which tags are shared → remove when tags are ignored
+        if (sharedTagNames.length === 0) return false;
+        // Keep edge only if at least one shared tag is NOT ignored
+        return sharedTagNames.some((t: string) => !ignored.has(t));
+      });
+    }
+    // has_tag edges TO ignored tags — only keep edges to analysed stashes (rendered gray)
+    const ignoredTagEdges = allEdges.filter(e => {
+      if (e.type !== 'has_tag') return false;
+      if (!ignoredTagIds.has(e.source) && !ignoredTagIds.has(e.target)) return false;
+      // Only keep edge if the non-tag end is an analysed stash
+      const stashEnd = ignoredTagIds.has(e.source) ? e.target : e.source;
+      return analysed.has(stashEnd);
+    });
 
     if (analysed.size === 0) {
       // Show only stash nodes and shared_tags edges between stashes
@@ -264,13 +296,13 @@ export default function StashGraphCanvas({ onSelectStash, analyzeStashId, onAnal
       const visibleEdges = activeEdges.filter(e => e.type === 'shared_tags' && visibleIds.has(e.source) && visibleIds.has(e.target));
       return { nodes: visibleNodes, edges: visibleEdges };
     }
-    // Show analysed stashes with their tags up to defaultDepth
+
     const visibleIds = new Set<string>();
-    // Always show all stash nodes
-    for (const n of allNodes) {
-      if (n.type === 'stash') visibleIds.add(n.id);
-    }
-    // BFS from analysed stashes to expand tags (skip ignored tags)
+
+    // Start with analysed stashes
+    for (const sid of analysed) visibleIds.add(sid);
+
+    // BFS from analysed stashes to expand tags and find reachable nodes via active edges
     const queue: { id: string; depth: number }[] = [];
     for (const sid of analysed) queue.push({ id: sid, depth: 0 });
     while (queue.length > 0) {
@@ -284,8 +316,32 @@ export default function StashGraphCanvas({ onSelectStash, analyzeStashId, onAnal
         }
       }
     }
+
+    // Find stashes reachable via active shared_tags edges from already-visible stashes
+    // (shared_tags are direct stash↔stash relationships, not counted by BFS depth)
+    let changed = true;
+    while (changed) {
+      changed = false;
+      for (const e of activeEdges) {
+        if (e.type !== 'shared_tags') continue;
+        const hasSource = visibleIds.has(e.source);
+        const hasTarget = visibleIds.has(e.target);
+        if (hasSource && !hasTarget) { visibleIds.add(e.target); changed = true; }
+        if (hasTarget && !hasSource) { visibleIds.add(e.source); changed = true; }
+      }
+    }
+
+    // Add ignored tag nodes that are connected to analysed stashes (rendered gray)
+    for (const e of ignoredTagEdges) {
+      const tagEnd = ignoredTagIds.has(e.source) ? e.source : e.target;
+      visibleIds.add(tagEnd);
+    }
+
     const visibleNodes = allNodes.filter(n => visibleIds.has(n.id));
-    const visibleEdges = activeEdges.filter(e => visibleIds.has(e.source) && visibleIds.has(e.target));
+    // Combine active edges + ignored tag edges (both filtered to visible nodes)
+    const visibleActiveEdges = activeEdges.filter(e => visibleIds.has(e.source) && visibleIds.has(e.target));
+    const visibleIgnoredEdges = ignoredTagEdges.filter(e => visibleIds.has(e.source) && visibleIds.has(e.target));
+    const visibleEdges = [...visibleActiveEdges, ...visibleIgnoredEdges];
     return { nodes: visibleNodes, edges: visibleEdges };
   }, [defaultDepth]);
 
@@ -416,14 +472,19 @@ export default function StashGraphCanvas({ onSelectStash, analyzeStashId, onAnal
       ctx.moveTo(a.x, a.y);
       ctx.lineTo(b.x, b.y);
 
-      if (edge.type === 'temporal_proximity' || (edge.type === 'has_tag' && !isActive)) {
+      // Check if this edge connects to an ignored tag
+      const edgeToIgnoredTag = (a.type === 'tag' && ignoredTagsRef.current.has(a.label)) || (b.type === 'tag' && ignoredTagsRef.current.has(b.label));
+
+      if (edgeToIgnoredTag) {
+        ctx.setLineDash([3, 3]);
+      } else if (edge.type === 'temporal_proximity' || (edge.type === 'has_tag' && !isActive)) {
         ctx.setLineDash([3, 3]);
       } else {
         ctx.setLineDash([]);
       }
 
-      ctx.strokeStyle = isActive ? 'rgba(88, 166, 255, 0.7)' : edgeColor(edge.type);
-      ctx.lineWidth = Math.min(1 + edge.weight * 0.6, 4) * (isActive ? 1.5 : 1);
+      ctx.strokeStyle = edgeToIgnoredTag ? 'rgba(110, 118, 129, 0.25)' : isActive ? 'rgba(88, 166, 255, 0.7)' : edgeColor(edge.type);
+      ctx.lineWidth = edgeToIgnoredTag ? 1 : Math.min(1 + edge.weight * 0.6, 4) * (isActive ? 1.5 : 1);
       ctx.stroke();
       ctx.setLineDash([]);
 
@@ -453,8 +514,9 @@ export default function StashGraphCanvas({ onSelectStash, analyzeStashId, onAnal
       const dimmed = !!hovered && !isHovered && !isConnected;
 
       const isAnalysed = node.type === 'stash' && analysedStashesRef.current.has(node.id);
+      const isIgnoredTag = node.type === 'tag' && ignoredTagsRef.current.has(node.label);
       if (node.type === 'stash') drawStashNode(ctx, node, !!isHovered, !!isConnected, dimmed, isAnalysed);
-      else if (node.type === 'tag') drawTagNode(ctx, node, !!isHovered, !!isConnected, dimmed);
+      else if (node.type === 'tag') drawTagNode(ctx, node, !!isHovered, !!isConnected, dimmed, isIgnoredTag);
       else drawVersionNode(ctx, node, !!isHovered, !!isConnected, dimmed);
 
       // Label
@@ -464,18 +526,21 @@ export default function StashGraphCanvas({ onSelectStash, analyzeStashId, onAnal
       ctx.textBaseline = 'middle';
       const labelY = node.y + node.radius + fontSize + 3;
 
+      // Ignored tag labels are always dimmed
+      const labelColor = isIgnoredTag ? 'rgba(110, 118, 129, 0.45)' : undefined;
+
       if (zoom < 0.35) {
         // Very far out: only show hovered or analysed
-        if (isHovered || isAnalysed) { ctx.fillStyle = isAnalysed ? '#a5d6ff' : '#e6edf3'; ctx.fillText(node.label, node.x, labelY); }
+        if (isHovered || isAnalysed) { ctx.fillStyle = labelColor || (isAnalysed ? '#a5d6ff' : '#e6edf3'); ctx.fillText(node.label, node.x, labelY); }
       } else if (zoom < 0.55) {
         // Medium-far: show hovered, analysed, and stash names
-        if (isHovered || isAnalysed || (node.type === 'stash' && !dimmed)) {
-          ctx.fillStyle = isAnalysed ? '#a5d6ff' : isHovered ? '#e6edf3' : 'rgba(230, 237, 243, 0.5)';
+        if (isHovered || isAnalysed || (node.type === 'stash' && !dimmed) || isIgnoredTag) {
+          ctx.fillStyle = labelColor || (isAnalysed ? '#a5d6ff' : isHovered ? '#e6edf3' : 'rgba(230, 237, 243, 0.5)');
           const label = node.type === 'stash' && node.label.length > 20 ? node.label.slice(0, 18) + '…' : node.label;
           ctx.fillText(label, node.x, labelY);
         }
-      } else if (!dimmed || isHovered || isConnected || isAnalysed) {
-        ctx.fillStyle = isAnalysed ? '#a5d6ff' : isHovered ? '#e6edf3' : 'rgba(230, 237, 243, 0.7)';
+      } else if (!dimmed || isHovered || isConnected || isAnalysed || isIgnoredTag) {
+        ctx.fillStyle = labelColor || (isAnalysed ? '#a5d6ff' : isHovered ? '#e6edf3' : 'rgba(230, 237, 243, 0.7)');
         const label = node.type === 'stash' && node.label.length > 20 ? node.label.slice(0, 18) + '…' : node.label;
         ctx.fillText(label, node.x, labelY);
       }
@@ -611,6 +676,8 @@ export default function StashGraphCanvas({ onSelectStash, analyzeStashId, onAnal
       if (node) {
         if (node.type === 'stash') {
           setPopup({ node, screenX: e.clientX, screenY: e.clientY, connections: getConnections(node.id) });
+        } else if (node.type === 'tag') {
+          handleToggleIgnoreTag(node.label);
         }
       }
     };
