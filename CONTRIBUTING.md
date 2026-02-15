@@ -13,7 +13,7 @@ npm install
 npm run dev
 ```
 
-This starts the Vite frontend on port 3000 and the Express backend on port 3001. The frontend proxies API requests to the backend automatically.
+This starts the Next.js development server on port 3000 with both the frontend and API routes.
 
 ## Making Changes
 
@@ -25,8 +25,8 @@ This starts the Vite frontend on port 3000 and the Express backend on port 3001.
 
 ## Project Structure
 
-- `server/` — Express backend (TypeScript, ESM)
-- `src/` — React frontend (TypeScript, Vite)
+- `src/app/` — Next.js App Router (pages, layouts, API route handlers)
+- `src/server/` — Server-side logic (database, auth, MCP, OpenAPI)
 - `src/components/` — React components organized by feature
 - `src/utils/` — Shared utility functions
 - `src/hooks/` — Shared React hooks
@@ -39,7 +39,7 @@ See `CLAUDE.md` for detailed architecture documentation.
 - 2-space indentation, single quotes
 - Functional React components with TypeScript interfaces for props
 - Global CSS with CSS custom properties (no CSS-in-JS)
-- Named imports, `.js` extensions for server-side ESM
+- Named imports, `@/*` path aliases for server-side imports
 
 ## Reporting Issues
 

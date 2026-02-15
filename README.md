@@ -39,7 +39,7 @@ npm install
 npm run dev
 ```
 
-Opens at http://localhost:3000 (frontend) with API at http://localhost:3001.
+Opens at http://localhost:3000.
 
 ## Production
 
@@ -48,7 +48,7 @@ npm run build
 npm start
 ```
 
-Serves everything on port 3001.
+Serves everything on port 3000.
 
 ## Docker Deployment
 
@@ -59,13 +59,13 @@ cp .env.example .env
 docker compose up -d
 ```
 
-Open http://localhost:3001
+Open http://localhost:3000
 
 ### Local Docker Build
 
 ```bash
 docker build -t clawstash .
-docker run -p 3001:3001 -v clawstash-data:/app/data clawstash
+docker run -p 3000:3000 -v clawstash-data:/app/data clawstash
 ```
 
 ### Using the GHCR Image
@@ -74,7 +74,7 @@ After the first GitHub Actions build, the image is available:
 
 ```bash
 docker pull ghcr.io/OWNER/clawstash:latest
-docker run -p 3001:3001 -v clawstash-data:/app/data ghcr.io/OWNER/clawstash:latest
+docker run -p 3000:3000 -v clawstash-data:/app/data ghcr.io/OWNER/clawstash:latest
 ```
 
 > **Note:** Replace `OWNER` with your GitHub username (lowercase).
@@ -83,7 +83,7 @@ docker run -p 3001:3001 -v clawstash-data:/app/data ghcr.io/OWNER/clawstash:late
 
 This repository includes a GitHub Actions workflow (`.github/workflows/docker-publish.yml`) that automatically:
 
-1. **Code Quality Check** — Runs TypeScript type-check, linter, and tests; builds the frontend
+1. **Code Quality Check** — Runs TypeScript type-check, linter, and tests; builds the application
 2. **Docker Build & Push** — Builds a multi-stage Docker image and pushes it to GitHub Container Registry (GHCR)
 
 ## MCP Integration
@@ -95,7 +95,7 @@ ClawStash includes a remote MCP server via Streamable HTTP transport. Any MCP cl
   "mcpServers": {
     "clawstash": {
       "type": "streamable-http",
-      "url": "http://localhost:3001/mcp",
+      "url": "http://localhost:3000/mcp",
       "headers": {
         "Authorization": "Bearer cs_your_mcp_token"
       }
@@ -111,7 +111,7 @@ For local use, the stdio transport is also available:
   "mcpServers": {
     "clawstash": {
       "command": "npx",
-      "args": ["tsx", "server/mcp.ts"],
+      "args": ["tsx", "src/server/mcp.ts"],
       "cwd": "/path/to/clawstash"
     }
   }
@@ -171,7 +171,7 @@ The MCP tools are designed for token-efficient data access:
 ### Example: Create a Stash
 
 ```bash
-curl -X POST http://localhost:3001/api/stashes \
+curl -X POST http://localhost:3000/api/stashes \
   -H "Content-Type: application/json" \
   -d '{
     "name": "Docker Setup",
@@ -228,13 +228,13 @@ ClawStash supports server-side API tokens for authentication with configurable s
 
 ```bash
 # REST API
-curl -H "Authorization: Bearer cs_your_token" http://localhost:3001/api/stashes
+curl -H "Authorization: Bearer cs_your_token" http://localhost:3000/api/stashes
 
 # MCP access
 # Add to MCP client config with Authorization header
 
 # Token validation
-curl -H "Authorization: Bearer cs_your_token" -X POST http://localhost:3001/api/tokens/validate
+curl -H "Authorization: Bearer cs_your_token" -X POST http://localhost:3000/api/tokens/validate
 ```
 
 Tokens are stored as SHA-256 hashes in the SQLite database. Admin session tokens use the `csa_` prefix, API tokens use the `cs_` prefix.
@@ -253,9 +253,8 @@ The web GUI includes an **API** section (sidebar button) with:
 
 | Variable | Description | Default |
 |----------|-------------|---------|
-| `PORT` | Server port | `3001` |
+| `PORT` | Server port | `3000` |
 | `DATABASE_PATH` | SQLite database path | `./data/clawstash.db` |
-| `CORS_ORIGIN` | CORS allowed origin | `*` |
 | `ADMIN_PASSWORD` | Admin password for login | (none - open access) |
 | `ADMIN_SESSION_HOURS` | Admin session duration in hours (0 = unlimited) | `24` |
 

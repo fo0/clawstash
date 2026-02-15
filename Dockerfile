@@ -3,7 +3,7 @@ FROM node:22-slim AS builder
 
 WORKDIR /app
 
-# Git info passed as build args (used by Vite for build-info.json + frontend)
+# Git info passed as build args
 ARG BUILD_COMMIT_SHA=""
 ARG BUILD_BRANCH=""
 ENV BUILD_COMMIT_SHA=${BUILD_COMMIT_SHA}
@@ -18,30 +18,22 @@ RUN npm ci
 COPY . .
 RUN npm run build
 
-# Prune to production dependencies only
-RUN npm prune --omit=dev
-
 # === Stage 2: Production ===
 FROM node:22-slim
 
 WORKDIR /app
 
-# Copy production node_modules (includes pre-built better-sqlite3 native addon)
-COPY --from=builder /app/node_modules ./node_modules
-
-# Copy built frontend
-COPY --from=builder /app/dist ./dist
-
-# Copy server source + package.json
-COPY --from=builder /app/package.json ./
-COPY --from=builder /app/server ./server
+# Copy standalone Next.js output (includes node_modules + server)
+COPY --from=builder /app/.next/standalone ./
+COPY --from=builder /app/.next/static ./.next/static
+COPY --from=builder /app/public ./public
 
 ENV NODE_ENV=production
-ENV PORT=3001
+ENV PORT=3000
 ENV DATABASE_PATH=/app/data/clawstash.db
 
-EXPOSE 3001
+EXPOSE 3000
 
 VOLUME ["/app/data"]
 
-CMD ["npm", "start"]
+CMD ["node", "server.js"]
