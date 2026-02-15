@@ -185,6 +185,18 @@ export function getOpenApiSpec(baseUrl: string): OpenApiSpec {
             user_agent: { type: 'string' },
           },
         },
+        VersionInfo: {
+          type: 'object',
+          description: 'Current and latest version information',
+          properties: {
+            current_version: { type: 'string', description: 'Currently running ClawStash version' },
+            latest_version: { type: 'string', nullable: true, description: 'Latest version available on GitHub (null if check failed)' },
+            update_available: { type: 'boolean', description: 'True if the latest version is newer than the current version' },
+            release_url: { type: 'string', nullable: true, description: 'URL to the latest release page on GitHub (null if unavailable)' },
+            github_url: { type: 'string', description: 'GitHub repository URL' },
+            checked_at: { type: 'string', format: 'date-time', description: 'Timestamp of the last GitHub check' },
+          },
+        },
         Error: {
           type: 'object',
           properties: {
@@ -534,6 +546,23 @@ export function getOpenApiSpec(baseUrl: string): OpenApiSpec {
           description: 'Returns the full MCP onboarding guide as markdown text. Includes quick start instructions, recommended workflows, and the complete MCP specification with all tool definitions, input schemas, return types, and data types. No authentication required — designed for AI agents to discover and onboard themselves. The equivalent MCP tool is `onboard`.',
           responses: {
             200: { description: 'MCP onboarding guide as text/plain (markdown)' },
+          },
+        },
+      },
+      '/api/version': {
+        get: {
+          tags: ['System'],
+          summary: 'Check current version and available updates',
+          description: 'Returns the running ClawStash version and checks GitHub for the latest available release. The latest version is fetched from GitHub releases (with fallback to tags) and cached for 1 hour. No authentication required.',
+          responses: {
+            200: {
+              description: 'Version information',
+              content: {
+                'application/json': {
+                  schema: { $ref: '#/components/schemas/VersionInfo' },
+                },
+              },
+            },
           },
         },
       },

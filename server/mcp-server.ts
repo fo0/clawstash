@@ -4,6 +4,7 @@ import { getOpenApiSpec } from './openapi.js';
 import { getMcpSpecText, getMcpOnboardingText, getMcpRefreshText } from './mcp-spec.js';
 import { TOKEN_EFFICIENT_GUIDE } from './shared-text.js';
 import { getToolDef } from './tool-defs.js';
+import { checkVersion } from './version.js';
 
 export function createMcpServer(db: ClawStashDB, baseUrl?: string): McpServer {
   const server = new McpServer({
@@ -258,6 +259,20 @@ ${TOKEN_EFFICIENT_GUIDE}`,
       const text = getMcpRefreshText(baseUrl || `http://localhost:${process.env.PORT || '3001'}`);
       return {
         content: [{ type: 'text', text }],
+      };
+    }
+  );
+
+  // Check version (current + latest from GitHub)
+  const versionDef = getToolDef('check_version');
+  server.tool(
+    versionDef.name,
+    versionDef.description,
+    versionDef.schema.shape,
+    async () => {
+      const info = await checkVersion();
+      return {
+        content: [{ type: 'text', text: JSON.stringify(info, null, 2) }],
       };
     }
   );

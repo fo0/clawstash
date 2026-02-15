@@ -66,6 +66,7 @@ clawstash/
 │   ├── mcp-spec.ts             # MCP spec generator (uses tool-defs.ts + zodToJsonSchema + OpenAPI data types)
 │   ├── mcp.ts                  # MCP server stdio transport entry point
 │   ├── openapi.ts              # OpenAPI 3.0 schema generator (uses shared-text.ts for description)
+│   ├── version.ts              # Version check utility (current version + GitHub latest release)
 │   └── routes/
 │       ├── admin.ts            # Admin auth routes (login/logout/session)
 │       ├── stashes.ts          # REST API route handlers
@@ -372,6 +373,7 @@ npm run preview            # Preview production build via Vite
 | `/api/mcp-spec` | GET | MCP specification (markdown with tool schemas and data types) |
 | `/api/mcp-onboarding` | GET | MCP onboarding guide for AI self-onboarding (wraps mcp-spec with quick start and workflow) |
 | `/api/mcp-tools` | GET | MCP tool summaries (JSON, derived from tool-defs.ts) |
+| `/api/version` | GET | Version check — current version and latest available from GitHub |
 | `/mcp` | POST | MCP Streamable HTTP endpoint (stateless, auth required) |
 
 ## MCP Tools
@@ -391,6 +393,7 @@ npm run preview            # Preview production build via Vite
 | `get_rest_api_spec` | Get the full OpenAPI 3.0 REST API specification (JSON). |
 | `get_mcp_spec` | Get the full MCP specification (markdown with tool schemas and data types). |
 | `refresh_tools` | Tool update — returns the current MCP tool specification for connected AI agents to stay up-to-date. |
+| `check_version` | Check current ClawStash version and whether a newer version is available on GitHub. |
 
 ### Token-Efficient MCP Data Flow
 
