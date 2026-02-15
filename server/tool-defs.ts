@@ -233,11 +233,11 @@ The response includes:
     name: 'check_version',
     description: `Check the current ClawStash version and whether a newer version is available on GitHub.
 
-Returns the running version, the latest release version (if available), and whether an update is possible. Useful for automated upgrade checks and monitoring.
+Returns the running build version (date-based, e.g. "v20260215-1628"), commit SHA, and build date. Compares against the latest commit on the GitHub main branch to detect available updates.
 
-The latest version is fetched from GitHub releases (with fallback to tags) and cached for 1 hour.`,
+Useful for automated upgrade checks and monitoring. The GitHub check is cached for 1 hour.`,
     schema: z.object({}),
-    returns: '{ current_version, latest_version, update_available, release_url, github_url, checked_at }',
+    returns: '{ current: { version, commit_sha, build_date, branch }, latest: { commit_sha, commit_date, commit_message } | null, update_available, github_url, checked_at }',
   },
 ] satisfies ToolDef[];
 

@@ -66,7 +66,7 @@ clawstash/
 │   ├── mcp-spec.ts             # MCP spec generator (uses tool-defs.ts + zodToJsonSchema + OpenAPI data types)
 │   ├── mcp.ts                  # MCP server stdio transport entry point
 │   ├── openapi.ts              # OpenAPI 3.0 schema generator (uses shared-text.ts for description)
-│   ├── version.ts              # Version check utility (current version + GitHub latest release)
+│   ├── version.ts              # Version check utility (build info + GitHub latest commit comparison)
 │   └── routes/
 │       ├── admin.ts            # Admin auth routes (login/logout/session)
 │       ├── stashes.ts          # REST API route handlers
@@ -232,6 +232,7 @@ npm run preview            # Preview production build via Vite
 
 - Build info injected at compile time via Vite `define` (`__BUILD_INFO__` global)
 - Build info includes: git branch, commit hash (short), build date (ISO string)
+- Vite build plugin also writes `dist/build-info.json` for server-side access (used by `server/version.ts`)
 - Version displayed as date-based format `vYYYYMMDD-HHMM` (derived from build date, not package.json)
 - Build details (branch, commit, date) shown on the right side when toggled, next to GitHub link
 - Mobile: build details shown in separate panel below footer row
