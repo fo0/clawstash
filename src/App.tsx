@@ -21,14 +21,16 @@ function getStoredAdminToken(): string {
   return localStorage.getItem('clawstash_admin_token') || '';
 }
 
-function getInitialRoute(): { view: ViewMode; stashId: string | null } {
+function getInitialRoute(): { view: ViewMode; stashId: string | null; analyzeStashId: string | null } {
   const path = window.location.pathname;
+  const analyzeMatch = path.match(/^\/stash\/([a-f0-9-]+)\/graph$/i);
+  if (analyzeMatch) return { view: 'graph', stashId: null, analyzeStashId: analyzeMatch[1] };
   const match = path.match(/^\/stash\/([a-f0-9-]+)/i);
-  if (match) return { view: 'view', stashId: match[1] };
-  if (path === '/new') return { view: 'new', stashId: null };
-  if (path === '/settings') return { view: 'settings', stashId: null };
-  if (path === '/graph') return { view: 'graph', stashId: null };
-  return { view: 'home', stashId: null };
+  if (match) return { view: 'view', stashId: match[1], analyzeStashId: null };
+  if (path === '/new') return { view: 'new', stashId: null, analyzeStashId: null };
+  if (path === '/settings') return { view: 'settings', stashId: null, analyzeStashId: null };
+  if (path === '/graph') return { view: 'graph', stashId: null, analyzeStashId: null };
+  return { view: 'home', stashId: null, analyzeStashId: null };
 }
 
 function pushUrl(path: string) {
@@ -85,6 +87,7 @@ export default function App() {
       handleSelectStash(route.stashId);
     } else {
       setView(route.view);
+      if (route.analyzeStashId) setAnalyzeStashId(route.analyzeStashId);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -98,6 +101,7 @@ export default function App() {
       } else {
         setView(route.view);
         if (route.view === 'home') setSelectedStash(null);
+        setAnalyzeStashId(route.analyzeStashId);
       }
     };
     window.addEventListener('popstate', onPopState);
@@ -280,7 +284,7 @@ export default function App() {
     setSelectedStash(null);
     setAnalyzeStashId(id);
     setView('graph');
-    pushUrl('/graph');
+    pushUrl(`/stash/${id}/graph`);
   };
 
   const handleSettingsView = () => {
