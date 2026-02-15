@@ -322,7 +322,9 @@ npm run preview            # Preview production build via Vite
 - Pulls data type schemas from OpenAPI spec (`getOpenApiSpec()`) for shared data model definitions
 - Served at `/api/mcp-spec` as `text/plain`
 - `getMcpOnboardingText(baseUrl)` wraps the MCP spec with self-onboarding instructions (quick start, recommended workflow)
-- Onboarding served at `/api/mcp-onboarding` as `text/plain` (no auth required) and via MCP `onboard` tool
+- Onboarding served at `/api/mcp-onboarding` as `text/plain` (no auth required) for initial AI self-onboarding via REST
+- `getMcpRefreshText(baseUrl)` wraps the MCP spec with update-focused framing for connected AI agents
+- MCP `refresh_tools` tool returns the refresh text so connected AIs can periodically update their tool knowledge
 
 ## Coding Conventions
 
@@ -385,7 +387,7 @@ npm run preview            # Preview production build via Vite
 | `get_stats` | Get storage statistics. |
 | `get_rest_api_spec` | Get the full OpenAPI 3.0 REST API specification (JSON). |
 | `get_mcp_spec` | Get the full MCP specification (markdown with tool schemas and data types). |
-| `onboard` | Self-onboarding tool — returns the full MCP onboarding guide with quick start, workflows, and spec. |
+| `refresh_tools` | Tool update — returns the current MCP tool specification for connected AI agents to stay up-to-date. |
 
 ### Token-Efficient MCP Data Flow
 

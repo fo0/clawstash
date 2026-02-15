@@ -100,7 +100,7 @@ export function getMcpOnboardingText(baseUrl: string): string {
 ## How to Use This Document
 You are reading the ClawStash MCP onboarding specification. This document contains everything you need to connect and interact with this ClawStash instance via MCP (Model Context Protocol).
 
-**Re-read this document periodically** by calling the \`onboard\` MCP tool or fetching \`${baseUrl}/api/mcp-onboarding\` — tool definitions and capabilities may change over time.
+**Once connected via MCP**, call the \`refresh_tools\` tool periodically to stay up-to-date — tool definitions and capabilities may change over time. You can also re-fetch this document at \`${baseUrl}/api/mcp-onboarding\`.
 
 ## Quick Start
 
@@ -119,12 +119,38 @@ You are reading the ClawStash MCP onboarding specification. This document contai
 2. **Inspect** — Use \`read_stash\` to get metadata and file list with sizes (no content by default).
 3. **Read** — Use \`read_stash_file\` to selectively read only the files you need (most token-efficient).
 4. **Store** — Use \`create_stash\` or \`update_stash\` to save new data. Use descriptive names, descriptions, and tags for discoverability.
-5. **Refresh** — Call the \`onboard\` tool again whenever you need to re-check available tools and capabilities.
+5. **Refresh** — Call the \`refresh_tools\` MCP tool whenever you need to re-check available tools and capabilities.
 
 ---
 
 ${spec}`;
 
   onboardingCache.set(baseUrl, result);
+  return result;
+}
+
+// ---------------------------------------------------------------------------
+// MCP Refresh Text — spec with update-focused framing for connected AI agents
+// ---------------------------------------------------------------------------
+
+const refreshCache = new Map<string, string>();
+
+export function getMcpRefreshText(baseUrl: string): string {
+  const cached = refreshCache.get(baseUrl);
+  if (cached) return cached;
+
+  const spec = getMcpSpecText(baseUrl);
+
+  const result = `# ClawStash MCP Tool Update
+
+**Call \`refresh_tools\` periodically to stay up-to-date.** Tool definitions and capabilities may change over time.
+
+For initial onboarding (before MCP is connected), use the REST endpoint: \`GET ${baseUrl}/api/mcp-onboarding\`
+
+---
+
+${spec}`;
+
+  refreshCache.set(baseUrl, result);
   return result;
 }
