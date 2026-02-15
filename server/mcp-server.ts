@@ -127,7 +127,7 @@ ${TOKEN_EFFICIENT_GUIDE}`,
     updateDef.description,
     updateDef.schema.shape,
     async ({ id, name, description, files, tags, metadata }) => {
-      const stash = db.updateStash(id, { name, description, files, tags, metadata });
+      const stash = db.updateStash(id, { name, description, files, tags, metadata }, 'mcp');
       if (!stash) {
         return { content: [{ type: 'text', text: `Error: Stash "${id}" not found.` }] };
       }

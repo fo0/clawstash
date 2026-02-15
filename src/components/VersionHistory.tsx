@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import type { StashVersionListItem, StashVersion } from '../types';
+import type { Stash, StashVersionListItem, StashVersion } from '../types';
 import { api } from '../api';
 import { formatRelativeTime } from '../utils/format';
 import VersionDiff from './VersionDiff';
@@ -9,7 +9,7 @@ import Spinner from './shared/Spinner';
 interface Props {
   stashId: string;
   currentVersion: number;
-  onRestore: (stash: unknown) => void;
+  onRestore: (stash: Stash) => void;
 }
 
 type SubView = 'list' | 'detail' | 'diff';
