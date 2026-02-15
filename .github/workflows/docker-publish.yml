@@ -83,5 +83,8 @@ jobs:
           platforms: linux/amd64
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
+          build-args: |
+            BUILD_COMMIT_SHA=${{ github.sha }}
+            BUILD_BRANCH=${{ github.ref_name }}
           cache-from: type=gha
           cache-to: type=gha,mode=max

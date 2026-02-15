@@ -570,7 +570,7 @@ export function getOpenApiSpec(baseUrl: string): OpenApiSpec {
         get: {
           tags: ['System'],
           summary: 'Check current version and available updates',
-          description: 'Returns the running ClawStash version and checks GitHub for the latest available release. The latest version is fetched from GitHub releases (with fallback to tags) and cached for 1 hour. No authentication required.',
+          description: 'Returns the running ClawStash build version (date-based), commit SHA, and build date. Compares against the latest commit on the GitHub main branch to detect available updates. Cached for 1 hour. No authentication required.',
           responses: {
             200: {
               description: 'Version information',
