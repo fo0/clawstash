@@ -954,7 +954,8 @@ export default function GraphViewer({ stashes, tags, onFilterTag, onSelectStash,
 
         if (dragRef.current) {
           e.preventDefault();
-          isTouchDragging = true;
+          const moveDist = Math.sqrt((touch.clientX - touchStartPos.x) ** 2 + (touch.clientY - touchStartPos.y) ** 2);
+          if (moveDist > 8) isTouchDragging = true;
           const { x: wx, y: wy } = screenToWorld(sx, sy, canvas);
           dragRef.current.node.x = wx - dragRef.current.offsetX;
           dragRef.current.node.y = wy - dragRef.current.offsetY;
