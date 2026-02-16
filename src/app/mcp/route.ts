@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
+import { WebStandardStreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js';
 import { createMcpServer } from '@/server/mcp-server';
 import { getDb } from '@/server/singleton';
 import { requireScopeAuth } from '@/server/auth';
@@ -25,82 +25,22 @@ export async function POST(req: NextRequest) {
   try {
     const baseUrl = getBaseUrl(req);
     const mcpServer = createMcpServer(db, baseUrl);
-    const transport = new StreamableHTTPServerTransport({
+    const transport = new WebStandardStreamableHTTPServerTransport({
       sessionIdGenerator: undefined,
+      enableJsonResponse: true,
     });
-
-    const body = await req.json();
 
     // Connect server to transport
     await mcpServer.connect(transport);
 
-    // Use handleRequest with a simulated request/response pair
-    // StreamableHTTPServerTransport.handleRequest expects IncomingMessage/ServerResponse,
-    // so we create a compatible response object that collects the output
-    const headers: Record<string, string> = {};
-    let statusCode = 200;
-    let responseBody = '';
-    const chunks: string[] = [];
-    let isSSE = false;
+    // Handle the request using Web Standard API (NextRequest extends Request)
+    const response = await transport.handleRequest(req);
 
-    const fakeRes = {
-      writeHead(status: number, hdrs?: Record<string, string>) {
-        statusCode = status;
-        if (hdrs) Object.assign(headers, hdrs);
-        return fakeRes;
-      },
-      setHeader(name: string, value: string) {
-        headers[name.toLowerCase()] = value;
-      },
-      write(chunk: string | Buffer) {
-        chunks.push(typeof chunk === 'string' ? chunk : chunk.toString());
-        return true;
-      },
-      end(data?: string | Buffer) {
-        if (data) {
-          responseBody = typeof data === 'string' ? data : data.toString();
-        } else {
-          responseBody = chunks.join('');
-        }
-      },
-      on(_event: string, _handler: () => void) {
-        return fakeRes;
-      },
-      headersSent: false,
-    };
-
-    const fakeReq = {
-      method: 'POST',
-      headers: Object.fromEntries(req.headers.entries()),
-      body,
-    };
-
-    await transport.handleRequest(fakeReq as never, fakeRes as never, body);
-
-    // Clean up
-    transport.close();
+    // Clean up (safe because enableJsonResponse ensures response is complete)
+    await transport.close();
     await mcpServer.close();
 
-    // Check if it's SSE
-    isSSE = headers['content-type']?.includes('text/event-stream') ?? false;
-
-    if (isSSE) {
-      return new NextResponse(responseBody || chunks.join(''), {
-        status: statusCode,
-        headers: {
-          'Content-Type': 'text/event-stream',
-          'Cache-Control': 'no-cache',
-          Connection: 'keep-alive',
-        },
-      });
-    }
-
-    // Regular JSON response
-    const finalBody = responseBody || chunks.join('');
-    return new NextResponse(finalBody, {
-      status: statusCode,
-      headers: { 'Content-Type': headers['content-type'] || 'application/json' },
-    });
+    return response;
   } catch (err) {
     console.error('MCP error:', err);
     return jsonRpcError(-32603, 'Internal MCP error', 500);
