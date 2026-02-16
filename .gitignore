@@ -12,3 +12,4 @@ data/
 *.key
 .vscode/
 .idea/
+*.tsbuildinfo

@@ -1,7 +1,7 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import type { ClawStashDB } from './db';
 import { getOpenApiSpec } from './openapi';
-import { getMcpSpecText, getMcpOnboardingText, getMcpRefreshText } from './mcp-spec';
+import { getMcpSpecText, getMcpRefreshText } from './mcp-spec';
 import { TOKEN_EFFICIENT_GUIDE } from './shared-text';
 import { getToolDef } from './tool-defs';
 import { checkVersion } from './version';
@@ -228,7 +228,7 @@ ${TOKEN_EFFICIENT_GUIDE}`,
     restSpecDef.description,
     restSpecDef.schema.shape,
     async () => {
-      const spec = getOpenApiSpec(baseUrl || `http://localhost:${process.env.PORT || '3001'}`);
+      const spec = getOpenApiSpec(baseUrl || `http://localhost:${process.env.PORT || '3000'}`);
       return {
         content: [{ type: 'text', text: JSON.stringify(spec, null, 2) }],
       };
@@ -242,7 +242,7 @@ ${TOKEN_EFFICIENT_GUIDE}`,
     mcpSpecDef.description,
     mcpSpecDef.schema.shape,
     async () => {
-      const spec = getMcpSpecText(baseUrl || `http://localhost:${process.env.PORT || '3001'}`);
+      const spec = getMcpSpecText(baseUrl || `http://localhost:${process.env.PORT || '3000'}`);
       return {
         content: [{ type: 'text', text: spec }],
       };
@@ -256,7 +256,7 @@ ${TOKEN_EFFICIENT_GUIDE}`,
     refreshDef.description,
     refreshDef.schema.shape,
     async () => {
-      const text = getMcpRefreshText(baseUrl || `http://localhost:${process.env.PORT || '3001'}`);
+      const text = getMcpRefreshText(baseUrl || `http://localhost:${process.env.PORT || '3000'}`);
       return {
         content: [{ type: 'text', text }],
       };
