@@ -4048,6 +4048,602 @@ body {
   }
 }
 
+/* === Mobile (< 640px) === */
+
+/* Mobile header (hamburger + title + search) — hidden on desktop */
+.mobile-header {
+  display: none;
+}
+
+/* Sidebar overlay backdrop — hidden on desktop */
+.sidebar-overlay {
+  display: none;
+}
+
+/* Sidebar close button — hidden on desktop */
+.sidebar-close-btn {
+  display: none;
+}
+
+@media (max-width: 640px) {
+  /* --- App layout: full-width, no sidebar side-by-side --- */
+  .app {
+    flex-direction: column;
+  }
+
+  /* --- Sidebar: off-screen slide-in overlay --- */
+  .sidebar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    width: 280px;
+    min-width: 280px;
+    z-index: 200;
+    transform: translateX(-100%);
+    transition: transform 0.25s ease;
+    box-shadow: none;
+  }
+
+  .sidebar.sidebar-open {
+    transform: translateX(0);
+    box-shadow: 4px 0 24px rgba(0, 0, 0, 0.5);
+  }
+
+  .sidebar-overlay {
+    display: block;
+    position: fixed;
+    inset: 0;
+    z-index: 150;
+    background: rgba(0, 0, 0, 0.5);
+    animation: sidebar-fade-in 0.2s ease-out;
+  }
+
+  @keyframes sidebar-fade-in {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+
+  .sidebar-close-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    border: none;
+    border-radius: var(--radius);
+    background: transparent;
+    color: var(--text-muted);
+    cursor: pointer;
+    flex-shrink: 0;
+    transition: all 0.15s;
+  }
+
+  .sidebar-close-btn:hover {
+    background: var(--bg-tertiary);
+    color: var(--text-primary);
+  }
+
+  /* --- Mobile header bar --- */
+  .mobile-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 16px;
+    background: var(--bg-sidebar);
+    border-bottom: 1px solid var(--border-color);
+    flex-shrink: 0;
+  }
+
+  .mobile-menu-btn,
+  .mobile-search-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    border: none;
+    border-radius: var(--radius);
+    background: transparent;
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: all 0.15s;
+    flex-shrink: 0;
+  }
+
+  .mobile-menu-btn:hover,
+  .mobile-search-btn:hover {
+    background: var(--bg-tertiary);
+    color: var(--text-primary);
+  }
+
+  .mobile-header-title {
+    flex: 1;
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--text-primary);
+    cursor: pointer;
+  }
+
+  .mobile-search-btn {
+    margin-left: auto;
+  }
+
+  /* --- Main content: less padding, full width --- */
+  .main-content {
+    padding: 16px 12px;
+  }
+
+  /* --- Dashboard --- */
+  .dashboard-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+    margin-bottom: 16px;
+  }
+
+  .dashboard-title h1 {
+    font-size: 18px;
+  }
+
+  .stash-count {
+    font-size: 12px;
+  }
+
+  .dashboard-actions {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  /* Cards: single column, full width */
+  .stash-grid.grid {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+
+  .stash-card {
+    padding: 14px 16px;
+  }
+
+  .stash-card.list {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .stash-card.list .stash-card-header {
+    min-width: unset;
+    width: 100%;
+  }
+
+  .stash-card.list .stash-card-footer {
+    min-width: unset;
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .new-stash-card {
+    min-height: 80px;
+  }
+
+  .stash-grid.list .new-stash-card {
+    padding: 12px 16px;
+  }
+
+  .new-stash-icon {
+    font-size: 28px;
+  }
+
+  /* --- StashViewer --- */
+  .viewer-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+    margin-bottom: 12px;
+  }
+
+  .viewer-title {
+    font-size: 17px;
+    white-space: normal;
+    word-break: break-word;
+  }
+
+  .viewer-actions {
+    width: 100%;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+
+  .viewer-actions .btn {
+    flex: 1;
+    min-width: 0;
+    justify-content: center;
+    padding: 8px 10px;
+    font-size: 12px;
+  }
+
+  .viewer-meta-bar {
+    gap: 6px;
+    margin-bottom: 12px;
+  }
+
+  .viewer-tabs {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    margin-bottom: 14px;
+  }
+
+  .tab {
+    padding: 8px 14px;
+    font-size: 13px;
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+
+  .file-header {
+    flex-wrap: wrap;
+    gap: 6px;
+    padding: 8px 12px;
+  }
+
+  .file-content {
+    padding: 12px;
+    font-size: 12px;
+  }
+
+  .file-rendered {
+    padding: 14px 16px;
+    font-size: 13px;
+  }
+
+  /* --- StashEditor --- */
+  .editor-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+    margin-bottom: 14px;
+  }
+
+  .editor-header h2 {
+    font-size: 17px;
+  }
+
+  .editor-header-actions {
+    width: 100%;
+    display: flex;
+    gap: 6px;
+  }
+
+  .editor-header-actions .btn {
+    flex: 1;
+    justify-content: center;
+  }
+
+  .editor-file-header {
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+
+  .file-lang-input {
+    width: 100%;
+  }
+
+  .code-editor-wrapper {
+    max-height: 350px;
+  }
+
+  .code-editor {
+    font-size: 13px;
+  }
+
+  /* Metadata editor */
+  .metadata-entry-row {
+    flex-wrap: wrap;
+  }
+
+  .metadata-key-input {
+    flex: 1 1 100%;
+  }
+
+  .metadata-value-input {
+    flex: 1 1 100%;
+  }
+
+  .metadata-add-row {
+    flex-wrap: wrap;
+  }
+
+  .metadata-add-input {
+    flex: 1 1 100%;
+  }
+
+  /* --- Settings --- */
+  .settings-section-title h2 {
+    font-size: 17px;
+  }
+
+  .settings-card {
+    padding: 14px;
+  }
+
+  .settings-stats-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+  }
+
+  .settings-stat-value {
+    font-size: 22px;
+  }
+
+  .settings-tech-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .settings-option-group {
+    flex-wrap: wrap;
+  }
+
+  .settings-option-btn {
+    padding: 8px 14px;
+    font-size: 12px;
+  }
+
+  .settings-welcome-header {
+    flex-direction: column;
+    text-align: center;
+    gap: 10px;
+  }
+
+  .settings-welcome-title {
+    font-size: 20px;
+  }
+
+  .settings-welcome-grid {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+
+  .settings-welcome-card {
+    padding: 14px;
+    gap: 12px;
+  }
+
+  .settings-about-header {
+    flex-direction: column;
+    text-align: center;
+    gap: 10px;
+  }
+
+  .settings-lang-name {
+    width: 70px;
+    font-size: 12px;
+  }
+
+  /* --- API Manager --- */
+  .api-header-title h1 {
+    font-size: 18px;
+  }
+
+  .api-tabs {
+    flex-wrap: wrap;
+    gap: 4px;
+  }
+
+  .api-tab {
+    padding: 6px 12px;
+    font-size: 12px;
+  }
+
+  .api-section {
+    padding: 14px;
+  }
+
+  .api-section-header h2 {
+    font-size: 15px;
+  }
+
+  .api-token-item {
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .api-token-actions {
+    flex-direction: row;
+    width: 100%;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .api-mcp-row {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
+  }
+
+  .api-mcp-label {
+    width: auto;
+  }
+
+  .api-copy-config-section {
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .api-new-token-value {
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  /* --- Search Overlay --- */
+  .search-overlay-backdrop {
+    padding-top: 0;
+    align-items: flex-start;
+  }
+
+  .search-overlay {
+    max-width: 100%;
+    border-radius: 0;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .search-overlay-results {
+    flex: 1;
+    max-height: none;
+  }
+
+  .search-overlay-input {
+    font-size: 16px; /* prevents iOS zoom */
+  }
+
+  .search-overlay-footer {
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  /* --- Graph Viewer --- */
+  .graph-viewer {
+    height: calc(100vh - 140px);
+  }
+
+  .graph-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+    margin-bottom: 10px;
+  }
+
+  .graph-title h1 {
+    font-size: 17px;
+  }
+
+  .graph-actions {
+    width: 100%;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+
+  .graph-search-input {
+    width: 100px;
+  }
+
+  .graph-focus-indicator {
+    font-size: 11px;
+    flex-wrap: wrap;
+  }
+
+  .graph-node-popup {
+    width: 240px;
+    max-width: calc(100vw - 24px);
+  }
+
+  .graph-tab-switcher {
+    width: 100%;
+  }
+
+  .graph-tab-btn {
+    flex: 1;
+    text-align: center;
+  }
+
+  /* --- Version History --- */
+  .version-item {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+    padding: 10px 12px;
+  }
+
+  .version-item-left {
+    width: 100%;
+  }
+
+  .version-item-actions {
+    width: 100%;
+    justify-content: flex-end;
+  }
+
+  .version-compare-bar {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 6px;
+  }
+
+  .version-select {
+    width: 100%;
+    min-width: unset;
+  }
+
+  .version-detail-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+
+  /* --- Diff view --- */
+  .diff-summary {
+    flex-wrap: wrap;
+    gap: 6px;
+    font-size: 12px;
+  }
+
+  .diff-table {
+    font-size: 11px;
+  }
+
+  .diff-line-num {
+    min-width: 28px;
+    padding: 0 3px;
+  }
+
+  /* --- Footer --- */
+  .app-footer .footer-row {
+    padding: 0 12px;
+    height: 40px;
+  }
+
+  /* --- Access Log --- */
+  .access-log-entry {
+    flex-wrap: wrap;
+    gap: 6px;
+    padding: 8px 12px;
+    font-size: 12px;
+  }
+
+  /* --- Buttons: larger touch targets --- */
+  .btn {
+    padding: 10px 16px;
+    font-size: 13px;
+    min-height: 40px;
+  }
+
+  .btn-sm {
+    padding: 6px 12px;
+    font-size: 12px;
+    min-height: 32px;
+  }
+
+  /* --- Forms: prevent iOS zoom on focus --- */
+  .form-input,
+  .form-textarea,
+  .search-input,
+  .tag-combobox-input {
+    font-size: 16px;
+  }
+
+  /* --- Sidebar button group (inside mobile sidebar) --- */
+  .sidebar-btn-group {
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  /* --- Export/Import --- */
+  .settings-export-import-actions {
+    flex-direction: column;
+    gap: 6px;
+  }
+}
+
 /* === Tag Combobox === */
 .tag-combobox {
   position: relative;
