@@ -210,6 +210,7 @@ export default function Sidebar({ stashes, selectedId, search, onSearch, filterT
                           onFilterTag(t.tag);
                           setTagDropdownOpen(false);
                           setTagSearch('');
+                          onClose?.();
                         }}
                       >
                         <span className="sidebar-tag-option-name">{t.tag}</span>
@@ -231,7 +232,7 @@ export default function Sidebar({ stashes, selectedId, search, onSearch, filterT
                 <button
                   key={tag}
                   className="sidebar-recent-tag"
-                  onClick={() => onFilterTag(tag)}
+                  onClick={() => { onFilterTag(tag); onClose?.(); }}
                   title={`Filter by "${tag}"`}
                 >
                   {tag}
@@ -290,7 +291,7 @@ export default function Sidebar({ stashes, selectedId, search, onSearch, filterT
               <div
                 key={section.id}
                 className={`sidebar-settings-nav-item ${settingsSection === section.id ? 'active' : ''}`}
-                onClick={() => onSettingsSection(section.id)}
+                onClick={() => { onSettingsSection(section.id); onClose?.(); }}
               >
                 <span className="sidebar-settings-nav-icon">{section.icon}</span>
                 {section.label}
