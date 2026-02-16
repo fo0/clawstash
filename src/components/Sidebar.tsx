@@ -21,6 +21,8 @@ interface Props {
   settingsSection: SettingsSection;
   onSettingsSection: (section: SettingsSection) => void;
   onLogout?: () => void;
+  isOpen?: boolean;
+  onClose?: () => void;
 }
 
 const SETTINGS_SECTIONS: { id: SettingsSection; label: string; icon: JSX.Element }[] = [
@@ -80,7 +82,7 @@ const SETTINGS_SECTIONS: { id: SettingsSection; label: string; icon: JSX.Element
   },
 ];
 
-export default function Sidebar({ stashes, selectedId, search, onSearch, filterTag, onFilterTag, tags, recentTags, onSelectStash, onNewStash, onGoHome, onGraphView, onSettingsView, isSettingsView, settingsSection, onSettingsSection, onLogout }: Props) {
+export default function Sidebar({ stashes, selectedId, search, onSearch, filterTag, onFilterTag, tags, recentTags, onSelectStash, onNewStash, onGoHome, onGraphView, onSettingsView, isSettingsView, settingsSection, onSettingsSection, onLogout, isOpen, onClose }: Props) {
   const [tagDropdownOpen, setTagDropdownOpen] = useState(false);
   const [tagSearch, setTagSearch] = useState('');
   const tagFilterRef = useRef<HTMLDivElement>(null);
@@ -103,8 +105,15 @@ export default function Sidebar({ stashes, selectedId, search, onSearch, filterT
     : tags;
 
   return (
-    <aside className="sidebar">
+    <aside className={`sidebar${isOpen ? ' sidebar-open' : ''}`}>
       <div className="sidebar-header">
+        {onClose && (
+          <button className="sidebar-close-btn" onClick={onClose} aria-label="Close menu">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
+            </svg>
+          </button>
+        )}
         <div className="sidebar-logo" onClick={onGoHome} title="Go to dashboard">
           <span className="logo-icon">CS</span>
           <span className="logo-text">ClawStash</span>

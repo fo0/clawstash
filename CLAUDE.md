@@ -18,6 +18,7 @@
 - Admin login gate with session management
 - Settings area with API management, token CRUD, and storage statistics
 - Version history with diff comparison and restore functionality
+- Mobile-optimized responsive layout with collapsible sidebar
 
 ## Tech Stack
 
@@ -278,6 +279,7 @@ npm run mcp                # Start MCP server (stdio transport)
 - Settings navigation integrated into sidebar (section state in App.tsx), default section: 'welcome' (Admin Dashboard)
 - Logout button in sidebar footer (only shown when auth is required)
 - SSR safety: `getStoredPreference`, `getStoredAdminToken`, `getInitialRoute` guard against `window` being undefined
+- Mobile sidebar: `sidebarOpen` state controls slide-in overlay sidebar on mobile (< 640px); navigation actions auto-close sidebar; hamburger menu + mobile header shown only on mobile via CSS
 
 ### Footer (src/components/Footer.tsx)
 
@@ -389,7 +391,7 @@ npm run mcp                # Start MCP server (stdio transport)
 - **Components**: Functional React components with TypeScript interfaces for props
 - **Component Organization**: Complex features split into sub-directories (`api/`, `editor/`) with focused, single-responsibility files. Shared components in `shared/`, utilities in `utils/`.
 - **API Route Handlers**: Use `checkScope()`/`checkAdmin()` helper functions for auth instead of Express middleware
-- **CSS**: Global CSS with CSS custom properties (no CSS-in-JS), BEM-like class naming
+- **CSS**: Global CSS with CSS custom properties (no CSS-in-JS), BEM-like class naming. Responsive breakpoints: 640px (mobile), 768px (tablet), 1200px (medium), 1600px/2000px (large/extra-large). Mobile layout uses slide-in sidebar overlay, dedicated mobile header with hamburger menu, and touch-optimized targets.
 - **Error Handling**: Try/catch in async handlers, error state in UI components
 - **TypeScript**: Strict mode enabled, `noEmit`, target ES2022, Next.js plugin
 
