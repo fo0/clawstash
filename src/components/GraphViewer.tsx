@@ -859,6 +859,170 @@ export default function GraphViewer({ stashes, tags, onFilterTag, onSelectStash,
     };
   }, [screenToWorld, findNodeAt, showPopup, closePopup, graphTab]);
 
+  // Touch events for mobile
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    let touchStartTime = 0;
+    let touchStartPos = { x: 0, y: 0 };
+    let lastPinchDist = 0;
+    let pinchMidpoint = { x: 0, y: 0 };
+    let isTouchDragging = false;
+    let isTouchPanning = false;
+    let isPinching = false;
+
+    const getTouchDist = (t1: Touch, t2: Touch) =>
+      Math.sqrt((t1.clientX - t2.clientX) ** 2 + (t1.clientY - t2.clientY) ** 2);
+
+    const onTouchStart = (e: TouchEvent) => {
+      targetZoomRef.current = null;
+      targetPanRef.current = null;
+
+      if (e.touches.length === 2) {
+        // Pinch start
+        e.preventDefault();
+        isPinching = true;
+        isTouchDragging = false;
+        isTouchPanning = false;
+        dragRef.current = null;
+        lastPinchDist = getTouchDist(e.touches[0], e.touches[1]);
+        const rect = canvas.getBoundingClientRect();
+        pinchMidpoint = {
+          x: (e.touches[0].clientX + e.touches[1].clientX) / 2 - rect.left,
+          y: (e.touches[0].clientY + e.touches[1].clientY) / 2 - rect.top,
+        };
+        return;
+      }
+
+      if (e.touches.length === 1) {
+        const touch = e.touches[0];
+        const rect = canvas.getBoundingClientRect();
+        const sx = touch.clientX - rect.left;
+        const sy = touch.clientY - rect.top;
+        const { x: wx, y: wy } = screenToWorld(sx, sy, canvas);
+        const node = findNodeAt(wx, wy);
+
+        touchStartTime = Date.now();
+        touchStartPos = { x: touch.clientX, y: touch.clientY };
+        isTouchDragging = false;
+        isTouchPanning = false;
+        isPinching = false;
+
+        if (node) {
+          e.preventDefault();
+          dragRef.current = { node, offsetX: wx - node.x, offsetY: wy - node.y };
+          alphaRef.current = Math.max(alphaRef.current, 0.3);
+        } else {
+          panStartRef.current = { x: touch.clientX, y: touch.clientY, panX: panRef.current.x, panY: panRef.current.y };
+          closePopup();
+          setHighlightTag(null);
+        }
+      }
+    };
+
+    const onTouchMove = (e: TouchEvent) => {
+      if (e.touches.length === 2) {
+        e.preventDefault();
+        isPinching = true;
+        const dist = getTouchDist(e.touches[0], e.touches[1]);
+        if (lastPinchDist > 0) {
+          const factor = dist / lastPinchDist;
+          const newZoom = Math.max(0.2, Math.min(5, zoomRef.current * factor));
+          const cx = canvas.width / (2 * devicePixelRatio);
+          const cy = canvas.height / (2 * devicePixelRatio);
+          const wx = pinchMidpoint.x - cx - panRef.current.x;
+          const wy = pinchMidpoint.y - cy - panRef.current.y;
+          panRef.current.x -= wx * (newZoom / zoomRef.current - 1);
+          panRef.current.y -= wy * (newZoom / zoomRef.current - 1);
+          zoomRef.current = newZoom;
+        }
+        lastPinchDist = dist;
+        const rect = canvas.getBoundingClientRect();
+        pinchMidpoint = {
+          x: (e.touches[0].clientX + e.touches[1].clientX) / 2 - rect.left,
+          y: (e.touches[0].clientY + e.touches[1].clientY) / 2 - rect.top,
+        };
+        return;
+      }
+
+      if (e.touches.length === 1 && !isPinching) {
+        const touch = e.touches[0];
+        const rect = canvas.getBoundingClientRect();
+        const sx = touch.clientX - rect.left;
+        const sy = touch.clientY - rect.top;
+
+        if (dragRef.current) {
+          e.preventDefault();
+          isTouchDragging = true;
+          const { x: wx, y: wy } = screenToWorld(sx, sy, canvas);
+          dragRef.current.node.x = wx - dragRef.current.offsetX;
+          dragRef.current.node.y = wy - dragRef.current.offsetY;
+          dragRef.current.node.vx = 0;
+          dragRef.current.node.vy = 0;
+          alphaRef.current = Math.max(alphaRef.current, 0.1);
+          return;
+        }
+
+        // Pan
+        const dx = touch.clientX - panStartRef.current.x;
+        const dy = touch.clientY - panStartRef.current.y;
+        if (Math.abs(dx) > 4 || Math.abs(dy) > 4) {
+          e.preventDefault();
+          isTouchPanning = true;
+          panRef.current.x = panStartRef.current.panX + dx;
+          panRef.current.y = panStartRef.current.panY + dy;
+        }
+      }
+    };
+
+    const onTouchEnd = (e: TouchEvent) => {
+      if (isPinching && e.touches.length < 2) {
+        isPinching = false;
+        lastPinchDist = 0;
+        // Recapture single remaining touch as new pan start
+        if (e.touches.length === 1) {
+          const touch = e.touches[0];
+          panStartRef.current = { x: touch.clientX, y: touch.clientY, panX: panRef.current.x, panY: panRef.current.y };
+        }
+        return;
+      }
+
+      if (dragRef.current) {
+        // Tap on node (no drag movement) → show popup
+        if (!isTouchDragging && Date.now() - touchStartTime < 300) {
+          const t = e.changedTouches[0];
+          showPopup(dragRef.current.node, t.clientX, t.clientY);
+        }
+        dragRef.current = null;
+        isTouchDragging = false;
+        return;
+      }
+
+      // Tap on empty space (no pan movement)
+      if (!isTouchPanning && Date.now() - touchStartTime < 300) {
+        const t = e.changedTouches[0];
+        const dist = Math.sqrt((t.clientX - touchStartPos.x) ** 2 + (t.clientY - touchStartPos.y) ** 2);
+        if (dist < 10) {
+          closePopup();
+          setHighlightTag(null);
+        }
+      }
+
+      isTouchPanning = false;
+    };
+
+    canvas.addEventListener('touchstart', onTouchStart, { passive: false });
+    canvas.addEventListener('touchmove', onTouchMove, { passive: false });
+    canvas.addEventListener('touchend', onTouchEnd);
+
+    return () => {
+      canvas.removeEventListener('touchstart', onTouchStart);
+      canvas.removeEventListener('touchmove', onTouchMove);
+      canvas.removeEventListener('touchend', onTouchEnd);
+    };
+  }, [screenToWorld, findNodeAt, showPopup, closePopup, graphTab]);
+
   // Close popup on Escape
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
@@ -1150,7 +1314,7 @@ export default function GraphViewer({ stashes, tags, onFilterTag, onSelectStash,
         </div>
       </div>
       <div className="graph-canvas-container" ref={containerRef}>
-        <canvas ref={canvasRef} className="graph-canvas" style={{ cursor: 'grab' }} />
+        <canvas ref={canvasRef} className="graph-canvas" style={{ cursor: 'grab', touchAction: 'none' }} />
         {tags.length === 0 && !focusTag && (
           <div className="graph-empty">
             <svg width="36" height="36" viewBox="0 0 16 16" fill="currentColor" opacity="0.3">
