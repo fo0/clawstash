@@ -1,5 +1,5 @@
 # === Stage 1: Build ===
-FROM node:22-slim AS builder
+FROM node:25-slim AS builder
 
 WORKDIR /app
 
@@ -20,7 +20,7 @@ RUN mkdir -p public
 RUN npm run build
 
 # === Stage 2: Production ===
-FROM node:22-slim
+FROM node:25-slim
 
 WORKDIR /app
 
