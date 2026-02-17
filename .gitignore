@@ -13,3 +13,4 @@ data/
 .vscode/
 .idea/
 *.tsbuildinfo
+build-info.json

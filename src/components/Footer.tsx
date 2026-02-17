@@ -6,12 +6,6 @@ interface BuildInfo {
   branch: string;
 }
 
-const DEFAULT_BUILD_INFO: BuildInfo = {
-  buildDate: new Date().toISOString(),
-  commitHash: '',
-  branch: '',
-};
-
 function formatBuildVersion(isoDate: string): string {
   const d = new Date(isoDate);
   const pad = (n: number) => String(n).padStart(2, '0');
@@ -20,53 +14,61 @@ function formatBuildVersion(isoDate: string): string {
 
 export default function Footer() {
   const [showDetails, setShowDetails] = useState(false);
-  const [buildInfo, setBuildInfo] = useState<BuildInfo>(DEFAULT_BUILD_INFO);
+  const [buildInfo, setBuildInfo] = useState<BuildInfo | null>(null);
 
   useEffect(() => {
     fetch('/api/version')
       .then(r => r.json())
       .then(data => {
-        if (data.buildDate) setBuildInfo(data);
+        if (data.current) {
+          setBuildInfo({
+            buildDate: data.current.build_date,
+            commitHash: data.current.commit_sha || '',
+            branch: data.current.branch || '',
+          });
+        }
       })
       .catch(() => { /* use defaults */ });
   }, []);
 
-  const buildDate = new Date(buildInfo.buildDate);
-  const formattedDate = buildDate.toLocaleDateString(undefined, {
+  const buildDate = buildInfo ? new Date(buildInfo.buildDate) : null;
+  const formattedDate = buildDate?.toLocaleDateString(undefined, {
     year: 'numeric',
     month: 'short',
     day: 'numeric',
   });
-  const formattedTime = buildDate.toLocaleTimeString(undefined, {
+  const formattedTime = buildDate?.toLocaleTimeString(undefined, {
     hour: '2-digit',
     minute: '2-digit',
   });
-  const buildVersion = formatBuildVersion(buildInfo.buildDate);
+  const buildVersion = buildInfo ? formatBuildVersion(buildInfo.buildDate) : null;
 
   return (
     <footer className="app-footer">
       <div className="footer-row">
         <div className="footer-left">
-          <span className="footer-title" title={`ClawStash ${buildVersion}`}>
-            ClawStash <span className="footer-version">{buildVersion}</span>
+          <span className="footer-title" title={buildVersion ? `ClawStash ${buildVersion}` : 'ClawStash'}>
+            ClawStash {buildVersion && <span className="footer-version">{buildVersion}</span>}
           </span>
-          <button
-            type="button"
-            className={`footer-info-btn${showDetails ? ' active' : ''}`}
-            onClick={() => setShowDetails((prev) => !prev)}
-            title="Toggle build details"
-          >
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <circle cx="12" cy="12" r="10" />
-              <path d="M12 16v-4" />
-              <path d="M12 8h.01" />
-            </svg>
-            <span className="footer-info-label">Build Info</span>
-          </button>
+          {buildInfo && (
+            <button
+              type="button"
+              className={`footer-info-btn${showDetails ? ' active' : ''}`}
+              onClick={() => setShowDetails((prev) => !prev)}
+              title="Toggle build details"
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="12" cy="12" r="10" />
+                <path d="M12 16v-4" />
+                <path d="M12 8h.01" />
+              </svg>
+              <span className="footer-info-label">Build Info</span>
+            </button>
+          )}
         </div>
 
         <div className="footer-right">
-          {showDetails && (
+          {showDetails && buildInfo && (
             <div className="footer-details-desktop">
               {buildInfo.branch && (
                 <span className="footer-detail" title={`Branch: ${buildInfo.branch}`}>
@@ -89,15 +91,17 @@ export default function Footer() {
                   {buildInfo.commitHash}
                 </span>
               )}
-              <span className="footer-detail" title={`Built: ${formattedDate} ${formattedTime}`}>
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <rect width="18" height="18" x="3" y="4" rx="2" ry="2" />
-                  <line x1="16" x2="16" y1="2" y2="6" />
-                  <line x1="8" x2="8" y1="2" y2="6" />
-                  <line x1="3" x2="21" y1="10" y2="10" />
-                </svg>
-                {formattedDate} {formattedTime}
-              </span>
+              {formattedDate && formattedTime && (
+                <span className="footer-detail" title={`Built: ${formattedDate} ${formattedTime}`}>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <rect width="18" height="18" x="3" y="4" rx="2" ry="2" />
+                    <line x1="16" x2="16" y1="2" y2="6" />
+                    <line x1="8" x2="8" y1="2" y2="6" />
+                    <line x1="3" x2="21" y1="10" y2="10" />
+                  </svg>
+                  {formattedDate} {formattedTime}
+                </span>
+              )}
             </div>
           )}
           <a
@@ -114,7 +118,7 @@ export default function Footer() {
         </div>
       </div>
 
-      {showDetails && (
+      {showDetails && buildInfo && (
         <div className="footer-details-mobile">
           {buildInfo.branch && (
             <div className="footer-mobile-row">
@@ -128,10 +132,12 @@ export default function Footer() {
               <span>{buildInfo.commitHash}</span>
             </div>
           )}
-          <div className="footer-mobile-row">
-            <span className="footer-mobile-label">Built:</span>
-            <span>{formattedDate} {formattedTime}</span>
-          </div>
+          {formattedDate && formattedTime && (
+            <div className="footer-mobile-row">
+              <span className="footer-mobile-label">Built:</span>
+              <span>{formattedDate} {formattedTime}</span>
+            </div>
+          )}
         </div>
       )}
     </footer>
