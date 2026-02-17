@@ -296,6 +296,44 @@ const MIGRATIONS: Migration[] = [
         }
       }
     }
+  },
+  {
+    version: 7,
+    name: 'backfill_initial_version_records',
+    up: (db) => {
+      // Find stashes that have NO version records at all (never updated, or created before versioning)
+      const stashes = db.prepare(`
+        SELECT s.id, s.name, s.description, s.tags, s.metadata, s.created_at
+        FROM stashes s
+        WHERE NOT EXISTS (
+          SELECT 1 FROM stash_versions sv WHERE sv.stash_id = s.id
+        )
+      `).all() as { id: string; name: string; description: string; tags: string; metadata: string; created_at: string }[];
+
+      if (stashes.length === 0) return;
+
+      const insertVersion = db.prepare(`
+        INSERT INTO stash_versions (id, stash_id, name, description, tags, metadata, version, created_by, created_at, change_summary)
+        VALUES (?, ?, ?, ?, ?, ?, 1, 'system', ?, '{}')
+      `);
+
+      const insertVersionFile = db.prepare(`
+        INSERT INTO stash_version_files (id, version_id, filename, content, language, sort_order)
+        VALUES (?, ?, ?, ?, ?, ?)
+      `);
+
+      for (const s of stashes) {
+        const versionId = uuidv4();
+        insertVersion.run(versionId, s.id, s.name, s.description, s.tags, s.metadata, s.created_at);
+
+        const files = db.prepare('SELECT filename, content, language, sort_order FROM stash_files WHERE stash_id = ? ORDER BY sort_order').all(s.id) as { filename: string; content: string; language: string; sort_order: number }[];
+        for (const f of files) {
+          insertVersionFile.run(uuidv4(), versionId, f.filename, f.content, f.language, f.sort_order);
+        }
+      }
+
+      console.log(`[DB] Backfilled initial version records for ${stashes.length} stash(es)`);
+    }
   }
 ];
 
@@ -489,17 +527,23 @@ export class ClawStashDB {
       VALUES (?, ?, ?, ?, ?, ?)
     `);
 
+    const insertVersion = this.db.prepare(`
+      INSERT INTO stash_versions (id, stash_id, name, description, tags, metadata, version, created_by, created_at, change_summary)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `);
+
+    const insertVersionFile = this.db.prepare(`
+      INSERT INTO stash_version_files (id, version_id, filename, content, language, sort_order)
+      VALUES (?, ?, ?, ?, ?, ?)
+    `);
+
     const transaction = this.db.transaction(() => {
-      insertStash.run(
-        id,
-        input.name || '',
-        input.description || '',
-        JSON.stringify(input.tags || []),
-        JSON.stringify(input.metadata || {}),
-        1,
-        now,
-        now
-      );
+      const name = input.name || '';
+      const description = input.description || '';
+      const tagsJson = JSON.stringify(input.tags || []);
+      const metadataJson = JSON.stringify(input.metadata || {});
+
+      insertStash.run(id, name, description, tagsJson, metadataJson, 1, now, now);
 
       const files: StashFile[] = [];
       for (let i = 0; i < input.files.length; i++) {
@@ -515,6 +559,13 @@ export class ClawStashDB {
           language,
           sort_order: i,
         });
+      }
+
+      // Store initial version (v1) so it can be compared with future updates
+      const versionId = uuidv4();
+      insertVersion.run(versionId, id, name, description, tagsJson, metadataJson, 1, 'system', now, '{}');
+      for (const file of files) {
+        insertVersionFile.run(uuidv4(), versionId, file.filename, file.content, file.language, file.sort_order);
       }
 
       return files;
@@ -643,23 +694,30 @@ export class ClawStashDB {
 
     const transaction = this.db.transaction(() => {
       // Snapshot current state into stash_versions before applying changes
-      const versionId = uuidv4();
-      this.db.prepare(`
-        INSERT INTO stash_versions (id, stash_id, name, description, tags, metadata, version, created_by, created_at, change_summary)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-      `).run(
-        versionId, id,
-        existing.name, existing.description,
-        JSON.stringify(existing.tags), JSON.stringify(existing.metadata),
-        existing.version, createdBy, now,
-        JSON.stringify(changeSummary)
-      );
-      const insertVersionFile = this.db.prepare(`
-        INSERT INTO stash_version_files (id, version_id, filename, content, language, sort_order)
-        VALUES (?, ?, ?, ?, ?, ?)
-      `);
-      for (const file of existing.files) {
-        insertVersionFile.run(uuidv4(), versionId, file.filename, file.content, file.language, file.sort_order);
+      // Skip if this version was already recorded (e.g. v1 stored during creation)
+      const existingVersionRecord = this.db.prepare(
+        'SELECT id FROM stash_versions WHERE stash_id = ? AND version = ?'
+      ).get(id, existing.version) as { id: string } | undefined;
+
+      if (!existingVersionRecord) {
+        const versionId = uuidv4();
+        this.db.prepare(`
+          INSERT INTO stash_versions (id, stash_id, name, description, tags, metadata, version, created_by, created_at, change_summary)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `).run(
+          versionId, id,
+          existing.name, existing.description,
+          JSON.stringify(existing.tags), JSON.stringify(existing.metadata),
+          existing.version, createdBy, now,
+          JSON.stringify(changeSummary)
+        );
+        const insertVersionFile = this.db.prepare(`
+          INSERT INTO stash_version_files (id, version_id, filename, content, language, sort_order)
+          VALUES (?, ?, ?, ?, ?, ?)
+        `);
+        for (const file of existing.files) {
+          insertVersionFile.run(uuidv4(), versionId, file.filename, file.content, file.language, file.sort_order);
+        }
       }
 
       // Apply the update
@@ -1056,7 +1114,7 @@ export class ClawStashDB {
       ORDER BY sv.version DESC
     `).all(stashId) as (Record<string, unknown>)[];
 
-    return rows.map(row => ({
+    const versions = rows.map(row => ({
       id: row.id as string,
       stash_id: row.stash_id as string,
       name: (row.name as string) || '',
@@ -1067,30 +1125,83 @@ export class ClawStashDB {
       file_count: row.file_count as number,
       total_size: row.total_size as number,
     }));
+
+    // Include the current (live) version at the top if it's newer than the latest stored version
+    const stashRow = this.db.prepare(
+      'SELECT id, name, description, version, updated_at FROM stashes WHERE id = ?'
+    ).get(stashId) as { id: string; name: string; description: string; version: number; updated_at: string } | undefined;
+
+    if (stashRow) {
+      const latestStoredVersion = versions.length > 0 ? versions[0].version : 0;
+      if (stashRow.version > latestStoredVersion) {
+        const fileStats = this.db.prepare(
+          'SELECT COUNT(*) as file_count, COALESCE(SUM(LENGTH(content)), 0) as total_size FROM stash_files WHERE stash_id = ?'
+        ).get(stashId) as { file_count: number; total_size: number };
+
+        versions.unshift({
+          id: `current-${stashId}`,
+          stash_id: stashId,
+          name: stashRow.name || '',
+          description: stashRow.description || '',
+          version: stashRow.version,
+          created_by: 'current',
+          created_at: stashRow.updated_at,
+          file_count: fileStats.file_count,
+          total_size: fileStats.total_size,
+        });
+      }
+    }
+
+    return versions;
   }
 
   getStashVersion(stashId: string, version: number): StashVersion | null {
     const row = this.db.prepare(
       'SELECT * FROM stash_versions WHERE stash_id = ? AND version = ?'
     ).get(stashId, version) as Record<string, unknown> | undefined;
-    if (!row) return null;
 
-    const files = this.db.prepare(
-      'SELECT filename, content, language, sort_order FROM stash_version_files WHERE version_id = ? ORDER BY sort_order'
-    ).all(row.id as string) as StashVersionFile[];
+    if (row) {
+      const files = this.db.prepare(
+        'SELECT filename, content, language, sort_order FROM stash_version_files WHERE version_id = ? ORDER BY sort_order'
+      ).all(row.id as string) as StashVersionFile[];
 
-    return {
-      id: row.id as string,
-      stash_id: row.stash_id as string,
-      name: (row.name as string) || '',
-      description: (row.description as string) || '',
-      tags: JSON.parse(row.tags as string),
-      metadata: JSON.parse(row.metadata as string),
-      version: row.version as number,
-      created_by: (row.created_by as string) || '',
-      created_at: row.created_at as string,
-      files,
-    };
+      return {
+        id: row.id as string,
+        stash_id: row.stash_id as string,
+        name: (row.name as string) || '',
+        description: (row.description as string) || '',
+        tags: JSON.parse(row.tags as string),
+        metadata: JSON.parse(row.metadata as string),
+        version: row.version as number,
+        created_by: (row.created_by as string) || '',
+        created_at: row.created_at as string,
+        files,
+      };
+    }
+
+    // If not in version history, check if it matches the current live version
+    const stash = this.getStash(stashId);
+    if (stash && stash.version === version) {
+      return {
+        id: `current-${stashId}`,
+        stash_id: stashId,
+        name: stash.name,
+        description: stash.description,
+        tags: stash.tags,
+        metadata: stash.metadata,
+        version: stash.version,
+        created_by: 'current',
+        created_at: stash.updated_at,
+        files: stash.files.map(f => ({
+          filename: f.filename,
+          content: f.content,
+          language: f.language,
+          sort_order: f.sort_order,
+        })),
+      };
+    }
+
+    return null;
   }
 
   restoreStashVersion(stashId: string, version: number, createdBy = 'system'): Stash | null {
