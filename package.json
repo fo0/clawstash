@@ -16,6 +16,7 @@
   "homepage": "https://github.com/fo0/clawstash#readme",
   "scripts": {
     "dev": "next dev",
+    "prebuild": "node scripts/generate-build-info.js",
     "build": "next build",
     "start": "next start",
     "mcp": "tsx src/server/mcp.ts"

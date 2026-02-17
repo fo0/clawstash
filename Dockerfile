@@ -28,6 +28,7 @@ WORKDIR /app
 COPY --from=builder /app/.next/standalone ./
 COPY --from=builder /app/.next/static ./.next/static
 COPY --from=builder /app/public ./public
+COPY --from=builder /app/build-info.json ./build-info.json
 
 ENV NODE_ENV=production
 ENV PORT=3000
