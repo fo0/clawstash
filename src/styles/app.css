@@ -4569,9 +4569,19 @@ body {
     gap: 6px;
   }
 
-  .version-select {
+  .version-compare-bar .btn {
     width: 100%;
-    min-width: unset;
+    justify-content: center;
+  }
+
+  .version-radios {
+    width: 48px;
+    gap: 4px;
+  }
+
+  .version-radio input[type="radio"] {
+    width: 14px;
+    height: 14px;
   }
 
   .version-detail-header {
@@ -4866,33 +4876,109 @@ body {
 .version-compare-bar {
   display: flex;
   align-items: center;
+  justify-content: space-between;
   gap: 8px;
-  padding: 10px 12px;
+  padding: 10px 14px;
   background: var(--bg-secondary);
   border: 1px solid var(--border-color);
   border-radius: var(--radius);
-  flex-wrap: wrap;
 }
 
-.version-compare-label {
+.version-compare-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
   color: var(--text-secondary);
-  font-size: 13px;
-  font-weight: 500;
 }
 
-.version-select {
-  background: var(--bg-input);
-  color: var(--text-primary);
-  border: 1px solid var(--border-color);
-  border-radius: var(--radius);
-  padding: 4px 8px;
-  font-size: 13px;
-  min-width: 160px;
+.version-compare-info strong {
+  color: var(--accent-blue);
+  font-family: var(--font-mono);
 }
 
-.version-select:focus {
-  outline: none;
+.version-compare-arrow {
+  color: var(--text-muted);
+  margin: 0 2px;
+}
+
+.version-compare-hint {
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+/* Confluence-style radio button columns */
+.version-radios {
+  display: flex;
+  gap: 8px;
+  flex-shrink: 0;
+  width: 56px;
+  justify-content: center;
+}
+
+.version-radio {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  cursor: pointer;
+}
+
+.version-radio input[type="radio"] {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 16px;
+  height: 16px;
+  border: 2px solid var(--border-color);
+  border-radius: 50%;
+  background: var(--bg-primary);
+  cursor: pointer;
+  transition: border-color 0.15s, background-color 0.15s;
+  margin: 0;
+}
+
+.version-radio input[type="radio"]:hover:not(:disabled) {
   border-color: var(--accent-blue);
+}
+
+.version-radio input[type="radio"]:checked {
+  border-color: var(--accent-blue);
+  background: var(--accent-blue);
+  box-shadow: inset 0 0 0 3px var(--bg-primary);
+}
+
+.version-radio input[type="radio"]:disabled {
+  opacity: 0.25;
+  cursor: not-allowed;
+}
+
+.version-radio-label {
+  font-size: 11px;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  width: 24px;
+  text-align: center;
+}
+
+.version-list-header {
+  padding: 6px 14px;
+  background: var(--bg-tertiary);
+  border-bottom: 1px solid var(--border-color);
+}
+
+.version-list-header:hover {
+  background: var(--bg-tertiary);
+}
+
+.version-list-header-text {
+  font-size: 11px;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  font-weight: 600;
+  letter-spacing: 0.5px;
 }
 
 .version-list {
