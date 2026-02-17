@@ -203,18 +203,6 @@ export default function VersionHistory({ stashId, currentVersion, onRestore }: P
       {/* Compare action bar */}
       {hasMultipleVersions && (
         <div className="version-compare-bar">
-          <div className="version-compare-info">
-            <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor" style={{ flexShrink: 0 }}>
-              <path d="M9.573.677A.25.25 0 0 1 10 .854V4.5h3.25a.75.75 0 0 1 0 1.5H9.25a.75.75 0 0 1-.75-.75V1.104l-5.427 5.15a.25.25 0 0 0 0 .362l5.427 5.15V8.25a.75.75 0 0 1 .75-.75h3.5a.75.75 0 0 1 0 1.5H10v3.646a.25.25 0 0 1-.427.177l-6.39-6.064a1.75 1.75 0 0 1 0-2.539l6.39-6.064Z" />
-            </svg>
-            {canCompare ? (
-              <span>
-                Comparing <strong>v{compareFrom}</strong> <span className="version-compare-arrow">&rarr;</span> <strong>v{compareTo}</strong>
-              </span>
-            ) : (
-              <span className="version-compare-hint">Select two versions to compare</span>
-            )}
-          </div>
           <button
             className="btn btn-sm btn-secondary"
             onClick={handleCompare}
@@ -231,6 +219,15 @@ export default function VersionHistory({ stashId, currentVersion, onRestore }: P
               </>
             )}
           </button>
+          <div className="version-compare-info">
+            {canCompare ? (
+              <span>
+                Comparing <strong>v{compareFrom}</strong> <span className="version-compare-arrow">&rarr;</span> <strong>v{compareTo}</strong>
+              </span>
+            ) : (
+              <span className="version-compare-hint">Select two versions to compare</span>
+            )}
+          </div>
         </div>
       )}
 
