@@ -20,6 +20,7 @@ export async function GET(req: NextRequest, { params }: Params) {
     return NextResponse.json({ error: 'Provide two different positive version numbers as v1 and v2 query parameters' }, { status: 400 });
   }
 
+  // getStashVersion supports both historical versions and the current live version
   const version1 = db.getStashVersion(id, v1);
   const version2 = db.getStashVersion(id, v2);
   if (!version1 || !version2) {

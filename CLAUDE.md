@@ -125,7 +125,7 @@ clawstash/
 │   │   ├── StashCard.tsx       # Individual stash card component
 │   │   ├── StashViewer.tsx     # Stash detail view with file display, access log, version history
 │   │   ├── StashGraphCanvas.tsx # Stash graph canvas component
-│   │   ├── VersionHistory.tsx  # Version history list, compare selector, restore button
+│   │   ├── VersionHistory.tsx  # Version history list, Confluence-style inline comparison radios, restore button
 │   │   ├── VersionDiff.tsx     # GitHub-style diff view (green/red) using jsdiff
 │   │   ├── SearchOverlay.tsx   # Alt+K quick search overlay with keyboard navigation
 │   │   ├── LoginScreen.tsx     # Password login gate
@@ -198,11 +198,11 @@ npm run mcp                # Start MCP server (stdio transport)
 - `api_tokens` table stores API tokens (SHA-256 hashed, with scopes and prefix)
 - **Version History**: `stash_versions` + `stash_version_files` tables track every version of a stash
 - `stashes` table has `version` column (integer, starts at 1, incremented on every update)
-- `updateStash()` snapshots the current state into `stash_versions` before applying changes (within transaction)
-- `createStash()` sets `version=1` but does NOT create a version record (the stash IS v1; history starts on first update)
-- Auto-migration: existing stashes get `version=1` column added
-- `getStashVersions(id)` returns version list (descending) with file counts and sizes
-- `getStashVersion(id, version)` returns full version snapshot with file content
+- `createStash()` sets `version=1` AND creates a v1 record in `stash_versions` (initial state stored for comparison)
+- `updateStash()` snapshots the current state into `stash_versions` before applying changes (skips if version record already exists, e.g. v1 from creation)
+- Auto-migration: existing stashes get `version=1` column added; stashes without version records get v1 backfilled
+- `getStashVersions(id)` returns version list (descending) with file counts and sizes, includes current live version at top when newer than latest stored
+- `getStashVersion(id, version)` returns full version snapshot with file content; falls back to current live stash data if version matches current version
 - `restoreStashVersion(id, version)` restores an old version as a new update (creates new version)
 
 ### DB Singleton (src/server/singleton.ts)

@@ -23,16 +23,23 @@ export default function VersionHistory({ stashId, currentVersion, onRestore }: P
   const [restoring, setRestoring] = useState(false);
   const [confirmRestore, setConfirmRestore] = useState<number | null>(null);
 
-  // Diff state
-  const [diffV1, setDiffV1] = useState<number | null>(null);
-  const [diffV2, setDiffV2] = useState<number | null>(null);
+  // Confluence-style inline comparison: "From" (older) and "To" (newer)
+  const [compareFrom, setCompareFrom] = useState<number | null>(null);
+  const [compareTo, setCompareTo] = useState<number | null>(null);
   const [diffData, setDiffData] = useState<{ v1: StashVersion; v2: StashVersion } | null>(null);
   const [diffLoading, setDiffLoading] = useState(false);
 
   useEffect(() => {
     setLoading(true);
     api.getVersions(stashId)
-      .then(setVersions)
+      .then((v) => {
+        setVersions(v);
+        // Auto-select the two most recent versions for quick comparison
+        if (v.length >= 2) {
+          setCompareTo(v[0].version);
+          setCompareFrom(v[1].version);
+        }
+      })
       .catch(() => setVersions([]))
       .finally(() => setLoading(false));
   }, [stashId, currentVersion]);
@@ -51,10 +58,10 @@ export default function VersionHistory({ stashId, currentVersion, onRestore }: P
   };
 
   const handleCompare = async () => {
-    if (!diffV1 || !diffV2 || diffV1 === diffV2) return;
+    if (compareFrom === null || compareTo === null || compareFrom === compareTo) return;
     setDiffLoading(true);
     try {
-      const data = await api.getVersionDiff(stashId, Math.min(diffV1, diffV2), Math.max(diffV1, diffV2));
+      const data = await api.getVersionDiff(stashId, Math.min(compareFrom, compareTo), Math.max(compareFrom, compareTo));
       setDiffData(data);
       setSubView('diff');
     } catch {
@@ -86,6 +93,24 @@ export default function VersionHistory({ stashId, currentVersion, onRestore }: P
     setSubView('list');
     setSelectedVersion(null);
     setDiffData(null);
+  };
+
+  // Handle "From" radio change: ensure From < To
+  const handleFromChange = (version: number) => {
+    setCompareFrom(version);
+    // If From >= To, clear To
+    if (compareTo !== null && version >= compareTo) {
+      setCompareTo(null);
+    }
+  };
+
+  // Handle "To" radio change: ensure To > From
+  const handleToChange = (version: number) => {
+    setCompareTo(version);
+    // If To <= From, clear From
+    if (compareFrom !== null && version <= compareFrom) {
+      setCompareFrom(null);
+    }
   };
 
   if (loading) return <div className="loading"><Spinner /> Loading version history...</div>;
@@ -161,7 +186,7 @@ export default function VersionHistory({ stashId, currentVersion, onRestore }: P
             Back to versions
           </button>
           <span className="version-badge">v{diffData.v1.version}</span>
-          <span style={{ color: 'var(--text-muted)', margin: '0 4px' }}>vs</span>
+          <span style={{ color: 'var(--text-muted)', margin: '0 4px' }}>&rarr;</span>
           <span className="version-badge">v{diffData.v2.version}</span>
         </div>
         <VersionDiff v1={diffData.v1} v2={diffData.v2} />
@@ -169,79 +194,133 @@ export default function VersionHistory({ stashId, currentVersion, onRestore }: P
     );
   }
 
-  // List view
+  // Confluence-style list view with inline radio buttons
+  const canCompare = compareFrom !== null && compareTo !== null && compareFrom !== compareTo;
+  const hasMultipleVersions = versions.length >= 2;
+
   return (
     <div className="version-history">
-      <div className="version-compare-bar">
-        <span className="version-compare-label">Compare:</span>
-        <select
-          className="version-select"
-          value={diffV1 ?? ''}
-          onChange={(e) => setDiffV1(e.target.value ? parseInt(e.target.value, 10) : null)}
-        >
-          <option value="">Select version...</option>
-          {versions.map(v => (
-            <option key={v.version} value={v.version}>v{v.version} — {v.name || '(untitled)'}</option>
-          ))}
-        </select>
-        <span style={{ color: 'var(--text-muted)' }}>vs</span>
-        <select
-          className="version-select"
-          value={diffV2 ?? ''}
-          onChange={(e) => setDiffV2(e.target.value ? parseInt(e.target.value, 10) : null)}
-        >
-          <option value="">Select version...</option>
-          {versions.map(v => (
-            <option key={v.version} value={v.version}>v{v.version} — {v.name || '(untitled)'}</option>
-          ))}
-        </select>
-        <button
-          className="btn btn-sm btn-secondary"
-          onClick={handleCompare}
-          disabled={!diffV1 || !diffV2 || diffV1 === diffV2 || diffLoading}
-        >
-          {diffLoading ? 'Loading...' : 'Compare'}
-        </button>
-      </div>
-
-      <div className="version-list">
-        {versions.map((v) => (
-          <div
-            key={v.id}
-            className={`version-item ${v.version === currentVersion ? 'version-current' : ''}`}
+      {/* Compare action bar */}
+      {hasMultipleVersions && (
+        <div className="version-compare-bar">
+          <div className="version-compare-info">
+            <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor" style={{ flexShrink: 0 }}>
+              <path d="M9.573.677A.25.25 0 0 1 10 .854V4.5h3.25a.75.75 0 0 1 0 1.5H9.25a.75.75 0 0 1-.75-.75V1.104l-5.427 5.15a.25.25 0 0 0 0 .362l5.427 5.15V8.25a.75.75 0 0 1 .75-.75h3.5a.75.75 0 0 1 0 1.5H10v3.646a.25.25 0 0 1-.427.177l-6.39-6.064a1.75 1.75 0 0 1 0-2.539l6.39-6.064Z" />
+            </svg>
+            {canCompare ? (
+              <span>
+                Comparing <strong>v{compareFrom}</strong> <span className="version-compare-arrow">&rarr;</span> <strong>v{compareTo}</strong>
+              </span>
+            ) : (
+              <span className="version-compare-hint">Select two versions to compare</span>
+            )}
+          </div>
+          <button
+            className="btn btn-sm btn-secondary"
+            onClick={handleCompare}
+            disabled={!canCompare || diffLoading}
           >
+            {diffLoading ? (
+              <><Spinner size={12} /> Comparing...</>
+            ) : (
+              <>
+                <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor">
+                  <path d="M9.573.677A.25.25 0 0 1 10 .854V4.5h3.25a.75.75 0 0 1 0 1.5H9.25a.75.75 0 0 1-.75-.75V1.104l-5.427 5.15a.25.25 0 0 0 0 .362l5.427 5.15V8.25a.75.75 0 0 1 .75-.75h3.5a.75.75 0 0 1 0 1.5H10v3.646a.25.25 0 0 1-.427.177l-6.39-6.064a1.75 1.75 0 0 1 0-2.539l6.39-6.064Z" />
+                </svg>
+                Compare
+              </>
+            )}
+          </button>
+        </div>
+      )}
+
+      {/* Version list with inline comparison radios */}
+      <div className="version-list">
+        {/* Table header for radio columns */}
+        {hasMultipleVersions && (
+          <div className="version-item version-list-header">
+            <div className="version-radios">
+              <span className="version-radio-label" title="Select the older version (From)">From</span>
+              <span className="version-radio-label" title="Select the newer version (To)">To</span>
+            </div>
             <div className="version-item-left">
-              <span className="version-badge">v{v.version}</span>
-              <div className="version-item-info">
-                <span className="version-item-name">
-                  {v.name || '(untitled)'}
-                  {v.version === currentVersion && <span className="version-current-tag">current</span>}
-                </span>
-                <span className="version-item-meta">
-                  {v.created_by || 'system'} &middot; {formatRelativeTime(v.created_at)} &middot; {v.file_count} file{v.file_count !== 1 ? 's' : ''}
-                </span>
-              </div>
+              <span className="version-list-header-text">Version</span>
             </div>
             <div className="version-item-actions">
-              <button
-                className="btn btn-sm btn-ghost"
-                onClick={() => handleViewVersion(v.version)}
-                disabled={detailLoading}
-              >
-                View
-              </button>
-              {v.version !== currentVersion && (
-                <button
-                  className={`btn btn-sm ${confirmRestore === v.version ? 'btn-danger' : 'btn-ghost'}`}
-                  onClick={() => handleRestore(v.version)}
-                  disabled={restoring}
-                >
-                  {confirmRestore === v.version ? 'Confirm?' : 'Restore'}
-                </button>
-              )}
+              <span className="version-list-header-text">Actions</span>
             </div>
           </div>
-        ))}
+        )}
+
+        {versions.map((v, index) => {
+          const isCurrent = v.version === currentVersion;
+          const isFirst = index === versions.length - 1; // oldest version (list is desc)
+          const isLast = index === 0; // newest version (list is desc)
+
+          return (
+            <div
+              key={v.id}
+              className={`version-item ${isCurrent ? 'version-current' : ''}`}
+            >
+              {/* Comparison radio buttons */}
+              {hasMultipleVersions && (
+                <div className="version-radios">
+                  {/* "From" radio — disabled for the newest version (nothing newer to compare to) */}
+                  <label className="version-radio" title={`Compare from v${v.version}`}>
+                    <input
+                      type="radio"
+                      name="compare-from"
+                      checked={compareFrom === v.version}
+                      onChange={() => handleFromChange(v.version)}
+                      disabled={isLast || (compareTo !== null && v.version >= compareTo)}
+                    />
+                  </label>
+                  {/* "To" radio — disabled for the oldest version (nothing older to compare from) */}
+                  <label className="version-radio" title={`Compare to v${v.version}`}>
+                    <input
+                      type="radio"
+                      name="compare-to"
+                      checked={compareTo === v.version}
+                      onChange={() => handleToChange(v.version)}
+                      disabled={isFirst || (compareFrom !== null && v.version <= compareFrom)}
+                    />
+                  </label>
+                </div>
+              )}
+
+              <div className="version-item-left">
+                <span className="version-badge">v{v.version}</span>
+                <div className="version-item-info">
+                  <span className="version-item-name">
+                    {v.name || '(untitled)'}
+                    {isCurrent && <span className="version-current-tag">current</span>}
+                  </span>
+                  <span className="version-item-meta">
+                    {v.created_by === 'current' ? 'live' : v.created_by || 'system'} &middot; {formatRelativeTime(v.created_at)} &middot; {v.file_count} file{v.file_count !== 1 ? 's' : ''}
+                  </span>
+                </div>
+              </div>
+              <div className="version-item-actions">
+                <button
+                  className="btn btn-sm btn-ghost"
+                  onClick={() => handleViewVersion(v.version)}
+                  disabled={detailLoading}
+                >
+                  View
+                </button>
+                {!isCurrent && (
+                  <button
+                    className={`btn btn-sm ${confirmRestore === v.version ? 'btn-danger' : 'btn-ghost'}`}
+                    onClick={() => handleRestore(v.version)}
+                    disabled={restoring}
+                  >
+                    {confirmRestore === v.version ? 'Confirm?' : 'Restore'}
+                  </button>
+                )}
+              </div>
+            </div>
+          );
+        })}
       </div>
     </div>
   );
