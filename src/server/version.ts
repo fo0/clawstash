@@ -2,20 +2,18 @@
  * Version check utility — reads local build info and compares against
  * the latest commit on the GitHub main branch.
  *
- * Current version: read from dist/build-info.json (production) or git (development).
+ * Current version: read from build-info.json (production) or git (development).
  * Latest version:  fetched from GitHub Commits API (SHA comparison, not semver).
  * Results are cached for 1 hour to avoid excessive API calls.
  */
 import { readFileSync, existsSync } from 'fs';
 import { execSync } from 'child_process';
-import { fileURLToPath } from 'url';
 import path from 'path';
 
 // ---------------------------------------------------------------------------
 // Constants
 // ---------------------------------------------------------------------------
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const GITHUB_OWNER = 'fo0';
 const GITHUB_REPO = 'clawstash';
 const GITHUB_URL = `https://github.com/${GITHUB_OWNER}/${GITHUB_REPO}`;
@@ -37,9 +35,17 @@ function formatBuildVersion(isoDate: string): string {
   return `v${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(d.getDate())}-${pad(d.getHours())}${pad(d.getMinutes())}`;
 }
 
+function git(cmd: string): string {
+  try {
+    return execSync(cmd, { encoding: 'utf-8', stdio: ['pipe', 'pipe', 'pipe'] }).trim();
+  } catch {
+    return '';
+  }
+}
+
 function loadBuildInfo(): BuildInfo {
-  // Production: read from build-info.json (written during build)
-  const buildInfoPath = path.join(__dirname, '..', 'build-info.json');
+  // Production: read from build-info.json (written by prebuild script)
+  const buildInfoPath = path.join(process.cwd(), 'build-info.json');
   if (existsSync(buildInfoPath)) {
     try {
       return JSON.parse(readFileSync(buildInfoPath, 'utf-8'));
@@ -49,25 +55,18 @@ function loadBuildInfo(): BuildInfo {
   }
 
   // Development: read directly from git
-  let branch = '';
-  let commitHash = '';
-  try {
-    branch = execSync('git rev-parse --abbrev-ref HEAD', { encoding: 'utf-8', stdio: ['pipe', 'pipe', 'pipe'] }).trim();
-  } catch {
-    // git not available
-  }
-  try {
-    commitHash = execSync('git rev-parse --short HEAD', { encoding: 'utf-8', stdio: ['pipe', 'pipe', 'pipe'] }).trim();
-  } catch {
-    // git not available
-  }
+  const branch = process.env.BUILD_BRANCH || git('git rev-parse --abbrev-ref HEAD');
+  let commitHash = process.env.BUILD_COMMIT_SHA || git('git rev-parse --short HEAD');
 
   // Normalize to 7-char short hash (git may return more for uniqueness)
   if (commitHash.length > 7) {
     commitHash = commitHash.substring(0, 7);
   }
 
-  return { branch, commitHash, buildDate: new Date().toISOString() };
+  // Use git commit date so the version is stable across server restarts
+  const buildDate = git('git log -1 --format=%cI') || new Date().toISOString();
+
+  return { branch, commitHash, buildDate };
 }
 
 const buildInfo = loadBuildInfo();
