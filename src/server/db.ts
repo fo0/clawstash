@@ -771,12 +771,16 @@ export class ClawStashDB {
   }
 
   private buildFtsQuery(input: string): string {
-    const tokens = input.trim().split(/\s+/).filter(Boolean);
-    if (tokens.length === 0) return '';
+    // Guard against excessively long queries
+    const trimmed = input.trim();
+    if (trimmed.length > 2000) return '';
+
+    const tokens = trimmed.split(/\s+/).filter(Boolean);
+    if (tokens.length === 0 || tokens.length > 50) return '';
 
     return tokens.map(t => {
-      // Strip FTS5 special syntax characters to prevent query errors
-      const cleaned = t.replace(/['"()*{}[\]:^~!@#$%&\\<>,;]/g, '');
+      // Strip FTS5 special syntax characters (including +/- operators) to prevent query errors
+      const cleaned = t.replace(/['"()*{}[\]:^~!@#$%&\\<>+\-,;./|]/g, '');
       if (!cleaned) return null;
       // Prefix matching: "pyth" matches "python"
       return cleaned + '*';
@@ -791,8 +795,19 @@ export class ClawStashDB {
       return { stashes: [], total: 0, query };
     }
 
+    // Run FTS5 query — may throw on syntax errors despite sanitization
+    let countRow: { count: number };
+    let rows: {
+      stash_id: string;
+      rank: number;
+      name_snippet: string;
+      desc_snippet: string;
+      tags_snippet: string;
+      filenames_snippet: string;
+      content_snippet: string;
+    }[];
+
     try {
-      // Count total matches
       let countSql = `
         SELECT COUNT(*) as count
         FROM stashes_fts f
@@ -807,9 +822,8 @@ export class ClawStashDB {
         countParams.push(`%"${escapedTag}"%`);
       }
 
-      const countRow = this.db.prepare(countSql).get(...countParams) as { count: number };
+      countRow = this.db.prepare(countSql).get(...countParams) as { count: number };
 
-      // Search with BM25 ranking and snippets
       let sql = `
         SELECT f.stash_id, f.rank,
           snippet(stashes_fts, 1, '**', '**', '…', 32) as name_snippet,
@@ -833,45 +847,9 @@ export class ClawStashDB {
       sql += ` ORDER BY f.rank LIMIT ? OFFSET ?`;
       params.push(limit, offset);
 
-      const rows = this.db.prepare(sql).all(...params) as {
-        stash_id: string;
-        rank: number;
-        name_snippet: string;
-        desc_snippet: string;
-        tags_snippet: string;
-        filenames_snippet: string;
-        content_snippet: string;
-      }[];
-
-      // Build results with full stash list info
-      const stashes: SearchStashItem[] = rows.map(row => {
-        const stashRow = this.db.prepare('SELECT * FROM stashes WHERE id = ?').get(row.stash_id) as Record<string, unknown>;
-        const item = this.rowToListItem(stashRow);
-        const files = this.db
-          .prepare('SELECT filename, language, LENGTH(content) as size FROM stash_files WHERE stash_id = ? ORDER BY sort_order')
-          .all(item.id) as StashFileInfo[];
-        const total_size = files.reduce((sum, f) => sum + f.size, 0);
-
-        // Only include snippets that contain highlighted matches
-        const snippets: Record<string, string> = {};
-        if (row.name_snippet && row.name_snippet.includes('**')) snippets.name = row.name_snippet;
-        if (row.desc_snippet && row.desc_snippet.includes('**')) snippets.description = row.desc_snippet;
-        if (row.tags_snippet && row.tags_snippet.includes('**')) snippets.tags = row.tags_snippet;
-        if (row.filenames_snippet && row.filenames_snippet.includes('**')) snippets.filenames = row.filenames_snippet;
-        if (row.content_snippet && row.content_snippet.includes('**')) snippets.file_content = row.content_snippet;
-
-        return {
-          ...item,
-          total_size,
-          files,
-          relevance: Math.abs(row.rank),
-          snippets: Object.keys(snippets).length > 0 ? snippets : undefined,
-        };
-      });
-
-      return { stashes, total: countRow.count, query };
+      rows = this.db.prepare(sql).all(...params) as typeof rows;
     } catch {
-      // FTS5 query syntax error → fall back to LIKE-based search
+      // FTS5 MATCH syntax error → fall back to LIKE-based search
       const fallback = this.listStashes({ search: query, tag, limit, page });
       return {
         stashes: fallback.stashes.map(s => ({ ...s, relevance: 0 })),
@@ -879,6 +857,34 @@ export class ClawStashDB {
         query,
       };
     }
+
+    // Build results with full stash list info (outside try/catch so real DB errors propagate)
+    const stashes: SearchStashItem[] = rows.map(row => {
+      const stashRow = this.db.prepare('SELECT * FROM stashes WHERE id = ?').get(row.stash_id) as Record<string, unknown>;
+      const item = this.rowToListItem(stashRow);
+      const files = this.db
+        .prepare('SELECT filename, language, LENGTH(content) as size FROM stash_files WHERE stash_id = ? ORDER BY sort_order')
+        .all(item.id) as StashFileInfo[];
+      const total_size = files.reduce((sum, f) => sum + f.size, 0);
+
+      // Only include snippets that contain highlighted matches
+      const snippets: Record<string, string> = {};
+      if (row.name_snippet && row.name_snippet.includes('**')) snippets.name = row.name_snippet;
+      if (row.desc_snippet && row.desc_snippet.includes('**')) snippets.description = row.desc_snippet;
+      if (row.tags_snippet && row.tags_snippet.includes('**')) snippets.tags = row.tags_snippet;
+      if (row.filenames_snippet && row.filenames_snippet.includes('**')) snippets.filenames = row.filenames_snippet;
+      if (row.content_snippet && row.content_snippet.includes('**')) snippets.file_content = row.content_snippet;
+
+      return {
+        ...item,
+        total_size,
+        files,
+        relevance: Math.abs(row.rank),
+        snippets: Object.keys(snippets).length > 0 ? snippets : undefined,
+      };
+    });
+
+    return { stashes, total: countRow.count, query };
   }
 
   updateStash(id: string, input: UpdateStashInput, createdBy = 'system'): Stash | null {
