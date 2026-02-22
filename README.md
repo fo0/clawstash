@@ -15,11 +15,24 @@ AI agents lose context between sessions. ClawStash gives them a persistent memor
 - **Version history** — every change is tracked, diffable, and restorable
 - **Web GUI included** — dark-themed dashboard to browse, search, and manage stashes manually
 
-## Quick Start
+## OpenClaw Setup (recommended)
 
-### Docker — pre-built image (recommended)
+Your agent handles everything — container install, token creation, test stashes, and MCP setup. Copy this into your OpenClaw agent:
 
-No clone needed. Run this one-liner to create everything and start:
+```
+Install ClawStash (ghcr.io/fo0/clawstash) on my server and set it up as your default persistent storage via MCP. Server: <HOST_OR_IP>, User: <SSH_USER>, Auth: <PASSWORD_OR_KEY>. Use port <PORT> (docker compose port mapping "<PORT>:3000"). Set ADMIN_PASSWORD to a secure value. After install: create an API token (scopes: read, write, mcp), create 2 test stashes to verify, then fetch /api/mcp-onboarding to read the full MCP spec and configure yourself. Details: https://raw.githubusercontent.com/fo0/clawstash/main/docs/openclaw-onboarding-prompt.md
+```
+
+Replace the `<...>` placeholders with your server details. Your agent will SSH in, deploy the container, and configure itself end-to-end.
+
+> Step-by-step version of this prompt: [docs/openclaw-onboarding-prompt.md](docs/openclaw-onboarding-prompt.md)
+
+## Manual Setup
+
+<details>
+<summary><strong>Docker — pre-built image</strong></summary>
+
+No clone needed:
 
 ```bash
 mkdir clawstash && cd clawstash && cat > docker-compose.yml <<'EOF'
@@ -43,7 +56,10 @@ Open http://localhost:3000 — done. Database is stored in `./data/`.
 
 > Change the port mapping (e.g. `"8080:3000"`) to run on a different port. Uncomment `ADMIN_PASSWORD` to protect the instance.
 
-### Docker — from source
+</details>
+
+<details>
+<summary><strong>Docker — from source</strong></summary>
 
 ```bash
 git clone https://github.com/fo0/clawstash.git
@@ -53,7 +69,10 @@ docker compose up -d
 
 Builds the image locally and starts on http://localhost:3000.
 
-### Node.js
+</details>
+
+<details>
+<summary><strong>Node.js (development)</strong></summary>
 
 ```bash
 git clone https://github.com/fo0/clawstash.git
@@ -64,41 +83,7 @@ npm run dev
 
 Runs on http://localhost:3000.
 
-## OpenClaw Onboarding
-
-Copy this prompt into your OpenClaw agent — it handles everything: server install, token creation, test stashes, and MCP setup.
-
-> Full prompt with step-by-step details: [docs/openclaw-onboarding-prompt.md](docs/openclaw-onboarding-prompt.md)
-
-<details>
-<summary><strong>Show onboarding prompt</strong></summary>
-
-```
-Install ClawStash on my server and set it up as your persistent storage.
-
-Server: <HOST_OR_IP>
-User: <SSH_USER>
-Auth: <PASSWORD_OR_KEY>
-
-Steps:
-1. SSH into the server
-2. Install Docker + Docker Compose if missing
-3. mkdir clawstash && cd clawstash — create a docker-compose.yml using
-   image: ghcr.io/fo0/clawstash:latest with volume ./data:/app/data
-   Set ADMIN_PASSWORD and port mapping "<YOUR_PORT>:3000"
-4. docker compose up -d
-6. Create API token via /api/admin/auth + /api/tokens (scopes: read, write, mcp)
-7. Create test stashes via REST API to verify the setup works
-8. Fetch http://<HOST_OR_IP>:<PORT>/api/mcp-onboarding — read the full spec
-9. Configure MCP: Streamable HTTP at http://<HOST_OR_IP>:<PORT>/mcp with Bearer token
-10. Test via MCP: get_stats, list_stashes, search_stashes "onboarding"
-
-From now on, use ClawStash as your default persistent storage via MCP.
-```
-
 </details>
-
-Replace `<HOST_OR_IP>`, `<SSH_USER>`, and `<PASSWORD_OR_KEY>` with your server details. Your agent will ask for anything else it needs, install ClawStash, create test stashes, read the MCP spec, and configure itself.
 
 ## Connect Your AI Agent
 
@@ -249,6 +234,7 @@ See [docs/deployment.md](docs/deployment.md) for production setup, CI/CD, and Do
 | [MCP Guide](docs/mcp.md) | MCP tools, token-efficient patterns, transport options |
 | [Authentication](docs/authentication.md) | Admin login, API tokens, scopes, security |
 | [Deployment](docs/deployment.md) | Docker, production, CI/CD, GHCR |
+| [OpenClaw Onboarding](docs/openclaw-onboarding-prompt.md) | Copy-paste prompt for full agent-driven setup |
 | [Contributing](CONTRIBUTING.md) | Development setup, code style, PRs |
 | [Changelog](CHANGELOG.md) | Version history |
 | [Security](SECURITY.md) | Vulnerability reporting |
