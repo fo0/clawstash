@@ -18,22 +18,30 @@ Install ClawStash on my server and set it up as your persistent storage.
 
 2. **Install prerequisites** if not present:
    - Docker and Docker Compose (check with `docker compose version`)
-   - Git (check with `git --version`)
 
-3. **Clone and start ClawStash:**
+3. **Create and start ClawStash** (pre-built image, no clone needed):
    ```bash
-   git clone https://github.com/fo0/clawstash.git
-   cd clawstash
-   cp .env.example .env
+   mkdir -p clawstash && cd clawstash
+   cat > docker-compose.yml <<'COMPOSE'
+   services:
+     clawstash:
+       image: ghcr.io/fo0/clawstash:latest
+       ports:
+         - "<PORT>:3000"
+       volumes:
+         - ./data:/app/data
+       environment:
+         - NODE_ENV=production
+         - DATABASE_PATH=/app/data/clawstash.db
+         - ADMIN_PASSWORD=<ADMIN_PASSWORD>
+       restart: unless-stopped
+   COMPOSE
    ```
+   - Replace `<PORT>` with the desired external port (e.g. `3000`, `8080`)
+     Left side = external port you access, right side stays `3000` (container internal)
+   - Replace `<ADMIN_PASSWORD>` with a secure password
 
-4. **Configure the instance** — edit `.env`:
-   - Set `ADMIN_PASSWORD` to a secure password
-   - Set `PORT` if you need a different port than 3000
-   - If you change the port, also update `docker-compose.yml` port mapping:
-     `"<YOUR_PORT>:3000"` (left side = external port, right side stays 3000)
-
-5. **Start the service:**
+4. **Start the service:**
    ```bash
    docker compose up -d
    ```
