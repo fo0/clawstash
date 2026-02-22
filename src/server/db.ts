@@ -140,6 +140,17 @@ export interface ListStashesOptions {
   limit?: number;
 }
 
+export interface SearchStashItem extends StashListItem {
+  relevance: number;
+  snippets?: Record<string, string>;
+}
+
+export interface SearchStashesResult {
+  stashes: SearchStashItem[];
+  total: number;
+  query: string;
+}
+
 export interface TagGraphOptions {
   tag?: string;
   depth?: number;
@@ -334,7 +345,47 @@ const MIGRATIONS: Migration[] = [
 
       console.log(`[DB] Backfilled initial version records for ${stashes.length} stash(es)`);
     }
-  }
+  },
+  {
+    version: 8,
+    name: 'add_fts5_search_index',
+    up: (db) => {
+      // Create FTS5 virtual table for ranked full-text search
+      db.exec(`
+        CREATE VIRTUAL TABLE IF NOT EXISTS stashes_fts USING fts5(
+          stash_id UNINDEXED,
+          name,
+          description,
+          tags,
+          filenames,
+          file_content,
+          tokenize='porter unicode61'
+        );
+      `);
+
+      // Backfill existing stashes
+      const stashes = db.prepare('SELECT id, name, description, tags FROM stashes').all() as {
+        id: string; name: string; description: string; tags: string;
+      }[];
+
+      const insertFts = db.prepare(`
+        INSERT INTO stashes_fts (stash_id, name, description, tags, filenames, file_content)
+        VALUES (?, ?, ?, ?, ?, ?)
+      `);
+
+      for (const s of stashes) {
+        const files = db.prepare('SELECT filename, content FROM stash_files WHERE stash_id = ? ORDER BY sort_order').all(s.id) as {
+          filename: string; content: string;
+        }[];
+        const filenames = files.map(f => f.filename).join(' ');
+        const fileContent = files.map(f => f.content).join('\n');
+        const tags = (JSON.parse(s.tags) as string[]).join(' ');
+        insertFts.run(s.id, s.name, s.description, tags, filenames, fileContent);
+      }
+
+      console.log(`[DB] FTS5 search index created and backfilled for ${stashes.length} stash(es)`);
+    }
+  },
 ];
 
 export class ClawStashDB {
@@ -573,8 +624,9 @@ export class ClawStashDB {
 
     const files = transaction();
 
-    // Update stash relations for new stash
+    // Update stash relations and FTS index for new stash
     this.updateStashRelations(id, input.tags || []);
+    this.syncFtsIndex(id);
 
     return {
       id,
@@ -665,6 +717,168 @@ export class ClawStashDB {
     });
 
     return { stashes, total: countRow.count };
+  }
+
+  // === FTS5 Full-Text Search ===
+
+  private syncFtsIndex(stashId: string): void {
+    this.db.prepare('DELETE FROM stashes_fts WHERE stash_id = ?').run(stashId);
+
+    const stash = this.db.prepare('SELECT name, description, tags FROM stashes WHERE id = ?').get(stashId) as {
+      name: string; description: string; tags: string;
+    } | undefined;
+    if (!stash) return;
+
+    const files = this.db.prepare('SELECT filename, content FROM stash_files WHERE stash_id = ? ORDER BY sort_order').all(stashId) as {
+      filename: string; content: string;
+    }[];
+
+    const filenames = files.map(f => f.filename).join(' ');
+    const fileContent = files.map(f => f.content).join('\n');
+    const tags = (JSON.parse(stash.tags) as string[]).join(' ');
+
+    this.db.prepare(`
+      INSERT INTO stashes_fts (stash_id, name, description, tags, filenames, file_content)
+      VALUES (?, ?, ?, ?, ?, ?)
+    `).run(stashId, stash.name, stash.description, tags, filenames, fileContent);
+  }
+
+  private removeFtsIndex(stashId: string): void {
+    this.db.prepare('DELETE FROM stashes_fts WHERE stash_id = ?').run(stashId);
+  }
+
+  rebuildFtsIndex(): void {
+    this.db.prepare('DELETE FROM stashes_fts').run();
+
+    const stashes = this.db.prepare('SELECT id, name, description, tags FROM stashes').all() as {
+      id: string; name: string; description: string; tags: string;
+    }[];
+
+    const insertFts = this.db.prepare(`
+      INSERT INTO stashes_fts (stash_id, name, description, tags, filenames, file_content)
+      VALUES (?, ?, ?, ?, ?, ?)
+    `);
+
+    for (const s of stashes) {
+      const files = this.db.prepare('SELECT filename, content FROM stash_files WHERE stash_id = ? ORDER BY sort_order').all(s.id) as {
+        filename: string; content: string;
+      }[];
+      const filenames = files.map(f => f.filename).join(' ');
+      const fileContent = files.map(f => f.content).join('\n');
+      const tags = (JSON.parse(s.tags) as string[]).join(' ');
+      insertFts.run(s.id, s.name, s.description, tags, filenames, fileContent);
+    }
+  }
+
+  private buildFtsQuery(input: string): string {
+    const tokens = input.trim().split(/\s+/).filter(Boolean);
+    if (tokens.length === 0) return '';
+
+    return tokens.map(t => {
+      // Strip FTS5 special syntax characters to prevent query errors
+      const cleaned = t.replace(/['"()*{}[\]:^~!@#$%&\\<>,;]/g, '');
+      if (!cleaned) return null;
+      // Prefix matching: "pyth" matches "python"
+      return cleaned + '*';
+    }).filter(Boolean).join(' ');
+  }
+
+  searchStashes(query: string, options: { tag?: string; limit?: number; page?: number } = {}): SearchStashesResult {
+    const { tag, limit = 20, page = 1 } = options;
+    const ftsQuery = this.buildFtsQuery(query);
+
+    if (!ftsQuery) {
+      return { stashes: [], total: 0, query };
+    }
+
+    try {
+      // Count total matches
+      let countSql = `
+        SELECT COUNT(*) as count
+        FROM stashes_fts f
+        JOIN stashes s ON s.id = f.stash_id
+        WHERE stashes_fts MATCH ?
+      `;
+      const countParams: unknown[] = [ftsQuery];
+
+      if (tag) {
+        countSql += ` AND s.tags LIKE ? ESCAPE '\\'`;
+        const escapedTag = tag.replace(/[\\%_]/g, '\\$&');
+        countParams.push(`%"${escapedTag}"%`);
+      }
+
+      const countRow = this.db.prepare(countSql).get(...countParams) as { count: number };
+
+      // Search with BM25 ranking and snippets
+      let sql = `
+        SELECT f.stash_id, f.rank,
+          snippet(stashes_fts, 1, '**', '**', '…', 32) as name_snippet,
+          snippet(stashes_fts, 2, '**', '**', '…', 64) as desc_snippet,
+          snippet(stashes_fts, 3, '**', '**', '…', 32) as tags_snippet,
+          snippet(stashes_fts, 4, '**', '**', '…', 32) as filenames_snippet,
+          snippet(stashes_fts, 5, '**', '**', '…', 64) as content_snippet
+        FROM stashes_fts f
+        JOIN stashes s ON s.id = f.stash_id
+        WHERE stashes_fts MATCH ?
+      `;
+      const params: unknown[] = [ftsQuery];
+
+      if (tag) {
+        sql += ` AND s.tags LIKE ? ESCAPE '\\'`;
+        const escapedTag = tag.replace(/[\\%_]/g, '\\$&');
+        params.push(`%"${escapedTag}"%`);
+      }
+
+      const offset = (page - 1) * limit;
+      sql += ` ORDER BY f.rank LIMIT ? OFFSET ?`;
+      params.push(limit, offset);
+
+      const rows = this.db.prepare(sql).all(...params) as {
+        stash_id: string;
+        rank: number;
+        name_snippet: string;
+        desc_snippet: string;
+        tags_snippet: string;
+        filenames_snippet: string;
+        content_snippet: string;
+      }[];
+
+      // Build results with full stash list info
+      const stashes: SearchStashItem[] = rows.map(row => {
+        const stashRow = this.db.prepare('SELECT * FROM stashes WHERE id = ?').get(row.stash_id) as Record<string, unknown>;
+        const item = this.rowToListItem(stashRow);
+        const files = this.db
+          .prepare('SELECT filename, language, LENGTH(content) as size FROM stash_files WHERE stash_id = ? ORDER BY sort_order')
+          .all(item.id) as StashFileInfo[];
+        const total_size = files.reduce((sum, f) => sum + f.size, 0);
+
+        // Only include snippets that contain highlighted matches
+        const snippets: Record<string, string> = {};
+        if (row.name_snippet && row.name_snippet.includes('**')) snippets.name = row.name_snippet;
+        if (row.desc_snippet && row.desc_snippet.includes('**')) snippets.description = row.desc_snippet;
+        if (row.tags_snippet && row.tags_snippet.includes('**')) snippets.tags = row.tags_snippet;
+        if (row.filenames_snippet && row.filenames_snippet.includes('**')) snippets.filenames = row.filenames_snippet;
+        if (row.content_snippet && row.content_snippet.includes('**')) snippets.file_content = row.content_snippet;
+
+        return {
+          ...item,
+          total_size,
+          files,
+          relevance: Math.abs(row.rank),
+          snippets: Object.keys(snippets).length > 0 ? snippets : undefined,
+        };
+      });
+
+      return { stashes, total: countRow.count, query };
+    } catch {
+      // FTS5 query syntax error → fall back to LIKE-based search
+      const fallback = this.listStashes({ search: query, tag, limit, page });
+      return {
+        stashes: fallback.stashes.map(s => ({ ...s, relevance: 0 })),
+        total: fallback.total,
+        query,
+      };
+    }
   }
 
   updateStash(id: string, input: UpdateStashInput, createdBy = 'system'): Stash | null {
@@ -760,15 +974,19 @@ export class ClawStashDB {
 
     transaction();
 
-    // Update stash relations if tags changed
+    // Update stash relations and FTS index
     const finalTags = input.tags !== undefined ? input.tags : existing.tags;
     this.updateStashRelations(id, finalTags);
+    this.syncFtsIndex(id);
 
     return this.getStash(id);
   }
 
   deleteStash(id: string): boolean {
     const result = this.db.prepare('DELETE FROM stashes WHERE id = ?').run(id);
+    if (result.changes > 0) {
+      this.removeFtsIndex(id);
+    }
     return result.changes > 0;
   }
 
@@ -1345,8 +1563,9 @@ export class ClawStashDB {
       this.db.exec('DELETE FROM stash_files');
       this.db.exec('DELETE FROM stashes');
 
-      // Also clear stash_relations if it exists
+      // Also clear stash_relations and FTS index
       try { this.db.exec('DELETE FROM stash_relations'); } catch (_) { /* table may not exist */ }
+      try { this.db.exec('DELETE FROM stashes_fts'); } catch (_) { /* table may not exist */ }
 
       let stashCount = 0;
       let fileCount = 0;
@@ -1396,7 +1615,9 @@ export class ClawStashDB {
       return { stashes: stashCount, files: fileCount, versions: versionCount, versionFiles: versionFileCount };
     });
 
-    return tx();
+    const result = tx();
+    this.rebuildFtsIndex();
+    return result;
   }
 
   close() {

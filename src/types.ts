@@ -36,6 +36,17 @@ export interface StashListResponse {
   total: number;
 }
 
+export interface SearchStashItem extends StashListItem {
+  relevance: number;
+  snippets?: Record<string, string>;
+}
+
+export interface SearchStashesResponse {
+  stashes: SearchStashItem[];
+  total: number;
+  query: string;
+}
+
 export interface CreateStashInput {
   name?: string;
   description?: string;

@@ -165,14 +165,14 @@ ${TOKEN_EFFICIENT_GUIDE}`,
     }
   );
 
-  // Search stashes
+  // Search stashes (FTS5 with BM25 ranking + snippets)
   const searchDef = getToolDef('search_stashes');
   server.tool(
     searchDef.name,
     searchDef.description,
     searchDef.schema.shape,
-    async ({ query, limit }) => {
-      const result = db.listStashes({ search: query, limit: limit || 20 });
+    async ({ query, tag, limit, page }) => {
+      const result = db.searchStashes(query, { tag, limit: limit || 20, page });
       return {
         content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
       };
