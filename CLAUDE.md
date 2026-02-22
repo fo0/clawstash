@@ -53,6 +53,11 @@ clawstash/
 ├── agent_docs/                 # Agent process documentation
 │   ├── review_process.md       # Mandatory review process after every implementation
 │   └── backlog_process.md      # Backlog tracking rules and format
+├── docs/                       # User-facing documentation (split from README)
+│   ├── api-reference.md        # REST API endpoints, examples, query parameters
+│   ├── mcp.md                  # MCP tools, token-efficient patterns, transport options
+│   ├── deployment.md           # Docker, production, CI/CD, GHCR setup
+│   └── authentication.md       # Admin login, API tokens, scopes, security
 ├── .github/
 │   └── workflows/
 │       └── docker-publish.yml  # CI: Type-check, build, push to GHCR
@@ -512,6 +517,10 @@ After every code change, check and update:
 | File | Update when... |
 |------|---------------|
 | `CLAUDE.md` | New components, config files, patterns, or technical details |
-| `README.md` | New features, API endpoints, environment variables for users |
+| `README.md` | New features, value proposition, onboarding changes for users |
+| `docs/api-reference.md` | New API endpoints, query parameters, examples |
+| `docs/mcp.md` | New MCP tools, transport options, usage patterns |
+| `docs/deployment.md` | Docker, CI/CD, or production setup changes |
+| `docs/authentication.md` | Auth flow, token, or scope changes |
 | `BACKLOG.md` | Unresolved review findings (Accepted/Deferred) — see `agent_docs/backlog_process.md` |
 | `.env.example` | New configuration options added |
