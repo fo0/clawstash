@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getDb } from '@/server/singleton';
 import { checkScope, getAccessSource } from '@/app/api/_helpers';
 
-// GET /api/stashes - List stashes
+// GET /api/stashes - List stashes (FTS5 ranked search when search query is present)
 export async function GET(req: NextRequest) {
   const scope = checkScope(req, 'read');
   if (!scope.ok) return scope.response;
@@ -14,7 +14,13 @@ export async function GET(req: NextRequest) {
   const page = searchParams.get('page') ? parseInt(searchParams.get('page')!, 10) : undefined;
   const limit = searchParams.get('limit') ? parseInt(searchParams.get('limit')!, 10) : undefined;
 
-  const result = db.listStashes({ search, tag, page, limit });
+  // Use FTS5 ranked search when a search query is present
+  if (search) {
+    const result = db.searchStashes(search, { tag, page, limit });
+    return NextResponse.json(result);
+  }
+
+  const result = db.listStashes({ tag, page, limit });
   return NextResponse.json(result);
 }
 

@@ -188,6 +188,10 @@ npm run mcp                # Start MCP server (stdio transport)
 - JSON columns for tags (array) and metadata (object) stored as TEXT
 - Transactions for multi-table operations (stash + files)
 - Language auto-detection from file extension
+- **FTS5 Full-Text Search**: `stashes_fts` virtual table indexes name, description, tags, filenames, and file content with Porter stemming and unicode61 tokenizer
+- `searchStashes(query, options)` returns BM25-ranked results with match snippets (`**highlighted**` markdown); falls back to LIKE search on FTS syntax error
+- FTS index auto-synced on `createStash()`, `updateStash()`, `deleteStash()`, and `importAllData()` (full rebuild via `rebuildFtsIndex()`)
+- `buildFtsQuery()` sanitizes user input, strips FTS5 special chars, adds prefix matching (`word*`), implicit AND for multi-word queries
 - `listStashes` returns `StashListItem[]` (summary without metadata/file content, includes file sizes and total_size)
 - `getStashMeta(id)` returns stash with metadata + file info (filename, language, size) and total_size, without file content
 - `getStashFile(stashId, filename)` returns a single file's content by stash ID and filename
@@ -399,7 +403,7 @@ npm run mcp                # Start MCP server (stdio transport)
 
 | Endpoint | Method | Description |
 |----------|--------|-------------|
-| `/api/stashes` | GET | List stashes as summary (query: `?search=&tag=&page=&limit=`) |
+| `/api/stashes` | GET | List stashes (query: `?search=&tag=&page=&limit=`). With `search`: FTS5 ranked results with snippets. Without: recency-sorted list. |
 | `/api/stashes` | POST | Create a new stash |
 | `/api/stashes/stats` | GET | Get storage statistics |
 | `/api/stashes/tags` | GET | List all tags with counts |
@@ -441,7 +445,7 @@ npm run mcp                # Start MCP server (stdio transport)
 | `list_stashes` | List/search stashes with filters. Returns summaries with file sizes (no content). |
 | `update_stash` | Update an existing stash. Returns confirmation only. |
 | `delete_stash` | Delete a stash. |
-| `search_stashes` | Full-text search across all stashes. Returns summaries with file sizes (no content). |
+| `search_stashes` | FTS5 full-text search with BM25 ranking, Porter stemming, prefix matching, and match snippets. Supports tag filter. |
 | `list_tags` | List all tags with usage counts. |
 | `get_tag_graph` | Get tag relationship graph with optional focus tag, depth traversal, min_weight, min_count, limit filters. |
 | `get_stats` | Get storage statistics. |
@@ -452,7 +456,8 @@ npm run mcp                # Start MCP server (stdio transport)
 
 ### Token-Efficient MCP Data Flow
 
-- `list_stashes`/`search_stashes` → summaries with file sizes (no content)
+- `list_stashes` → summaries with file sizes (no content), sorted by recency
+- `search_stashes` → BM25-ranked results with relevance scores and match snippets (no file content)
 - `read_stash` → metadata + file list with sizes (no content by default)
 - `read_stash_file` → selective single-file content access
 - `read_stash(include_content=true)` → full content (only for small stashes)
