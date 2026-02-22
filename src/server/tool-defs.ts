@@ -147,17 +147,25 @@ Important:
   },
   {
     name: 'search_stashes',
-    description: `Full-text search across stash names, descriptions, filenames, and file content. Returns matching stash summaries (no file content).
+    description: `Full-text search across stash names, descriptions, tags, filenames, and file content. Uses FTS5 with BM25 relevance ranking — results are sorted by best match, not recency.
 
-This is the best tool for finding stashes when you don't know the ID. The search is case-insensitive and matches partial strings.
+This is the best tool for finding stashes when you don't know the ID.
 
-Results include file names with sizes so you can decide which stashes and files to read in detail.
+Search features:
+- Multi-word: "python config" finds stashes containing both words (AND logic).
+- Stemming: "running" also matches "run", "runs", "runner" (Porter stemmer).
+- Prefix matching: partial words match automatically (e.g. "pyth" matches "python").
+- Ranked results: most relevant stashes appear first (BM25 scoring).
+
+Each result includes a relevance score and match snippets (with **highlighted** terms) showing where and why the stash matched. Use these to decide which stashes to read in detail.
 Use read_stash to get full stash metadata, or read_stash_file to read specific file content.`,
     schema: z.object({
-      query: z.string().describe('Search text (matches against name, description, filenames, and file content)'),
+      query: z.string().describe('Search text — multiple words are AND-combined. Supports stemming and prefix matching.'),
+      tag: z.string().optional().describe('Additionally filter results by tag (exact match). Combine with query for precise results.'),
       limit: z.number().optional().describe('Maximum number of results (default: 20)'),
+      page: z.number().optional().describe('Page number for pagination (default: 1)'),
     }),
-    returns: '{ stashes: StashListItem[], total: number }',
+    returns: '{ stashes: SearchStashItem[], total: number, query: string } — each stash includes relevance score and match snippets',
   },
   {
     name: 'list_tags',
