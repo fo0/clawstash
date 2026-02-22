@@ -17,7 +17,33 @@ AI agents lose context between sessions. ClawStash gives them a persistent memor
 
 ## Quick Start
 
-### Docker (recommended)
+### Docker — pre-built image (recommended)
+
+No clone needed. Run this one-liner to create everything and start:
+
+```bash
+mkdir clawstash && cd clawstash && cat > docker-compose.yml <<'EOF'
+services:
+  clawstash:
+    image: ghcr.io/fo0/clawstash:latest
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./data:/app/data
+    environment:
+      - NODE_ENV=production
+      - DATABASE_PATH=/app/data/clawstash.db
+      # - ADMIN_PASSWORD=your-secret-password
+    restart: unless-stopped
+EOF
+docker compose up -d
+```
+
+Open http://localhost:3000 — done. Database is stored in `./data/`.
+
+> Change the port mapping (e.g. `"8080:3000"`) to run on a different port. Uncomment `ADMIN_PASSWORD` to protect the instance.
+
+### Docker — from source
 
 ```bash
 git clone https://github.com/fo0/clawstash.git
@@ -25,7 +51,7 @@ cd clawstash
 docker compose up -d
 ```
 
-Open http://localhost:3000 — done.
+Builds the image locally and starts on http://localhost:3000.
 
 ### Node.js
 
@@ -56,11 +82,11 @@ Auth: <PASSWORD_OR_KEY>
 
 Steps:
 1. SSH into the server
-2. Install Docker + Git if missing
-3. git clone https://github.com/fo0/clawstash.git && cd clawstash
-4. cp .env.example .env — set ADMIN_PASSWORD, adjust PORT if needed
-   (update docker-compose.yml port mapping: "<YOUR_PORT>:3000")
-5. docker compose up -d
+2. Install Docker + Docker Compose if missing
+3. mkdir clawstash && cd clawstash — create a docker-compose.yml using
+   image: ghcr.io/fo0/clawstash:latest with volume ./data:/app/data
+   Set ADMIN_PASSWORD and port mapping "<YOUR_PORT>:3000"
+4. docker compose up -d
 6. Create API token via /api/admin/auth + /api/tokens (scopes: read, write, mcp)
 7. Create test stashes via REST API to verify the setup works
 8. Fetch http://<HOST_OR_IP>:<PORT>/api/mcp-onboarding — read the full spec
