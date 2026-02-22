@@ -15,10 +15,10 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'No file uploaded' }, { status: 400 });
     }
 
-    const arrayBuffer = await file.arrayBuffer();
-    if (arrayBuffer.byteLength > MAX_IMPORT_SIZE) {
+    if (file.size > MAX_IMPORT_SIZE) {
       return NextResponse.json({ error: 'Import file too large (max 100MB)' }, { status: 413 });
     }
+    const arrayBuffer = await file.arrayBuffer();
     const buffer = Buffer.from(arrayBuffer);
     const zip = new AdmZip(buffer);
     const entries = zip.getEntries();
