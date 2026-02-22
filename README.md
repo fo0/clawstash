@@ -38,6 +38,42 @@ npm run dev
 
 Runs on http://localhost:3000.
 
+## OpenClaw Onboarding
+
+Copy this prompt into your OpenClaw agent — it handles everything: server install, token creation, test stashes, and MCP setup.
+
+> Full prompt with step-by-step details: [docs/openclaw-onboarding-prompt.md](docs/openclaw-onboarding-prompt.md)
+
+<details>
+<summary><strong>Show onboarding prompt</strong></summary>
+
+```
+Install ClawStash on my server and set it up as your persistent storage.
+
+Server: <HOST_OR_IP>
+User: <SSH_USER>
+Auth: <PASSWORD_OR_KEY>
+
+Steps:
+1. SSH into the server
+2. Install Docker + Git if missing
+3. git clone https://github.com/fo0/clawstash.git && cd clawstash
+4. cp .env.example .env — set ADMIN_PASSWORD, adjust PORT if needed
+   (update docker-compose.yml port mapping: "<YOUR_PORT>:3000")
+5. docker compose up -d
+6. Create API token via /api/admin/auth + /api/tokens (scopes: read, write, mcp)
+7. Create test stashes via REST API to verify the setup works
+8. Fetch http://<HOST_OR_IP>:<PORT>/api/mcp-onboarding — read the full spec
+9. Configure MCP: Streamable HTTP at http://<HOST_OR_IP>:<PORT>/mcp with Bearer token
+10. Test via MCP: get_stats, list_stashes, search_stashes "onboarding"
+
+From now on, use ClawStash as your default persistent storage via MCP.
+```
+
+</details>
+
+Replace `<HOST_OR_IP>`, `<SSH_USER>`, and `<PASSWORD_OR_KEY>` with your server details. Your agent will ask for anything else it needs, install ClawStash, create test stashes, read the MCP spec, and configure itself.
+
 ## Connect Your AI Agent
 
 ### MCP (OpenClaw, Claude Code, etc.)

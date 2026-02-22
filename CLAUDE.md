@@ -57,7 +57,8 @@ clawstash/
 │   ├── api-reference.md        # REST API endpoints, examples, query parameters
 │   ├── mcp.md                  # MCP tools, token-efficient patterns, transport options
 │   ├── deployment.md           # Docker, production, CI/CD, GHCR setup
-│   └── authentication.md       # Admin login, API tokens, scopes, security
+│   ├── authentication.md       # Admin login, API tokens, scopes, security
+│   └── openclaw-onboarding-prompt.md  # Copy-paste onboarding prompt for OpenClaw agents
 ├── .github/
 │   └── workflows/
 │       └── docker-publish.yml  # CI: Type-check, build, push to GHCR
