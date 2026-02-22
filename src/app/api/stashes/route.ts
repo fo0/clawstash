@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getDb } from '@/server/singleton';
 import { checkScope, getAccessSource } from '@/app/api/_helpers';
+import { CreateStashSchema, formatZodError } from '@/server/validation';
 
 // GET /api/stashes - List stashes (FTS5 ranked search when search query is present)
 export async function GET(req: NextRequest) {
@@ -31,18 +32,13 @@ export async function POST(req: NextRequest) {
 
   const db = getDb();
   const body = await req.json();
-  const { name, description, tags, metadata, files } = body;
 
-  if (!files || !Array.isArray(files) || files.length === 0) {
-    return NextResponse.json({ error: 'At least one file is required' }, { status: 400 });
+  const parsed = CreateStashSchema.safeParse(body);
+  if (!parsed.success) {
+    return NextResponse.json({ error: formatZodError(parsed.error) }, { status: 400 });
   }
 
-  for (const file of files) {
-    if (!file.filename || typeof file.filename !== 'string') {
-      return NextResponse.json({ error: 'Each file must have a filename' }, { status: 400 });
-    }
-  }
-
+  const { name, description, tags, metadata, files } = parsed.data;
   const stash = db.createStash({ name, description, tags, metadata, files });
   const source = getAccessSource(req);
   db.logAccess(stash.id, source, 'create', req.headers.get('x-forwarded-for') || undefined, req.headers.get('user-agent') || undefined);
