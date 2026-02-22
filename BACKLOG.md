@@ -20,6 +20,10 @@ Review findings not immediately fixed. **Only work on these upon explicit reques
 | 12 | 2026-02-17 | Bugs & Logic | P1 | src/server/db.ts:importAllData | `importAllData()` INSERT for stashes omits `version` column — defaults to 1 regardless of actual version. Imported stash_versions records may reference higher versions, causing version list inconsistency | Deferred | Review: Version History v0 fix |
 | 13 | 2026-02-22 | Performance | P2 | src/server/db.ts:searchStashes | N+1 queries in `searchStashes()` — per-result stash row + file list fetch. Matches existing `listStashes` pattern. Could optimize with batch JOIN for stash data. | Deferred | Feature: FTS5 Search |
 | 14 | 2026-02-22 | Code Smells | P2 | src/server/openapi.ts | OpenAPI spec does not document new `relevance`, `snippets`, `query` response fields added by FTS5 search. Additive/backward-compatible but incomplete spec. | Deferred | Feature: FTS5 Search |
+| 15 | 2026-02-22 | Security | P2 | src/middleware.ts:76 | Rate limiter uses `x-forwarded-for` as IP key — spoofable without trusted proxy. All direct connections fall back to shared `'unknown'` bucket. Standard limitation for in-memory rate limiters. | Accepted | Feature: Security Hardening |
+| 16 | 2026-02-22 | Performance | P2 | src/middleware.ts:30 | `setInterval` at module scope not HMR-protected (unlike singleton). Could create duplicate intervals during dev HMR. Harmless in production and dev (leaks empty Map cleanup). | Accepted | Feature: Security Hardening |
+| 17 | 2026-02-22 | Edge Cases | P2 | src/app/api/stashes/route.ts:34 | `req.json()` called without try/catch — malformed JSON body returns 500 instead of 400. Pre-existing in all POST/PATCH routes. | Deferred | Review: Security Hardening |
+| 18 | 2026-02-22 | Code Smells | P2 | src/server/openapi.ts | OpenAPI spec does not document `/api/health` endpoint or input validation error format (400 responses with Zod error messages). | Deferred | Feature: Security Hardening |
 
 ## Done
 
