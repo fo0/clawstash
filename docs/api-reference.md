@@ -63,6 +63,7 @@ See [authentication.md](authentication.md) for token creation and scopes.
 
 | Endpoint | Method | Description |
 |----------|--------|-------------|
+| `/api/health` | GET | Health check (no auth required) — returns status, timestamp, database stats |
 | `/api/openapi` | GET | OpenAPI 3.0 schema (JSON) |
 | `/api/mcp-spec` | GET | MCP specification (markdown) |
 | `/api/mcp-onboarding` | GET | MCP onboarding guide for AI agents |

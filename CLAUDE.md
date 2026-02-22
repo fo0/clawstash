@@ -64,6 +64,7 @@ clawstash/
 │       └── docker-publish.yml  # CI: Type-check, build, push to GHCR
 ├── public/                     # Next.js static assets
 ├── src/
+│   ├── middleware.ts            # Next.js middleware (CORS, security headers, login rate limiting)
 │   ├── app/                    # Next.js App Router
 │   │   ├── layout.tsx          # Root layout with metadata + global CSS
 │   │   ├── page.tsx            # Client component wrapper for <App />
@@ -71,6 +72,7 @@ clawstash/
 │   │   │   └── route.ts        # MCP Streamable HTTP endpoint (POST/GET/DELETE)
 │   │   └── api/                # API Route Handlers
 │   │       ├── _helpers.ts     # Shared utilities (checkScope, checkAdmin, getBaseUrl)
+│   │       ├── health/route.ts # GET health check (no auth, DB status + stats)
 │   │       ├── stashes/
 │   │       │   ├── route.ts            # GET (list), POST (create)
 │   │       │   ├── stats/route.ts      # GET storage statistics
@@ -113,6 +115,7 @@ clawstash/
 │   │   ├── mcp-spec.ts         # MCP spec generator (zodToJsonSchema + OpenAPI data types)
 │   │   ├── mcp.ts              # MCP server stdio transport entry point
 │   │   ├── openapi.ts          # OpenAPI 3.0 schema generator
+│   │   ├── validation.ts       # Zod schemas for API input validation + size limits
 │   │   └── version.ts          # Version check utility (build info + GitHub latest commit)
 │   ├── App.tsx                 # Main app component, state management
 │   ├── api.ts                  # API client (fetch wrapper)
@@ -220,6 +223,23 @@ npm run mcp                # Start MCP server (stdio transport)
 - Uses `globalThis` to persist DB instance across Next.js HMR reloads in development
 - Single `getDb()` function returns the shared `ClawStashDB` instance
 - Prevents multiple DB connections during hot module replacement
+- Periodic session cleanup via `setInterval` (every 1 hour), interval reference stored on `globalThis` to prevent duplicates during HMR
+
+### Middleware (src/middleware.ts)
+
+- **CORS**: Permissive `Access-Control-Allow-Origin: *` on all `/api/*` and `/mcp` routes — required for AI agent access from any origin (localhost, LAN, remote)
+- **Preflight**: OPTIONS requests return 204 with CORS headers
+- **Security headers**: `X-Content-Type-Options: nosniff`, `Referrer-Policy: strict-origin-when-cross-origin`, `X-DNS-Prefetch-Control: off` on all routes
+- **Rate limiting**: In-memory sliding window on `/api/admin/auth` POST only (10 attempts per 15 min per IP). Returns 429 with `Retry-After` header. Stale entries cleaned every 5 min.
+- No restrictive headers (X-Frame-Options, HSTS, CSP) — intentionally omitted to not break agent/LAN/localhost access
+
+### Input Validation (src/server/validation.ts)
+
+- Zod schemas for all POST/PATCH API routes: `CreateStashSchema`, `UpdateStashSchema`, `CreateTokenSchema`
+- Size limits per field: name (500), description (50K), tags (50 × 100 chars), metadata (50 keys), files (100 × 255 char filenames, 10MB content each)
+- `MAX_IMPORT_SIZE` (100MB) exported for the import route
+- `formatZodError()` helper converts Zod issues to a single human-readable error string
+- Zod validates and strips unknown fields, preventing arbitrary data injection
 
 ### Authentication (src/server/auth.ts)
 
@@ -439,6 +459,7 @@ npm run mcp                # Start MCP server (stdio transport)
 | `/api/mcp-onboarding` | GET | MCP onboarding guide for AI self-onboarding (wraps mcp-spec with quick start and workflow) |
 | `/api/mcp-tools` | GET | MCP tool summaries (JSON, derived from tool-defs.ts) |
 | `/api/version` | GET | Version check — current version and latest available from GitHub |
+| `/api/health` | GET | Health check — DB status + stash/file counts (no auth required) |
 | `/mcp` | POST/GET/DELETE | MCP Streamable HTTP endpoint (stateless, auth required) |
 
 ## MCP Tools

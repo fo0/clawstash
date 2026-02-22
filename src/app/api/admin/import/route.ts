@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import AdmZip from 'adm-zip';
 import { getDb } from '@/server/singleton';
 import { checkAdmin } from '@/app/api/_helpers';
+import { MAX_IMPORT_SIZE } from '@/server/validation';
 
 export async function POST(req: NextRequest) {
   const admin = checkAdmin(req);
@@ -15,6 +16,9 @@ export async function POST(req: NextRequest) {
     }
 
     const arrayBuffer = await file.arrayBuffer();
+    if (arrayBuffer.byteLength > MAX_IMPORT_SIZE) {
+      return NextResponse.json({ error: 'Import file too large (max 100MB)' }, { status: 413 });
+    }
     const buffer = Buffer.from(arrayBuffer);
     const zip = new AdmZip(buffer);
     const entries = zip.getEntries();

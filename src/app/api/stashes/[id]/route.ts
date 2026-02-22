@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getDb } from '@/server/singleton';
 import { checkScope, getAccessSource } from '@/app/api/_helpers';
+import { UpdateStashSchema, formatZodError } from '@/server/validation';
 
 type Params = { params: Promise<{ id: string }> };
 
@@ -27,7 +28,13 @@ export async function PATCH(req: NextRequest, { params }: Params) {
   const { id } = await params;
   const db = getDb();
   const body = await req.json();
-  const { name, description, tags, metadata, files } = body;
+
+  const parsed = UpdateStashSchema.safeParse(body);
+  if (!parsed.success) {
+    return NextResponse.json({ error: formatZodError(parsed.error) }, { status: 400 });
+  }
+
+  const { name, description, tags, metadata, files } = parsed.data;
   const source = getAccessSource(req);
   const stash = db.updateStash(id, { name, description, tags, metadata, files }, source);
   if (!stash) {
