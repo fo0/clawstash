@@ -154,10 +154,6 @@ export default function McpTab({ baseUrl, mcpSpec, mcpTools }: Props) {
         </div>
         <div className="api-mgr-examples">
           <div className="api-example-item">
-            <div className="api-example-title">Claude Desktop / Cursor - Streamable HTTP Config</div>
-            <pre className="api-code-block">{streamableConfigJson}</pre>
-          </div>
-          <div className="api-example-item">
             <div className="api-example-title">MCP Tool Call - Create Stash</div>
             <pre className="api-code-block">{`Tool: create_stash
 Parameters: {

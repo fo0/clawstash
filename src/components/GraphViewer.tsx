@@ -352,9 +352,28 @@ export default function GraphViewer({ stashes, tags, onFilterTag, onSelectStash,
   const [highlightTag, setHighlightTag] = useState<string | null>(null);
   const highlightTagRef = useRef<string | null>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
+  const adjacencyRef = useRef<Set<string> | null>(null);
+  const glowThresholdRef = useRef<{ nodeCount: number; value: number } | null>(null);
+  const loopRunningRef = useRef(false);
+  const startLoopRef = useRef<() => void>(() => {});
+
+  // Rebuild adjacency set for a given node (O(edges) once, then O(1) lookups in draw)
+  const rebuildAdjacency = useCallback((nodeId: string | null) => {
+    if (!nodeId) { adjacencyRef.current = null; return; }
+    const set = new Set<string>();
+    for (const e of edgesRef.current) {
+      if (e.source === nodeId) set.add(e.target);
+      else if (e.target === nodeId) set.add(e.source);
+    }
+    adjacencyRef.current = set;
+  }, []);
 
   // Sync highlight ref for draw loop
   highlightTagRef.current = highlightTag;
+  // Rebuild adjacency when highlight changes (and no hover active)
+  if (!hoveredRef.current) {
+    rebuildAdjacency(highlightTag);
+  }
 
   // Filtered tags for search dropdown
   const searchResults = searchQuery.length > 0
@@ -397,14 +416,19 @@ export default function GraphViewer({ stashes, tags, onFilterTag, onSelectStash,
 
     targetZoomRef.current = zoom;
     targetPanRef.current = { x: -cx * zoom, y: -cy * zoom };
+    startLoopRef.current();
   }, []);
 
-  // Compute top 20% threshold for glow effect
+  // Compute top 20% threshold for glow effect (cached until node count changes)
   const getGlowThreshold = useCallback(() => {
     const nodes = nodesRef.current;
     if (nodes.length < 5) return Infinity;
+    const cached = glowThresholdRef.current;
+    if (cached && cached.nodeCount === nodes.length) return cached.value;
     const counts = nodes.map(n => n.count).sort((a, b) => b - a);
-    return counts[Math.floor(counts.length * 0.2)] || counts[0];
+    const value = counts[Math.floor(counts.length * 0.2)] || counts[0];
+    glowThresholdRef.current = { nodeCount: nodes.length, value };
+    return value;
   }, []);
 
   // Build graph data
@@ -415,8 +439,10 @@ export default function GraphViewer({ stashes, tags, onFilterTag, onSelectStash,
     edgesRef.current = edges;
     setEdgeCount(edges.length);
     hasManyCluster.current = new Set(nodes.map(n => n.cluster)).size > 1;
+    glowThresholdRef.current = null;
     alphaRef.current = 1;
     autoFitDoneRef.current = false;
+    startLoop();
   }, [stashes, tags, focusTag, graphTab]);
 
   // Focus mode: fetch subgraph from server
@@ -430,8 +456,10 @@ export default function GraphViewer({ stashes, tags, onFilterTag, onSelectStash,
       edgesRef.current = edges;
       setEdgeCount(edges.length);
       hasManyCluster.current = new Set(nodes.map(n => n.cluster)).size > 1;
+      glowThresholdRef.current = null;
       alphaRef.current = 1;
       autoFitDoneRef.current = false;
+      startLoop();
     }).catch(err => {
       console.error('Failed to load focus graph:', err);
     });
@@ -531,10 +559,7 @@ export default function GraphViewer({ stashes, tags, onFilterTag, onSelectStash,
       const isHovered = hovered && hovered.id === node.id;
       const isHighlighted = highlighted && highlighted.id === node.id;
       const isFocusNode = isHovered || isHighlighted;
-      const isConnected = activeNode && edges.some(
-        e => (e.source === activeNode.id && e.target === node.id) ||
-             (e.target === activeNode.id && e.source === node.id)
-      );
+      const isConnected = activeNode && adjacencyRef.current?.has(node.id);
 
       const baseColor = useClusterColors
         ? CLUSTER_COLORS[node.cluster % CLUSTER_COLORS.length]
@@ -630,15 +655,18 @@ export default function GraphViewer({ stashes, tags, onFilterTag, onSelectStash,
     ctx.restore();
   }, [getGlowThreshold]);
 
-  // Animation loop
-  useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
+  // Start/restart the animation loop (idempotent — safe to call if already running)
+  const startLoop = useCallback(() => {
+    if (loopRunningRef.current) return;
+    loopRunningRef.current = true;
 
     const tick = () => {
+      let needsFrame = false;
+
       if (alphaRef.current > 0.001) {
         simulate(nodesRef.current, edgesRef.current, alphaRef.current);
         alphaRef.current *= 0.993;
+        needsFrame = true;
 
         // Auto-fit once layout has partially settled (~0.85s at 60fps)
         if (!autoFitDoneRef.current && alphaRef.current < 0.7) {
@@ -656,6 +684,7 @@ export default function GraphViewer({ stashes, tags, onFilterTag, onSelectStash,
           targetZoomRef.current = null;
         } else {
           zoomRef.current += dz * lerpSpeed;
+          needsFrame = true;
         }
       }
       if (targetPanRef.current !== null) {
@@ -668,16 +697,35 @@ export default function GraphViewer({ stashes, tags, onFilterTag, onSelectStash,
         } else {
           panRef.current.x += dx * lerpSpeed;
           panRef.current.y += dy * lerpSpeed;
+          needsFrame = true;
         }
       }
 
+      // Highlighted node has pulsing animation
+      if (highlightTagRef.current) needsFrame = true;
+
       draw();
-      animRef.current = requestAnimationFrame(tick);
+
+      if (needsFrame) {
+        animRef.current = requestAnimationFrame(tick);
+      } else {
+        loopRunningRef.current = false;
+      }
     };
 
     animRef.current = requestAnimationFrame(tick);
-    return () => cancelAnimationFrame(animRef.current);
-  }, [draw, autoFit, graphTab]);
+  }, [draw, autoFit]);
+
+  startLoopRef.current = startLoop;
+
+  // Start animation loop on mount and when dependencies change
+  useEffect(() => {
+    startLoop();
+    return () => {
+      cancelAnimationFrame(animRef.current);
+      loopRunningRef.current = false;
+    };
+  }, [startLoop, graphTab]);
 
   // Resize
   useEffect(() => {
@@ -692,6 +740,7 @@ export default function GraphViewer({ stashes, tags, onFilterTag, onSelectStash,
       canvas.height = rect.height * dpr;
       canvas.style.width = rect.width + 'px';
       canvas.style.height = rect.height + 'px';
+      startLoopRef.current();
     };
 
     resize();
@@ -759,6 +808,7 @@ export default function GraphViewer({ stashes, tags, onFilterTag, onSelectStash,
       if (node) {
         dragRef.current = { node, offsetX: wx - node.x, offsetY: wy - node.y };
         alphaRef.current = Math.max(alphaRef.current, 0.3);
+        startLoopRef.current();
       } else {
         isPanningRef.current = true;
         panStartRef.current = { x: e.clientX, y: e.clientY, panX: panRef.current.x, panY: panRef.current.y };
@@ -781,6 +831,7 @@ export default function GraphViewer({ stashes, tags, onFilterTag, onSelectStash,
         dragRef.current.node.vx = 0;
         dragRef.current.node.vy = 0;
         alphaRef.current = Math.max(alphaRef.current, 0.1);
+        startLoopRef.current();
         return;
       }
 
@@ -788,6 +839,7 @@ export default function GraphViewer({ stashes, tags, onFilterTag, onSelectStash,
         didDragRef.current = true;
         panRef.current.x = panStartRef.current.panX + (e.clientX - panStartRef.current.x);
         panRef.current.y = panStartRef.current.panY + (e.clientY - panStartRef.current.y);
+        startLoopRef.current();
         return;
       }
 
@@ -795,8 +847,10 @@ export default function GraphViewer({ stashes, tags, onFilterTag, onSelectStash,
       const node = findNodeAt(wx, wy);
       if (node !== hoveredRef.current) {
         hoveredRef.current = node;
+        rebuildAdjacency(node?.id ?? highlightTagRef.current);
         canvas.style.cursor = node ? 'pointer' : 'grab';
         setHoveredTag(node ? node.label : null);
+        startLoopRef.current();
       }
     };
 
@@ -840,6 +894,7 @@ export default function GraphViewer({ stashes, tags, onFilterTag, onSelectStash,
       panRef.current.y -= wy * (newZoom / zoomRef.current - 1);
 
       zoomRef.current = newZoom;
+      startLoopRef.current();
     };
 
     canvas.addEventListener('mousedown', onMouseDown);
@@ -913,6 +968,7 @@ export default function GraphViewer({ stashes, tags, onFilterTag, onSelectStash,
           e.preventDefault();
           dragRef.current = { node, offsetX: wx - node.x, offsetY: wy - node.y };
           alphaRef.current = Math.max(alphaRef.current, 0.3);
+          startLoopRef.current();
         } else {
           panStartRef.current = { x: touch.clientX, y: touch.clientY, panX: panRef.current.x, panY: panRef.current.y };
           closePopup();
@@ -936,6 +992,7 @@ export default function GraphViewer({ stashes, tags, onFilterTag, onSelectStash,
           panRef.current.x -= wx * (newZoom / zoomRef.current - 1);
           panRef.current.y -= wy * (newZoom / zoomRef.current - 1);
           zoomRef.current = newZoom;
+          startLoopRef.current();
         }
         lastPinchDist = dist;
         const rect = canvas.getBoundingClientRect();
@@ -962,6 +1019,7 @@ export default function GraphViewer({ stashes, tags, onFilterTag, onSelectStash,
           dragRef.current.node.vx = 0;
           dragRef.current.node.vy = 0;
           alphaRef.current = Math.max(alphaRef.current, 0.1);
+          startLoopRef.current();
           return;
         }
 
@@ -973,6 +1031,7 @@ export default function GraphViewer({ stashes, tags, onFilterTag, onSelectStash,
           isTouchPanning = true;
           panRef.current.x = panStartRef.current.panX + dx;
           panRef.current.y = panStartRef.current.panY + dy;
+          startLoopRef.current();
         }
       }
     };
@@ -1045,6 +1104,7 @@ export default function GraphViewer({ stashes, tags, onFilterTag, onSelectStash,
     zoomRef.current = 1;
     alphaRef.current = 1;
     autoFitDoneRef.current = false;
+    glowThresholdRef.current = null;
     setPopup(null);
     setHighlightTag(null);
     setSearchQuery('');
@@ -1058,6 +1118,7 @@ export default function GraphViewer({ stashes, tags, onFilterTag, onSelectStash,
       setEdgeCount(edges.length);
       hasManyCluster.current = new Set(nodes.map(n => n.cluster)).size > 1;
     }
+    startLoopRef.current();
   };
 
   const handleFocusTag = (tag: string) => {
@@ -1078,6 +1139,7 @@ export default function GraphViewer({ stashes, tags, onFilterTag, onSelectStash,
     zoomRef.current = 1;
     alphaRef.current = 1;
     autoFitDoneRef.current = false;
+    startLoopRef.current();
   };
 
   const handleDepthChange = (delta: number) => {
@@ -1100,11 +1162,13 @@ export default function GraphViewer({ stashes, tags, onFilterTag, onSelectStash,
     setSearchQuery('');
     setSearchOpen(false);
     setPopup(null);
+    startLoopRef.current();
   };
 
   // Clear highlight
   const clearHighlight = () => {
     setHighlightTag(null);
+    startLoopRef.current();
   };
 
   // Compute popup position clamped to viewport

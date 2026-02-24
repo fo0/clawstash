@@ -22,6 +22,7 @@ export default function VersionHistory({ stashId, currentVersion, onRestore }: P
   const [detailLoading, setDetailLoading] = useState(false);
   const [restoring, setRestoring] = useState(false);
   const [confirmRestore, setConfirmRestore] = useState<number | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   // Confluence-style inline comparison: "From" (older) and "To" (newer)
   const [compareFrom, setCompareFrom] = useState<number | null>(null);
@@ -31,6 +32,7 @@ export default function VersionHistory({ stashId, currentVersion, onRestore }: P
 
   useEffect(() => {
     setLoading(true);
+    setError(null);
     api.getVersions(stashId)
       .then((v) => {
         setVersions(v);
@@ -40,7 +42,10 @@ export default function VersionHistory({ stashId, currentVersion, onRestore }: P
           setCompareFrom(v[1].version);
         }
       })
-      .catch(() => setVersions([]))
+      .catch(() => {
+        setVersions([]);
+        setError('Failed to load version history');
+      })
       .finally(() => setLoading(false));
   }, [stashId, currentVersion]);
 
@@ -50,8 +55,9 @@ export default function VersionHistory({ stashId, currentVersion, onRestore }: P
       const data = await api.getVersion(stashId, version);
       setSelectedVersion(data);
       setSubView('detail');
+      setError(null);
     } catch {
-      // ignore
+      setError('Failed to load version details');
     } finally {
       setDetailLoading(false);
     }
@@ -64,8 +70,9 @@ export default function VersionHistory({ stashId, currentVersion, onRestore }: P
       const data = await api.getVersionDiff(stashId, Math.min(compareFrom, compareTo), Math.max(compareFrom, compareTo));
       setDiffData(data);
       setSubView('diff');
+      setError(null);
     } catch {
-      // ignore
+      setError('Failed to compare versions');
     } finally {
       setDiffLoading(false);
     }
@@ -82,17 +89,19 @@ export default function VersionHistory({ stashId, currentVersion, onRestore }: P
       const stash = await api.restoreVersion(stashId, version);
       onRestore(stash);
     } catch {
-      // ignore
+      setError('Failed to restore version');
     } finally {
       setRestoring(false);
       setConfirmRestore(null);
     }
   };
 
+  // Clear error on navigation
   const handleBack = () => {
     setSubView('list');
     setSelectedVersion(null);
     setDiffData(null);
+    setError(null);
   };
 
   // Handle "From" radio change: ensure From < To
@@ -114,6 +123,14 @@ export default function VersionHistory({ stashId, currentVersion, onRestore }: P
   };
 
   if (loading) return <div className="loading"><Spinner /> Loading version history...</div>;
+
+  if (error && versions.length === 0) {
+    return (
+      <div className="version-empty" style={{ color: 'var(--text-danger, #f85149)' }}>
+        <p>{error}</p>
+      </div>
+    );
+  }
 
   if (versions.length === 0) {
     return (
@@ -200,6 +217,11 @@ export default function VersionHistory({ stashId, currentVersion, onRestore }: P
 
   return (
     <div className="version-history">
+      {error && (
+        <div className="version-error" style={{ color: 'var(--text-danger, #f85149)', padding: '8px 12px', marginBottom: 8, background: 'rgba(248, 81, 73, 0.1)', borderRadius: 6, fontSize: 13 }}>
+          {error}
+        </div>
+      )}
       {/* Compare action bar */}
       {hasMultipleVersions && (
         <div className="version-compare-bar">
