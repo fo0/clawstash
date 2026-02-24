@@ -12,11 +12,10 @@ export interface OpenApiSpec {
   tags: Array<{ name: string; description: string }>;
 }
 
-const specCache = new Map<string, OpenApiSpec>();
+let specCache: { key: string; value: OpenApiSpec } | null = null;
 
 export function getOpenApiSpec(baseUrl: string): OpenApiSpec {
-  const cached = specCache.get(baseUrl);
-  if (cached) return cached;
+  if (specCache?.key === baseUrl) return specCache.value;
 
   const spec: OpenApiSpec = {
     openapi: '3.0.3',
@@ -63,7 +62,7 @@ export function getOpenApiSpec(baseUrl: string): OpenApiSpec {
         },
         StashListItem: {
           type: 'object',
-          description: 'Summary of a stash (no metadata or file content)',
+          description: 'Summary of a stash (no metadata or file content). When returned from a search query, includes additional `relevance` and `snippets` fields.',
           properties: {
             id: { type: 'string', format: 'uuid' },
             name: { type: 'string' },
@@ -72,6 +71,8 @@ export function getOpenApiSpec(baseUrl: string): OpenApiSpec {
             created_at: { type: 'string', format: 'date-time' },
             updated_at: { type: 'string', format: 'date-time' },
             files: { type: 'array', items: { type: 'object', properties: { filename: { type: 'string' }, language: { type: 'string' } } } },
+            relevance: { type: 'number', description: 'BM25 relevance score (only present in search results)' },
+            snippets: { type: 'string', description: 'Match snippets with **highlighted** terms (only present in search results)' },
           },
         },
         CreateStashInput: {
@@ -236,7 +237,7 @@ export function getOpenApiSpec(baseUrl: string): OpenApiSpec {
           ],
           responses: {
             200: {
-              description: 'List of stashes',
+              description: 'List of stashes. When `search` query is provided, returns FTS5-ranked results with additional `query`, `relevance`, and `snippets` fields on each stash item.',
               content: {
                 'application/json': {
                   schema: {
@@ -244,6 +245,7 @@ export function getOpenApiSpec(baseUrl: string): OpenApiSpec {
                     properties: {
                       stashes: { type: 'array', items: { $ref: '#/components/schemas/StashListItem' } },
                       total: { type: 'integer' },
+                      query: { type: 'string', description: 'Sanitized FTS5 query (only present when search is used)' },
                     },
                   },
                 },
@@ -583,6 +585,58 @@ export function getOpenApiSpec(baseUrl: string): OpenApiSpec {
           },
         },
       },
+      '/api/health': {
+        get: {
+          tags: ['System'],
+          summary: 'Health check',
+          description: 'Returns database connection status and basic stash/file counts. No authentication required.',
+          security: [],
+          responses: {
+            200: {
+              description: 'Healthy',
+              content: {
+                'application/json': {
+                  schema: {
+                    type: 'object',
+                    properties: {
+                      status: { type: 'string', enum: ['ok'] },
+                      timestamp: { type: 'string', format: 'date-time' },
+                      database: {
+                        type: 'object',
+                        properties: {
+                          connected: { type: 'boolean' },
+                          stashes: { type: 'integer' },
+                          files: { type: 'integer' },
+                        },
+                      },
+                    },
+                  },
+                },
+              },
+            },
+            503: {
+              description: 'Unhealthy',
+              content: {
+                'application/json': {
+                  schema: {
+                    type: 'object',
+                    properties: {
+                      status: { type: 'string', enum: ['error'] },
+                      timestamp: { type: 'string', format: 'date-time' },
+                      database: {
+                        type: 'object',
+                        properties: {
+                          connected: { type: 'boolean' },
+                        },
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
       '/api/mcp-tools': {
         get: {
           tags: ['System'],
@@ -617,6 +671,6 @@ export function getOpenApiSpec(baseUrl: string): OpenApiSpec {
     ],
   };
 
-  specCache.set(baseUrl, spec);
+  specCache = { key: baseUrl, value: spec };
   return spec;
 }

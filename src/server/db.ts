@@ -1581,9 +1581,9 @@ export class ClawStashDB {
       // Insert stashes
       for (const s of data.stashes) {
         this.db.prepare(`
-          INSERT INTO stashes (id, name, description, tags, metadata, created_at, updated_at)
-          VALUES (?, ?, ?, ?, ?, ?, ?)
-        `).run(s.id, s.name, s.description, s.tags, s.metadata, s.created_at, s.updated_at);
+          INSERT INTO stashes (id, name, description, tags, metadata, version, created_at, updated_at)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        `).run(s.id, s.name, s.description, s.tags, s.metadata, s.version ?? 1, s.created_at, s.updated_at);
         stashCount++;
       }
 
