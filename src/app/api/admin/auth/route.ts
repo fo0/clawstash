@@ -14,7 +14,12 @@ export async function POST(req: NextRequest) {
     });
   }
 
-  const body = await req.json();
+  let body: Record<string, unknown>;
+  try {
+    body = await req.json();
+  } catch {
+    return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 });
+  }
   const { password: inputPassword } = body;
   if (!inputPassword || typeof inputPassword !== 'string') {
     return NextResponse.json({ error: 'Password is required' }, { status: 400 });

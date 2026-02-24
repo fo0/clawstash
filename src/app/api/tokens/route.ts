@@ -16,7 +16,12 @@ export async function POST(req: NextRequest) {
   const admin = checkAdmin(req);
   if (!admin.ok) return admin.response;
 
-  const body = await req.json();
+  let body: unknown;
+  try {
+    body = await req.json();
+  } catch {
+    return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 });
+  }
 
   const parsed = CreateTokenSchema.safeParse(body);
   if (!parsed.success) {

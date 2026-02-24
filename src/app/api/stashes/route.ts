@@ -31,7 +31,12 @@ export async function POST(req: NextRequest) {
   if (!scope.ok) return scope.response;
 
   const db = getDb();
-  const body = await req.json();
+  let body: unknown;
+  try {
+    body = await req.json();
+  } catch {
+    return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 });
+  }
 
   const parsed = CreateStashSchema.safeParse(body);
   if (!parsed.success) {
