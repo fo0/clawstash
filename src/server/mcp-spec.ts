@@ -10,11 +10,10 @@ import { getOpenApiSpec } from './openapi';
 import { CLAWSTASH_PURPOSE, TOKEN_EFFICIENT_GUIDE } from './shared-text';
 import { TOOL_DEFS } from './tool-defs';
 
-const mcpSpecCache = new Map<string, string>();
+let mcpSpecCache: { key: string; value: string } | null = null;
 
 export function getMcpSpecText(baseUrl: string): string {
-  const cached = mcpSpecCache.get(baseUrl);
-  if (cached) return cached;
+  if (mcpSpecCache?.key === baseUrl) return mcpSpecCache.value;
 
   const openapi = getOpenApiSpec(baseUrl);
   const schemas = openapi.components.schemas;
@@ -79,7 +78,7 @@ Data type schemas shared with the REST API (OpenAPI). Referenced in tool return 
 
 ${dataTypesSection}`;
 
-  mcpSpecCache.set(baseUrl, result);
+  mcpSpecCache = { key: baseUrl, value: result };
   return result;
 }
 
@@ -87,11 +86,10 @@ ${dataTypesSection}`;
 // MCP Onboarding Text — wraps the spec with self-onboarding instructions
 // ---------------------------------------------------------------------------
 
-const onboardingCache = new Map<string, string>();
+let onboardingCache: { key: string; value: string } | null = null;
 
 export function getMcpOnboardingText(baseUrl: string): string {
-  const cached = onboardingCache.get(baseUrl);
-  if (cached) return cached;
+  if (onboardingCache?.key === baseUrl) return onboardingCache.value;
 
   const spec = getMcpSpecText(baseUrl);
 
@@ -125,7 +123,7 @@ You are reading the ClawStash MCP onboarding specification. This document contai
 
 ${spec}`;
 
-  onboardingCache.set(baseUrl, result);
+  onboardingCache = { key: baseUrl, value: result };
   return result;
 }
 
@@ -133,11 +131,10 @@ ${spec}`;
 // MCP Refresh Text — spec with update-focused framing for connected AI agents
 // ---------------------------------------------------------------------------
 
-const refreshCache = new Map<string, string>();
+let refreshCache: { key: string; value: string } | null = null;
 
 export function getMcpRefreshText(baseUrl: string): string {
-  const cached = refreshCache.get(baseUrl);
-  if (cached) return cached;
+  if (refreshCache?.key === baseUrl) return refreshCache.value;
 
   const spec = getMcpSpecText(baseUrl);
 
@@ -151,6 +148,6 @@ For initial onboarding (before MCP is connected), use the REST endpoint: \`GET $
 
 ${spec}`;
 
-  refreshCache.set(baseUrl, result);
+  refreshCache = { key: baseUrl, value: result };
   return result;
 }
