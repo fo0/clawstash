@@ -483,11 +483,11 @@ function AboutSection() {
         <div className="settings-tech-grid">
           <div className="settings-tech-item">
             <span className="settings-tech-label">Frontend</span>
-            <span className="settings-tech-value">React 19, Vite 6</span>
+            <span className="settings-tech-value">React 19, Next.js 16</span>
           </div>
           <div className="settings-tech-item">
             <span className="settings-tech-label">Backend</span>
-            <span className="settings-tech-value">Express 4, Node.js</span>
+            <span className="settings-tech-value">Next.js 16, Node.js</span>
           </div>
           <div className="settings-tech-item">
             <span className="settings-tech-label">Database</span>

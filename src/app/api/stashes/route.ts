@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getDb } from '@/server/singleton';
-import { checkScope, getAccessSource } from '@/app/api/_helpers';
+import { checkScope, getAccessSource, parsePositiveInt } from '@/app/api/_helpers';
 import { CreateStashSchema, formatZodError } from '@/server/validation';
 
 // GET /api/stashes - List stashes (FTS5 ranked search when search query is present)
@@ -14,8 +14,8 @@ export async function GET(req: NextRequest) {
   const tag = searchParams.get('tag') || undefined;
   const archivedParam = searchParams.get('archived');
   const archived = archivedParam === 'true' ? true : archivedParam === 'false' ? false : undefined;
-  const page = searchParams.get('page') ? parseInt(searchParams.get('page')!, 10) : undefined;
-  const limit = searchParams.get('limit') ? parseInt(searchParams.get('limit')!, 10) : undefined;
+  const page = parsePositiveInt(searchParams.get('page'));
+  const limit = parsePositiveInt(searchParams.get('limit'));
 
   // Use FTS5 ranked search when a search query is present
   if (search) {

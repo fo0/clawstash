@@ -25,7 +25,22 @@ export function getDb(): ClawStashDB {
           // Ignore errors during cleanup
         }
       }, SESSION_CLEANUP_INTERVAL_MS);
+      // Allow process to exit cleanly without waiting for this interval
+      if (globalForDb.__clawstashCleanupInterval.unref) {
+        globalForDb.__clawstashCleanupInterval.unref();
+      }
     }
   }
   return globalForDb.__clawstashDb;
+}
+
+export function closeDb(): void {
+  if (globalForDb.__clawstashCleanupInterval) {
+    clearInterval(globalForDb.__clawstashCleanupInterval);
+    globalForDb.__clawstashCleanupInterval = undefined;
+  }
+  if (globalForDb.__clawstashDb) {
+    globalForDb.__clawstashDb.close();
+    globalForDb.__clawstashDb = undefined;
+  }
 }

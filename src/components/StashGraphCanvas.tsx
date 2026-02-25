@@ -375,6 +375,14 @@ export default function StashGraphCanvas({ onSelectStash, analyzeStashId, onAnal
     }
   }, [analyzeStashId, onAnalyzeStashConsumed]);
 
+  // Animation restart helper — stored before data-fetch so it can be used in useEffect deps
+  const tickRef = useRef<(() => void) | null>(null);
+  const kickAnimation = useCallback(() => {
+    if (!animRef.current && tickRef.current) {
+      animRef.current = requestAnimationFrame(tickRef.current);
+    }
+  }, []);
+
   // Fetch data
   useEffect(() => {
     setLoading(true);
@@ -405,12 +413,13 @@ export default function StashGraphCanvas({ onSelectStash, analyzeStashId, onAnal
         alphaRef.current = 1;
         autoFitDoneRef.current = false;
         setLoading(false);
+        kickAnimation();
       })
       .catch(err => {
         console.error('Failed to load stash graph:', err);
         setLoading(false);
       });
-  }, [applyVisibilityFilter]);
+  }, [applyVisibilityFilter, kickAnimation]);
 
   // Re-filter when analysedStashes or defaultDepth changes
   useEffect(() => {
@@ -422,7 +431,8 @@ export default function StashGraphCanvas({ onSelectStash, analyzeStashId, onAnal
     setEdgeCount(edges.length);
     alphaRef.current = 1;
     autoFitDoneRef.current = false;
-  }, [analysedStashes, defaultDepth, ignoredTags, applyVisibilityFilter]);
+    kickAnimation();
+  }, [analysedStashes, defaultDepth, ignoredTags, applyVisibilityFilter, kickAnimation]);
 
   const screenToWorld = useCallback((sx: number, sy: number, canvas: HTMLCanvasElement) => {
     const cx = canvas.width / (2 * devicePixelRatio), cy = canvas.height / (2 * devicePixelRatio);
@@ -680,10 +690,20 @@ export default function StashGraphCanvas({ onSelectStash, analyzeStashId, onAnal
       }
 
       draw();
-      animRef.current = requestAnimationFrame(tick);
+
+      // Only continue animation when there is work to do
+      const simulationActive = alphaRef.current > 0.001;
+      const zoomAnimating = targetZoomRef.current !== null;
+      const panAnimating = targetPanRef.current !== null;
+      if (simulationActive || zoomAnimating || panAnimating || dragRef.current) {
+        animRef.current = requestAnimationFrame(tick);
+      } else {
+        animRef.current = 0;
+      }
     };
+    tickRef.current = tick;
     animRef.current = requestAnimationFrame(tick);
-    return () => cancelAnimationFrame(animRef.current);
+    return () => { if (animRef.current) cancelAnimationFrame(animRef.current); };
   }, [draw, autoFit]);
 
   // Resize
@@ -727,6 +747,7 @@ export default function StashGraphCanvas({ onSelectStash, analyzeStashId, onAnal
         panStartRef.current = { x: e.clientX, y: e.clientY, panX: panRef.current.x, panY: panRef.current.y };
         setPopup(null);
       }
+      kickAnimation();
     };
 
     const onMouseMove = (e: MouseEvent) => {
@@ -739,12 +760,14 @@ export default function StashGraphCanvas({ onSelectStash, analyzeStashId, onAnal
         dragRef.current.node.y = wy - dragRef.current.offsetY;
         dragRef.current.node.vx = 0; dragRef.current.node.vy = 0;
         alphaRef.current = Math.max(alphaRef.current, 0.1);
+        kickAnimation();
         return;
       }
       if (isPanningRef.current) {
         didDragRef.current = true;
         panRef.current.x = panStartRef.current.panX + (e.clientX - panStartRef.current.x);
         panRef.current.y = panStartRef.current.panY + (e.clientY - panStartRef.current.y);
+        kickAnimation();
         return;
       }
       const { x: wx, y: wy } = screenToWorld(sx, sy, canvas);
@@ -787,6 +810,7 @@ export default function StashGraphCanvas({ onSelectStash, analyzeStashId, onAnal
       panRef.current.x -= wx * (newZoom / zoomRef.current - 1);
       panRef.current.y -= wy * (newZoom / zoomRef.current - 1);
       zoomRef.current = newZoom;
+      kickAnimation();
     };
 
     canvas.addEventListener('mousedown', onMouseDown);
@@ -803,7 +827,7 @@ export default function StashGraphCanvas({ onSelectStash, analyzeStashId, onAnal
       canvas.removeEventListener('click', onClick);
       canvas.removeEventListener('wheel', onWheel);
     };
-  }, [screenToWorld, findNodeAt, getConnections]);
+  }, [screenToWorld, findNodeAt, getConnections, kickAnimation]);
 
   // Touch events for mobile
   useEffect(() => {
@@ -858,6 +882,7 @@ export default function StashGraphCanvas({ onSelectStash, analyzeStashId, onAnal
           e.preventDefault();
           dragRef.current = { node, offsetX: wx - node.x, offsetY: wy - node.y };
           alphaRef.current = Math.max(alphaRef.current, 0.3);
+          kickAnimation();
         } else {
           panStartRef.current = { x: touch.clientX, y: touch.clientY, panX: panRef.current.x, panY: panRef.current.y };
           setPopup(null);
@@ -887,6 +912,7 @@ export default function StashGraphCanvas({ onSelectStash, analyzeStashId, onAnal
           x: (e.touches[0].clientX + e.touches[1].clientX) / 2 - rect.left,
           y: (e.touches[0].clientY + e.touches[1].clientY) / 2 - rect.top,
         };
+        kickAnimation();
         return;
       }
 
@@ -906,6 +932,7 @@ export default function StashGraphCanvas({ onSelectStash, analyzeStashId, onAnal
           dragRef.current.node.vx = 0;
           dragRef.current.node.vy = 0;
           alphaRef.current = Math.max(alphaRef.current, 0.1);
+          kickAnimation();
           return;
         }
 
@@ -916,6 +943,7 @@ export default function StashGraphCanvas({ onSelectStash, analyzeStashId, onAnal
           isTouchPanning = true;
           panRef.current.x = panStartRef.current.panX + dx;
           panRef.current.y = panStartRef.current.panY + dy;
+          kickAnimation();
         }
       }
     };
@@ -964,7 +992,7 @@ export default function StashGraphCanvas({ onSelectStash, analyzeStashId, onAnal
       canvas.removeEventListener('touchmove', onTouchMove);
       canvas.removeEventListener('touchend', onTouchEnd);
     };
-  }, [screenToWorld, findNodeAt, getConnections]);
+  }, [screenToWorld, findNodeAt, getConnections, kickAnimation]);
 
   // Escape to close popup
   useEffect(() => {
@@ -981,6 +1009,7 @@ export default function StashGraphCanvas({ onSelectStash, analyzeStashId, onAnal
     alphaRef.current = 1;
     autoFitDoneRef.current = false;
     setPopup(null);
+    kickAnimation();
   };
 
   const getPopupStyle = (): React.CSSProperties => {
