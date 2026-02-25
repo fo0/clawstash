@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getDb } from '@/server/singleton';
-import { checkScope } from '@/app/api/_helpers';
+import { checkScope, parsePositiveInt } from '@/app/api/_helpers';
 
 export async function GET(req: NextRequest) {
   const scope = checkScope(req, 'read');
@@ -8,10 +8,10 @@ export async function GET(req: NextRequest) {
 
   const { searchParams } = req.nextUrl;
   const tag = searchParams.get('tag') || undefined;
-  const depth = searchParams.get('depth') ? parseInt(searchParams.get('depth')!, 10) : undefined;
-  const min_weight = searchParams.get('min_weight') ? parseInt(searchParams.get('min_weight')!, 10) : undefined;
-  const min_count = searchParams.get('min_count') ? parseInt(searchParams.get('min_count')!, 10) : undefined;
-  const limit = searchParams.get('limit') ? parseInt(searchParams.get('limit')!, 10) : undefined;
+  const depth = parsePositiveInt(searchParams.get('depth'));
+  const min_weight = parsePositiveInt(searchParams.get('min_weight'));
+  const min_count = parsePositiveInt(searchParams.get('min_count'));
+  const limit = parsePositiveInt(searchParams.get('limit'));
 
   return NextResponse.json(getDb().getTagGraph({ tag, depth, min_weight, min_count, limit }));
 }

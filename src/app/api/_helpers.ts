@@ -34,3 +34,13 @@ export function getBaseUrl(req: NextRequest): string {
   const host = req.headers.get('x-forwarded-host') || req.headers.get('host') || 'localhost:3000';
   return `${proto}://${host}`;
 }
+
+/**
+ * Parse a positive integer from a query parameter string.
+ * Returns undefined for null, empty, NaN, negative, or non-integer values.
+ */
+export function parsePositiveInt(value: string | null): number | undefined {
+  if (!value) return undefined;
+  const num = parseInt(value, 10);
+  return Number.isInteger(num) && num > 0 ? num : undefined;
+}

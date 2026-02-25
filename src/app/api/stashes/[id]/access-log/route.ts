@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getDb } from '@/server/singleton';
-import { checkScope } from '@/app/api/_helpers';
+import { checkScope, parsePositiveInt } from '@/app/api/_helpers';
 
 type Params = { params: Promise<{ id: string }> };
 
@@ -13,6 +13,6 @@ export async function GET(req: NextRequest, { params }: Params) {
   if (!db.stashExists(id)) {
     return NextResponse.json({ error: 'Stash not found' }, { status: 404 });
   }
-  const limit = req.nextUrl.searchParams.get('limit') ? parseInt(req.nextUrl.searchParams.get('limit')!, 10) : 100;
-  return NextResponse.json(db.getAccessLog(id, limit));
+  const limit = parsePositiveInt(req.nextUrl.searchParams.get('limit')) ?? 100;
+  return NextResponse.json(db.getAccessLog(id, Math.min(limit, 1000)));
 }
