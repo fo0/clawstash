@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getDb } from '@/server/singleton';
-import { checkScope } from '@/app/api/_helpers';
+import { checkScope, getAccessSource } from '@/app/api/_helpers';
 
 type Params = { params: Promise<{ id: string; filename: string }> };
 
@@ -18,6 +18,6 @@ export async function GET(req: NextRequest, { params }: Params) {
     }
     return NextResponse.json({ error: 'File not found' }, { status: 404 });
   }
-  db.logAccess(id, 'api', `read_file:${file.filename}`, req.headers.get('x-forwarded-for') || undefined, req.headers.get('user-agent') || undefined);
+  db.logAccess(id, getAccessSource(req), `read_file:${file.filename}`, req.headers.get('x-forwarded-for') || undefined, req.headers.get('user-agent') || undefined);
   return new NextResponse(file.content, { headers: { 'Content-Type': 'text/plain' } });
 }
