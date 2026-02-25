@@ -49,10 +49,11 @@ For local-only setups without network:
 | `create_stash` | Create a new stash with files, tags, metadata. Returns confirmation only. |
 | `read_stash` | Get stash metadata + file list with sizes. Optional `include_content` for full content. |
 | `read_stash_file` | Read a specific file's content from a stash (most token-efficient). |
-| `list_stashes` | List/search stashes with filters. Returns summaries with file sizes (no content). |
+| `list_stashes` | List/search stashes with filters (tag, archived). Returns summaries with file sizes (no content). |
 | `update_stash` | Update an existing stash. Returns confirmation only. |
 | `delete_stash` | Delete a stash. |
-| `search_stashes` | Full-text search with BM25 ranking, Porter stemming, and match snippets. Supports tag filter. |
+| `archive_stash` | Archive or unarchive a stash (hide from default listings without deleting). |
+| `search_stashes` | Full-text search with BM25 ranking, Porter stemming, and match snippets. Supports tag and archive filter. |
 | `list_tags` | List all tags with usage counts. |
 | `get_tag_graph` | Tag relationship graph with optional focus tag, depth, and filters. |
 | `get_stats` | Storage statistics. |

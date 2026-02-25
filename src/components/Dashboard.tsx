@@ -7,6 +7,8 @@ interface Props {
   layout: LayoutMode;
   loading: boolean;
   filterTag: string;
+  showArchived: boolean;
+  onToggleShowArchived: () => void;
   onLayoutChange: (mode: LayoutMode) => void;
   onSelectStash: (id: string) => void;
   onNewStash: () => void;
@@ -19,6 +21,8 @@ export default function Dashboard({
   layout,
   loading,
   filterTag,
+  showArchived,
+  onToggleShowArchived,
   onLayoutChange,
   onSelectStash,
   onNewStash,
@@ -36,6 +40,12 @@ export default function Dashboard({
             <span className="active-filter" title={`Showing only stashes tagged with "${filterTag}"`}>
               Tag: {filterTag}
               <button className="filter-clear" onClick={() => onFilterTag(filterTag)} title="Clear tag filter">x</button>
+            </span>
+          )}
+          {showArchived && (
+            <span className="active-filter active-filter-archive" title="Showing all stashes including archived">
+              Including archived
+              <button className="filter-clear" onClick={onToggleShowArchived} title="Hide archived stashes">x</button>
             </span>
           )}
           <div className="layout-toggle">

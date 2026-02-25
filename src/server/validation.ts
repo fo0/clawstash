@@ -48,6 +48,7 @@ export const UpdateStashSchema = z.object({
   tags: TagsSchema.optional(),
   metadata: MetadataSchema.optional(),
   files: z.array(FileSchema).max(MAX_FILES).optional(),
+  archived: z.boolean().optional(),
 });
 
 // --- Token Schema ---

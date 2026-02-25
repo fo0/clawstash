@@ -12,16 +12,18 @@ export async function GET(req: NextRequest) {
   const { searchParams } = req.nextUrl;
   const search = searchParams.get('search') || undefined;
   const tag = searchParams.get('tag') || undefined;
+  const archivedParam = searchParams.get('archived');
+  const archived = archivedParam === 'true' ? true : archivedParam === 'false' ? false : undefined;
   const page = searchParams.get('page') ? parseInt(searchParams.get('page')!, 10) : undefined;
   const limit = searchParams.get('limit') ? parseInt(searchParams.get('limit')!, 10) : undefined;
 
   // Use FTS5 ranked search when a search query is present
   if (search) {
-    const result = db.searchStashes(search, { tag, page, limit });
+    const result = db.searchStashes(search, { tag, archived, page, limit });
     return NextResponse.json(result);
   }
 
-  const result = db.listStashes({ tag, page, limit });
+  const result = db.listStashes({ tag, archived, page, limit });
   return NextResponse.json(result);
 }
 

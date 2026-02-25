@@ -14,6 +14,7 @@ export interface Stash {
   tags: string[];
   metadata: Record<string, unknown>;
   version: number;
+  archived: boolean;
   created_at: string;
   updated_at: string;
   files: StashFile[];
@@ -25,6 +26,7 @@ export interface StashListItem {
   description: string;
   tags: string[];
   version: number;
+  archived: boolean;
   created_at: string;
   updated_at: string;
   total_size: number;
