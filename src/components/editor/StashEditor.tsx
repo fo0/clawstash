@@ -41,7 +41,7 @@ export default function StashEditor({ stash, onSave, onCancel }: Props) {
   const [firstFileManuallyEdited, setFirstFileManuallyEdited] = useState(!!stash);
 
   const fileIdCounter = useRef(0);
-  const [fileIds] = useState<number[]>(() =>
+  const fileIds = useRef<number[]>(
     (stash ? stash.files : [{ filename: '', content: '', language: '' }]).map(() => fileIdCounter.current++)
   );
 
@@ -72,13 +72,13 @@ export default function StashEditor({ stash, onSave, onCancel }: Props) {
 
   const addFile = () => {
     setFiles([...files, { filename: '', content: '', language: '' }]);
-    fileIds.push(fileIdCounter.current++);
+    fileIds.current.push(fileIdCounter.current++);
   };
 
   const removeFile = (index: number) => {
     if (files.length === 1) return;
     setFiles(files.filter((_, i) => i !== index));
-    fileIds.splice(index, 1);
+    fileIds.current.splice(index, 1);
   };
 
   const updateFile = useCallback((index: number, field: keyof FileInput, value: string) => {
@@ -215,7 +215,7 @@ export default function StashEditor({ stash, onSave, onCancel }: Props) {
           </div>
 
           {files.map((file, index) => (
-            <div key={fileIds[index]} className="editor-file">
+            <div key={fileIds.current[index]} className="editor-file">
               <div className="editor-file-header">
                 <input
                   type="text"

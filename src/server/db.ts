@@ -771,26 +771,29 @@ export class ClawStashDB {
   }
 
   rebuildFtsIndex(): void {
-    this.db.prepare('DELETE FROM stashes_fts').run();
+    const rebuild = this.db.transaction(() => {
+      this.db.prepare('DELETE FROM stashes_fts').run();
 
-    const stashes = this.db.prepare('SELECT id, name, description, tags FROM stashes').all() as {
-      id: string; name: string; description: string; tags: string;
-    }[];
-
-    const insertFts = this.db.prepare(`
-      INSERT INTO stashes_fts (stash_id, name, description, tags, filenames, file_content)
-      VALUES (?, ?, ?, ?, ?, ?)
-    `);
-
-    for (const s of stashes) {
-      const files = this.db.prepare('SELECT filename, content FROM stash_files WHERE stash_id = ? ORDER BY sort_order').all(s.id) as {
-        filename: string; content: string;
+      const stashes = this.db.prepare('SELECT id, name, description, tags FROM stashes').all() as {
+        id: string; name: string; description: string; tags: string;
       }[];
-      const filenames = files.map(f => f.filename).join(' ');
-      const fileContent = files.map(f => f.content).join('\n');
-      const tags = (JSON.parse(s.tags) as string[]).join(' ');
-      insertFts.run(s.id, s.name, s.description, tags, filenames, fileContent);
-    }
+
+      const insertFts = this.db.prepare(`
+        INSERT INTO stashes_fts (stash_id, name, description, tags, filenames, file_content)
+        VALUES (?, ?, ?, ?, ?, ?)
+      `);
+
+      for (const s of stashes) {
+        const files = this.db.prepare('SELECT filename, content FROM stash_files WHERE stash_id = ? ORDER BY sort_order').all(s.id) as {
+          filename: string; content: string;
+        }[];
+        const filenames = files.map(f => f.filename).join(' ');
+        const fileContent = files.map(f => f.content).join('\n');
+        const tags = (JSON.parse(s.tags) as string[]).join(' ');
+        insertFts.run(s.id, s.name, s.description, tags, filenames, fileContent);
+      }
+    });
+    rebuild();
   }
 
   private buildFtsQuery(input: string): string {
@@ -1165,7 +1168,7 @@ export class ClawStashDB {
     const tagSet = new Set(tags);
 
     const insert = this.db.prepare(`
-      INSERT OR REPLACE INTO stash_relations (id, source_stash_id, target_stash_id, relation_type, weight, metadata)
+      INSERT INTO stash_relations (id, source_stash_id, target_stash_id, relation_type, weight, metadata)
       VALUES (?, ?, ?, 'shared_tags', ?, ?)
     `);
 
@@ -1177,6 +1180,31 @@ export class ClawStashDB {
         insert.run(uuidv4(), src, tgt, shared.length, JSON.stringify({ shared_tags: shared }));
       }
     }
+  }
+
+  private rebuildStashRelations(): void {
+    const rebuild = this.db.transaction(() => {
+      try { this.db.exec("DELETE FROM stash_relations WHERE relation_type = 'shared_tags'"); } catch (_) { /* table may not exist */ }
+
+      const stashes = this.db.prepare('SELECT id, tags FROM stashes').all() as { id: string; tags: string }[];
+      const parsed = stashes.map(s => ({ id: s.id, tags: JSON.parse(s.tags) as string[] }));
+
+      const insert = this.db.prepare(`
+        INSERT INTO stash_relations (id, source_stash_id, target_stash_id, relation_type, weight, metadata)
+        VALUES (?, ?, ?, 'shared_tags', ?, ?)
+      `);
+
+      for (let i = 0; i < parsed.length; i++) {
+        for (let j = i + 1; j < parsed.length; j++) {
+          const shared = parsed[i].tags.filter(t => parsed[j].tags.includes(t));
+          if (shared.length > 0) {
+            const [src, tgt] = [parsed[i].id, parsed[j].id].sort();
+            insert.run(uuidv4(), src, tgt, shared.length, JSON.stringify({ shared_tags: shared }));
+          }
+        }
+      }
+    });
+    rebuild();
   }
 
   // === Stash Graph ===
@@ -1618,31 +1646,40 @@ export class ClawStashDB {
       let versionCount = 0;
       let versionFileCount = 0;
 
+      // Prepare statements once outside loops for performance
+      const insertStash = this.db.prepare(`
+        INSERT INTO stashes (id, name, description, tags, metadata, version, archived, created_at, updated_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `);
+      const insertFile = this.db.prepare(`
+        INSERT INTO stash_files (id, stash_id, filename, content, language, sort_order)
+        VALUES (?, ?, ?, ?, ?, ?)
+      `);
+      const insertVersion = this.db.prepare(`
+        INSERT INTO stash_versions (id, stash_id, name, description, tags, metadata, version, created_by, created_at, change_summary)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `);
+      const insertVersionFile = this.db.prepare(`
+        INSERT INTO stash_version_files (id, version_id, filename, content, language, sort_order)
+        VALUES (?, ?, ?, ?, ?, ?)
+      `);
+
       // Insert stashes
       for (const s of data.stashes) {
-        this.db.prepare(`
-          INSERT INTO stashes (id, name, description, tags, metadata, version, archived, created_at, updated_at)
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-        `).run(s.id, s.name, s.description, s.tags, s.metadata, s.version ?? 1, s.archived ? 1 : 0, s.created_at, s.updated_at);
+        insertStash.run(s.id, s.name, s.description, s.tags, s.metadata, s.version ?? 1, s.archived ? 1 : 0, s.created_at, s.updated_at);
         stashCount++;
       }
 
       // Insert stash files
       for (const f of data.stash_files) {
-        this.db.prepare(`
-          INSERT INTO stash_files (id, stash_id, filename, content, language, sort_order)
-          VALUES (?, ?, ?, ?, ?, ?)
-        `).run(f.id, f.stash_id, f.filename, f.content, f.language, f.sort_order);
+        insertFile.run(f.id, f.stash_id, f.filename, f.content, f.language, f.sort_order);
         fileCount++;
       }
 
-      // Insert stash versions
+      // Insert stash versions (including change_summary)
       if (data.stash_versions) {
         for (const v of data.stash_versions) {
-          this.db.prepare(`
-            INSERT INTO stash_versions (id, stash_id, name, description, tags, metadata, version, created_by, created_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-          `).run(v.id, v.stash_id, v.name, v.description, v.tags, v.metadata, v.version, v.created_by, v.created_at);
+          insertVersion.run(v.id, v.stash_id, v.name, v.description, v.tags, v.metadata, v.version, v.created_by, v.created_at, v.change_summary ?? '{}');
           versionCount++;
         }
       }
@@ -1650,10 +1687,7 @@ export class ClawStashDB {
       // Insert stash version files
       if (data.stash_version_files) {
         for (const vf of data.stash_version_files) {
-          this.db.prepare(`
-            INSERT INTO stash_version_files (id, version_id, filename, content, language, sort_order)
-            VALUES (?, ?, ?, ?, ?, ?)
-          `).run(vf.id, vf.version_id, vf.filename, vf.content, vf.language, vf.sort_order);
+          insertVersionFile.run(vf.id, vf.version_id, vf.filename, vf.content, vf.language, vf.sort_order);
           versionFileCount++;
         }
       }
@@ -1663,6 +1697,7 @@ export class ClawStashDB {
 
     const result = tx();
     this.rebuildFtsIndex();
+    this.rebuildStashRelations();
     return result;
   }
 
