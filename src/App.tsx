@@ -62,6 +62,7 @@ export default function App() {
   const [adminSession, setAdminSession] = useState<AdminSessionInfo | null>(null);
   const [searchOpen, setSearchOpen] = useState(false);
   const [analyzeStashId, setAnalyzeStashId] = useState<string | null>(null);
+  const [showArchived, setShowArchived] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   // Global Alt+K shortcut for quick search
@@ -149,6 +150,8 @@ export default function App() {
       const result = await api.listStashes({
         search: search || undefined,
         tag: filterTag || undefined,
+        // undefined = show all (active + archived), false = show only active (hide archived)
+        archived: showArchived ? undefined : false,
       });
       setStashes(result.stashes);
       setTotal(result.total);
@@ -157,7 +160,7 @@ export default function App() {
     } finally {
       setLoading(false);
     }
-  }, [search, filterTag]);
+  }, [search, filterTag, showArchived]);
 
   useEffect(() => {
     // Only load stashes when authenticated or in open mode
@@ -215,6 +218,18 @@ export default function App() {
   const handleEditStash = () => {
     setView('edit');
     if (selectedStash) pushUrl(`/stash/${selectedStash.id}/edit`);
+  };
+
+  const handleArchiveStash = async (id: string, archived: boolean) => {
+    try {
+      const updated = await api.archiveStash(id, archived);
+      if (selectedStash?.id === id) {
+        setSelectedStash(updated);
+      }
+      loadStashes();
+    } catch (err) {
+      console.error('Failed to archive stash:', err);
+    }
   };
 
   const handleDeleteStash = async (id: string) => {
@@ -327,6 +342,8 @@ export default function App() {
         onFilterTag={handleFilterTag}
         tags={tags}
         recentTags={recentTags}
+        showArchived={showArchived}
+        onToggleShowArchived={() => setShowArchived(prev => !prev)}
         onSelectStash={handleSelectStash}
         onNewStash={handleNewStash}
         onGoHome={handleGoHome}
@@ -361,6 +378,8 @@ export default function App() {
               layout={layout}
               loading={loading}
               filterTag={filterTag}
+              showArchived={showArchived}
+              onToggleShowArchived={() => setShowArchived(prev => !prev)}
               onLayoutChange={handleLayoutChange}
               onSelectStash={handleSelectStash}
               onNewStash={handleNewStash}
@@ -372,6 +391,7 @@ export default function App() {
               stash={selectedStash}
               onEdit={handleEditStash}
               onDelete={handleDeleteStash}
+              onArchive={handleArchiveStash}
               onBack={handleGoHome}
               onAnalyzeStash={handleAnalyzeStash}
               onStashUpdated={(stash) => {

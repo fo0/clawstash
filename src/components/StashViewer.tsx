@@ -12,6 +12,7 @@ interface Props {
   stash: Stash;
   onEdit: () => void;
   onDelete: (id: string) => void;
+  onArchive: (id: string, archived: boolean) => void;
   onBack: () => void;
   onAnalyzeStash: (id: string) => void;
   onStashUpdated?: (stash: Stash) => void;
@@ -122,7 +123,7 @@ function CopyButtonContent({ copied, failed, size = 12, labelCopy = 'Copy', labe
   return <><CopyIcon size={size} /> {labelCopy}</>;
 }
 
-export default function StashViewer({ stash, onEdit, onDelete, onBack, onAnalyzeStash, onStashUpdated }: Props) {
+export default function StashViewer({ stash, onEdit, onDelete, onArchive, onBack, onAnalyzeStash, onStashUpdated }: Props) {
   const [activeTab, setActiveTab] = useState<'content' | 'metadata' | 'access-log' | 'history'>('content');
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [accessLog, setAccessLog] = useState<AccessLogEntry[]>([]);
@@ -216,7 +217,10 @@ export default function StashViewer({ stash, onEdit, onDelete, onBack, onAnalyze
           </svg>
           Back
         </button>
-        <h2 className="viewer-title">{title}</h2>
+        <h2 className="viewer-title">
+          {title}
+          {stash.archived && <span className="viewer-archived-badge">Archived</span>}
+        </h2>
         <div className="viewer-actions">
           <button
             className="btn btn-secondary"
@@ -235,6 +239,16 @@ export default function StashViewer({ stash, onEdit, onDelete, onBack, onAnalyze
               <path d="M11.013 1.427a1.75 1.75 0 0 1 2.474 0l1.086 1.086a1.75 1.75 0 0 1 0 2.474l-8.61 8.61c-.21.21-.47.364-.756.445l-3.251.93a.75.75 0 0 1-.927-.928l.929-3.25c.081-.286.235-.547.445-.758ZM11.189 4l1.811 1.811 1.72-1.72a.25.25 0 0 0 0-.354l-1.086-1.086a.25.25 0 0 0-.354 0Zm.528 3.283L9.906 5.472l-6.1 6.1a.25.25 0 0 0-.063.108l-.558 1.953 1.953-.558a.249.249 0 0 0 .108-.063Z" />
             </svg>
             Edit
+          </button>
+          <button
+            className="btn btn-secondary"
+            onClick={() => onArchive(stash.id, !stash.archived)}
+            title={stash.archived ? 'Unarchive this stash — restore to active stashes' : 'Archive this stash — hide from default listings'}
+          >
+            <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
+              <path d="M1.75 3h12.5a.75.75 0 0 1 .75.75v1.5a.75.75 0 0 1-.75.75H1.75A.75.75 0 0 1 1 5.25v-1.5A.75.75 0 0 1 1.75 3ZM2 7.5h12v5.75a.75.75 0 0 1-.75.75H2.75a.75.75 0 0 1-.75-.75Zm4.25 1.5a.75.75 0 0 0 0 1.5h3.5a.75.75 0 0 0 0-1.5Z" />
+            </svg>
+            {stash.archived ? 'Unarchive' : 'Archive'}
           </button>
           <button
             className={`btn ${showDeleteConfirm ? 'btn-danger' : 'btn-ghost'}`}

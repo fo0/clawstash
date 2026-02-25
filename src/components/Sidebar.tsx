@@ -12,6 +12,8 @@ interface Props {
   onFilterTag: (tag: string) => void;
   tags: TagInfo[];
   recentTags: string[];
+  showArchived: boolean;
+  onToggleShowArchived: () => void;
   onSelectStash: (id: string) => void;
   onNewStash: () => void;
   onGoHome: () => void;
@@ -82,7 +84,7 @@ const SETTINGS_SECTIONS: { id: SettingsSection; label: string; icon: JSX.Element
   },
 ];
 
-export default function Sidebar({ stashes, selectedId, search, onSearch, filterTag, onFilterTag, tags, recentTags, onSelectStash, onNewStash, onGoHome, onGraphView, onSettingsView, isSettingsView, settingsSection, onSettingsSection, onLogout, isOpen, onClose }: Props) {
+export default function Sidebar({ stashes, selectedId, search, onSearch, filterTag, onFilterTag, tags, recentTags, showArchived, onToggleShowArchived, onSelectStash, onNewStash, onGoHome, onGraphView, onSettingsView, isSettingsView, settingsSection, onSettingsSection, onLogout, isOpen, onClose }: Props) {
   const [tagDropdownOpen, setTagDropdownOpen] = useState(false);
   const [tagSearch, setTagSearch] = useState('');
   const tagFilterRef = useRef<HTMLDivElement>(null);
@@ -250,6 +252,17 @@ export default function Sidebar({ stashes, selectedId, search, onSearch, filterT
             </button>
           </div>
 
+          <button
+            className={`sidebar-archive-toggle ${showArchived ? 'active' : ''}`}
+            onClick={onToggleShowArchived}
+            title={showArchived ? 'Hide archived stashes' : 'Show archived stashes'}
+          >
+            <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
+              <path d="M1.75 3h12.5a.75.75 0 0 1 .75.75v1.5a.75.75 0 0 1-.75.75H1.75A.75.75 0 0 1 1 5.25v-1.5A.75.75 0 0 1 1.75 3ZM2 7.5h12v5.75a.75.75 0 0 1-.75.75H2.75a.75.75 0 0 1-.75-.75Zm4.25 1.5a.75.75 0 0 0 0 1.5h3.5a.75.75 0 0 0 0-1.5Z" />
+            </svg>
+            {showArchived ? 'Showing archived' : 'Show archived'}
+          </button>
+
           <div className="sidebar-list">
             {stashes.map((stash) => (
               <div
@@ -260,6 +273,7 @@ export default function Sidebar({ stashes, selectedId, search, onSearch, filterT
               >
                 <div className="sidebar-item-title">
                   {stash.name || stash.files[0]?.filename || 'Untitled'}
+                  {stash.archived && <span className="sidebar-item-archived-badge">Archived</span>}
                 </div>
                 <div className="sidebar-item-meta">
                   <span className="sidebar-item-filename">{stash.files[0]?.filename}</span>
