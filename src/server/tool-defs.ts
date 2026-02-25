@@ -60,7 +60,7 @@ Tips:
         .optional()
         .describe('Arbitrary key-value metadata (e.g. {"model": "claude", "agent_id": "abc", "purpose": "code review"})'),
     }),
-    returns: '{ id, name, description, tags, metadata, total_size, files: [{ filename, language, size }], created_at }',
+    returns: '{ id, name, description, tags, archived, metadata, total_size, files: [{ filename, language, size }], created_at }',
   },
   {
     name: 'read_stash',
@@ -78,7 +78,7 @@ To get file content:
       id: z.string().describe('The stash ID (UUID format)'),
       include_content: z.boolean().optional().describe('If true, includes full file content in response. Default: false (returns file list with sizes only). Use read_stash_file for selective access.'),
     }),
-    returns: '{ id, name, description, tags, metadata, created_at, updated_at, total_size, files: [{ filename, language, size, content? }] }',
+    returns: '{ id, name, description, tags, archived, metadata, created_at, updated_at, total_size, files: [{ filename, language, size, content? }] }',
   },
   {
     name: 'read_stash_file',
@@ -107,6 +107,7 @@ File sizes (character counts) are included to help estimate content volume befor
     schema: z.object({
       search: z.string().optional().describe('Filter by name, description, filename, or file content (case-insensitive partial match)'),
       tag: z.string().optional().describe('Filter by tag (exact match). Use list_tags to see available tags.'),
+      archived: z.boolean().optional().describe('Filter by archive status. true = only archived, false = only active (non-archived). Omit to show all.'),
       page: z.number().optional().describe('Page number for pagination (default: 1)'),
       limit: z.number().optional().describe('Results per page (default: 50, max recommended: 100)'),
     }),
@@ -135,7 +136,7 @@ Important:
       tags: z.array(z.string()).optional().describe('New tags — replaces entire tag list. Omit to keep current tags.'),
       metadata: z.record(z.unknown()).optional().describe('New metadata — replaces entire metadata object. Omit to keep current metadata.'),
     }),
-    returns: '{ id, name, description, tags, metadata, total_size, files: [{ filename, language, size }], updated_at }',
+    returns: '{ id, name, description, tags, archived, metadata, total_size, files: [{ filename, language, size }], updated_at }',
   },
   {
     name: 'delete_stash',
@@ -144,6 +145,19 @@ Important:
       id: z.string().describe('The stash ID to delete'),
     }),
     returns: 'Success message string',
+  },
+  {
+    name: 'archive_stash',
+    description: `Archive or unarchive a stash. Archived stashes are hidden from default listings but remain accessible by ID.
+
+Use this to declutter your workspace without deleting stashes permanently. Archived stashes can be found by:
+- Passing archived=true to list_stashes or search_stashes
+- Reading directly by ID with read_stash`,
+    schema: z.object({
+      id: z.string().describe('The stash ID to archive or unarchive'),
+      archived: z.boolean().describe('true to archive, false to unarchive (restore to active)'),
+    }),
+    returns: '{ id, name, archived, updated_at } — confirmation with new archive status',
   },
   {
     name: 'search_stashes',
@@ -162,6 +176,7 @@ Use read_stash to get full stash metadata, or read_stash_file to read specific f
     schema: z.object({
       query: z.string().describe('Search text — multiple words are AND-combined. Supports stemming and prefix matching.'),
       tag: z.string().optional().describe('Additionally filter results by tag (exact match). Combine with query for precise results.'),
+      archived: z.boolean().optional().describe('Filter by archive status. true = only archived, false = only active. Omit to search all.'),
       limit: z.number().optional().describe('Maximum number of results (default: 20)'),
       page: z.number().optional().describe('Page number for pagination (default: 1)'),
     }),

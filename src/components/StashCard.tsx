@@ -33,9 +33,10 @@ export default function StashCard({ stash, layout, onClick, onFilterTag }: Props
   const title = stash.name || stash.files[0]?.filename || 'Untitled';
 
   return (
-    <div className={`stash-card ${layout}`} onClick={onClick} title={`Open stash: ${title}`}>
+    <div className={`stash-card ${layout}${stash.archived ? ' stash-card-archived' : ''}`} onClick={onClick} title={`Open stash: ${title}`}>
       <div className="stash-card-header">
         <span className="stash-card-title">{title}</span>
+        {stash.archived && <span className="stash-card-archived-badge">Archived</span>}
       </div>
 
       {stash.description && (

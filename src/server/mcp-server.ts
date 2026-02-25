@@ -113,8 +113,8 @@ ${TOKEN_EFFICIENT_GUIDE}`,
     listDef.name,
     listDef.description,
     listDef.schema.shape,
-    async ({ search, tag, page, limit }) => {
-      const result = db.listStashes({ search, tag, page, limit });
+    async ({ search, tag, archived, page, limit }) => {
+      const result = db.listStashes({ search, tag, archived, page, limit });
       return {
         content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
       };
@@ -165,14 +165,38 @@ ${TOKEN_EFFICIENT_GUIDE}`,
     }
   );
 
+  // Archive / unarchive a stash
+  const archiveDef = getToolDef('archive_stash');
+  server.tool(
+    archiveDef.name,
+    archiveDef.description,
+    archiveDef.schema.shape,
+    async ({ id, archived }) => {
+      const stash = db.archiveStash(id, archived);
+      if (!stash) {
+        return { content: [{ type: 'text', text: `Error: Stash "${id}" not found.` }] };
+      }
+      db.logAccess(stash.id, 'mcp', archived ? 'archive' : 'unarchive');
+      const summary = {
+        id: stash.id,
+        name: stash.name,
+        archived: stash.archived,
+        updated_at: stash.updated_at,
+      };
+      return {
+        content: [{ type: 'text', text: JSON.stringify(summary, null, 2) }],
+      };
+    }
+  );
+
   // Search stashes (FTS5 with BM25 ranking + snippets)
   const searchDef = getToolDef('search_stashes');
   server.tool(
     searchDef.name,
     searchDef.description,
     searchDef.schema.shape,
-    async ({ query, tag, limit, page }) => {
-      const result = db.searchStashes(query, { tag, limit: limit || 20, page });
+    async ({ query, tag, archived, limit, page }) => {
+      const result = db.searchStashes(query, { tag, archived, limit: limit || 20, page });
       return {
         content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
       };

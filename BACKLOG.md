@@ -14,6 +14,8 @@ Review findings not immediately fixed. **Only work on these upon explicit reques
 | 13 | 2026-02-22 | Performance | P2 | src/server/db.ts:searchStashes | N+1 queries in `searchStashes()` — per-result stash row + file list fetch. Matches existing `listStashes` pattern. Could optimize with batch JOIN for stash data. | Deferred | Feature: FTS5 Search |
 | 15 | 2026-02-22 | Security | P2 | src/middleware.ts:76 | Rate limiter uses `x-forwarded-for` as IP key — spoofable without trusted proxy. All direct connections fall back to shared `'unknown'` bucket. Standard limitation for in-memory rate limiters. | Accepted | Feature: Security Hardening |
 | 16 | 2026-02-22 | Performance | P2 | src/middleware.ts:30 | `setInterval` at module scope not HMR-protected (unlike singleton). Could create duplicate intervals during dev HMR. Harmless in production and dev (leaks empty Map cleanup). | Accepted | Feature: Security Hardening |
+| 19 | 2026-02-25 | Edge Cases | P2 | src/server/db.ts:getAllTags | `getAllTags()` counts ALL stashes including archived — tag counts may not match visible stash list when archive filter is active. Could add optional `includeArchived` parameter. | Accepted | Feature: Stash Archive |
+| 20 | 2026-02-25 | Code Smells | P2 | src/app/api/stashes/[id]/route.ts | Archive-only PATCH handler has verbose `undefined` checks for all fields. Could be simplified with a `hasContentChanges` helper. | Accepted | Feature: Stash Archive |
 
 ## Done
 

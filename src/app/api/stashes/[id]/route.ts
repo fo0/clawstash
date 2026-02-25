@@ -39,8 +39,24 @@ export async function PATCH(req: NextRequest, { params }: Params) {
     return NextResponse.json({ error: formatZodError(parsed.error) }, { status: 400 });
   }
 
-  const { name, description, tags, metadata, files } = parsed.data;
+  const { name, description, tags, metadata, files, archived } = parsed.data;
   const source = getAccessSource(req);
+
+  // Handle archive toggle separately (doesn't create a new version)
+  if (archived !== undefined && name === undefined && description === undefined && tags === undefined && metadata === undefined && files === undefined) {
+    const stash = db.archiveStash(id, archived);
+    if (!stash) {
+      return NextResponse.json({ error: 'Stash not found' }, { status: 404 });
+    }
+    db.logAccess(stash.id, source, archived ? 'archive' : 'unarchive', req.headers.get('x-forwarded-for') || undefined, req.headers.get('user-agent') || undefined);
+    return NextResponse.json(stash);
+  }
+
+  // If archived is set alongside other fields, apply archive first
+  if (archived !== undefined) {
+    db.archiveStash(id, archived);
+  }
+
   const stash = db.updateStash(id, { name, description, tags, metadata, files }, source);
   if (!stash) {
     return NextResponse.json({ error: 'Stash not found' }, { status: 404 });

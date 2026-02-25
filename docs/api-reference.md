@@ -18,7 +18,7 @@ See [authentication.md](authentication.md) for token creation and scopes.
 
 | Endpoint | Method | Description |
 |----------|--------|-------------|
-| `/api/stashes` | GET | List stashes (`?search=&tag=&page=&limit=`) |
+| `/api/stashes` | GET | List stashes (`?search=&tag=&archived=&page=&limit=`) |
 | `/api/stashes` | POST | Create a stash |
 | `/api/stashes/:id` | GET | Get a single stash with all files |
 | `/api/stashes/:id` | PATCH | Update a stash |
@@ -119,6 +119,30 @@ curl -X PATCH http://localhost:3000/api/stashes/STASH_ID \
       {"filename": "docker-compose.yml", "content": "updated content..."}
     ]
   }'
+```
+
+### Archive / Unarchive a Stash
+
+```bash
+# Archive a stash (hide from default listings)
+curl -X PATCH http://localhost:3000/api/stashes/STASH_ID \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer cs_your_token" \
+  -d '{"archived": true}'
+
+# Unarchive (restore to active)
+curl -X PATCH http://localhost:3000/api/stashes/STASH_ID \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer cs_your_token" \
+  -d '{"archived": false}'
+
+# List only archived stashes
+curl "http://localhost:3000/api/stashes?archived=true" \
+  -H "Authorization: Bearer cs_your_token"
+
+# List only active (non-archived) stashes
+curl "http://localhost:3000/api/stashes?archived=false" \
+  -H "Authorization: Bearer cs_your_token"
 ```
 
 ### Get Raw File Content
