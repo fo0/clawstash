@@ -55,6 +55,7 @@ export function getOpenApiSpec(baseUrl: string): OpenApiSpec {
             description: { type: 'string', description: 'Longer description for AI context' },
             tags: { type: 'array', items: { type: 'string' } },
             metadata: { type: 'object', additionalProperties: true },
+            archived: { type: 'boolean', description: 'Whether the stash is archived (hidden from default listings)' },
             created_at: { type: 'string', format: 'date-time' },
             updated_at: { type: 'string', format: 'date-time' },
             files: { type: 'array', items: { $ref: '#/components/schemas/StashFile' } },
@@ -68,6 +69,7 @@ export function getOpenApiSpec(baseUrl: string): OpenApiSpec {
             name: { type: 'string' },
             description: { type: 'string' },
             tags: { type: 'array', items: { type: 'string' } },
+            archived: { type: 'boolean', description: 'Whether the stash is archived' },
             created_at: { type: 'string', format: 'date-time' },
             updated_at: { type: 'string', format: 'date-time' },
             files: { type: 'array', items: { type: 'object', properties: { filename: { type: 'string' }, language: { type: 'string' } } } },
@@ -105,6 +107,7 @@ export function getOpenApiSpec(baseUrl: string): OpenApiSpec {
             description: { type: 'string' },
             tags: { type: 'array', items: { type: 'string' } },
             metadata: { type: 'object', additionalProperties: true },
+            archived: { type: 'boolean', description: 'Set to true to archive or false to unarchive' },
             files: {
               type: 'array',
               items: {
@@ -232,6 +235,7 @@ export function getOpenApiSpec(baseUrl: string): OpenApiSpec {
           parameters: [
             { name: 'search', in: 'query', schema: { type: 'string' }, description: 'Search term (matches name, description, filenames, content)' },
             { name: 'tag', in: 'query', schema: { type: 'string' }, description: 'Filter by tag' },
+            { name: 'archived', in: 'query', schema: { type: 'string', enum: ['true', 'false'] }, description: 'Filter by archive status. true = only archived, false = only active. Omit to show all.' },
             { name: 'page', in: 'query', schema: { type: 'integer', default: 1 }, description: 'Page number' },
             { name: 'limit', in: 'query', schema: { type: 'integer', default: 50 }, description: 'Results per page' },
           ],

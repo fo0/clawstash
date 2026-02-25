@@ -30,10 +30,11 @@ async function request<T>(url: string, init?: RequestInit): Promise<T> {
 }
 
 export const api = {
-  listStashes(params?: { search?: string; tag?: string; page?: number; limit?: number }): Promise<StashListResponse> {
+  listStashes(params?: { search?: string; tag?: string; archived?: boolean; page?: number; limit?: number }): Promise<StashListResponse> {
     const qs = new URLSearchParams();
     if (params?.search) qs.set('search', params.search);
     if (params?.tag) qs.set('tag', params.tag);
+    if (params?.archived !== undefined) qs.set('archived', String(params.archived));
     if (params?.page) qs.set('page', String(params.page));
     if (params?.limit) qs.set('limit', String(params.limit));
     return request(`${BASE}${qs.toString() ? `?${qs}` : ''}`, { headers: getHeaders() });
@@ -53,6 +54,10 @@ export const api = {
 
   deleteStash(id: string): Promise<void> {
     return request(`${BASE}/${id}`, { method: 'DELETE', headers: getHeaders() });
+  },
+
+  archiveStash(id: string, archived: boolean): Promise<Stash> {
+    return request(`${BASE}/${id}`, { method: 'PATCH', headers: getHeaders(), body: JSON.stringify({ archived }) });
   },
 
   getTags(): Promise<TagInfo[]> {

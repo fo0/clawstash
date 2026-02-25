@@ -10,6 +10,7 @@
 **Core features:**
 - Text and file storage with multi-file support per stash
 - Name + Description: Separate title and AI-optimized description per stash
+- Archive: Hide stashes from default listings without deleting (toggle in UI, API, and MCP)
 - REST API for programmatic access with Bearer token auth
 - MCP Server for direct AI agent integration (Streamable HTTP + stdio)
 - Web dashboard with dark-theme GUI (card/list view)
@@ -193,7 +194,7 @@ npm run mcp                # Start MCP server (stdio transport)
 
 - Single `ClawStashDB` class encapsulates all database operations
 - SQLite with WAL mode for concurrent read performance
-- Stash columns: `name` (title), `description` (AI description), `tags` (JSON), `metadata` (JSON)
+- Stash columns: `name` (title), `description` (AI description), `tags` (JSON), `metadata` (JSON), `archived` (INTEGER 0/1)
 - JSON columns for tags (array) and metadata (object) stored as TEXT
 - Transactions for multi-table operations (stash + files)
 - Language auto-detection from file extension
@@ -201,7 +202,8 @@ npm run mcp                # Start MCP server (stdio transport)
 - `searchStashes(query, options)` returns BM25-ranked results with match snippets (`**highlighted**` markdown); falls back to LIKE search on FTS syntax error
 - FTS index auto-synced on `createStash()`, `updateStash()`, `deleteStash()`, and `importAllData()` (full rebuild via `rebuildFtsIndex()`)
 - `buildFtsQuery()` sanitizes user input, strips FTS5 special chars, adds prefix matching (`word*`), implicit AND for multi-word queries
-- `listStashes` returns `StashListItem[]` (summary without metadata/file content, includes file sizes and total_size)
+- `archiveStash(id, archived)` toggles archive status without creating a new version
+- `listStashes` returns `StashListItem[]` (summary without metadata/file content, includes file sizes and total_size); supports `archived` filter (true/false/undefined)
 - `getStashMeta(id)` returns stash with metadata + file info (filename, language, size) and total_size, without file content
 - `getStashFile(stashId, filename)` returns a single file's content by stash ID and filename
 - `stashExists(id)` lightweight existence check (SELECT 1, no data loaded)
@@ -304,6 +306,7 @@ npm run mcp                # Start MCP server (stdio transport)
 - Stash list loaded via `useEffect` with search/filter dependencies
 - Tags loaded separately from stashes (stable callback, refreshed on save/delete)
 - Tag filter state (`filterTag`) shared between Sidebar dropdown and Dashboard tag clicks
+- Archive filter state (`showArchived`): when false (default), archived stashes are hidden from listings; toggle in sidebar and dashboard header
 - Recent tags (`recentTags`) tracked in App.tsx, persisted to `clawstash_recent_tags` in localStorage (max 3, auto-cleaned against current tags list)
 - Layout persisted to localStorage
 - Settings navigation integrated into sidebar (section state in App.tsx), default section: 'welcome' (Admin Dashboard)
@@ -429,7 +432,7 @@ npm run mcp                # Start MCP server (stdio transport)
 
 | Endpoint | Method | Description |
 |----------|--------|-------------|
-| `/api/stashes` | GET | List stashes (query: `?search=&tag=&page=&limit=`). With `search`: FTS5 ranked results with snippets. Without: recency-sorted list. |
+| `/api/stashes` | GET | List stashes (query: `?search=&tag=&archived=&page=&limit=`). With `search`: FTS5 ranked results with snippets. Without: recency-sorted list. `archived=true/false` filters by archive status. |
 | `/api/stashes` | POST | Create a new stash |
 | `/api/stashes/stats` | GET | Get storage statistics |
 | `/api/stashes/tags` | GET | List all tags with counts |
@@ -469,10 +472,11 @@ npm run mcp                # Start MCP server (stdio transport)
 | `create_stash` | Create a new stash with files, tags, metadata. Returns confirmation only. |
 | `read_stash` | Get stash metadata + file list with sizes. Optional `include_content` for full content. |
 | `read_stash_file` | Read a specific file's content from a stash (most token-efficient). |
-| `list_stashes` | List/search stashes with filters. Returns summaries with file sizes (no content). |
+| `list_stashes` | List/search stashes with filters (tag, archived). Returns summaries with file sizes (no content). |
 | `update_stash` | Update an existing stash. Returns confirmation only. |
 | `delete_stash` | Delete a stash. |
-| `search_stashes` | FTS5 full-text search with BM25 ranking, Porter stemming, prefix matching, and match snippets. Supports tag filter. |
+| `archive_stash` | Archive or unarchive a stash (hide from default listings without deleting). |
+| `search_stashes` | FTS5 full-text search with BM25 ranking, Porter stemming, prefix matching, and match snippets. Supports tag and archive filter. |
 | `list_tags` | List all tags with usage counts. |
 | `get_tag_graph` | Get tag relationship graph with optional focus tag, depth traversal, min_weight, min_count, limit filters. |
 | `get_stats` | Get storage statistics. |

@@ -20,6 +20,7 @@ export interface Stash {
   tags: string[];
   metadata: Record<string, unknown>;
   version: number;
+  archived: boolean;
   created_at: string;
   updated_at: string;
   files: StashFile[];
@@ -69,6 +70,7 @@ export interface StashListItem {
   description: string;
   tags: string[];
   version: number;
+  archived: boolean;
   created_at: string;
   updated_at: string;
   total_size: number;
@@ -82,6 +84,7 @@ export interface StashMeta {
   tags: string[];
   metadata: Record<string, unknown>;
   version: number;
+  archived: boolean;
   created_at: string;
   updated_at: string;
   total_size: number;
@@ -136,6 +139,7 @@ export interface UpdateStashInput {
 export interface ListStashesOptions {
   search?: string;
   tag?: string;
+  archived?: boolean;
   page?: number;
   limit?: number;
 }
@@ -386,6 +390,17 @@ const MIGRATIONS: Migration[] = [
       console.log(`[DB] FTS5 search index created and backfilled for ${stashes.length} stash(es)`);
     }
   },
+  {
+    version: 9,
+    name: 'add_stashes_archived_column',
+    up: (db) => {
+      const columns = db.prepare("PRAGMA table_info(stashes)").all() as { name: string }[];
+      if (!columns.some(c => c.name === 'archived')) {
+        db.exec('ALTER TABLE stashes ADD COLUMN archived INTEGER NOT NULL DEFAULT 0');
+        db.exec('CREATE INDEX IF NOT EXISTS idx_stashes_archived ON stashes(archived)');
+      }
+    }
+  },
 ];
 
 export class ClawStashDB {
@@ -532,6 +547,7 @@ export class ClawStashDB {
       tags: JSON.parse(row.tags as string),
       metadata: JSON.parse(row.metadata as string),
       version: (row.version as number) || 1,
+      archived: (row.archived as number) === 1,
       created_at: row.created_at as string,
       updated_at: row.updated_at as string,
     };
@@ -544,6 +560,7 @@ export class ClawStashDB {
       description: row.description as string,
       tags: JSON.parse(row.tags as string),
       version: (row.version as number) || 1,
+      archived: (row.archived as number) === 1,
       created_at: row.created_at as string,
       updated_at: row.updated_at as string,
     };
@@ -635,6 +652,7 @@ export class ClawStashDB {
       tags: input.tags || [],
       metadata: input.metadata || {},
       version: 1,
+      archived: false,
       created_at: now,
       updated_at: now,
       files,
@@ -677,7 +695,7 @@ export class ClawStashDB {
   }
 
   listStashes(options: ListStashesOptions = {}): { stashes: StashListItem[]; total: number } {
-    const { search, tag, page = 1, limit = 50 } = options;
+    const { search, tag, archived, page = 1, limit = 50 } = options;
     const conditions: string[] = [];
     const params: unknown[] = [];
 
@@ -694,6 +712,11 @@ export class ClawStashDB {
       conditions.push(`g.tags LIKE ? ESCAPE '\\'`);
       const escapedTag = tag.replace(/[\\%_]/g, '\\$&');
       params.push(`%"${escapedTag}"%`);
+    }
+
+    if (archived !== undefined) {
+      conditions.push('g.archived = ?');
+      params.push(archived ? 1 : 0);
     }
 
     const where = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
@@ -787,8 +810,8 @@ export class ClawStashDB {
     }).filter(Boolean).join(' ');
   }
 
-  searchStashes(query: string, options: { tag?: string; limit?: number; page?: number } = {}): SearchStashesResult {
-    const { tag, limit = 20, page = 1 } = options;
+  searchStashes(query: string, options: { tag?: string; archived?: boolean; limit?: number; page?: number } = {}): SearchStashesResult {
+    const { tag, archived, limit = 20, page = 1 } = options;
     const ftsQuery = this.buildFtsQuery(query);
 
     if (!ftsQuery) {
@@ -822,6 +845,11 @@ export class ClawStashDB {
         countParams.push(`%"${escapedTag}"%`);
       }
 
+      if (archived !== undefined) {
+        countSql += ' AND s.archived = ?';
+        countParams.push(archived ? 1 : 0);
+      }
+
       countRow = this.db.prepare(countSql).get(...countParams) as { count: number };
 
       let sql = `
@@ -843,6 +871,11 @@ export class ClawStashDB {
         params.push(`%"${escapedTag}"%`);
       }
 
+      if (archived !== undefined) {
+        sql += ' AND s.archived = ?';
+        params.push(archived ? 1 : 0);
+      }
+
       const offset = (page - 1) * limit;
       sql += ` ORDER BY f.rank LIMIT ? OFFSET ?`;
       params.push(limit, offset);
@@ -850,7 +883,7 @@ export class ClawStashDB {
       rows = this.db.prepare(sql).all(...params) as typeof rows;
     } catch {
       // FTS5 MATCH syntax error → fall back to LIKE-based search
-      const fallback = this.listStashes({ search: query, tag, limit, page });
+      const fallback = this.listStashes({ search: query, tag, archived, limit, page });
       return {
         stashes: fallback.stashes.map(s => ({ ...s, relevance: 0 })),
         total: fallback.total,
@@ -994,6 +1027,13 @@ export class ClawStashDB {
       this.removeFtsIndex(id);
     }
     return result.changes > 0;
+  }
+
+  archiveStash(id: string, archived: boolean): Stash | null {
+    const existing = this.db.prepare('SELECT 1 FROM stashes WHERE id = ?').get(id);
+    if (!existing) return null;
+    this.db.prepare('UPDATE stashes SET archived = ? WHERE id = ?').run(archived ? 1 : 0, id);
+    return this.getStash(id);
   }
 
   getAllTags(): { tag: string; count: number }[] {
@@ -1581,9 +1621,9 @@ export class ClawStashDB {
       // Insert stashes
       for (const s of data.stashes) {
         this.db.prepare(`
-          INSERT INTO stashes (id, name, description, tags, metadata, version, created_at, updated_at)
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-        `).run(s.id, s.name, s.description, s.tags, s.metadata, s.version ?? 1, s.created_at, s.updated_at);
+          INSERT INTO stashes (id, name, description, tags, metadata, version, archived, created_at, updated_at)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `).run(s.id, s.name, s.description, s.tags, s.metadata, s.version ?? 1, s.archived ? 1 : 0, s.created_at, s.updated_at);
         stashCount++;
       }
 
