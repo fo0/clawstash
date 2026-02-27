@@ -75,6 +75,8 @@ function slugify(text: string): string {
 
 // Track slug occurrences per render pass to disambiguate duplicate headings
 let slugCounts: Map<string, number> = new Map();
+// Prefix prepended to heading IDs for cross-file disambiguation (set before each render)
+let headingIdPrefix = '';
 
 // Dedicated Marked instance — no global mutation
 const mdParser = new Marked({
@@ -87,17 +89,20 @@ const mdParser = new Marked({
       const count = slugCounts.get(slug) || 0;
       slugCounts.set(slug, count + 1);
       if (count > 0) slug = `${slug}-${count}`;
+      const finalSlug = headingIdPrefix + slug;
       const rendered = this.parser.parseInline(tokens);
-      const safeSlug = escapeAttr(slug);
+      const safeSlug = escapeAttr(finalSlug);
       return `<h${depth} id="${safeSlug}"><a class="heading-anchor" href="#${safeSlug}" aria-hidden="true">#</a>${rendered}</h${depth}>\n`;
     },
     // Open external links in a new tab; keep anchor links in-page
     link({ href, title, text }) {
-      const safeHref = escapeAttr(href);
       const titleAttr = title ? ` title="${escapeAttr(title)}"` : '';
       if (href.startsWith('#')) {
-        return `<a href="${safeHref}"${titleAttr}>${text}</a>`;
+        // Prepend current heading prefix so anchors match prefixed heading IDs
+        const resolvedHref = headingIdPrefix ? `#${headingIdPrefix}${href.slice(1)}` : href;
+        return `<a href="${escapeAttr(resolvedHref)}"${titleAttr}>${text}</a>`;
       }
+      const safeHref = escapeAttr(href);
       return `<a href="${safeHref}"${titleAttr} target="_blank" rel="noopener noreferrer">${text}</a>`;
     },
   },
@@ -122,11 +127,43 @@ function sanitizeHtml(html: string): string {
 /**
  * Render markdown content to sanitized HTML.
  * Slug counter is reset per call so each file gets independent heading IDs.
+ * Optional idPrefix disambiguates heading IDs across multiple files.
  */
-function renderMarkdown(content: string): string {
+function renderMarkdown(content: string, idPrefix = ''): string {
   slugCounts = new Map();
+  headingIdPrefix = idPrefix;
   const raw = mdParser.parse(content, { async: false }) as string;
   return sanitizeHtml(raw);
+}
+
+interface TocHeading {
+  id: string;
+  text: string;
+  depth: number;
+}
+
+interface TocEntry {
+  fileIndex: number;
+  filename: string;
+  headings: TocHeading[];
+}
+
+/**
+ * Extract h1–h3 headings from rendered markdown HTML for TOC generation.
+ */
+function extractHeadings(html: string): TocHeading[] {
+  const doc = new DOMParser().parseFromString(html, 'text/html');
+  const headings: TocHeading[] = [];
+  doc.querySelectorAll('h1, h2, h3').forEach(el => {
+    // Remove the anchor element so its "#" doesn't appear in the text
+    const anchor = el.querySelector('.heading-anchor');
+    if (anchor) anchor.remove();
+    const text = el.textContent?.trim() || '';
+    if (el.id && text) {
+      headings.push({ id: el.id, text, depth: parseInt(el.tagName[1]) });
+    }
+  });
+  return headings;
 }
 
 /**
@@ -160,6 +197,7 @@ export default function StashViewer({ stash, onEdit, onDelete, onArchive, onBack
   const [accessLog, setAccessLog] = useState<AccessLogEntry[]>([]);
   const [logLoading, setLogLoading] = useState(false);
   const [renderPreview, setRenderPreview] = useState(getRenderPreference);
+  const [tocExpanded, setTocExpanded] = useState(true);
   const deleteTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const copyAllClipboard = useClipboard();
   const fileClipboard = useClipboardWithKey();
@@ -171,18 +209,35 @@ export default function StashViewer({ stash, onEdit, onDelete, onArchive, onBack
     [stash.files]
   );
 
-  // Memoize rendered markdown/HTML output to avoid re-parsing on every render
-  const renderedContent = useMemo(() => {
-    const map = new Map<string, string>();
-    for (const file of stash.files) {
+  // Memoize rendered markdown/HTML output and TOC entries
+  const { renderedContent, tocEntries } = useMemo(() => {
+    const contentMap = new Map<string, string>();
+    const mdFileIndices: number[] = [];
+    stash.files.forEach((f, i) => {
+      if (resolvedLanguages.get(f.id) === 'markdown') mdFileIndices.push(i);
+    });
+    const needsToc = mdFileIndices.length >= 2;
+    const entries: TocEntry[] = [];
+
+    for (let i = 0; i < stash.files.length; i++) {
+      const file = stash.files[i];
       const lang = resolvedLanguages.get(file.id);
       if (lang === 'markdown') {
-        map.set(file.id, renderMarkdown(file.content));
+        const prefix = needsToc ? `f${i}-` : '';
+        const html = renderMarkdown(file.content, prefix);
+        contentMap.set(file.id, html);
+        if (needsToc) {
+          entries.push({
+            fileIndex: i,
+            filename: file.filename,
+            headings: extractHeadings(html),
+          });
+        }
       } else if (lang === 'markup') {
-        map.set(file.id, buildHtmlPreview(file.content));
+        contentMap.set(file.id, buildHtmlPreview(file.content));
       }
     }
-    return map;
+    return { renderedContent: contentMap, tocEntries: entries };
   }, [stash.files, resolvedLanguages]);
 
   const toggleRenderPreview = useCallback(() => {
@@ -191,6 +246,12 @@ export default function StashViewer({ stash, onEdit, onDelete, onArchive, onBack
       setRenderPreference(next);
       return next;
     });
+  }, []);
+
+  const scrollToId = useCallback((e: React.MouseEvent<HTMLAnchorElement>, id: string) => {
+    e.preventDefault();
+    const el = document.getElementById(id);
+    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }, []);
 
   useEffect(() => {
@@ -368,16 +429,62 @@ export default function StashViewer({ stash, onEdit, onDelete, onArchive, onBack
         </button>
       </div>
 
+      {activeTab === 'content' && tocEntries.length > 0 && renderPreview && (
+        <div className="viewer-toc">
+          <button className="viewer-toc-toggle" onClick={() => setTocExpanded(!tocExpanded)}>
+            <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
+              <path d="M2 4a1 1 0 1 0 0-2 1 1 0 0 0 0 2Zm3.75-1.5a.75.75 0 0 0 0 1.5h8.5a.75.75 0 0 0 0-1.5Zm0 5a.75.75 0 0 0 0 1.5h8.5a.75.75 0 0 0 0-1.5Zm0 5a.75.75 0 0 0 0 1.5h8.5a.75.75 0 0 0 0-1.5ZM3 8a1 1 0 1 1-2 0 1 1 0 0 1 2 0Zm-1 6a1 1 0 1 0 0-2 1 1 0 0 0 0 2Z" />
+            </svg>
+            Table of Contents
+            <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor" className={`toc-chevron ${tocExpanded ? 'expanded' : ''}`}>
+              <path d="M6.22 3.22a.75.75 0 0 1 1.06 0l4.25 4.25a.75.75 0 0 1 0 1.06l-4.25 4.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042L9.94 8 6.22 4.28a.75.75 0 0 1 0-1.06Z" />
+            </svg>
+          </button>
+          {tocExpanded && (
+            <nav className="viewer-toc-nav" aria-label="Table of contents">
+              {tocEntries.map((entry) => (
+                <div key={entry.fileIndex} className="toc-file-group">
+                  <a
+                    className="toc-file-link"
+                    href={`#stash-file-${entry.fileIndex}`}
+                    onClick={(e) => scrollToId(e, `stash-file-${entry.fileIndex}`)}
+                  >
+                    <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor">
+                      <path d="M2 1.75C2 .784 2.784 0 3.75 0h6.586c.464 0 .909.184 1.237.513l2.914 2.914c.329.328.513.773.513 1.237v9.586A1.75 1.75 0 0 1 13.25 16h-9.5A1.75 1.75 0 0 1 2 14.25Zm1.75-.25a.25.25 0 0 0-.25.25v12.5c0 .138.112.25.25.25h9.5a.25.25 0 0 0 .25-.25V6h-2.75A1.75 1.75 0 0 1 9 4.25V1.5Zm6.75.062V4.25c0 .138.112.25.25.25h2.688l-.011-.013-2.914-2.914-.013-.011Z" />
+                    </svg>
+                    {entry.filename}
+                  </a>
+                  {entry.headings.length > 0 && (
+                    <ul className="toc-headings">
+                      {entry.headings.map((h, hi) => (
+                        <li key={hi} className={`toc-heading toc-h${h.depth}`}>
+                          <a
+                            href={`#${h.id}`}
+                            onClick={(e) => scrollToId(e, h.id)}
+                          >
+                            {h.text}
+                          </a>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              ))}
+            </nav>
+          )}
+        </div>
+      )}
+
       {activeTab === 'content' && (
         <div className="viewer-files">
-          {stash.files.map((file) => {
+          {stash.files.map((file, fileIndex) => {
             const lang = resolvedLanguages.get(file.id) || 'text';
             const renderable = isRenderableLanguage(lang);
             const showRendered = renderable && renderPreview;
             const langLabel = file.language || (lang !== 'text' ? `auto:${getLanguageDisplayName(lang)}` : '');
 
             return (
-              <div key={file.id} className="viewer-file">
+              <div key={file.id} id={`stash-file-${fileIndex}`} className="viewer-file">
                 <div className="file-header">
                   <span className="file-name" title={file.filename}>{file.filename}</span>
                   <div className="file-actions">
