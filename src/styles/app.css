@@ -1458,6 +1458,30 @@ body {
   margin-bottom: 12px;
   font-weight: 600;
   line-height: 1.25;
+  scroll-margin-top: 16px;
+  position: relative;
+}
+
+.markdown-body h1[id]:hover,
+.markdown-body h2[id]:hover,
+.markdown-body h3[id]:hover,
+.markdown-body h4[id]:hover,
+.markdown-body h5[id]:hover,
+.markdown-body h6[id]:hover {
+  cursor: pointer;
+}
+
+.markdown-body h1[id]:hover::before,
+.markdown-body h2[id]:hover::before,
+.markdown-body h3[id]:hover::before,
+.markdown-body h4[id]:hover::before,
+.markdown-body h5[id]:hover::before,
+.markdown-body h6[id]:hover::before {
+  content: '#';
+  color: var(--text-tertiary);
+  margin-left: -1.2em;
+  padding-right: 0.2em;
+  position: absolute;
 }
 
 .markdown-body h1 { font-size: 1.8em; padding-bottom: 8px; border-bottom: 1px solid var(--border-color); }
