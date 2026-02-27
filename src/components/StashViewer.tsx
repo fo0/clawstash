@@ -96,11 +96,13 @@ const mdParser = new Marked({
     },
     // Open external links in a new tab; keep anchor links in-page
     link({ href, title, text }) {
-      const safeHref = escapeAttr(href);
       const titleAttr = title ? ` title="${escapeAttr(title)}"` : '';
       if (href.startsWith('#')) {
-        return `<a href="${safeHref}"${titleAttr}>${text}</a>`;
+        // Prepend current heading prefix so anchors match prefixed heading IDs
+        const resolvedHref = headingIdPrefix ? `#${headingIdPrefix}${href.slice(1)}` : href;
+        return `<a href="${escapeAttr(resolvedHref)}"${titleAttr}>${text}</a>`;
       }
+      const safeHref = escapeAttr(href);
       return `<a href="${safeHref}"${titleAttr} target="_blank" rel="noopener noreferrer">${text}</a>`;
     },
   },
