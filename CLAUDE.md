@@ -133,7 +133,7 @@ clawstash/
 │   │   ├── Dashboard.tsx       # Home view with grid/list of stash cards
 │   │   ├── GraphViewer.tsx     # Force-directed tag graph visualization (canvas-based)
 │   │   ├── StashCard.tsx       # Individual stash card component
-│   │   ├── StashViewer.tsx     # Stash detail view with file display, access log, version history
+│   │   ├── StashViewer.tsx     # Stash detail view with file display, TOC, access log, version history
 │   │   ├── StashGraphCanvas.tsx # Stash graph canvas component
 │   │   ├── VersionHistory.tsx  # Version history list, Confluence-style inline comparison radios, restore button
 │   │   ├── VersionDiff.tsx     # GitHub-style diff view (green/red) using jsdiff
@@ -355,6 +355,17 @@ npm run mcp                # Start MCP server (stdio transport)
 - Accessible: `role="dialog"`, `aria-label`, focus management (auto-focus input on open)
 - Resets state (query, results, active index) on each open
 
+### Stash Viewer TOC (src/components/StashViewer.tsx)
+
+- **Table of Contents** for stashes with 2+ markdown files: collapsible panel above file list in the Content tab
+- TOC shown only when `renderPreview` is on and stash has multiple markdown files
+- **File-level entries**: Click to smooth-scroll to the file container (uses `id="stash-file-{index}"` on `.viewer-file` divs)
+- **Heading entries**: Extracts h1–h3 headings from rendered markdown HTML via `extractHeadings()` (DOMParser-based)
+- **Cross-file heading disambiguation**: `renderMarkdown(content, idPrefix)` prepends `f{index}-` prefix to heading IDs when TOC is active, preventing collisions across files
+- Heading extraction runs inside the `renderedContent` useMemo alongside markdown rendering (single DOMParser pass per file, cached)
+- Collapsible via chevron toggle (`tocExpanded` state, default expanded)
+- Accessible: `<nav aria-label="Table of contents">`, semantic anchor links with `href`
+
 ### Stash Editor (src/components/editor/)
 
 - Split into focused sub-components: `StashEditor.tsx` (main form), `FileCodeEditor.tsx`, `TagCombobox.tsx`, `MetadataEditor.tsx`
@@ -530,7 +541,7 @@ Refactoring does NOT happen automatically. Only upon explicit user request, when
 
 - **`src/server/db.ts` (~610 lines)**: Largest file. Token/session management methods could be extracted into a separate `TokenStore` or `AuthStore` class. The `detectLanguage()` function could move to a shared utility.
 - **`src/server/openapi.ts` (~560 lines)**: Large schema definition. Could adopt `@asteasolutions/zod-to-openapi` to generate from Zod schemas in `tool-defs.ts` (currently only MCP spec uses zodToJsonSchema; OpenAPI schemas are still hand-written).
-- **`src/components/StashViewer.tsx` (~471 lines)**: Largest frontend component. File display, access log tab, and metadata display sections could be extracted into sub-components.
+- **`src/components/StashViewer.tsx` (~650 lines)**: Largest frontend component. File display, TOC, access log tab, and metadata display sections could be extracted into sub-components.
 - **`src/components/Settings.tsx` (~444 lines)**: Could extract Welcome Dashboard and Storage Stats sections into dedicated sub-components within a `settings/` directory.
 - **`src/languages.ts` (~334 lines)**: Extension map (65+ entries) and content-based detection heuristics are large but stable. Low priority.
 - **No linter or test framework**: Adding ESLint + Vitest would significantly improve code quality assurance.
