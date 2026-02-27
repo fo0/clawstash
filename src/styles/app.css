@@ -1458,6 +1458,18 @@ body {
   margin-bottom: 12px;
   font-weight: 600;
   line-height: 1.25;
+  scroll-margin-top: 16px;
+}
+
+.markdown-body .heading-anchor {
+  color: transparent;
+  text-decoration: none;
+  padding-right: 4px;
+  user-select: none;
+}
+
+.markdown-body :is(h1, h2, h3, h4, h5, h6):hover .heading-anchor {
+  color: var(--text-tertiary);
 }
 
 .markdown-body h1 { font-size: 1.8em; padding-bottom: 8px; border-bottom: 1px solid var(--border-color); }
