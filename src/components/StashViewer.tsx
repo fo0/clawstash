@@ -60,15 +60,42 @@ function escapeAttr(s: string): string {
   return s.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }
 
+/**
+ * Slugify a heading string following GitHub conventions:
+ * lowercase, strip HTML tags, remove special chars, spaces → hyphens.
+ */
+function slugify(text: string): string {
+  return text
+    .toLowerCase()
+    .replace(/<[^>]*>/g, '')       // strip HTML tags (text may contain inline markup)
+    .replace(/[^\w\s-]/g, '')      // remove non-word chars except spaces and hyphens
+    .trim()
+    .replace(/\s+/g, '-');         // collapse spaces → single hyphen
+}
+
+// Track slug occurrences per render pass to disambiguate duplicate headings
+let slugCounts: Map<string, number> = new Map();
+
 // Dedicated Marked instance — no global mutation
 const mdParser = new Marked({
   breaks: true,
   gfm: true,
   renderer: {
-    // Open links in a new tab to avoid navigating away from the app
+    // GitHub-style heading anchors: each heading gets a slugified id
+    heading({ text, depth }) {
+      let slug = slugify(text);
+      const count = slugCounts.get(slug) || 0;
+      slugCounts.set(slug, count + 1);
+      if (count > 0) slug = `${slug}-${count}`;
+      return `<h${depth} id="${escapeAttr(slug)}">${text}</h${depth}>\n`;
+    },
+    // Open external links in a new tab; keep anchor links in-page
     link({ href, title, text }) {
       const safeHref = escapeAttr(href);
       const titleAttr = title ? ` title="${escapeAttr(title)}"` : '';
+      if (href.startsWith('#')) {
+        return `<a href="${safeHref}"${titleAttr}>${text}</a>`;
+      }
       return `<a href="${safeHref}"${titleAttr} target="_blank" rel="noopener noreferrer">${text}</a>`;
     },
   },
@@ -92,8 +119,10 @@ function sanitizeHtml(html: string): string {
 
 /**
  * Render markdown content to sanitized HTML.
+ * Slug counter is reset per call so each file gets independent heading IDs.
  */
 function renderMarkdown(content: string): string {
+  slugCounts = new Map();
   const raw = mdParser.parse(content, { async: false }) as string;
   return sanitizeHtml(raw);
 }
