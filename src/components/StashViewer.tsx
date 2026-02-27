@@ -62,15 +62,15 @@ function escapeAttr(s: string): string {
 
 /**
  * Slugify a heading string following GitHub conventions:
- * lowercase, strip HTML tags, remove special chars, spaces → hyphens.
+ * lowercase, remove non-letter/number/space/hyphen chars, spaces → hyphens.
+ * Uses Unicode-aware regex to preserve accented characters (ü, é, etc.).
  */
 function slugify(text: string): string {
   return text
     .toLowerCase()
-    .replace(/<[^>]*>/g, '')       // strip HTML tags (text may contain inline markup)
-    .replace(/[^\w\s-]/g, '')      // remove non-word chars except spaces and hyphens
+    .replace(/[^\p{L}\p{M}\p{N}\p{Pc}\s-]/gu, '')  // keep letters, marks, numbers, connectors, spaces, hyphens
     .trim()
-    .replace(/\s+/g, '-');         // collapse spaces → single hyphen
+    .replace(/\s+/g, '-');                            // collapse spaces → single hyphen
 }
 
 // Track slug occurrences per render pass to disambiguate duplicate headings
@@ -81,13 +81,15 @@ const mdParser = new Marked({
   breaks: true,
   gfm: true,
   renderer: {
-    // GitHub-style heading anchors: each heading gets a slugified id
-    heading({ text, depth }) {
+    // GitHub-style heading anchors: each heading gets a slugified id + clickable anchor
+    heading({ text, depth, tokens }) {
       let slug = slugify(text);
       const count = slugCounts.get(slug) || 0;
       slugCounts.set(slug, count + 1);
       if (count > 0) slug = `${slug}-${count}`;
-      return `<h${depth} id="${escapeAttr(slug)}">${text}</h${depth}>\n`;
+      const rendered = this.parser.parseInline(tokens);
+      const safeSlug = escapeAttr(slug);
+      return `<h${depth} id="${safeSlug}"><a class="heading-anchor" href="#${safeSlug}" aria-hidden="true">#</a>${rendered}</h${depth}>\n`;
     },
     // Open external links in a new tab; keep anchor links in-page
     link({ href, title, text }) {
