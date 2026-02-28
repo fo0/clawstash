@@ -43,7 +43,7 @@
     "@types/archiver": "^7.0.0",
     "@types/better-sqlite3": "^7.6.12",
     "@types/diff": "^7.0.2",
-    "@types/node": "^25.2.3",
+    "@types/node": "^25.3.2",
     "@types/prismjs": "^1.26.6",
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.0.0",
