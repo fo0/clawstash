@@ -1,4 +1,5 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useRef, useCallback } from 'react';
+import { useClickOutside } from '../../hooks/useClickOutside';
 
 export interface MetadataEntry {
   key: string;
@@ -79,15 +80,8 @@ export default function MetadataEditor({ entries, onChange, availableKeys }: Pro
     }
   };
 
-  useEffect(() => {
-    const handleClick = (e: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
-        setShowKeyDropdown(false);
-      }
-    };
-    document.addEventListener('mousedown', handleClick);
-    return () => document.removeEventListener('mousedown', handleClick);
-  }, []);
+  const closeKeyDropdown = useCallback(() => setShowKeyDropdown(false), []);
+  useClickOutside(dropdownRef, closeKeyDropdown);
 
   return (
     <div className="metadata-editor">

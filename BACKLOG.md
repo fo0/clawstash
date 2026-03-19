@@ -23,6 +23,9 @@ Review findings not immediately fixed. **Only work on these upon explicit reques
 | 25 | 2026-02-25 | Edge Cases | P2 | src/components/api/SwaggerViewer.tsx | External script `onload`/`onerror` event listener not cleaned up on unmount — could fire after component is destroyed. | Deferred | Review: Bug & Smell Pass |
 | 26 | 2026-02-25 | Edge Cases | P2 | src/server/db.ts:graph_cache | `graph_cache` table created in migration but never read from or written to — dead table. | Accepted | Review: Bug & Smell Pass |
 | 27 | 2026-02-25 | Security | P2 | src/server/validation.ts | Metadata schema allows deeply nested objects — could enable payload injection at depth. Consider adding max depth validation. | Accepted | Review: Bug & Smell Pass |
+| 42 | 2026-03-19 | Edge Cases | P2 | src/server/db.ts:deleteStash | DELETE access log lost to CASCADE — `access_log` has `ON DELETE CASCADE` on `stash_id`, so no audit trail of stash deletion is preserved. Would need a separate `audit_log` table without FK. | Accepted | Review: Refactor & Bug Pass |
+| 43 | 2026-03-19 | Code Smells | P2 | src/components/StashViewer.tsx:77-79 | Global mutable state (`slugCounts`, `headingIdPrefix`) at module level used by `renderMarkdown`. Safe in current single-threaded synchronous usage but fragile for concurrent calls. | Accepted | Review: Refactor & Bug Pass |
+| 44 | 2026-03-19 | Security | P2 | src/server/auth.ts:30-32 | Token accepted via query parameter (`?token=`) — token appears in server logs, browser history, and proxy logs. Header-based auth is primary; query param is fallback. | Accepted | Review: Refactor & Bug Pass |
 
 ## Done
 

@@ -44,3 +44,24 @@ export function parsePositiveInt(value: string | null): number | undefined {
   const num = parseInt(value, 10);
   return Number.isInteger(num) && num > 0 ? num : undefined;
 }
+
+/**
+ * Parse and return the JSON body from a request, or an error response.
+ */
+export async function parseJsonBody(req: NextRequest): Promise<{ data: unknown } | { error: NextResponse }> {
+  try {
+    return { data: await req.json() };
+  } catch {
+    return { error: NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 }) };
+  }
+}
+
+/**
+ * Extract IP and user agent from request headers for access logging.
+ */
+export function getRequestInfo(req: NextRequest): { ip: string | undefined; userAgent: string | undefined } {
+  return {
+    ip: req.headers.get('x-forwarded-for') || undefined,
+    userAgent: req.headers.get('user-agent') || undefined,
+  };
+}
