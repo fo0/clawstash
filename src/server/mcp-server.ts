@@ -154,6 +154,7 @@ ${TOKEN_EFFICIENT_GUIDE}`,
   );
 
   // Delete a stash
+  // No logAccess: access_log has ON DELETE CASCADE, so entries are removed with the stash.
   const deleteDef = getToolDef('delete_stash');
   server.tool(
     deleteDef.name,

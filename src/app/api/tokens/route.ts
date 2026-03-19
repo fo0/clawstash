@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getDb } from '@/server/singleton';
 import type { TokenScope } from '@/server/db';
-import { checkAdmin } from '@/app/api/_helpers';
+import { checkAdmin, parseJsonBody } from '@/app/api/_helpers';
 import { CreateTokenSchema, formatZodError } from '@/server/validation';
 
 // GET /api/tokens - List tokens
@@ -16,14 +16,10 @@ export async function POST(req: NextRequest) {
   const admin = checkAdmin(req);
   if (!admin.ok) return admin.response;
 
-  let body: unknown;
-  try {
-    body = await req.json();
-  } catch {
-    return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 });
-  }
+  const body = await parseJsonBody(req);
+  if ('error' in body) return body.error;
 
-  const parsed = CreateTokenSchema.safeParse(body);
+  const parsed = CreateTokenSchema.safeParse(body.data);
   if (!parsed.success) {
     return NextResponse.json({ error: formatZodError(parsed.error) }, { status: 400 });
   }

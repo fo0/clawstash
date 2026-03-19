@@ -1,23 +1,11 @@
 import type { StashListItem, LayoutMode } from '../types';
+import { formatRelativeTime } from '../utils/format';
 
 interface Props {
   stash: StashListItem;
   layout: LayoutMode;
   onClick: () => void;
   onFilterTag: (tag: string) => void;
-}
-
-function formatRelativeDate(dateStr: string): string {
-  const d = new Date(dateStr);
-  const now = new Date();
-  const diffMs = now.getTime() - d.getTime();
-  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-
-  if (diffDays === 0) return 'Today';
-  if (diffDays === 1) return 'Yesterday';
-  if (diffDays < 7) return `${diffDays}d ago`;
-  if (diffDays < 30) return `${Math.floor(diffDays / 7)}w ago`;
-  return d.toLocaleDateString('en-US', { day: 'numeric', month: 'numeric', year: 'numeric' });
 }
 
 function getUniqueLanguages(stash: StashListItem): string[] {
@@ -71,7 +59,7 @@ export default function StashCard({ stash, layout, onClick, onFilterTag }: Props
           ))}
         </div>
         <span className="stash-card-date" title={`Last updated: ${new Date(stash.updated_at).toLocaleString()}`}>
-          {formatRelativeDate(stash.updated_at)}
+          {formatRelativeTime(stash.updated_at)}
         </span>
       </div>
     </div>

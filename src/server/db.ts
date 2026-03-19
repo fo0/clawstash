@@ -294,7 +294,11 @@ const MIGRATIONS: Migration[] = [
     name: 'backfill_stash_relations',
     up: (db) => {
       const stashes = db.prepare('SELECT id, tags FROM stashes').all() as { id: string; tags: string }[];
-      const parsed = stashes.map(s => ({ id: s.id, tags: JSON.parse(s.tags) as string[] }));
+      const parsed: { id: string; tags: string[] }[] = [];
+      for (const s of stashes) {
+        try { parsed.push({ id: s.id, tags: JSON.parse(s.tags) as string[] }); }
+        catch { /* skip stashes with corrupted tags JSON */ }
+      }
 
       const insert = db.prepare(`
         INSERT OR IGNORE INTO stash_relations (id, source_stash_id, target_stash_id, relation_type, weight, metadata)

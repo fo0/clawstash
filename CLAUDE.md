@@ -123,7 +123,8 @@ clawstash/
 │   ├── types.ts                # Shared TypeScript interfaces
 │   ├── languages.ts            # PrismJS language detection, mapping, highlighting
 │   ├── hooks/
-│   │   └── useClipboard.ts     # useClipboard + useClipboardWithKey hooks
+│   │   ├── useClipboard.ts     # useClipboard + useClipboardWithKey hooks
+│   │   └── useClickOutside.ts  # Click-outside detection hook (used by Sidebar, TagCombobox, MetadataEditor)
 │   ├── utils/
 │   │   ├── clipboard.ts        # Copy-to-clipboard with fallback for non-HTTPS
 │   │   └── format.ts           # Date formatting (formatDate, formatDateTime, formatRelativeTime)
@@ -238,7 +239,9 @@ npm run mcp                # Start MCP server (stdio transport)
 ### Input Validation (src/server/validation.ts)
 
 - Zod schemas for all POST/PATCH API routes: `CreateStashSchema`, `UpdateStashSchema`, `CreateTokenSchema`
-- Size limits per field: name (500), description (50K), tags (50 × 100 chars), metadata (50 keys), files (100 × 255 char filenames, 10MB content each)
+- Size limits per field: name (500), description (50K), tags (50 × 100 chars), metadata (50 keys), files (100 × 255 char filenames, 10MB content each), language (50 chars)
+- Filename validation rejects path traversal characters (`/`, `\`, `..`, null bytes)
+- Token scopes auto-deduplicated via `.transform()`
 - `MAX_IMPORT_SIZE` (100MB) exported for the import route
 - `formatZodError()` helper converts Zod issues to a single human-readable error string
 - Zod validates and strips unknown fields, preventing arbitrary data injection
@@ -257,10 +260,12 @@ npm run mcp                # Start MCP server (stdio transport)
 ### API Route Handlers (src/app/api/)
 
 - Next.js Route Handlers replace Express routes
-- Shared helpers in `src/app/api/_helpers.ts`: `checkScope()`, `checkAdmin()`, `getBaseUrl()`
+- Shared helpers in `src/app/api/_helpers.ts`: `checkScope()`, `checkAdmin()`, `getBaseUrl()`, `parsePositiveInt()`, `parseJsonBody()`, `getRequestInfo()`
 - `checkScope(req, scope)` validates auth and returns `{ db, source }` or error `NextResponse`
 - `checkAdmin(req)` validates admin-level auth
 - `getBaseUrl(req)` extracts base URL from request headers for OpenAPI schema
+- `parseJsonBody(req)` returns `{ data }` or `{ error: NextResponse }` for safe JSON parsing
+- `getRequestInfo(req)` extracts IP and user agent for access logging
 - All handlers use `NextRequest`/`NextResponse` from `next/server`
 - Dynamic route parameters via `params` promise (Next.js 16 convention)
 
@@ -384,17 +389,18 @@ npm run mcp                # Start MCP server (stdio transport)
 - `SwaggerViewer` handles external Swagger UI script loading with error fallback
 - Clipboard operations use shared `copyToClipboard()` utility from `src/utils/clipboard.ts`
 
-### Clipboard Hooks (src/hooks/useClipboard.ts)
+### Hooks (src/hooks/)
 
-- `useClipboardBase<T>()`: Internal generic base hook (state + timeout + cleanup), shared by both public hooks
-- `useClipboard()`: Single copy button — returns `{ status, copied, copy }` with 3-state feedback (idle/copied/failed)
-- `useClipboardWithKey()`: Multiple copy buttons in lists — returns `{ copy, isCopied(key), isFailed(key) }`
-- Both hooks: proper timeout cleanup on unmount, rapid-click handling, error feedback
+- **useClipboard.ts**: Clipboard hooks with 3-state feedback (idle/copied/failed)
+  - `useClipboardBase<T>()`: Internal generic base hook (state + timeout + cleanup)
+  - `useClipboard()`: Single copy button — returns `{ status, copied, copy }`
+  - `useClipboardWithKey()`: Multiple copy buttons in lists — returns `{ copy, isCopied(key), isFailed(key) }`
+- **useClickOutside.ts**: `useClickOutside(ref, callback, enabled?)` — closes dropdowns on outside clicks. Used by Sidebar (tag filter), TagCombobox, MetadataEditor.
 
 ### Shared Utilities (src/utils/)
 
 - `clipboard.ts`: `copyToClipboard()` with modern Clipboard API + fallback for non-HTTPS
-- `format.ts`: `formatDate()`, `formatDateTime()`, `formatRelativeTime()` — centralized date formatting used by Sidebar, StashViewer, TokensTab
+- `format.ts`: `formatDate()`, `formatDateTime()`, `formatRelativeTime()` — centralized date formatting used by Sidebar, StashViewer, StashCard, TokensTab
 
 ### Language Utility (src/languages.ts)
 

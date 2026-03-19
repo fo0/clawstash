@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getDb } from '@/server/singleton';
-import { checkScope, getAccessSource } from '@/app/api/_helpers';
+import { checkScope, getAccessSource, getRequestInfo } from '@/app/api/_helpers';
 
 type Params = { params: Promise<{ id: string; version: string }> };
 
@@ -20,6 +20,7 @@ export async function POST(req: NextRequest, { params }: Params) {
   if (!stash) {
     return NextResponse.json({ error: 'Stash or version not found' }, { status: 404 });
   }
-  db.logAccess(stash.id, source, `restore_version:${version}`, req.headers.get('x-forwarded-for') || undefined, req.headers.get('user-agent') || undefined);
+  const { ip, userAgent } = getRequestInfo(req);
+  db.logAccess(stash.id, source, `restore_version:${version}`, ip, userAgent);
   return NextResponse.json(stash);
 }
