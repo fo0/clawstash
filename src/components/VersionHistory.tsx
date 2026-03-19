@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import type { Stash, StashVersionListItem, StashVersion } from '../types';
 import { api } from '../api';
 import { formatRelativeTime } from '../utils/format';
@@ -23,6 +23,7 @@ export default function VersionHistory({ stashId, currentVersion, onRestore }: P
   const [restoring, setRestoring] = useState(false);
   const [confirmRestore, setConfirmRestore] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const confirmTimerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
   // Confluence-style inline comparison: "From" (older) and "To" (newer)
   const [compareFrom, setCompareFrom] = useState<number | null>(null);
@@ -78,10 +79,18 @@ export default function VersionHistory({ stashId, currentVersion, onRestore }: P
     }
   };
 
+  // Cleanup confirm timer on unmount
+  useEffect(() => {
+    return () => {
+      if (confirmTimerRef.current) clearTimeout(confirmTimerRef.current);
+    };
+  }, []);
+
   const handleRestore = async (version: number) => {
     if (confirmRestore !== version) {
       setConfirmRestore(version);
-      setTimeout(() => setConfirmRestore(null), 3000);
+      if (confirmTimerRef.current) clearTimeout(confirmTimerRef.current);
+      confirmTimerRef.current = setTimeout(() => setConfirmRestore(null), 3000);
       return;
     }
     setRestoring(true);
@@ -273,8 +282,8 @@ export default function VersionHistory({ stashId, currentVersion, onRestore }: P
 
         {versions.map((v, index) => {
           const isCurrent = v.version === currentVersion;
-          const isFirst = index === versions.length - 1; // oldest version (list is desc)
-          const isLast = index === 0; // newest version (list is desc)
+          const isOldest = index === versions.length - 1; // oldest version (list is desc)
+          const isNewest = index === 0; // newest version (list is desc)
 
           return (
             <div
@@ -291,7 +300,7 @@ export default function VersionHistory({ stashId, currentVersion, onRestore }: P
                       name="compare-from"
                       checked={compareFrom === v.version}
                       onChange={() => handleFromChange(v.version)}
-                      disabled={isLast || (compareTo !== null && v.version >= compareTo)}
+                      disabled={isNewest || (compareTo !== null && v.version >= compareTo)}
                     />
                   </label>
                   {/* "To" radio — disabled for the oldest version (nothing older to compare from) */}
@@ -301,7 +310,7 @@ export default function VersionHistory({ stashId, currentVersion, onRestore }: P
                       name="compare-to"
                       checked={compareTo === v.version}
                       onChange={() => handleToChange(v.version)}
-                      disabled={isFirst || (compareFrom !== null && v.version <= compareFrom)}
+                      disabled={isOldest || (compareFrom !== null && v.version <= compareFrom)}
                     />
                   </label>
                 </div>

@@ -10,14 +10,32 @@
 import { z } from 'zod';
 
 // ---------------------------------------------------------------------------
-// Shared sub-schemas
+// Shared sub-schemas — limits match REST validation (src/server/validation.ts)
 // ---------------------------------------------------------------------------
 
+const MAX_NAME_LENGTH = 500;
+const MAX_DESCRIPTION_LENGTH = 50_000;
+const MAX_TAGS = 50;
+const MAX_TAG_LENGTH = 100;
+const MAX_METADATA_KEYS = 50;
+const MAX_FILES = 100;
+const MAX_FILENAME_LENGTH = 255;
+const MAX_FILE_CONTENT_LENGTH = 10 * 1024 * 1024; // 10MB per file
+
 export const FileInputSchema = z.object({
-  filename: z.string().describe('Filename with extension (e.g. "main.py", "config.json"). Extension is used for language detection.'),
-  content: z.string().describe('The full file content as text'),
-  language: z.string().optional().describe('Programming language override (auto-detected from extension if omitted)'),
+  filename: z.string().min(1).max(MAX_FILENAME_LENGTH)
+    .refine(f => !/[/\\]/.test(f) && !f.includes('..') && !f.includes('\0'), 'Filename contains invalid characters')
+    .describe('Filename with extension (e.g. "main.py", "config.json"). Extension is used for language detection.'),
+  content: z.string().max(MAX_FILE_CONTENT_LENGTH, 'File content exceeds 10MB limit')
+    .describe('The full file content as text'),
+  language: z.string().max(50).optional().describe('Programming language override (auto-detected from extension if omitted)'),
 });
+
+const McpTagsSchema = z.array(z.string().max(MAX_TAG_LENGTH)).max(MAX_TAGS);
+const McpMetadataSchema = z.record(z.unknown()).refine(
+  (val) => Object.keys(val).length <= MAX_METADATA_KEYS,
+  { message: `Metadata cannot have more than ${MAX_METADATA_KEYS} keys` },
+);
 
 // ---------------------------------------------------------------------------
 // Tool definition type
@@ -48,15 +66,15 @@ Tips:
 - Use metadata for structured key-value data (e.g. {"model": "claude", "purpose": "backup"}).
 - Language is auto-detected from file extension if omitted.`,
     schema: z.object({
-      name: z.string().optional().describe('Short name/title for the stash (used in listings and search)'),
-      description: z.string().optional().describe('Longer description explaining the stash content and purpose (searchable)'),
+      name: z.string().max(MAX_NAME_LENGTH).optional().describe('Short name/title for the stash (used in listings and search)'),
+      description: z.string().max(MAX_DESCRIPTION_LENGTH).optional().describe('Longer description explaining the stash content and purpose (searchable)'),
       files: z
         .array(FileInputSchema)
         .min(1)
+        .max(MAX_FILES)
         .describe('One or more files to store. Each file needs a filename and content.'),
-      tags: z.array(z.string()).optional().describe('Tags for categorization and filtering. Use list_tags to see existing tags.'),
-      metadata: z
-        .record(z.unknown())
+      tags: McpTagsSchema.optional().describe('Tags for categorization and filtering. Use list_tags to see existing tags.'),
+      metadata: McpMetadataSchema
         .optional()
         .describe('Arbitrary key-value metadata (e.g. {"model": "claude", "agent_id": "abc", "purpose": "code review"})'),
     }),
@@ -131,10 +149,11 @@ Important:
       description: z.string().optional().describe('New description'),
       files: z
         .array(FileInputSchema)
+        .max(MAX_FILES)
         .optional()
         .describe('Replacement files — replaces ALL existing files. Omit to keep current files unchanged.'),
-      tags: z.array(z.string()).optional().describe('New tags — replaces entire tag list. Omit to keep current tags.'),
-      metadata: z.record(z.unknown()).optional().describe('New metadata — replaces entire metadata object. Omit to keep current metadata.'),
+      tags: McpTagsSchema.optional().describe('New tags — replaces entire tag list. Omit to keep current tags.'),
+      metadata: McpMetadataSchema.optional().describe('New metadata — replaces entire metadata object. Omit to keep current metadata.'),
     }),
     returns: '{ id, name, description, tags, archived, metadata, total_size, files: [{ filename, language, size }], updated_at }',
   },

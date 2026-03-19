@@ -24,32 +24,7 @@ export default function SwaggerViewer() {
       document.head.appendChild(link);
     }
 
-    // Load JS (check if already loaded or script already in DOM)
-    const w = window as unknown as Record<string, unknown>;
-    if (typeof w.SwaggerUIBundle === 'function') {
-      const SwaggerUIBundle = w.SwaggerUIBundle as ((config: Record<string, unknown>) => void) & {
-        presets?: { apis?: unknown };
-      };
-      if (containerRef.current) {
-        SwaggerUIBundle({
-          url: '/api/openapi',
-          domNode: containerRef.current,
-          deepLinking: true,
-          presets: [SwaggerUIBundle.presets?.apis].filter(Boolean),
-          layout: 'BaseLayout',
-          defaultModelsExpandDepth: -1,
-          docExpansion: 'list',
-          filter: true,
-          tryItOutEnabled: true,
-        });
-        initializedRef.current = true;
-      }
-      if (mountedRef.current) setLoading(false);
-      return;
-    }
-
-    const existingScript = document.querySelector('script[src*="swagger-ui-bundle.js"]');
-
+    // Shared init: find SwaggerUIBundle on window and initialize
     const initSwagger = () => {
       if (!mountedRef.current) return;
       const SwaggerUIBundle = (window as unknown as Record<string, unknown>).SwaggerUIBundle as ((config: Record<string, unknown>) => void) & {
@@ -72,7 +47,21 @@ export default function SwaggerViewer() {
       if (mountedRef.current) setLoading(false);
     };
 
+    // Check if already loaded
+    const w = window as unknown as Record<string, unknown>;
+    if (typeof w.SwaggerUIBundle === 'function') {
+      initSwagger();
+      return;
+    }
+
+    const existingScript = document.querySelector('script[src*="swagger-ui-bundle.js"]');
+
     if (existingScript) {
+      // Script tag exists — may have already loaded (race condition)
+      if (typeof w.SwaggerUIBundle === 'function') {
+        initSwagger();
+        return;
+      }
       existingScript.addEventListener('load', initSwagger);
       existingScript.addEventListener('error', () => {
         if (mountedRef.current) { setHasError(true); setLoading(false); }
