@@ -1,4 +1,5 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useRef, useCallback } from 'react';
+import { useClickOutside } from '../../hooks/useClickOutside';
 import type { TagInfo } from '../../types';
 
 interface Props {
@@ -42,15 +43,8 @@ export default function TagCombobox({ tags, onChange, availableTags }: Props) {
     }
   };
 
-  useEffect(() => {
-    const handleClick = (e: MouseEvent) => {
-      if (wrapperRef.current && !wrapperRef.current.contains(e.target as Node)) {
-        setShowDropdown(false);
-      }
-    };
-    document.addEventListener('mousedown', handleClick);
-    return () => document.removeEventListener('mousedown', handleClick);
-  }, []);
+  const closeDropdown = useCallback(() => setShowDropdown(false), []);
+  useClickOutside(wrapperRef, closeDropdown);
 
   return (
     <div className="tag-combobox" ref={wrapperRef}>
@@ -65,6 +59,8 @@ export default function TagCombobox({ tags, onChange, availableTags }: Props) {
           placeholder={tags.length === 0 ? 'Type to add tags...' : 'Add more...'}
           className="tag-combobox-input"
           autoComplete="off"
+          role="combobox"
+          aria-expanded={showDropdown && filtered.length > 0}
         />
       </div>
       {showDropdown && filtered.length > 0 && (

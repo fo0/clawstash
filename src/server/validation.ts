@@ -20,9 +20,10 @@ export const MAX_IMPORT_SIZE = 100 * 1024 * 1024; // 100MB for ZIP import
 // --- Shared Sub-Schemas ---
 
 const FileSchema = z.object({
-  filename: z.string().min(1, 'Filename is required').max(MAX_FILENAME_LENGTH),
+  filename: z.string().min(1, 'Filename is required').max(MAX_FILENAME_LENGTH)
+    .refine(f => !/[/\\]/.test(f) && !f.includes('..') && !f.includes('\0'), 'Filename contains invalid characters'),
   content: z.string().max(MAX_FILE_CONTENT_LENGTH, 'File content exceeds 10MB limit'),
-  language: z.string().optional(),
+  language: z.string().max(50).optional(),
 });
 
 const TagsSchema = z.array(z.string().max(MAX_TAG_LENGTH)).max(MAX_TAGS);
@@ -55,7 +56,7 @@ export const UpdateStashSchema = z.object({
 
 export const CreateTokenSchema = z.object({
   label: z.string().max(200).optional().default(''),
-  scopes: z.array(z.enum(['read', 'write', 'admin', 'mcp'])).min(1).optional(),
+  scopes: z.array(z.enum(['read', 'write', 'admin', 'mcp'])).min(1).transform(s => [...new Set(s)]).optional(),
 });
 
 // --- Helpers ---

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getDb } from '@/server/singleton';
-import { checkScope, getAccessSource, parsePositiveInt } from '@/app/api/_helpers';
+import { checkScope, getAccessSource, parsePositiveInt, parseJsonBody, getRequestInfo } from '@/app/api/_helpers';
 import { CreateStashSchema, formatZodError } from '@/server/validation';
 
 // GET /api/stashes - List stashes (FTS5 ranked search when search query is present)
@@ -33,14 +33,10 @@ export async function POST(req: NextRequest) {
   if (!scope.ok) return scope.response;
 
   const db = getDb();
-  let body: unknown;
-  try {
-    body = await req.json();
-  } catch {
-    return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 });
-  }
+  const body = await parseJsonBody(req);
+  if ('error' in body) return body.error;
 
-  const parsed = CreateStashSchema.safeParse(body);
+  const parsed = CreateStashSchema.safeParse(body.data);
   if (!parsed.success) {
     return NextResponse.json({ error: formatZodError(parsed.error) }, { status: 400 });
   }
@@ -48,6 +44,7 @@ export async function POST(req: NextRequest) {
   const { name, description, tags, metadata, files } = parsed.data;
   const stash = db.createStash({ name, description, tags, metadata, files });
   const source = getAccessSource(req);
-  db.logAccess(stash.id, source, 'create', req.headers.get('x-forwarded-for') || undefined, req.headers.get('user-agent') || undefined);
+  const { ip, userAgent } = getRequestInfo(req);
+  db.logAccess(stash.id, source, 'create', ip, userAgent);
   return NextResponse.json(stash, { status: 201 });
 }

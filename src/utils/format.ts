@@ -19,7 +19,7 @@ export function formatDate(dateStr: string): string {
 
 /**
  * Format a date string as relative time ("just now", "5m ago", "3d ago")
- * Falls back to locale string for dates older than 7 days.
+ * Falls back to date-only format for dates older than 30 days.
  */
 export function formatRelativeTime(dateStr: string): string {
   const d = new Date(dateStr);
@@ -32,6 +32,8 @@ export function formatRelativeTime(dateStr: string): string {
   if (diffMin < 1) return 'just now';
   if (diffMin < 60) return `${diffMin}m ago`;
   if (diffHours < 24) return `${diffHours}h ago`;
+  if (diffDays === 1) return 'Yesterday';
   if (diffDays < 7) return `${diffDays}d ago`;
-  return d.toLocaleString();
+  if (diffDays < 30) return `${Math.floor(diffDays / 7)}w ago`;
+  return formatDate(dateStr);
 }
