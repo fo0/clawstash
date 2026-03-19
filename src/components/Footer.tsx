@@ -17,10 +17,11 @@ export default function Footer() {
   const [buildInfo, setBuildInfo] = useState<BuildInfo | null>(null);
 
   useEffect(() => {
+    let cancelled = false;
     fetch('/api/version')
       .then(r => r.json())
       .then(data => {
-        if (data.current) {
+        if (!cancelled && data.current) {
           setBuildInfo({
             buildDate: data.current.build_date,
             commitHash: data.current.commit_sha || '',
@@ -29,6 +30,7 @@ export default function Footer() {
         }
       })
       .catch(() => { /* use defaults */ });
+    return () => { cancelled = true; };
   }, []);
 
   const buildDate = buildInfo ? new Date(buildInfo.buildDate) : null;

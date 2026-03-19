@@ -23,19 +23,30 @@ export async function POST(req: NextRequest) {
     const zip = new AdmZip(buffer);
     const entries = zip.getEntries();
 
-    const readJson = (name: string): unknown[] => {
+    const readJson = (name: string): Record<string, unknown>[] => {
       const entry = entries.find(e => e.entryName === name);
       if (!entry) return [];
-      return JSON.parse(entry.getData().toString('utf8'));
+      const parsed: unknown = JSON.parse(entry.getData().toString('utf8'));
+      if (!Array.isArray(parsed)) {
+        throw new Error(`Expected ${name} to contain a JSON array`);
+      }
+      return parsed as Record<string, unknown>[];
     };
 
-    const stashes = readJson('stashes.json') as Record<string, unknown>[];
-    const stash_files = readJson('stash_files.json') as Record<string, unknown>[];
-    const stash_versions = readJson('stash_versions.json') as Record<string, unknown>[];
-    const stash_version_files = readJson('stash_version_files.json') as Record<string, unknown>[];
+    const stashes = readJson('stashes.json');
+    const stash_files = readJson('stash_files.json');
+    const stash_versions = readJson('stash_versions.json');
+    const stash_version_files = readJson('stash_version_files.json');
 
     if (stashes.length === 0) {
       return NextResponse.json({ error: 'No stash data found in ZIP file' }, { status: 400 });
+    }
+
+    // Validate stash records have required fields
+    for (const s of stashes) {
+      if (typeof s.id !== 'string' || !s.id) {
+        return NextResponse.json({ error: 'Invalid stash data: each stash must have a string id' }, { status: 400 });
+      }
     }
 
     const result = getDb().importAllData({ stashes, stash_files, stash_versions, stash_version_files });
