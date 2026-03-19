@@ -96,10 +96,10 @@ export const api = {
   getTagGraph(params?: { tag?: string; depth?: number; min_weight?: number; min_count?: number; limit?: number }): Promise<TagGraphResult> {
     const qs = new URLSearchParams();
     if (params?.tag) qs.set('tag', params.tag);
-    if (params?.depth) qs.set('depth', String(params.depth));
-    if (params?.min_weight) qs.set('min_weight', String(params.min_weight));
-    if (params?.min_count) qs.set('min_count', String(params.min_count));
-    if (params?.limit) qs.set('limit', String(params.limit));
+    if (params?.depth !== undefined) qs.set('depth', String(params.depth));
+    if (params?.min_weight !== undefined) qs.set('min_weight', String(params.min_weight));
+    if (params?.min_count !== undefined) qs.set('min_count', String(params.min_count));
+    if (params?.limit !== undefined) qs.set('limit', String(params.limit));
     return request(`${BASE}/graph${qs.toString() ? `?${qs}` : ''}`, { headers: getHeaders() });
   },
 
@@ -109,9 +109,9 @@ export const api = {
     if (params?.since) qs.set('since', params.since);
     if (params?.until) qs.set('until', params.until);
     if (params?.tag) qs.set('tag', params.tag);
-    if (params?.limit) qs.set('limit', String(params.limit));
-    if (params?.include_versions) qs.set('include_versions', 'true');
-    if (params?.min_shared_tags) qs.set('min_shared_tags', String(params.min_shared_tags));
+    if (params?.limit !== undefined) qs.set('limit', String(params.limit));
+    if (params?.include_versions !== undefined) qs.set('include_versions', String(params.include_versions));
+    if (params?.min_shared_tags !== undefined) qs.set('min_shared_tags', String(params.min_shared_tags));
     return request(`${BASE}/graph/stashes${qs.toString() ? `?${qs}` : ''}`, { headers: getHeaders() });
   },
 

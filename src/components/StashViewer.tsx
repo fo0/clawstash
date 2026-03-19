@@ -73,9 +73,10 @@ function slugify(text: string): string {
     .replace(/\s+/g, '-');                            // collapse spaces → single hyphen
 }
 
-// Track slug occurrences per render pass to disambiguate duplicate headings
+// Render-scoped state for heading ID generation — set before each renderMarkdown call
+// and consumed by the Marked renderer callbacks. Module-level because Marked's renderer
+// is instantiated once and cannot accept per-call parameters.
 let slugCounts: Map<string, number> = new Map();
-// Prefix prepended to heading IDs for cross-file disambiguation (set before each render)
 let headingIdPrefix = '';
 
 // Dedicated Marked instance — no global mutation

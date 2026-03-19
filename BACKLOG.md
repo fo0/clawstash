@@ -26,6 +26,14 @@ Review findings not immediately fixed. **Only work on these upon explicit reques
 | 42 | 2026-03-19 | Edge Cases | P2 | src/server/db.ts:deleteStash | DELETE access log lost to CASCADE — `access_log` has `ON DELETE CASCADE` on `stash_id`, so no audit trail of stash deletion is preserved. Would need a separate `audit_log` table without FK. | Accepted | Review: Refactor & Bug Pass |
 | 43 | 2026-03-19 | Code Smells | P2 | src/components/StashViewer.tsx:77-79 | Global mutable state (`slugCounts`, `headingIdPrefix`) at module level used by `renderMarkdown`. Safe in current single-threaded synchronous usage but fragile for concurrent calls. | Accepted | Review: Refactor & Bug Pass |
 | 44 | 2026-03-19 | Security | P2 | src/server/auth.ts:30-32 | Token accepted via query parameter (`?token=`) — token appears in server logs, browser history, and proxy logs. Header-based auth is primary; query param is fallback. | Accepted | Review: Refactor & Bug Pass |
+| 45 | 2026-03-19 | Performance | P2 | src/server/db.ts:searchStashes | N+1 query pattern: 2 extra SQL statements per search result row (stash row + file list). Bounded by limit (default 20). Could optimize with batch `WHERE id IN (...)` queries. | Deferred | #62 Codebase Review |
+| 46 | 2026-03-19 | Performance | P2 | src/server/db.ts:listStashes | N+1 query pattern: 1 extra `stash_files` query per list item. Bounded by limit (default 50). Could optimize with JOIN. | Deferred | #62 Codebase Review |
+| 47 | 2026-03-19 | Code Smells | P2 | src/server/db.ts:detectLanguage | Duplicate language detection map vs `src/languages.ts` — two independently maintained extension→language maps could drift. | Accepted | #62 Codebase Review |
+| 48 | 2026-03-19 | Code Smells | P2 | src/server/auth.ts:84-124 | `requireAdminAuth`/`requireScopeAuth` duplicate token extraction and validation logic — could unify into a single `requireAuth(db, req, scope)`. | Accepted | #62 Codebase Review |
+| 49 | 2026-03-19 | Edge Cases | P2 | src/server/singleton.ts:14-35 | DB constructor failure leaves `__clawstashDb` undefined — subsequent `getDb()` calls will repeatedly throw without caching the error state. | Accepted | #62 Codebase Review |
+| 50 | 2026-03-19 | Code Smells | P2 | src/app/api/admin/export/route.ts:13,28 | Two `new Date()` calls — filename timestamp and manifest `exportedAt` may differ by milliseconds. Should capture once. | Accepted | #62 Codebase Review |
+| 51 | 2026-03-19 | Edge Cases | P2 | src/app/mcp/route.ts:39-41 | `transport.close()` throw prevents `mcpServer.close()` — should use try/finally for cleanup. | Deferred | #62 Codebase Review |
+| 52 | 2026-03-19 | Code Smells | P2 | src/components/api/icons.tsx + shared/icons.tsx | `CopyIcon` defined in two places with different SVG paths — should consolidate. | Accepted | #62 Codebase Review |
 
 ## Done
 

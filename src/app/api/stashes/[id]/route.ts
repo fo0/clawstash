@@ -50,12 +50,12 @@ export async function PATCH(req: NextRequest, { params }: Params) {
     return NextResponse.json(stash);
   }
 
-  // If archived is set alongside other fields, apply archive first
+  // If archived is set alongside other fields, apply both atomically
   if (archived !== undefined) {
-    const archiveResult = db.archiveStash(id, archived);
-    if (!archiveResult) {
+    if (!db.stashExists(id)) {
       return NextResponse.json({ error: 'Stash not found' }, { status: 404 });
     }
+    db.archiveStash(id, archived);
   }
 
   const stash = db.updateStash(id, { name, description, tags, metadata, files }, source);

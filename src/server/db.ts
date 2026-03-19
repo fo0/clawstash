@@ -547,7 +547,7 @@ export class ClawStashDB {
     return {
       id: row.id as string,
       name: (row.name as string) || '',
-      description: row.description as string,
+      description: (row.description as string) || '',
       tags: JSON.parse(row.tags as string),
       metadata: JSON.parse(row.metadata as string),
       version: (row.version as number) || 1,
@@ -561,7 +561,7 @@ export class ClawStashDB {
     return {
       id: row.id as string,
       name: (row.name as string) || '',
-      description: row.description as string,
+      description: (row.description as string) || '',
       tags: JSON.parse(row.tags as string),
       version: (row.version as number) || 1,
       archived: (row.archived as number) === 1,
