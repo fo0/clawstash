@@ -60,7 +60,7 @@ export default function TagCombobox({ tags, onChange, availableTags }: Props) {
           className="tag-combobox-input"
           autoComplete="off"
           role="combobox"
-          aria-expanded={showDropdown && filtered.length > 0}
+          aria-expanded={showDropdown && (filtered.length > 0 || !!input.trim())}
         />
       </div>
       {showDropdown && filtered.length > 0 && (
