@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getDb } from '@/server/singleton';
-import { checkScope } from '@/app/api/_helpers';
+import { checkScope, parsePositiveInt } from '@/app/api/_helpers';
 
 type Params = { params: Promise<{ id: string }> };
 
@@ -14,9 +14,9 @@ export async function GET(req: NextRequest, { params }: Params) {
     return NextResponse.json({ error: 'Stash not found' }, { status: 404 });
   }
 
-  const v1 = parseInt(req.nextUrl.searchParams.get('v1') || '', 10);
-  const v2 = parseInt(req.nextUrl.searchParams.get('v2') || '', 10);
-  if (!Number.isInteger(v1) || v1 < 1 || !Number.isInteger(v2) || v2 < 1 || v1 === v2) {
+  const v1 = parsePositiveInt(req.nextUrl.searchParams.get('v1'));
+  const v2 = parsePositiveInt(req.nextUrl.searchParams.get('v2'));
+  if (!v1 || !v2 || v1 === v2) {
     return NextResponse.json({ error: 'Provide two different positive version numbers as v1 and v2 query parameters' }, { status: 400 });
   }
 

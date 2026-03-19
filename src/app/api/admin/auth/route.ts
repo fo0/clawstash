@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import crypto from 'crypto';
 import { getDb } from '@/server/singleton';
 import { ADMIN_PASSWORD, ADMIN_SESSION_HOURS } from '@/server/auth';
+import { parseJsonBody } from '@/app/api/_helpers';
 
 export async function POST(req: NextRequest) {
   const password = ADMIN_PASSWORD();
@@ -14,13 +15,9 @@ export async function POST(req: NextRequest) {
     });
   }
 
-  let body: Record<string, unknown>;
-  try {
-    body = await req.json();
-  } catch {
-    return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 });
-  }
-  const { password: inputPassword } = body;
+  const body = await parseJsonBody(req);
+  if ('error' in body) return body.error;
+  const { password: inputPassword } = body.data as Record<string, unknown>;
   if (!inputPassword || typeof inputPassword !== 'string') {
     return NextResponse.json({ error: 'Password is required' }, { status: 400 });
   }
