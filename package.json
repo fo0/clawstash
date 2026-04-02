@@ -22,13 +22,13 @@
     "mcp": "tsx src/server/mcp.ts"
   },
   "dependencies": {
-    "@modelcontextprotocol/sdk": "^1.12.0",
+    "@modelcontextprotocol/sdk": "^1.27.1",
     "adm-zip": "^0.5.16",
     "archiver": "^7.0.1",
-    "better-sqlite3": "^12.6.2",
+    "better-sqlite3": "^12.8.0",
     "diff": "^8.0.3",
-    "marked": "^17.0.2",
-    "next": "^16.1.6",
+    "marked": "^17.0.5",
+    "next": "^16.2.1",
     "prismjs": "^1.30.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
@@ -39,15 +39,15 @@
     "zod-to-json-schema": "^3.24.0"
   },
   "devDependencies": {
-    "@types/adm-zip": "^0.5.7",
+    "@types/adm-zip": "^0.5.8",
     "@types/archiver": "^7.0.0",
     "@types/better-sqlite3": "^7.6.12",
-    "@types/diff": "^7.0.2",
-    "@types/node": "^25.2.3",
+    "@types/diff": "^8.0.0",
+    "@types/node": "^25.5.0",
     "@types/prismjs": "^1.26.6",
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.0.0",
-    "@types/uuid": "^10.0.0",
+    "@types/uuid": "^11.0.0",
     "typescript": "^5.7.0"
   }
 }
