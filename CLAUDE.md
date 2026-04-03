@@ -36,7 +36,7 @@
 | Framework | Next.js (App Router) | 16 |
 | Frontend | React | 19 |
 | Database | SQLite (better-sqlite3) | 12 |
-| MCP Server | @modelcontextprotocol/sdk | 1.12 |
+| MCP Server | @modelcontextprotocol/sdk | 1.27 |
 | Validation | Zod | 3.24 |
 | Code Editor | react-simple-code-editor, PrismJS | 0.14, 1.30 |
 | Markdown Rendering | marked | 17 |
@@ -74,12 +74,16 @@ clawstash/
 ├── .github/
 │   └── workflows/
 │       └── docker-publish.yml  # CI: Type-check, build, push to GHCR
+├── scripts/
+│   └── generate-build-info.js  # Prebuild script: generates build metadata (git branch, commit, date)
 ├── public/                     # Next.js static assets
 ├── src/
 │   ├── middleware.ts            # Next.js middleware (CORS, security headers, login rate limiting)
 │   ├── app/                    # Next.js App Router
 │   │   ├── layout.tsx          # Root layout with metadata + global CSS
 │   │   ├── page.tsx            # Client component wrapper for <App />
+│   │   ├── [...slug]/
+│   │   │   └── page.tsx        # Catch-all route for client-side routing
 │   │   ├── mcp/
 │   │   │   └── route.ts        # MCP Streamable HTTP endpoint (POST/GET/DELETE)
 │   │   └── api/                # API Route Handlers
@@ -514,10 +518,10 @@ REST API with Bearer token auth + MCP Server for AI agent integration (Streamabl
 
 Refactoring does NOT happen automatically. Only upon explicit user request, when repeated code smells emerge across multiple files in review, or when a feature implementation is significantly harder than expected due to code structure. See `agent_docs/refactoring_guidelines.md` for principles.
 
-- **`src/server/db.ts` (~610 lines)**: Largest file. Token/session management methods could be extracted into a separate `TokenStore` or `AuthStore` class. The `detectLanguage()` function could move to a shared utility.
-- **`src/server/openapi.ts` (~560 lines)**: Large schema definition. Could adopt `@asteasolutions/zod-to-openapi` to generate from Zod schemas in `tool-defs.ts` (currently only MCP spec uses zodToJsonSchema; OpenAPI schemas are still hand-written).
-- **`src/components/StashViewer.tsx` (~650 lines)**: Largest frontend component. File display, TOC, access log tab, and metadata display sections could be extracted into sub-components.
-- **`src/components/Settings.tsx` (~444 lines)**: Could extract Welcome Dashboard and Storage Stats sections into dedicated sub-components within a `settings/` directory.
+- **`src/server/db.ts` (~1780 lines)**: Largest file by far. Strong candidate for splitting: token/session management → `TokenStore`, version history → `VersionStore`, FTS methods → `SearchStore`. The `detectLanguage()` function could move to a shared utility.
+- **`src/server/openapi.ts` (~680 lines)**: Large schema definition. Could adopt `@asteasolutions/zod-to-openapi` to generate from Zod schemas in `tool-defs.ts` (currently only MCP spec uses zodToJsonSchema; OpenAPI schemas are still hand-written).
+- **`src/components/StashViewer.tsx` (~660 lines)**: Largest frontend component. File display, TOC, access log tab, and metadata display sections could be extracted into sub-components.
+- **`src/components/Settings.tsx` (~546 lines)**: Could extract Welcome Dashboard and Storage Stats sections into dedicated sub-components within a `settings/` directory.
 - **`src/languages.ts` (~334 lines)**: Extension map (65+ entries) and content-based detection heuristics are large but stable. Low priority.
 - **No linter or test framework**: Adding ESLint + Vitest would significantly improve code quality assurance.
 - **No Prettier config**: Adding Prettier would enforce consistent formatting.
