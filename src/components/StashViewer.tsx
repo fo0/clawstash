@@ -7,6 +7,7 @@ import { useClipboard, useClipboardWithKey } from '../hooks/useClipboard';
 import { CopyIcon, CheckIcon, XIcon } from './shared/icons';
 import VersionHistory from './VersionHistory';
 import { Marked } from 'marked';
+import { renderDescriptionMarkdown } from '../utils/markdown';
 
 interface Props {
   stash: Stash;
@@ -357,7 +358,7 @@ export default function StashViewer({ stash, onEdit, onDelete, onArchive, onBack
       </div>
 
       {stash.description && (
-        <p className="viewer-description">{stash.description}</p>
+        <div className="viewer-description markdown-description" dangerouslySetInnerHTML={{ __html: renderDescriptionMarkdown(stash.description) }} />
       )}
 
       {(stash.tags.length > 0 || Object.keys(stash.metadata).length > 0) && (
@@ -553,7 +554,7 @@ export default function StashViewer({ stash, onEdit, onDelete, onArchive, onBack
           {stash.description && (
             <div className="metadata-section">
               <h3>Description</h3>
-              <p style={{ fontSize: '13px', color: 'var(--text-secondary)', lineHeight: 1.6 }}>{stash.description}</p>
+              <div className="markdown-description" style={{ fontSize: '13px', color: 'var(--text-secondary)', lineHeight: 1.6 }} dangerouslySetInnerHTML={{ __html: renderDescriptionMarkdown(stash.description) }} />
             </div>
           )}
 
