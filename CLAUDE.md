@@ -1,7 +1,14 @@
 # CLAUDE.md — Project Guide
 
+> **Session-Start:** Read `MEMORY.md` first to restore context from previous sessions.
 > After every implementation, follow the review process in `agent_docs/review_process.md`.
 > Unresolved findings go to `BACKLOG.md` as defined in `agent_docs/backlog_process.md`.
+> Session-spanning context and learnings go to `MEMORY.md` as defined in `agent_docs/memory_process.md`.
+> **Diagram generation:** When the user requests an architecture diagram, follow `agent_docs/diagram_prompt.md`.
+>   Write result to `docs/ARCHITECTURE.mmd` and generate `docs/ARCHITECTURE.svg`.
+> **On "done" / "fertig":** Commit uncommitted changes (if any), and if the work relates to a GitHub
+>   issue, comment on it (in English) with a summary and close it. Do NOT push unless explicitly asked.
+> **On GitHub issue work:** Reference the issue number in commit messages (e.g. `fix: resolve crash #42`).
 
 ## Project Overview
 
@@ -51,9 +58,13 @@ clawstash/
 ├── docker-compose.yml          # Docker Compose deployment
 ├── .env.example                # Environment variables template
 ├── BACKLOG.md                  # Deferred review findings tracker
+├── MEMORY.md                   # Session-spanning project knowledge
 ├── agent_docs/                 # Agent process documentation
 │   ├── review_process.md       # Mandatory review process after every implementation
-│   └── backlog_process.md      # Backlog tracking rules and format
+│   ├── backlog_process.md      # Backlog tracking rules and format
+│   ├── memory_process.md       # Memory tracking rules and format
+│   ├── refactoring_guidelines.md  # Refactoring principles and rules
+│   └── diagram_prompt.md       # Architecture diagram generation instructions
 ├── docs/                       # User-facing documentation (split from README)
 │   ├── api-reference.md        # REST API endpoints, examples, query parameters
 │   ├── mcp.md                  # MCP tools, token-efficient patterns, transport options
@@ -447,71 +458,27 @@ npm run mcp                # Start MCP server (stdio transport)
 - **Error Handling**: Try/catch in async handlers, error state in UI components
 - **TypeScript**: Strict mode enabled, `noEmit`, target ES2022, Next.js plugin
 
-## API Endpoints
+## API / Interfaces
 
-| Endpoint | Method | Description |
-|----------|--------|-------------|
-| `/api/stashes` | GET | List stashes (query: `?search=&tag=&archived=&page=&limit=`). With `search`: FTS5 ranked results with snippets. Without: recency-sorted list. `archived=true/false` filters by archive status. |
-| `/api/stashes` | POST | Create a new stash |
-| `/api/stashes/stats` | GET | Get storage statistics |
-| `/api/stashes/tags` | GET | List all tags with counts |
-| `/api/stashes/metadata-keys` | GET | List all unique metadata keys |
-| `/api/stashes/graph` | GET | Get tag relationship graph (query: `?tag=&depth=&min_weight=&min_count=&limit=`) |
-| `/api/stashes/graph/stashes` | GET | Get stash relationship graph |
-| `/api/stashes/:id` | GET | Get a single stash with all files |
-| `/api/stashes/:id` | PATCH | Update a stash |
-| `/api/stashes/:id` | DELETE | Delete a stash |
-| `/api/stashes/:id/files/:filename/raw` | GET | Get raw file content |
-| `/api/stashes/:id/access-log` | GET | Get access log for a stash (`?limit=`) |
-| `/api/stashes/:id/versions` | GET | List all versions of a stash (descending) |
-| `/api/stashes/:id/versions/diff` | GET | Compare two versions (`?v1=&v2=`) |
-| `/api/stashes/:id/versions/:version` | GET | Get a specific version snapshot with files |
-| `/api/stashes/:id/versions/:version/restore` | POST | Restore an old version as current (creates new version) |
-| `/api/tokens` | GET | List API tokens (admin-protected) |
-| `/api/tokens` | POST | Create API token (admin-protected) |
-| `/api/tokens/:id` | DELETE | Delete API token (admin-protected) |
-| `/api/tokens/validate` | POST | Validate a Bearer token |
-| `/api/admin/auth` | POST | Admin login with password |
-| `/api/admin/logout` | POST | Invalidate admin session |
-| `/api/admin/session` | GET | Check admin session status |
-| `/api/admin/export` | GET | Export all data as ZIP |
-| `/api/admin/import` | POST | Import data from ZIP |
-| `/api/openapi` | GET | OpenAPI 3.0 schema |
-| `/api/mcp-spec` | GET | MCP specification (markdown with tool schemas and data types) |
-| `/api/mcp-onboarding` | GET | MCP onboarding guide for AI self-onboarding (wraps mcp-spec with quick start and workflow) |
-| `/api/mcp-tools` | GET | MCP tool summaries (JSON, derived from tool-defs.ts) |
-| `/api/version` | GET | Version check — current version and latest available from GitHub |
-| `/api/health` | GET | Health check — DB status + stash/file counts (no auth required) |
-| `/mcp` | POST/GET/DELETE | MCP Streamable HTTP endpoint (stateless, auth required) |
+REST API with Bearer token auth + MCP Server for AI agent integration (Streamable HTTP + stdio).
 
-## MCP Tools
+- Full REST API reference: `docs/api-reference.md`
+- MCP tools and patterns: `docs/mcp.md`
+- OpenAPI spec served at `/api/openapi`
+- MCP spec served at `/api/mcp-spec`
 
-| Tool | Description |
-|------|-------------|
-| `create_stash` | Create a new stash with files, tags, metadata. Returns confirmation only. |
-| `read_stash` | Get stash metadata + file list with sizes. Optional `include_content` for full content. |
-| `read_stash_file` | Read a specific file's content from a stash (most token-efficient). |
-| `list_stashes` | List/search stashes with filters (tag, archived). Returns summaries with file sizes (no content). |
-| `update_stash` | Update an existing stash. Returns confirmation only. |
-| `delete_stash` | Delete a stash. |
-| `archive_stash` | Archive or unarchive a stash (hide from default listings without deleting). |
-| `search_stashes` | FTS5 full-text search with BM25 ranking, Porter stemming, prefix matching, and match snippets. Supports tag and archive filter. |
-| `list_tags` | List all tags with usage counts. |
-| `get_tag_graph` | Get tag relationship graph with optional focus tag, depth traversal, min_weight, min_count, limit filters. |
-| `get_stats` | Get storage statistics. |
-| `get_rest_api_spec` | Get the full OpenAPI 3.0 REST API specification (JSON). |
-| `get_mcp_spec` | Get the full MCP specification (markdown with tool schemas and data types). |
-| `refresh_tools` | Tool update — returns the current MCP tool specification for connected AI agents to stay up-to-date. |
-| `check_version` | Check current ClawStash version and whether a newer version is available on GitHub. |
+## Git Conventions
 
-### Token-Efficient MCP Data Flow
+- **Branch Naming:** `claude/{description}-{shortId}` for agent branches, `feature/{name}` for manual
+- **Commit Messages:** Conventional Commits: `type(scope): description #issue` (types: feat, fix, chore, refactor, docs)
+- **Merge Strategy:** Squash merge for PRs
+- **CI/CD:** GitHub Actions: type-check -> build -> Docker push to GHCR (`docker-publish.yml`)
 
-- `list_stashes` → summaries with file sizes (no content), sorted by recency
-- `search_stashes` → BM25-ranked results with relevance scores and match snippets (no file content)
-- `read_stash` → metadata + file list with sizes (no content by default)
-- `read_stash_file` → selective single-file content access
-- `read_stash(include_content=true)` → full content (only for small stashes)
-- `create_stash`/`update_stash` → return confirmation summary, not echoed content
+## Dependency Management
+
+- **New dependencies:** Only after user approval with reasoning.
+- **devDependencies:** Can be added without approval for tooling/testing.
+- **Lock file:** `package-lock.json` — always commit.
 
 ## Environment Variables
 
@@ -545,7 +512,7 @@ npm run mcp                # Start MCP server (stdio transport)
 
 ## Refactoring Notes
 
-Refactoring does NOT happen automatically. Only upon explicit user request, when repeated code smells emerge across multiple files in review, or when a feature implementation is significantly harder than expected due to code structure. See `agent_docs/review_process.md` for principles.
+Refactoring does NOT happen automatically. Only upon explicit user request, when repeated code smells emerge across multiple files in review, or when a feature implementation is significantly harder than expected due to code structure. See `agent_docs/refactoring_guidelines.md` for principles.
 
 - **`src/server/db.ts` (~610 lines)**: Largest file. Token/session management methods could be extracted into a separate `TokenStore` or `AuthStore` class. The `detectLanguage()` function could move to a shared utility.
 - **`src/server/openapi.ts` (~560 lines)**: Large schema definition. Could adopt `@asteasolutions/zod-to-openapi` to generate from Zod schemas in `tool-defs.ts` (currently only MCP spec uses zodToJsonSchema; OpenAPI schemas are still hand-written).
@@ -563,9 +530,14 @@ After every code change, check and update:
 |------|---------------|
 | `CLAUDE.md` | New components, config files, patterns, or technical details |
 | `README.md` | New features, value proposition, onboarding changes for users |
+| `BACKLOG.md` | Unresolved review findings (Accepted/Deferred) — see `agent_docs/backlog_process.md` |
+| `MEMORY.md` | Project learnings, context, decisions, gotchas |
 | `docs/api-reference.md` | New API endpoints, query parameters, examples |
 | `docs/mcp.md` | New MCP tools, transport options, usage patterns |
 | `docs/deployment.md` | Docker, CI/CD, or production setup changes |
 | `docs/authentication.md` | Auth flow, token, or scope changes |
-| `BACKLOG.md` | Unresolved review findings (Accepted/Deferred) — see `agent_docs/backlog_process.md` |
+| `docs/ARCHITECTURE.mmd` | Structural changes (new modules, changed data flow, new external deps) |
 | `.env.example` | New configuration options added |
+
+### Size monitoring
+If `CLAUDE.md` exceeds ~40,000 characters: extract the largest section into `agent_docs/` and replace with a one-line reference. Do this proactively — don't wait for warnings.
