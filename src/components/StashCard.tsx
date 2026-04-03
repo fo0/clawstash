@@ -1,5 +1,6 @@
 import type { StashListItem, LayoutMode } from '../types';
 import { formatRelativeTime } from '../utils/format';
+import { renderDescriptionMarkdown } from '../utils/markdown';
 
 interface Props {
   stash: StashListItem;
@@ -28,7 +29,11 @@ export default function StashCard({ stash, layout, onClick, onFilterTag }: Props
       </div>
 
       {stash.description && (
-        <p className="stash-card-description">{stash.description}</p>
+        <div
+          className="stash-card-description markdown-description"
+          dangerouslySetInnerHTML={{ __html: renderDescriptionMarkdown(stash.description) }}
+          onClick={(e) => { if ((e.target as HTMLElement).closest('a')) e.stopPropagation(); }}
+        />
       )}
 
       <div className="stash-card-files">

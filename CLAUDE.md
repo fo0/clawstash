@@ -127,7 +127,8 @@ clawstash/
 │   │   └── useClickOutside.ts  # Click-outside detection hook (used by Sidebar, TagCombobox, MetadataEditor)
 │   ├── utils/
 │   │   ├── clipboard.ts        # Copy-to-clipboard with fallback for non-HTTPS
-│   │   └── format.ts           # Date formatting (formatDate, formatDateTime, formatRelativeTime)
+│   │   ├── format.ts           # Date formatting (formatDate, formatDateTime, formatRelativeTime)
+│   │   └── markdown.ts         # Markdown rendering for descriptions (Marked + sanitization)
 │   ├── components/
 │   │   ├── Sidebar.tsx         # Left sidebar with search, tag filter, stash list, settings nav
 │   │   ├── Footer.tsx          # App footer with version (fetched from /api/version), build info toggle
@@ -401,6 +402,7 @@ npm run mcp                # Start MCP server (stdio transport)
 
 - `clipboard.ts`: `copyToClipboard()` with modern Clipboard API + fallback for non-HTTPS
 - `format.ts`: `formatDate()`, `formatDateTime()`, `formatRelativeTime()` — centralized date formatting used by Sidebar, StashViewer, StashCard, TokensTab
+- `markdown.ts`: `renderDescriptionMarkdown()` — renders stash descriptions as sanitized Markdown HTML (Marked + DOMParser sanitization, external links in new tab). Used by StashViewer and StashCard.
 
 ### Language Utility (src/languages.ts)
 

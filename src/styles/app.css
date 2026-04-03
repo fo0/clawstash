@@ -5023,6 +5023,46 @@ body {
   -webkit-box-orient: vertical;
 }
 
+/* === Markdown description rendering === */
+.markdown-description > *:first-child { margin-top: 0; }
+.markdown-description > *:last-child { margin-bottom: 0; }
+.markdown-description p { margin: 0.4em 0; }
+.markdown-description a { color: var(--accent, #58a6ff); text-decoration: none; }
+.markdown-description a:hover { text-decoration: underline; }
+.markdown-description code {
+  background: var(--bg-tertiary, #161b22);
+  padding: 0.15em 0.4em;
+  border-radius: 4px;
+  font-size: 0.9em;
+}
+.markdown-description pre {
+  background: var(--bg-tertiary, #161b22);
+  padding: 8px 12px;
+  border-radius: 6px;
+  overflow-x: auto;
+  font-size: 0.9em;
+}
+.markdown-description pre code {
+  background: none;
+  padding: 0;
+}
+.markdown-description ul, .markdown-description ol {
+  padding-left: 1.5em;
+  margin: 0.4em 0;
+}
+.markdown-description blockquote {
+  border-left: 3px solid var(--border, #30363d);
+  margin: 0.4em 0;
+  padding-left: 12px;
+  color: var(--text-muted, #484f58);
+}
+.markdown-description h1, .markdown-description h2, .markdown-description h3,
+.markdown-description h4, .markdown-description h5, .markdown-description h6 {
+  margin: 0.6em 0 0.3em;
+  font-size: 1em;
+  font-weight: 600;
+}
+
 /* === Version History === */
 .version-count-badge {
   background: var(--bg-tertiary);
