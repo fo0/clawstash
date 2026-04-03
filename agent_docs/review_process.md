@@ -10,13 +10,25 @@ This file defines the mandatory review process executed after every implementati
 4. **Fix, don't list** — when a finding is actionable, fix it immediately. Don't just document it.
 5. **Re-review after fixes** — if fixes touched code, re-run automated checks and re-review affected categories only.
 
+## Severity Definitions
+
+Severity is based on impact, not category:
+
+| Severity | Definition | Examples |
+|----------|-----------|---------|
+| **P0 — Critical** | Can cause data loss, security breach, or production crash | SQL injection, unvalidated user input to exec(), missing auth checks on write endpoints, null deref in hot path |
+| **P1 — Important** | Functionally incorrect, poor DX, or fast-growing tech debt | Wrong error handling, missing edge cases, unsafe type casts, deprecated APIs |
+| **P2 — Nice-to-have** | Code smells, performance optimizations, style improvements | Duplicated code, missing memoization, magic numbers, long parameter lists |
+
 ## Workflow
 
 ```
-Implement → Run automated checks → Fix failures →
-Code Review (all categories) → Fix P0/P1 → Re-check if needed →
-Unresolved findings → BACKLOG.md →
-UI Review (if UI changed) →
+Implement -> Run automated checks -> Fix failures ->
+Code Review (all categories) -> Fix P0/P1 -> Re-check if needed ->
+Regression & Complexity QA ->
+Unresolved findings -> BACKLOG.md ->
+Learnings/context -> MEMORY.md ->
+UI Review (if UI changed) ->
 Commit
 ```
 
@@ -24,7 +36,7 @@ Commit
 
 - **Automated checks fail and fix is unclear:** Document the failure, inform the user, do NOT commit. Suggest possible causes.
 - **Review finds issue outside current scope:** Log to BACKLOG.md with context, do not fix unless trivial.
-- **Circular fix loop (fix breaks something else):** Stop after 3 iterations, inform user with full context of the loop.
+- **Circular fix loop (fix breaks something else):** After 2nd iteration -> inform user. After 3rd -> stop completely, present full context of the loop.
 
 ## Automated Checks
 
@@ -42,9 +54,25 @@ npm run build            # Build succeeds
 > npm run test           # Tests green (when configured)
 > ```
 
+## Review Scope
+
+### Default: Diff-based review
+- Review is based on changed files (diff).
+- Only changed and directly affected files are read.
+
+### Full-read review (when needed)
+- New files are always read completely.
+- Security-critical changes: also check adjacent files.
+- On explicit user request.
+
+### Large-scale changes (>30 changed files)
+- Group by change type (refactoring, feature, config etc.).
+- P0 categories for all files.
+- P1/P2 only for feature-relevant files, rest by sampling.
+
 ## Review Categories
 
-Ordered by priority. P0 categories are always reviewed thoroughly. P1 categories are reviewed for all changes. P2 categories are reviewed when relevant.
+Ordered by priority.
 
 ### P0 — Critical (always fix immediately)
 
@@ -53,7 +81,7 @@ Ordered by priority. P0 categories are always reviewed thoroughly. P1 categories
 | 1 | **Security** | Injection (SQL/command/template), XSS, CSRF, hardcoded secrets, unsafe dynamic code execution, prototype pollution, insecure crypto, improper auth checks, unvalidated input at trust boundaries |
 | 2 | **Bugs & Logic Errors** | Off-by-one, null/undefined access, race conditions, incorrect conditionals, missing error handling at boundaries, wrong operator precedence, async pitfalls (unhandled promises, deadlocks), unclosed resources |
 
-### P1 — Important (always fix, unless effort disproportionate → Backlog)
+### P1 — Important (always fix, unless effort disproportionate -> Backlog)
 
 | # | Category | What to check |
 |---|----------|---------------|
@@ -71,41 +99,47 @@ Ordered by priority. P0 categories are always reviewed thoroughly. P1 categories
 
 ## Review Execution
 
-1. **Re-read every changed file** with the Read tool — completely, not from memory.
-2. Evaluate each file against ALL categories (P0 first, then P1, then P2 where relevant).
+1. **Re-read every changed file** with the Read tool — completely, not from memory. New files in full.
+2. Evaluate each file against all categories (P0 first, then P1, then P2 where relevant).
 3. Fix findings inline where possible.
 4. Present results:
 
 ```
 ### Code Review Results
 
-| # | Category | Priority | Status | Finding | Action |
-|---|----------|----------|--------|---------|--------|
+| # | Category | Sev | Status | Finding | Action |
+|---|----------|-----|--------|---------|--------|
 | 1 | Security | P0 | ⚠️ Fixed | Unvalidated input in X | Added validation |
 | 2 | Bugs & Logic | P0 | ✅ Pass | — | — |
 | 3 | Edge Cases | P1 | ✅ Pass | — | — |
-| 4 | Typing & Type Safety | P1 | ✅ Pass | — | — |
-| 5 | Modern Coding Standards | P1 | ✅ Pass | — | — |
-| 6 | Code Smells | P2 | ✅ Pass | — | — |
-| 7 | Performance | P2 | 💡 Deferred | Could memoize expensive calc | → Backlog |
-| 8 | Readability | P2 | ✅ Pass | — | — |
+| ... | ... | ... | ... | ... | ... |
 
-Summary: 8 categories checked | 1 fixed | 1 deferred → Backlog
+Summary: X categories checked | Y fixed | Z deferred -> Backlog
 ```
 
-**Status icons:**
-- ✅ **Pass** — No issues found
-- ⚠️ **Fixed** — Problem found and fixed
-- ❌ **Blocked** — Needs user input to resolve
-- 💡 **Deferred** — Logged to Backlog
+**Status:** ✅ Pass | ⚠️ Fixed | ❌ Blocked (needs user input) | 💡 Deferred -> Backlog
 
 ## Fixing Rules
 
-| Priority | Action |
+| Severity | Action |
 |----------|--------|
 | P0 findings | Fix immediately, always |
-| P1 findings | Fix by default. Defer only if effort is clearly disproportionate — document reasoning |
-| P2 findings | Fix if trivial. Otherwise defer to Backlog |
+| P1 findings | Fix by default. Defer only if effort is clearly disproportionate — document reasoning in Backlog |
+| P2 findings | Fix if trivial (<5 min). Otherwise defer to Backlog |
+
+## Regression & Complexity QA
+
+After all review fixes are applied, re-read the full implementation one more time:
+
+| Check | What to look for |
+|-------|-----------------|
+| **Regressions** | Did a fix break existing behavior? Changed return values, removed fallbacks, altered control flow? |
+| **Unnecessary complexity** | Did the implementation add indirection or branching that isn't needed? |
+| **Consistency** | Do the changes fit the patterns in surrounding code? |
+
+Rules:
+- Re-read every changed file again (not from memory).
+- If this pass finds issues, fix them and re-run automated checks. Do NOT loop more than once.
 
 ## UI Review (only when UI code changed)
 
@@ -113,36 +147,18 @@ Summary: 8 categories checked | 1 fixed | 1 deferred → Backlog
 - **Accessibility:** Relevant attributes present?
 - **Consistency:** Matches existing design system/patterns?
 
-## Subagent Usage
+## Subagent Delegation
 
-For complex implementations, consider delegating isolated tasks to subagents to keep the main context clean:
+For isolated, clearly bounded subtasks:
 
-- **Test writing** — when many test cases are needed for a feature
-- **Documentation updates** — when multiple docs need updating after a large change
-- **Refactoring subtasks** — when a refactoring is broken into independent chunks
+| Task | When to delegate |
+|------|-----------------|
+| **Write tests** | >3 test files needed for a feature |
+| **Doc updates** | >2 documentation files affected |
+| **Refactoring chunks** | Independent subtasks of a larger refactoring |
+| **Boilerplate generation** | Repetitive structures (migrations, schemas, config) |
 
 The main agent retains responsibility for the review process itself.
-
-## Refactoring Guidelines
-
-Refactoring does NOT happen automatically. Only when:
-
-- The user explicitly requests a refactoring pass
-- Repeated code smells emerge across multiple files in review
-- A feature implementation is significantly harder than expected due to code structure
-
-### Principles
-
-1. **No over-engineering** — Only refactor what provides measurable benefit (readability, maintainability, performance)
-2. **AI-optimized code structure** — This code is primarily maintained by AI agents:
-   - Prefer explicit over implicit patterns (easier for AI to parse and modify)
-   - Keep files focused and single-responsibility (AI works better with smaller, clear files)
-   - Use descriptive naming over clever abstractions
-   - Maintain consistent patterns across similar components (AI can pattern-match)
-   - Document non-obvious decisions inline (AI lacks project history context)
-3. **Follow framework idioms** — Use current best practices of the language/framework, not custom abstractions
-4. **Incremental refactoring** — Small chunks, each passes the full review cycle
-5. **Extract, don't abstract** — Prefer extracting into focused files over abstract base classes or complex generics
 
 ## Commit Gate
 
@@ -151,5 +167,7 @@ Only commit when:
 - [ ] All automated checks pass
 - [ ] All P0/P1 findings are fixed (or explicitly deferred with reasoning)
 - [ ] Deferred findings are logged in BACKLOG.md
+- [ ] Learnings/context captured in MEMORY.md (if applicable)
 - [ ] Documentation updated if needed
+- [ ] Commit message follows project's Git Conventions
 - [ ] UI review done (if UI changed)

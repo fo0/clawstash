@@ -1,0 +1,143 @@
+flowchart TD
+    subgraph "Browser / AI Agent"
+        Browser("Web Dashboard (React 19)")
+        AIAgent{{"AI Agent (MCP Client)"}}
+        APIClient{{"REST API Client"}}
+    end
+
+    subgraph "Next.js App Router"
+        Middleware["Middleware (CORS, Rate Limit, Security Headers)"]
+
+        subgraph "Frontend"
+            AppRoot("App.tsx (State Management)")
+            Sidebar("Sidebar (Search, Tags, Nav)")
+            Dashboard("Dashboard (Card/List View)")
+            StashViewer("StashViewer (Detail View)")
+            StashEditor("StashEditor (Create/Edit)")
+            GraphViewer("GraphViewer (Tag Graph Canvas)")
+            Settings("Settings (Admin Area)")
+            SearchOverlay("SearchOverlay (Alt+K)")
+        end
+
+        subgraph "API Route Handlers"
+            Helpers["_helpers.ts (checkScope, checkAdmin)"]
+            StashRoutes["Stash Routes (/api/stashes/*)"]
+            TokenRoutes["Token Routes (/api/tokens/*)"]
+            AdminRoutes["Admin Routes (/api/admin/*)"]
+            SpecRoutes["Spec Routes (openapi, mcp-spec, health)"]
+        end
+
+        subgraph "MCP Server"
+            MCPRoute["MCP HTTP Route (/mcp)"]
+            MCPServer("MCP Server Factory")
+            ToolDefs["Tool Definitions (Zod Schemas)"]
+            MCPStdio("MCP Stdio Transport")
+        end
+    end
+
+    subgraph "Server Layer"
+        Auth["Auth (Token + Session Validation)"]
+        Validation["Validation (Zod Schemas)"]
+        SharedText["Shared Text Constants"]
+        OpenAPI["OpenAPI Schema Generator"]
+        MCPSpec["MCP Spec Generator"]
+        DBSingleton["DB Singleton (globalThis HMR)"]
+    end
+
+    subgraph "Data Layer"
+        DB[("SQLite (better-sqlite3, WAL)")]
+    end
+
+    subgraph "External"
+        GHCR{{"GHCR (Docker Registry)"}}
+        GitHub{{"GitHub (Version Check)"}}
+    end
+
+    Browser -->|"HTTP"| Middleware
+    AIAgent -->|"Streamable HTTP"| MCPRoute
+    AIAgent -->|"stdio"| MCPStdio
+    APIClient -->|"REST + Bearer Token"| Middleware
+
+    Middleware --> AppRoot
+    Middleware --> StashRoutes
+    Middleware --> TokenRoutes
+    Middleware --> AdminRoutes
+    Middleware --> SpecRoutes
+    Middleware --> MCPRoute
+
+    AppRoot --> Sidebar
+    AppRoot --> Dashboard
+    AppRoot --> StashViewer
+    AppRoot --> StashEditor
+    AppRoot --> GraphViewer
+    AppRoot --> Settings
+    AppRoot --> SearchOverlay
+
+    StashRoutes --> Helpers
+    TokenRoutes --> Helpers
+    AdminRoutes --> Helpers
+    Helpers --> Auth
+    Helpers --> Validation
+
+    MCPRoute --> MCPServer
+    MCPStdio --> MCPServer
+    MCPServer --> ToolDefs
+    MCPServer --> Auth
+
+    SpecRoutes --> OpenAPI
+    SpecRoutes --> MCPSpec
+    MCPSpec --> ToolDefs
+    OpenAPI --> SharedText
+    MCPSpec --> SharedText
+
+    Auth --> DBSingleton
+    StashRoutes --> DBSingleton
+    TokenRoutes --> DBSingleton
+    AdminRoutes --> DBSingleton
+    MCPServer --> DBSingleton
+    DBSingleton --> DB
+
+    SpecRoutes -->|"version check"| GitHub
+
+    click Browser "src/App.tsx"
+    click AppRoot "src/App.tsx"
+    click Sidebar "src/components/Sidebar.tsx"
+    click Dashboard "src/components/Dashboard.tsx"
+    click StashViewer "src/components/StashViewer.tsx"
+    click StashEditor "src/components/editor/StashEditor.tsx"
+    click GraphViewer "src/components/GraphViewer.tsx"
+    click Settings "src/components/Settings.tsx"
+    click SearchOverlay "src/components/SearchOverlay.tsx"
+    click Middleware "src/middleware.ts"
+    click Helpers "src/app/api/_helpers.ts"
+    click StashRoutes "src/app/api/stashes"
+    click TokenRoutes "src/app/api/tokens"
+    click AdminRoutes "src/app/api/admin"
+    click SpecRoutes "src/app/api/openapi"
+    click MCPRoute "src/app/mcp/route.ts"
+    click MCPServer "src/server/mcp-server.ts"
+    click ToolDefs "src/server/tool-defs.ts"
+    click MCPStdio "src/server/mcp.ts"
+    click Auth "src/server/auth.ts"
+    click Validation "src/server/validation.ts"
+    click SharedText "src/server/shared-text.ts"
+    click OpenAPI "src/server/openapi.ts"
+    click MCPSpec "src/server/mcp-spec.ts"
+    click DBSingleton "src/server/singleton.ts"
+    click DB "src/server/db.ts"
+
+    classDef frontend fill:#42b883,stroke:#35495e,color:#fff
+    classDef backend fill:#3178c6,stroke:#265a8f,color:#fff
+    classDef database fill:#336791,stroke:#264d73,color:#fff
+    classDef mcp fill:#ff6600,stroke:#cc5200,color:#fff
+    classDef server fill:#7b42bc,stroke:#5e338f,color:#fff
+    classDef external fill:#ff6347,stroke:#cc4f39,color:#fff
+    classDef middleware fill:#e6a817,stroke:#b8860b,color:#fff
+
+    class Browser,AppRoot,Sidebar,Dashboard,StashViewer,StashEditor,GraphViewer,Settings,SearchOverlay frontend
+    class Helpers,StashRoutes,TokenRoutes,AdminRoutes,SpecRoutes backend
+    class MCPRoute,MCPServer,ToolDefs,MCPStdio mcp
+    class Auth,Validation,SharedText,OpenAPI,MCPSpec,DBSingleton server
+    class DB database
+    class GHCR,GitHub,AIAgent,APIClient external
+    class Middleware middleware
