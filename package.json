@@ -31,7 +31,7 @@
     "next": "^16.2.1",
     "prismjs": "^1.30.0",
     "react": "^19.0.0",
-    "react-dom": "^19.0.0",
+    "react-dom": "^19.2.5",
     "react-simple-code-editor": "^0.14.1",
     "tsx": "^4.19.0",
     "uuid": "^13.0.0",
