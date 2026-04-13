@@ -18,3 +18,14 @@ Refactoring does NOT happen automatically. Only when:
 4. **Incremental** — Small chunks, each goes through the full review cycle
 5. **Extract, don't abstract** — Prefer extracting into focused files over building abstract base classes
 6. **Verify** — Every refactoring step must pass all automated checks before the next one begins
+
+## GitNexus-Assisted Refactoring
+
+When GitNexus is available, always use it for refactoring tasks:
+
+1. **Before refactoring:** `gitnexus_impact` to map the blast radius
+2. **For renames:** `gitnexus_rename` with `dry_run: true` first, review, then apply
+3. **After refactoring:** `gitnexus_detect_changes` to verify only expected files changed
+4. **For extraction:** `gitnexus_context` to understand all incoming/outgoing references
+
+See `.claude/skills/gitnexus/gitnexus-refactoring/SKILL.md` for detailed workflows.

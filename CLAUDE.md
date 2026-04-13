@@ -1,11 +1,14 @@
 # CLAUDE.md — Project Guide
 
-> **Session-Start:** Read `MEMORY.md` first to restore context from previous sessions.
+> **Session-Start:** Read `MEMORY.md` and `SCRATCHPAD.md` to restore context from previous sessions.
 > After every implementation, follow the review process in `agent_docs/review_process.md`.
 > Unresolved findings go to `BACKLOG.md` as defined in `agent_docs/backlog_process.md`.
-> Session-spanning context and learnings go to `MEMORY.md` as defined in `agent_docs/memory_process.md`.
+> Long-term knowledge goes to `MEMORY.md`, temporary working context to `SCRATCHPAD.md`.
+> See `agent_docs/memory_process.md` for rules on what goes where.
 > **Diagram generation:** When the user requests an architecture diagram, follow `agent_docs/diagram_prompt.md`.
 >   Write result to `docs/ARCHITECTURE.mmd` and generate `docs/ARCHITECTURE.svg`.
+> **GitNexus:** If `.gitnexus/` exists, use GitNexus skills in `.claude/skills/gitnexus/` for code navigation,
+>   impact analysis, refactoring, and review. Run `npx gitnexus analyze` to rebuild the index when stale.
 > **On "done" / "fertig":** Commit uncommitted changes (if any), and if the work relates to a GitHub
 >   issue, comment on it (in English) with a summary and close it. Do NOT push unless explicitly asked.
 > **On GitHub issue work:** Reference the issue number in commit messages (e.g. `fix: resolve crash #42`).
@@ -58,7 +61,8 @@ clawstash/
 ├── docker-compose.yml          # Docker Compose deployment
 ├── .env.example                # Environment variables template
 ├── BACKLOG.md                  # Deferred review findings tracker
-├── MEMORY.md                   # Session-spanning project knowledge
+├── MEMORY.md                   # Session-spanning project knowledge (long-term)
+├── SCRATCHPAD.md               # Temporary working context (short-term)
 ├── agent_docs/                 # Agent process documentation
 │   ├── review_process.md       # Mandatory review process after every implementation
 │   ├── backlog_process.md      # Backlog tracking rules and format
@@ -71,6 +75,9 @@ clawstash/
 │   ├── deployment.md           # Docker, production, CI/CD, GHCR setup
 │   ├── authentication.md       # Admin login, API tokens, scopes, security
 │   └── openclaw-onboarding-prompt.md  # Copy-paste onboarding prompt for OpenClaw agents
+├── .claude/
+│   └── skills/
+│       └── gitnexus/           # GitNexus code intelligence skills (explore, debug, refactor, review, impact, query)
 ├── .github/
 │   └── workflows/
 │       └── docker-publish.yml  # CI: Type-check, build, push to GHCR
@@ -197,6 +204,9 @@ npm start                  # Start production server (Next.js)
 
 # Other
 npm run mcp                # Start MCP server (stdio transport)
+
+# GitNexus (if enabled)
+npx gitnexus analyze       # Rebuild index (after structural changes or stale index)
 ```
 
 > **Note:** No linter or test framework configured yet. When added, extend automated checks:
@@ -494,6 +504,32 @@ REST API with Bearer token auth + MCP Server for AI agent integration (Streamabl
 | `ADMIN_PASSWORD` | Admin password for login (unset = open access) | — | No |
 | `ADMIN_SESSION_HOURS` | Admin session duration in hours (0 = unlimited) | `24` | No |
 
+## GitNexus — Code Intelligence
+
+GitNexus provides graph-based code intelligence via MCP tools. Use it for navigating, understanding, and safely modifying the codebase.
+
+### Available Tools (via MCP)
+
+| Tool | Purpose | When to use |
+|------|---------|-------------|
+| `gitnexus_query` | Natural language code search | "Where is X used?", "How does Y work?" |
+| `gitnexus_context` | Full context for a symbol (refs in/out) | Before modifying a function/class |
+| `gitnexus_impact` | Upstream/downstream dependency map | Before refactoring, to assess blast radius |
+| `gitnexus_rename` | Automated multi-file rename | Renaming symbols safely across the codebase |
+| `gitnexus_detect_changes` | Verify scope of changes after edits | After any refactoring step |
+| `gitnexus_cypher` | Raw Cypher queries on the code graph | Complex relationship queries |
+
+### Quick Reference
+
+```bash
+# Rebuild index (when stale or after major changes)
+npx gitnexus analyze
+```
+
+- If any tool returns "Index is stale" -> run `npx gitnexus analyze` first.
+- Skill details: `.claude/skills/gitnexus/`
+- Index directory `.gitnexus/` is gitignored.
+
 ## Testing
 
 **Currently no test framework is configured.** Recommended setup:
@@ -535,7 +571,8 @@ After every code change, check and update:
 | `CLAUDE.md` | New components, config files, patterns, or technical details |
 | `README.md` | New features, value proposition, onboarding changes for users |
 | `BACKLOG.md` | Unresolved review findings (Accepted/Deferred) — see `agent_docs/backlog_process.md` |
-| `MEMORY.md` | Project learnings, context, decisions, gotchas |
+| `MEMORY.md` | Architecture decisions, gotchas, external deps, user preferences |
+| `SCRATCHPAD.md` | Current working context, open questions, short-lived notes |
 | `docs/api-reference.md` | New API endpoints, query parameters, examples |
 | `docs/mcp.md` | New MCP tools, transport options, usage patterns |
 | `docs/deployment.md` | Docker, CI/CD, or production setup changes |

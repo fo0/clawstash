@@ -27,7 +27,7 @@ Implement -> Run automated checks -> Fix failures ->
 Code Review (all categories) -> Fix P0/P1 -> Re-check if needed ->
 Regression & Complexity QA ->
 Unresolved findings -> BACKLOG.md ->
-Learnings/context -> MEMORY.md ->
+Learnings/context -> MEMORY.md / SCRATCHPAD.md ->
 UI Review (if UI changed) ->
 Commit
 ```
@@ -60,6 +60,10 @@ npm run build            # Build succeeds
 - Review is based on changed files (diff).
 - Only changed and directly affected files are read.
 
+### GitNexus-enhanced review (if available)
+- Use `gitnexus_impact` on changed functions to identify affected downstream code beyond the diff.
+- Use `gitnexus_detect_changes` after fixes to verify change scope matches expectations.
+
 ### Full-read review (when needed)
 - New files are always read completely.
 - Security-critical changes: also check adjacent files.
@@ -69,6 +73,7 @@ npm run build            # Build succeeds
 - Group by change type (refactoring, feature, config etc.).
 - P0 categories for all files.
 - P1/P2 only for feature-relevant files, rest by sampling.
+- If GitNexus available: use `gitnexus_impact` to prioritize files by downstream dependency count.
 
 ## Review Categories
 
@@ -167,7 +172,7 @@ Only commit when:
 - [ ] All automated checks pass
 - [ ] All P0/P1 findings are fixed (or explicitly deferred with reasoning)
 - [ ] Deferred findings are logged in BACKLOG.md
-- [ ] Learnings/context captured in MEMORY.md (if applicable)
+- [ ] Learnings/context captured in MEMORY.md or SCRATCHPAD.md (if applicable)
 - [ ] Documentation updated if needed
 - [ ] Commit message follows project's Git Conventions
 - [ ] UI review done (if UI changed)
