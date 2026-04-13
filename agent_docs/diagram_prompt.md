@@ -16,8 +16,9 @@ Analyze the repository and produce a single, valid Mermaid.js architecture diagr
 ### Phase 1 — Repository Analysis
 
 Gather context:
-1. Read the file tree. Exclude: `.git`, `node_modules`, `dist`, `build`, `.next`, `__pycache__`, `.venv`, `vendor`, `target`, `.idea`, `.vscode`.
+1. Read the file tree. Exclude: `.git`, `node_modules`, `dist`, `build`, `.next`, `__pycache__`, `.venv`, `vendor`, `target`, `.idea`, `.vscode`, `.gitnexus`.
 2. Read README and key config files to identify the tech stack.
+3. If GitNexus is available: use `gitnexus_query("project architecture overview")` to supplement file-tree analysis.
 
 Determine:
 - **Project type**: full-stack app (Next.js App Router, single process)
