@@ -27,7 +27,7 @@
     "archiver": "^7.0.1",
     "better-sqlite3": "^12.8.0",
     "diff": "^8.0.3",
-    "marked": "^17.0.5",
+    "marked": "^18.0.2",
     "next": "^16.2.3",
     "prismjs": "^1.30.0",
     "react": "^19.0.0",
