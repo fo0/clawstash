@@ -109,14 +109,19 @@ ${TOKEN_EFFICIENT_GUIDE}`,
     }
   );
 
-  // List stashes with optional filtering
+  // List stashes with optional filtering.
+  // When a search query is given, route to FTS5 ranked search to match REST
+  // /api/stashes behavior — otherwise MCP clients silently get a slower,
+  // unranked LIKE scan with different result ordering than the REST endpoint.
   const listDef = getToolDef('list_stashes');
   server.tool(
     listDef.name,
     listDef.description,
     listDef.schema.shape,
     async ({ search, tag, archived, page, limit }) => {
-      const result = db.listStashes({ search, tag, archived, page, limit });
+      const result = search
+        ? db.searchStashes(search, { tag, archived, page, limit })
+        : db.listStashes({ tag, archived, page, limit });
       return {
         content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
       };
