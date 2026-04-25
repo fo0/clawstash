@@ -44,6 +44,8 @@ const EXTENSION_MAP: Record<string, string> = {
   '.xml': 'xml',
   '.md': 'markdown',
   '.markdown': 'markdown',
+  '.mmd': 'mermaid',
+  '.mermaid': 'mermaid',
   '.txt': 'text',
   '.toml': 'toml',
   '.ini': 'ini',

@@ -43,6 +43,7 @@
 | Validation | Zod | 3.24 |
 | Code Editor | react-simple-code-editor, PrismJS | 0.14, 1.30 |
 | Markdown Rendering | marked | 17 |
+| Diagram Rendering | mermaid (lazy-loaded) | 11 |
 | Text Diffing | diff (jsdiff) | 8 |
 | Module System | ESM (`"type": "module"`) | — |
 | Containerization | Docker (multi-stage, standalone output) | — |
@@ -150,7 +151,8 @@ clawstash/
 │   ├── utils/
 │   │   ├── clipboard.ts        # Copy-to-clipboard with fallback for non-HTTPS
 │   │   ├── format.ts           # Date formatting (formatDate, formatDateTime, formatRelativeTime)
-│   │   └── markdown.ts         # Markdown rendering for descriptions (Marked + sanitization)
+│   │   ├── markdown.ts         # Markdown rendering for descriptions (Marked + sanitization)
+│   │   └── mermaid.ts          # Lazy-loaded Mermaid renderer (shared util for .mmd files + inline ```mermaid blocks)
 │   ├── components/
 │   │   ├── Sidebar.tsx         # Left sidebar with search, tag filter, stash list, settings nav
 │   │   ├── Footer.tsx          # App footer with version (fetched from /api/version), build info toggle
@@ -163,6 +165,7 @@ clawstash/
 │   │   ├── VersionDiff.tsx     # GitHub-style diff view (green/red) using jsdiff
 │   │   ├── SearchOverlay.tsx   # Alt+K quick search overlay with keyboard navigation
 │   │   ├── LoginScreen.tsx     # Password login gate
+│   │   ├── MermaidDiagram.tsx  # React wrapper around renderMermaid() for .mmd files
 │   │   ├── Settings.tsx        # Settings/admin area (general, API, storage, about)
 │   │   ├── shared/
 │   │   │   ├── icons.tsx       # Shared Octicon-style icons
@@ -428,6 +431,19 @@ npx gitnexus analyze       # Rebuild index (after structural changes or stale in
 - `clipboard.ts`: `copyToClipboard()` with modern Clipboard API + fallback for non-HTTPS
 - `format.ts`: `formatDate()`, `formatDateTime()`, `formatRelativeTime()` — centralized date formatting used by Sidebar, StashViewer, StashCard, TokensTab
 - `markdown.ts`: `renderDescriptionMarkdown()` — renders stash descriptions as sanitized Markdown HTML (Marked + DOMParser sanitization, external links in new tab). Used by StashViewer and StashCard.
+- `mermaid.ts`: `renderMermaid(code)` — lazy-loads the `mermaid` lib via dynamic `import()`, initializes once with `theme: 'dark'` + `securityLevel: 'strict'`, returns `{svg?, error?}` (no throw). Shared by `<MermaidDiagram>` (`.mmd` files) and the inline ` ```mermaid ` markdown hydration effect in StashViewer.
+
+### Mermaid Rendering (src/utils/mermaid.ts, src/components/MermaidDiagram.tsx)
+
+- `mermaid` npm lib is lazy-loaded via dynamic `import()` on first use — kept out of the initial bundle (Next.js auto-code-splits dynamic imports)
+- Single shared render entry point: `renderMermaid(code)` returns `{svg?, error?}`; the lib is initialized exactly once with `theme: 'dark'`, `securityLevel: 'strict'`, `fontFamily: 'inherit'`
+- **Two render paths sharing the util:**
+  - Standalone `.mmd` / `.mermaid` files → React component `<MermaidDiagram>` rendered directly in `StashViewer`
+  - Inline ` ```mermaid ` blocks in Markdown → marked custom `code` renderer emits `<div class="mermaid-placeholder" data-mermaid-source="BASE64">`, hydrated by a `useEffect` in `StashViewer` after `dangerouslySetInnerHTML`
+- File extensions `.mmd` / `.mermaid` registered in `src/server/detect-language.ts` (server-side persistence) and `src/languages.ts` (frontend display + `RENDERABLE_LANGUAGES` set)
+- Errors render inline as `.mermaid-error` blocks (red border, message + source echoed) — no app crash
+- Toggle Raw ⇄ Preview reuses the existing `renderPreview` toggle (Mermaid is part of `RENDERABLE_LANGUAGES`)
+- Theme: ClawStash is dark-only today; `mermaid.initialize` is called once with `theme: 'dark'`. Re-render hook is in place (deps include `renderedContent`/`renderPreview`/`activeTab`) so future theme switching can re-init + force re-hydration trivially.
 
 ### Language Utility (src/languages.ts)
 
@@ -586,7 +602,7 @@ If `CLAUDE.md` exceeds ~40,000 characters: extract the largest section into `age
 <!-- gitnexus:start -->
 # GitNexus — Code Intelligence
 
-This project is indexed by GitNexus as **clawstash** (2029 symbols, 3541 relationships, 175 execution flows). Use the GitNexus MCP tools to understand code, assess impact, and navigate safely.
+This project is indexed by GitNexus as **clawstash** (2039 symbols, 3554 relationships, 176 execution flows). Use the GitNexus MCP tools to understand code, assess impact, and navigate safely.
 
 > If any GitNexus tool warns the index is stale, run `npx gitnexus analyze` in terminal first.
 
