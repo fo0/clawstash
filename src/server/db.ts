@@ -3,6 +3,7 @@ import { v4 as uuidv4 } from 'uuid';
 import crypto from 'crypto';
 import path from 'path';
 import fs from 'fs';
+import { detectLanguage } from './detect-language';
 
 export interface StashFile {
   id: string;
@@ -1731,71 +1732,6 @@ export class ClawStashDB {
   close() {
     this.db.close();
   }
-}
-
-function detectLanguage(filename: string): string {
-  const ext = path.extname(filename).toLowerCase();
-  const map: Record<string, string> = {
-    '.js': 'javascript',
-    '.jsx': 'javascript',
-    '.ts': 'typescript',
-    '.tsx': 'typescript',
-    '.py': 'python',
-    '.rb': 'ruby',
-    '.go': 'go',
-    '.rs': 'rust',
-    '.java': 'java',
-    '.kt': 'kotlin',
-    '.cs': 'csharp',
-    '.cpp': 'cpp',
-    '.c': 'c',
-    '.h': 'c',
-    '.hpp': 'cpp',
-    '.php': 'php',
-    '.swift': 'swift',
-    '.sh': 'bash',
-    '.bash': 'bash',
-    '.zsh': 'bash',
-    '.fish': 'bash',
-    '.ps1': 'powershell',
-    '.sql': 'sql',
-    '.html': 'html',
-    '.htm': 'html',
-    '.css': 'css',
-    '.scss': 'scss',
-    '.sass': 'sass',
-    '.less': 'less',
-    '.json': 'json',
-    '.yaml': 'yaml',
-    '.yml': 'yaml',
-    '.xml': 'xml',
-    '.md': 'markdown',
-    '.markdown': 'markdown',
-    '.txt': 'text',
-    '.toml': 'toml',
-    '.ini': 'ini',
-    '.cfg': 'ini',
-    '.conf': 'ini',
-    '.env': 'bash',
-    '.dockerfile': 'docker',
-    '.lua': 'lua',
-    '.r': 'r',
-    '.dart': 'dart',
-    '.scala': 'scala',
-    '.zig': 'zig',
-    '.v': 'v',
-    '.nim': 'nim',
-    '.ex': 'elixir',
-    '.exs': 'elixir',
-    '.erl': 'erlang',
-    '.hs': 'haskell',
-    '.ml': 'ocaml',
-    '.clj': 'clojure',
-    '.lisp': 'lisp',
-    '.vue': 'markup',
-    '.svelte': 'markup',
-  };
-  return map[ext] || '';
 }
 
 export default ClawStashDB;
