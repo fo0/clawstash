@@ -17,10 +17,15 @@ export default function SearchOverlay({ open, onClose, onSelectStash }: Props) {
   const inputRef = useRef<HTMLInputElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout>>(undefined);
+  // Each search bumps this; only the latest search may write results.
+  // Prevents an in-flight request from a previous query (or a previous
+  // open of the overlay) from overwriting newer results.
+  const searchGenRef = useRef(0);
 
   // Focus input when opened, reset state
   useEffect(() => {
     if (open) {
+      searchGenRef.current++;
       setQuery('');
       setResults([]);
       setActiveIndex(0);
@@ -37,15 +42,18 @@ export default function SearchOverlay({ open, onClose, onSelectStash }: Props) {
       setLoading(false);
       return;
     }
+    const gen = ++searchGenRef.current;
     setLoading(true);
     try {
       const res = await api.listStashes({ search: q, limit: 12 });
+      if (gen !== searchGenRef.current) return;
       setResults(res.stashes);
       setActiveIndex(0);
     } catch {
+      if (gen !== searchGenRef.current) return;
       setResults([]);
     } finally {
-      setLoading(false);
+      if (gen === searchGenRef.current) setLoading(false);
     }
   }, []);
 
