@@ -84,6 +84,10 @@ const extensionToLanguage: Record<string, string> = {
   md: 'markdown',
   mdx: 'markdown',
 
+  // Mermaid diagrams
+  mmd: 'mermaid',
+  mermaid: 'mermaid',
+
   // SQL
   sql: 'sql',
 
@@ -145,6 +149,8 @@ const languageNameToPrism: Record<string, string> = {
   toml: 'toml',
   ini: 'ini',
   markdown: 'markdown',
+  mermaid: 'mermaid',
+  mmd: 'mermaid',
   sql: 'sql',
   c: 'c',
   cpp: 'cpp',
@@ -298,7 +304,7 @@ function isLikelyMarkdown(content: string): boolean {
 /**
  * Languages that support a rendered preview mode.
  */
-const RENDERABLE_LANGUAGES = new Set(['markdown', 'markup']);
+const RENDERABLE_LANGUAGES = new Set(['markdown', 'markup', 'mermaid']);
 
 /**
  * Check if a PrismJS language key supports rendered preview.
@@ -313,6 +319,7 @@ export function isRenderableLanguage(prismLanguage: string): boolean {
 const LANGUAGE_DISPLAY_NAMES: Record<string, string> = {
   markup: 'HTML',
   markdown: 'Markdown',
+  mermaid: 'Mermaid',
   javascript: 'JavaScript',
   typescript: 'TypeScript',
   jsx: 'JSX',

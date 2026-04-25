@@ -13,6 +13,7 @@ AI agents lose context between sessions. ClawStash gives them a persistent memor
 - **Full-text search** — find stashes by content, name, description, or tags
 - **Token-efficient** — MCP tools return summaries first, full content only on demand
 - **Version history** — every change is tracked, diffable, and restorable
+- **Mermaid diagrams** — `.mmd` files and inline ` ```mermaid ` blocks in Markdown render as diagrams (lazy-loaded, no bundle bloat)
 - **Web GUI included** — dark-themed dashboard to browse, search, and manage stashes manually
 
 ## Get Started
