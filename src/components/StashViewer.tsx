@@ -318,8 +318,11 @@ export default function StashViewer({ stash, onEdit, onDelete, onArchive, onBack
     if (activeTab !== 'content' || !renderPreview) return;
     const root = filesContainerRef.current;
     if (!root) return;
+    // Match only fully-rendered placeholders so we re-process any that got
+    // stuck (cancelled mid-render — e.g. React StrictMode double-effect in
+    // dev, or tab switch before mermaid resolves).
     const placeholders = root.querySelectorAll<HTMLElement>(
-      '.mermaid-placeholder:not([data-rendered])'
+      '.mermaid-placeholder:not([data-rendered="true"])'
     );
     if (placeholders.length === 0) return;
 

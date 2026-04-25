@@ -12,16 +12,24 @@ let mermaidPromise: Promise<typeof MermaidApi> | null = null;
 
 async function loadMermaid(): Promise<typeof MermaidApi> {
   if (!mermaidPromise) {
-    mermaidPromise = import('mermaid').then((mod) => {
-      const mermaid = mod.default;
-      mermaid.initialize({
-        startOnLoad: false,
-        theme: 'dark',
-        securityLevel: 'strict',
-        fontFamily: 'inherit',
+    mermaidPromise = import('mermaid')
+      .then((mod) => {
+        const mermaid = mod.default;
+        mermaid.initialize({
+          startOnLoad: false,
+          theme: 'dark',
+          securityLevel: 'strict',
+          fontFamily: 'inherit',
+        });
+        return mermaid;
+      })
+      .catch((err) => {
+        // Reset the cache so a future render can retry the dynamic import.
+        // Without this, a transient chunk-load failure poisons all subsequent
+        // calls until full page reload.
+        mermaidPromise = null;
+        throw err;
       });
-      return mermaid;
-    });
   }
   return mermaidPromise;
 }
