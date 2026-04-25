@@ -543,13 +543,33 @@ export class ClawStashDB {
     console.log(`[DB] ${pending.length} migration(s) applied successfully`);
   }
 
+  private safeParseTags(raw: unknown): string[] {
+    if (typeof raw !== 'string') return [];
+    try {
+      const parsed = JSON.parse(raw);
+      return Array.isArray(parsed) ? parsed.filter(t => typeof t === 'string') : [];
+    } catch {
+      return [];
+    }
+  }
+
+  private safeParseMetadata(raw: unknown): Record<string, unknown> {
+    if (typeof raw !== 'string') return {};
+    try {
+      const parsed = JSON.parse(raw);
+      return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed : {};
+    } catch {
+      return {};
+    }
+  }
+
   private rowToStash(row: Record<string, unknown>): Omit<Stash, 'files'> {
     return {
       id: row.id as string,
       name: (row.name as string) || '',
       description: (row.description as string) || '',
-      tags: JSON.parse(row.tags as string),
-      metadata: JSON.parse(row.metadata as string),
+      tags: this.safeParseTags(row.tags),
+      metadata: this.safeParseMetadata(row.metadata),
       version: (row.version as number) || 1,
       archived: (row.archived as number) === 1,
       created_at: row.created_at as string,
@@ -562,7 +582,7 @@ export class ClawStashDB {
       id: row.id as string,
       name: (row.name as string) || '',
       description: (row.description as string) || '',
-      tags: JSON.parse(row.tags as string),
+      tags: this.safeParseTags(row.tags),
       version: (row.version as number) || 1,
       archived: (row.archived as number) === 1,
       created_at: row.created_at as string,
@@ -1669,8 +1689,11 @@ export class ClawStashDB {
       `);
 
       // Insert stashes
+      // Coerce archived strictly: only true/1 mean archived. Strings like
+      // "false" / "0" must NOT be treated as truthy (they are by `?:`).
       for (const s of data.stashes) {
-        insertStash.run(s.id, s.name, s.description, s.tags, s.metadata, s.version ?? 1, s.archived ? 1 : 0, s.created_at, s.updated_at);
+        const archivedFlag = s.archived === true || s.archived === 1 ? 1 : 0;
+        insertStash.run(s.id, s.name, s.description, s.tags, s.metadata, s.version ?? 1, archivedFlag, s.created_at, s.updated_at);
         stashCount++;
       }
 
