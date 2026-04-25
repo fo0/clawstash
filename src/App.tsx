@@ -286,11 +286,11 @@ export default function App() {
     }
   };
 
-  const handleGraphFilterTag = useCallback((tag: string) => {
+  const handleGraphFilterTag = (tag: string) => {
     handleFilterTag(tag);
     setView('home');
     pushUrl('/');
-  }, []);
+  };
 
   const handleGraphView = () => {
     setSelectedStash(null);
