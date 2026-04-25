@@ -73,7 +73,12 @@ export function middleware(req: NextRequest) {
 
   // Rate limit login endpoint
   if (pathname === '/api/admin/auth' && req.method === 'POST') {
-    const ip = req.headers.get('x-forwarded-for')?.split(',')[0].trim() || 'unknown';
+    // Prefer x-forwarded-for (set by most proxies). Fall back to x-real-ip
+    // (nginx, traefik) before the shared "unknown" bucket — proxies that
+    // strip XFF but set x-real-ip would otherwise lump every client together.
+    const ip = req.headers.get('x-forwarded-for')?.split(',')[0].trim()
+      || req.headers.get('x-real-ip')?.trim()
+      || 'unknown';
     const { allowed, retryAfter } = checkLoginRateLimit(ip);
     if (!allowed) {
       return NextResponse.json(

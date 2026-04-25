@@ -60,11 +60,15 @@ export async function parseJsonBody(req: NextRequest): Promise<{ data: unknown }
  * Extract IP and user agent from request headers for access logging.
  * x-forwarded-for may contain a comma-separated chain; only the first
  * entry (the original client) is recorded to match middleware behavior
- * and avoid leaking spoofed downstream values into logs.
+ * and avoid leaking spoofed downstream values into logs. Falls back to
+ * x-real-ip when XFF is absent (nginx, traefik) so proxies that only
+ * forward one or the other still produce useful logs.
  */
 export function getRequestInfo(req: NextRequest): { ip: string | undefined; userAgent: string | undefined } {
   const xff = req.headers.get('x-forwarded-for');
-  const ip = xff ? xff.split(',')[0].trim() || undefined : undefined;
+  const ip = (xff ? xff.split(',')[0].trim() : '')
+    || req.headers.get('x-real-ip')?.trim()
+    || undefined;
   return {
     ip,
     userAgent: req.headers.get('user-agent') || undefined,
