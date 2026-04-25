@@ -142,8 +142,12 @@ export async function checkVersion(): Promise<VersionInfo> {
   const now = Date.now();
 
   if (!cache || now > cacheExpiry) {
-    cache = await fetchLatestCommit();
-    cacheExpiry = now + CACHE_TTL_MS;
+    const fresh = await fetchLatestCommit();
+    cache = fresh;
+    // Only cache successful fetches for the full TTL; retry failures sooner.
+    cacheExpiry = fresh.commit_sha !== null
+      ? now + CACHE_TTL_MS
+      : now + 60 * 1000;
   }
 
   const updateAvailable = cache.commit_sha !== null
