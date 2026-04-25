@@ -8,6 +8,8 @@ import { CopyIcon, CheckIcon, XIcon } from './shared/icons';
 import VersionHistory from './VersionHistory';
 import { Marked } from 'marked';
 import { renderDescriptionMarkdown } from '../utils/markdown';
+import { renderMermaid } from '../utils/mermaid';
+import MermaidDiagram from './MermaidDiagram';
 
 interface Props {
   stash: Stash;
@@ -61,6 +63,24 @@ function escapeAttr(s: string): string {
   return s.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }
 
+/** Escape a string for safe use as HTML body content. */
+function escapeHtml(s: string): string {
+  return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
+/**
+ * Base64-encode a UTF-8 string for safe embedding in a `data-*` attribute.
+ * Uses `unescape(encodeURIComponent(...))` to round-trip multi-byte chars.
+ */
+function encodeMermaidSource(s: string): string {
+  return btoa(unescape(encodeURIComponent(s)));
+}
+
+/** Inverse of `encodeMermaidSource`. */
+function decodeMermaidSource(s: string): string {
+  return decodeURIComponent(escape(atob(s)));
+}
+
 /**
  * Slugify a heading string following GitHub conventions:
  * lowercase, remove non-letter/number/space/hyphen chars, spaces → hyphens.
@@ -106,6 +126,22 @@ const mdParser = new Marked({
       }
       const safeHref = escapeAttr(href);
       return `<a href="${safeHref}"${titleAttr} target="_blank" rel="noopener noreferrer">${text}</a>`;
+    },
+    // Custom code renderer: emit a placeholder div for ```mermaid``` blocks
+    // (hydrated post-render in StashViewer) and otherwise mimic marked's
+    // default <pre><code class="language-X"> output.
+    code({ text, lang }) {
+      const language = (lang || '').trim().split(/\s+/)[0] || '';
+      const lower = language.toLowerCase();
+      if (lower === 'mermaid' || lower === 'mmd') {
+        const encoded = encodeMermaidSource(text);
+        return `<div class="mermaid-placeholder" data-mermaid-source="${encoded}"></div>\n`;
+      }
+      const body = escapeHtml(text.replace(/\n$/, '')) + '\n';
+      if (language) {
+        return `<pre><code class="language-${escapeAttr(language)}">${body}</code></pre>\n`;
+      }
+      return `<pre><code>${body}</code></pre>\n`;
     },
   },
 });
@@ -201,6 +237,7 @@ export default function StashViewer({ stash, onEdit, onDelete, onArchive, onBack
   const [renderPreview, setRenderPreview] = useState(getRenderPreference);
   const [tocExpanded, setTocExpanded] = useState(true);
   const deleteTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const filesContainerRef = useRef<HTMLDivElement>(null);
   const copyAllClipboard = useClipboard();
   const fileClipboard = useClipboardWithKey();
   const apiClipboard = useClipboardWithKey();
@@ -272,6 +309,55 @@ export default function StashViewer({ stash, onEdit, onDelete, onArchive, onBack
       if (deleteTimerRef.current) clearTimeout(deleteTimerRef.current);
     };
   }, []);
+
+  // Hydrate inline Mermaid placeholders inside rendered markdown.
+  // The `code` renderer in mdParser emits <div class="mermaid-placeholder"
+  // data-mermaid-source="BASE64"> for ```mermaid``` blocks; we walk the
+  // freshly-rendered DOM and swap in the SVG (or an inline error block).
+  useEffect(() => {
+    if (activeTab !== 'content' || !renderPreview) return;
+    const root = filesContainerRef.current;
+    if (!root) return;
+    // Match only fully-rendered placeholders so we re-process any that got
+    // stuck (cancelled mid-render — e.g. React StrictMode double-effect in
+    // dev, or tab switch before mermaid resolves).
+    const placeholders = root.querySelectorAll<HTMLElement>(
+      '.mermaid-placeholder:not([data-rendered="true"])'
+    );
+    if (placeholders.length === 0) return;
+
+    let cancelled = false;
+    placeholders.forEach((el) => {
+      el.setAttribute('data-rendered', 'pending');
+      let source = '';
+      try {
+        source = decodeMermaidSource(el.getAttribute('data-mermaid-source') || '');
+      } catch {
+        el.innerHTML =
+          '<div class="mermaid-error" role="alert"><strong>Mermaid error:</strong> Invalid source encoding</div>';
+        el.setAttribute('data-rendered', 'true');
+        return;
+      }
+      renderMermaid(source).then((result) => {
+        if (cancelled) return;
+        if (result.svg) {
+          el.innerHTML = result.svg;
+          el.classList.add('mermaid-diagram');
+        } else {
+          el.innerHTML =
+            `<div class="mermaid-error" role="alert">` +
+            `<div class="mermaid-error-title"><strong>Mermaid syntax error</strong></div>` +
+            `<div class="mermaid-error-message">${escapeHtml(result.error || 'Unknown error')}</div>` +
+            `<pre class="mermaid-error-source">${escapeHtml(source)}</pre>` +
+            `</div>`;
+        }
+        el.setAttribute('data-rendered', 'true');
+      });
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [renderedContent, renderPreview, activeTab]);
 
   const copyAllFiles = () => {
     const allContent = stash.files
@@ -478,7 +564,7 @@ export default function StashViewer({ stash, onEdit, onDelete, onArchive, onBack
       )}
 
       {activeTab === 'content' && (
-        <div className="viewer-files">
+        <div className="viewer-files" ref={filesContainerRef}>
           {stash.files.map((file, fileIndex) => {
             const lang = resolvedLanguages.get(file.id) || 'text';
             const renderable = isRenderableLanguage(lang);
@@ -516,7 +602,11 @@ export default function StashViewer({ stash, onEdit, onDelete, onArchive, onBack
                     </button>
                   </div>
                 </div>
-                {showRendered && lang === 'markdown' ? (
+                {showRendered && lang === 'mermaid' ? (
+                  <div className="file-rendered file-mermaid">
+                    <MermaidDiagram code={file.content} />
+                  </div>
+                ) : showRendered && lang === 'markdown' ? (
                   <div className="file-rendered markdown-body" dangerouslySetInnerHTML={{ __html: renderedContent.get(file.id) || '' }} />
                 ) : showRendered && lang === 'markup' ? (
                   <iframe

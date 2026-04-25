@@ -5699,3 +5699,70 @@ body {
   border-radius: 6px;
   font-size: 13px;
 }
+
+/* === Mermaid Diagrams === */
+.mermaid-diagram {
+  padding: 16px;
+  background: var(--bg-primary);
+  border-radius: var(--radius);
+  display: flex;
+  justify-content: center;
+  overflow-x: auto;
+}
+
+.mermaid-diagram svg {
+  max-width: 100%;
+  height: auto;
+}
+
+.mermaid-loading {
+  padding: 20px;
+  color: var(--text-secondary);
+  font-style: italic;
+  text-align: center;
+}
+
+.mermaid-error {
+  padding: 12px 16px;
+  background: rgba(218, 54, 51, 0.08);
+  border: 1px solid var(--accent-red);
+  border-radius: var(--radius);
+  color: var(--text-primary);
+  font-size: 13px;
+  margin: 8px 0;
+}
+
+.mermaid-error-title {
+  margin-bottom: 4px;
+  color: var(--accent-red);
+}
+
+.mermaid-error-message {
+  margin-bottom: 8px;
+  color: var(--text-secondary);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.mermaid-error-source {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  padding: 8px 12px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--text-secondary);
+  overflow-x: auto;
+  margin: 0;
+}
+
+.mermaid-placeholder {
+  min-height: 32px;
+}
+
+.file-mermaid {
+  padding: 0;
+  background: var(--bg-primary);
+}
