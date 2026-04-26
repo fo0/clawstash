@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import type { Stash, StashListItem, ViewMode, LayoutMode, SettingsSection, AdminSessionInfo, TagInfo } from './types';
 import { api, setAuthToken } from './api';
+import { loadFavoriteIds, saveFavoriteIds, toggleFavorite } from './utils/favorites';
 import Sidebar from './components/Sidebar';
 import Dashboard from './components/Dashboard';
 import StashViewer from './components/StashViewer';
@@ -70,6 +71,9 @@ export default function App() {
   const [analyzeStashId, setAnalyzeStashId] = useState<string | null>(null);
   const [showArchived, setShowArchived] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  // Favorite stash ids — persisted to localStorage (key `clawstash_favorite_stashes`).
+  // Held as Set<string> for O(1) lookups during sort + per-card render.
+  const [favoriteIds, setFavoriteIds] = useState<ReadonlySet<string>>(() => loadFavoriteIds());
 
   // Global Alt+K shortcut for quick search
   useEffect(() => {
@@ -327,6 +331,7 @@ export default function App() {
   const handleDeleteStash = async (id: string) => {
     try {
       await api.deleteStash(id);
+      removeFavoriteId(id);
       setSelectedStash(null);
       setView('home');
       pushUrl('/');
@@ -365,6 +370,28 @@ export default function App() {
     pushUrl('/');
     setSidebarOpen(false);
   };
+
+  const handleToggleFavorite = useCallback((id: string) => {
+    setFavoriteIds(prev => {
+      const next = toggleFavorite(prev, id);
+      saveFavoriteIds(next);
+      return next;
+    });
+  }, []);
+
+  // When a stash is deleted, drop it from favorites so the localStorage entry
+  // doesn't grow unbounded. We deliberately do NOT prune on every list reload
+  // because the list is filtered (search / tag / archive), so a missing id
+  // there does not imply the stash was deleted.
+  const removeFavoriteId = useCallback((id: string) => {
+    setFavoriteIds(prev => {
+      if (!prev.has(id)) return prev;
+      const next = new Set(prev);
+      next.delete(id);
+      saveFavoriteIds(next);
+      return next;
+    });
+  }, []);
 
   const handleFilterTag = (tag: string) => {
     const newTag = tag === filterTag ? '' : tag;
@@ -471,6 +498,8 @@ export default function App() {
               loading={loading}
               filterTag={filterTag}
               showArchived={showArchived}
+              favoriteIds={favoriteIds}
+              onToggleFavorite={handleToggleFavorite}
               onToggleShowArchived={() => setShowArchived(prev => !prev)}
               onLayoutChange={handleLayoutChange}
               onSelectStash={handleSelectStash}

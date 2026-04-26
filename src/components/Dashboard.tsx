@@ -1,4 +1,6 @@
+import { useMemo } from 'react';
 import type { StashListItem, LayoutMode } from '../types';
+import { sortStashesWithFavorites } from '../utils/favorites';
 import StashCard from './StashCard';
 
 interface Props {
@@ -8,11 +10,13 @@ interface Props {
   loading: boolean;
   filterTag: string;
   showArchived: boolean;
+  favoriteIds: ReadonlySet<string>;
   onToggleShowArchived: () => void;
   onLayoutChange: (mode: LayoutMode) => void;
   onSelectStash: (id: string) => void;
   onNewStash: () => void;
   onFilterTag: (tag: string) => void;
+  onToggleFavorite: (id: string) => void;
 }
 
 export default function Dashboard({
@@ -22,12 +26,21 @@ export default function Dashboard({
   loading,
   filterTag,
   showArchived,
+  favoriteIds,
   onToggleShowArchived,
   onLayoutChange,
   onSelectStash,
   onNewStash,
   onFilterTag,
+  onToggleFavorite,
 }: Props) {
+  // Favorites pinned to the top, while preserving the server-provided order
+  // (updated_at DESC) within each group.
+  const orderedStashes = useMemo(
+    () => sortStashesWithFavorites(stashes, favoriteIds),
+    [stashes, favoriteIds],
+  );
+
   return (
     <div className="dashboard">
       <div className="dashboard-header">
@@ -109,13 +122,15 @@ export default function Dashboard({
             </div>
             <div className="new-stash-text">New Stash</div>
           </div>
-          {stashes.map((stash) => (
+          {orderedStashes.map((stash) => (
             <StashCard
               key={stash.id}
               stash={stash}
               layout={layout}
+              isFavorite={favoriteIds.has(stash.id)}
               onClick={() => onSelectStash(stash.id)}
               onFilterTag={onFilterTag}
+              onToggleFavorite={onToggleFavorite}
             />
           ))}
         </div>
