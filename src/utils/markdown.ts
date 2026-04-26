@@ -4,16 +4,42 @@ function escapeAttr(s: string): string {
   return s.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }
 
+/**
+ * Test whether an attribute value carries a script-bearing URL scheme.
+ *
+ * Browsers tolerate leading ASCII whitespace, embedded control chars, mixed
+ * case, and HTML-entity-encoded characters in href/src values, so a naive
+ * `value.startsWith('javascript:')` check is bypassed by inputs like
+ * `JaVaScRiPt:alert(1)` or a tab/newline preceding the scheme.
+ *
+ * Strip control chars + whitespace and compare lowercased to the danger list.
+ */
+export function isUnsafeUrl(value: string): boolean {
+  // Strip ASCII control chars + whitespace (code points 0x00-0x20 and DEL=0x7F)
+  // before scheme detection. Browsers ignore those when resolving URLs, so an
+  // attacker could otherwise hide a `javascript:` scheme behind them.
+  let cleaned = '';
+  for (let i = 0; i < value.length; i++) {
+    const code = value.charCodeAt(i);
+    if (code > 0x20 && code !== 0x7f) cleaned += value[i];
+  }
+  cleaned = cleaned.toLowerCase();
+  return cleaned.startsWith('javascript:') || cleaned.startsWith('vbscript:') || cleaned.startsWith('data:text/html');
+}
+
 const descriptionParser = new Marked({
   breaks: true,
   gfm: true,
   renderer: {
     link({ href, title, text }) {
+      // Strip dangerous schemes at render time as defence-in-depth alongside
+      // the post-render sanitiser. Defaults to '#' so the anchor stays valid.
+      const safeHref = isUnsafeUrl(href) ? '#' : href;
       const titleAttr = title ? ` title="${escapeAttr(title)}"` : '';
-      if (href.startsWith('#')) {
-        return `<a href="${escapeAttr(href)}"${titleAttr}>${text}</a>`;
+      if (safeHref.startsWith('#')) {
+        return `<a href="${escapeAttr(safeHref)}"${titleAttr}>${text}</a>`;
       }
-      return `<a href="${escapeAttr(href)}"${titleAttr} target="_blank" rel="noopener noreferrer">${text}</a>`;
+      return `<a href="${escapeAttr(safeHref)}"${titleAttr} target="_blank" rel="noopener noreferrer">${text}</a>`;
     },
   },
 });
@@ -23,7 +49,9 @@ function sanitizeHtml(html: string): string {
   doc.querySelectorAll('script,style,iframe,object,embed,form,link,base,meta,noscript').forEach(el => el.remove());
   doc.querySelectorAll('*').forEach(el => {
     for (const attr of [...el.attributes]) {
-      if (attr.name.startsWith('on') || attr.value.trimStart().startsWith('javascript:')) {
+      const isEventHandler = attr.name.toLowerCase().startsWith('on');
+      const isUrlAttr = attr.name === 'href' || attr.name === 'src' || attr.name === 'xlink:href' || attr.name === 'action' || attr.name === 'formaction';
+      if (isEventHandler || (isUrlAttr && isUnsafeUrl(attr.value))) {
         el.removeAttribute(attr.name);
       }
     }

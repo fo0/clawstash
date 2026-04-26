@@ -56,16 +56,22 @@ export default function SwaggerViewer() {
 
     const existingScript = document.querySelector('script[src*="swagger-ui-bundle.js"]');
 
+    // Track listeners attached to existing script so cleanup can remove them.
+    let attachedScript: Element | null = null;
+    const onLoadListener = () => initSwagger();
+    const onErrorListener = () => {
+      if (mountedRef.current) { setHasError(true); setLoading(false); }
+    };
+
     if (existingScript) {
       // Script tag exists — may have already loaded (race condition)
       if (typeof w.SwaggerUIBundle === 'function') {
         initSwagger();
         return;
       }
-      existingScript.addEventListener('load', initSwagger);
-      existingScript.addEventListener('error', () => {
-        if (mountedRef.current) { setHasError(true); setLoading(false); }
-      });
+      existingScript.addEventListener('load', onLoadListener);
+      existingScript.addEventListener('error', onErrorListener);
+      attachedScript = existingScript;
     } else {
       const script = document.createElement('script');
       script.src = 'https://unpkg.com/swagger-ui-dist@5/swagger-ui-bundle.js';
@@ -76,7 +82,16 @@ export default function SwaggerViewer() {
       document.head.appendChild(script);
     }
 
-    return () => { initializedRef.current = false; };
+    return () => {
+      initializedRef.current = false;
+      // Remove listeners attached to any *pre-existing* script tag — without
+      // this, repeated mounts (e.g. tab-switching) leak listeners on the same
+      // script element.
+      if (attachedScript) {
+        attachedScript.removeEventListener('load', onLoadListener);
+        attachedScript.removeEventListener('error', onErrorListener);
+      }
+    };
   }, []);
 
   if (hasError) {
