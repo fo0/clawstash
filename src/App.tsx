@@ -328,6 +328,28 @@ export default function App() {
     }
   };
 
+  const handleToggleFavorite = useCallback((id: string) => {
+    setFavoriteIds(prev => {
+      const next = toggleFavorite(prev, id);
+      saveFavoriteIds(next);
+      return next;
+    });
+  }, []);
+
+  // When a stash is deleted, drop it from favorites so the localStorage entry
+  // doesn't grow unbounded. We deliberately do NOT prune on every list reload
+  // because the list is filtered (search / tag / archive), so a missing id
+  // there does not imply the stash was deleted.
+  const removeFavoriteId = useCallback((id: string) => {
+    setFavoriteIds(prev => {
+      if (!prev.has(id)) return prev;
+      const next = new Set(prev);
+      next.delete(id);
+      saveFavoriteIds(next);
+      return next;
+    });
+  }, []);
+
   const handleDeleteStash = async (id: string) => {
     try {
       await api.deleteStash(id);
@@ -370,28 +392,6 @@ export default function App() {
     pushUrl('/');
     setSidebarOpen(false);
   };
-
-  const handleToggleFavorite = useCallback((id: string) => {
-    setFavoriteIds(prev => {
-      const next = toggleFavorite(prev, id);
-      saveFavoriteIds(next);
-      return next;
-    });
-  }, []);
-
-  // When a stash is deleted, drop it from favorites so the localStorage entry
-  // doesn't grow unbounded. We deliberately do NOT prune on every list reload
-  // because the list is filtered (search / tag / archive), so a missing id
-  // there does not imply the stash was deleted.
-  const removeFavoriteId = useCallback((id: string) => {
-    setFavoriteIds(prev => {
-      if (!prev.has(id)) return prev;
-      const next = new Set(prev);
-      next.delete(id);
-      saveFavoriteIds(next);
-      return next;
-    });
-  }, []);
 
   const handleFilterTag = (tag: string) => {
     const newTag = tag === filterTag ? '' : tag;

@@ -31,7 +31,7 @@ export default function StashCard({ stash, layout, isFavorite, onClick, onFilter
   );
 
   return (
-    <div className={`stash-card ${layout}${stash.archived ? ' stash-card-archived' : ''}${isFavorite ? ' stash-card-favorited' : ''}`} onClick={onClick} title={`Open stash: ${title}`}>
+    <div className={`stash-card ${layout}${stash.archived ? ' stash-card-archived' : ''}`} onClick={onClick} title={`Open stash: ${title}`}>
       <div className="stash-card-header">
         <span className="stash-card-title">{title}</span>
         {stash.archived && <span className="stash-card-archived-badge">Archived</span>}
