@@ -680,7 +680,7 @@ export default function StashViewer({ stash, onEdit, onDelete, onArchive, onBack
           {stash.description && (
             <div className="metadata-section">
               <h3>Description</h3>
-              <div className="markdown-description" style={{ fontSize: '13px', color: 'var(--text-secondary)', lineHeight: 1.6 }} dangerouslySetInnerHTML={{ __html: renderDescriptionMarkdown(stash.description) }} />
+              <div className="markdown-description" style={{ fontSize: '13px', color: 'var(--text-secondary)', lineHeight: 1.6 }} dangerouslySetInnerHTML={{ __html: descriptionHtml }} />
             </div>
           )}
 

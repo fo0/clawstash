@@ -55,6 +55,7 @@ export function getOpenApiSpec(baseUrl: string): OpenApiSpec {
             description: { type: 'string', description: 'Longer description for AI context' },
             tags: { type: 'array', items: { type: 'string' } },
             metadata: { type: 'object', additionalProperties: true },
+            version: { type: 'integer', description: 'Current version number (1-based, incremented on each update)' },
             archived: { type: 'boolean', description: 'Whether the stash is archived (hidden from default listings)' },
             created_at: { type: 'string', format: 'date-time' },
             updated_at: { type: 'string', format: 'date-time' },
@@ -69,10 +70,22 @@ export function getOpenApiSpec(baseUrl: string): OpenApiSpec {
             name: { type: 'string' },
             description: { type: 'string' },
             tags: { type: 'array', items: { type: 'string' } },
+            version: { type: 'integer', description: 'Current version number (1-based, incremented on each update)' },
             archived: { type: 'boolean', description: 'Whether the stash is archived' },
             created_at: { type: 'string', format: 'date-time' },
             updated_at: { type: 'string', format: 'date-time' },
-            files: { type: 'array', items: { type: 'object', properties: { filename: { type: 'string' }, language: { type: 'string' } } } },
+            total_size: { type: 'integer', description: 'Total size of all file contents in bytes' },
+            files: {
+              type: 'array',
+              items: {
+                type: 'object',
+                properties: {
+                  filename: { type: 'string' },
+                  language: { type: 'string' },
+                  size: { type: 'integer', description: 'File content size in bytes' },
+                },
+              },
+            },
             relevance: { type: 'number', description: 'BM25 relevance score (only present in search results)' },
             snippets: {
               type: 'object',
