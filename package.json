@@ -19,7 +19,10 @@
     "prebuild": "node scripts/generate-build-info.js",
     "build": "next build",
     "start": "next start",
-    "mcp": "tsx src/server/mcp.ts"
+    "mcp": "tsx src/server/mcp.ts",
+    "test": "vitest run",
+    "test:run": "vitest run",
+    "test:watch": "vitest"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.27.1",
@@ -50,6 +53,7 @@
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.0.0",
     "@types/uuid": "^11.0.0",
-    "typescript": "^5.7.0"
+    "typescript": "^5.7.0",
+    "vitest": "^3.2.4"
   }
 }
