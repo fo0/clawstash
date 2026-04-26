@@ -75,6 +75,7 @@ export default function MermaidDiagram({ code, className, storageKey }: Props) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const contentRef = useRef<HTMLDivElement | null>(null);
   const persistTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const pendingScaleRef = useRef<number | null>(null);
   const initializedRef = useRef(false);
 
   // Render mermaid SVG (lazy-loaded). Re-runs on `code` change.
@@ -130,14 +131,22 @@ export default function MermaidDiagram({ code, className, storageKey }: Props) {
     return () => cancelAnimationFrame(id);
   }, [state, storageKey, computeFitScale]);
 
-  // Cleanup persist timer on unmount.
+  // Cleanup persist timer on unmount AND flush any pending save so a quick
+  // unmount within the debounce window does not lose the user's last zoom.
   useEffect(() => {
     return () => {
-      if (persistTimerRef.current) clearTimeout(persistTimerRef.current);
+      if (persistTimerRef.current) {
+        clearTimeout(persistTimerRef.current);
+        persistTimerRef.current = null;
+      }
+      if (storageKey && pendingScaleRef.current != null) {
+        saveScale(storageKey, pendingScaleRef.current);
+        pendingScaleRef.current = null;
+      }
     };
-  }, []);
+  }, [storageKey]);
 
-  // Global Escape handler when fullscreen.
+  // Global Escape handler + body scroll lock + auto-focus when fullscreen.
   useEffect(() => {
     if (!isFullscreen) return;
     const handler = (e: KeyboardEvent) => {
@@ -146,8 +155,16 @@ export default function MermaidDiagram({ code, className, storageKey }: Props) {
         setIsFullscreen(false);
       }
     };
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    // Defer focus to next frame so the dialog is in the DOM with its new role.
+    const focusId = requestAnimationFrame(() => containerRef.current?.focus());
     document.addEventListener('keydown', handler);
-    return () => document.removeEventListener('keydown', handler);
+    return () => {
+      document.removeEventListener('keydown', handler);
+      document.body.style.overflow = prevOverflow;
+      cancelAnimationFrame(focusId);
+    };
   }, [isFullscreen]);
 
   const handleKeyDown = useCallback(
@@ -182,9 +199,14 @@ export default function MermaidDiagram({ code, className, storageKey }: Props) {
     (_ref: ReactZoomPanPinchRef, s: { scale: number; positionX: number; positionY: number }) => {
       setScale(s.scale);
       if (storageKey) {
+        pendingScaleRef.current = s.scale;
         if (persistTimerRef.current) clearTimeout(persistTimerRef.current);
         persistTimerRef.current = setTimeout(() => {
-          saveScale(storageKey, s.scale);
+          if (pendingScaleRef.current != null) {
+            saveScale(storageKey, pendingScaleRef.current);
+            pendingScaleRef.current = null;
+          }
+          persistTimerRef.current = null;
         }, PERSIST_DEBOUNCE_MS);
       }
     },
@@ -303,17 +325,25 @@ export default function MermaidDiagram({ code, className, storageKey }: Props) {
     </div>
   );
 
-  if (isFullscreen) {
-    return (
-      <div
-        className="mermaid-fullscreen-backdrop"
-        role="dialog"
-        aria-modal="true"
-        aria-label="Mermaid diagram fullscreen"
-      >
-        {viewer}
-      </div>
-    );
-  }
-  return viewer;
+  // IMPORTANT: keep the JSX tree shape stable across the fullscreen toggle so
+  // React preserves the `TransformWrapper` instance (and therefore the current
+  // zoom/pan state). The outer div is `display: contents` when inline (no box,
+  // no layout impact) and the fullscreen backdrop when fullscreen.
+  return (
+    <div
+      className={isFullscreen ? 'mermaid-fullscreen-backdrop' : 'mermaid-viewer-shell'}
+      role={isFullscreen ? 'dialog' : undefined}
+      aria-modal={isFullscreen ? true : undefined}
+      aria-label={isFullscreen ? 'Mermaid diagram fullscreen' : undefined}
+      onClick={
+        isFullscreen
+          ? (e) => {
+              if (e.target === e.currentTarget) setIsFullscreen(false);
+            }
+          : undefined
+      }
+    >
+      {viewer}
+    </div>
+  );
 }

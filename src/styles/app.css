@@ -5843,7 +5843,15 @@ body {
   display: block;
 }
 
-/* Fullscreen modal */
+/* Fullscreen modal — outer wrapper.
+   The shell variant (`display: contents`) is rendered inline so the wrapper
+   does not produce a box; the backdrop variant covers the viewport. Keeping
+   the outer element type stable across the toggle preserves the
+   TransformWrapper instance (and therefore the zoom/pan state). */
+.mermaid-viewer-shell {
+  display: contents;
+}
+
 .mermaid-fullscreen-backdrop {
   position: fixed;
   inset: 0;
