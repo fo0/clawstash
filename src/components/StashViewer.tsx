@@ -7,7 +7,7 @@ import { useClipboard, useClipboardWithKey } from '../hooks/useClipboard';
 import { CopyIcon, CheckIcon, XIcon } from './shared/icons';
 import VersionHistory from './VersionHistory';
 import { Marked } from 'marked';
-import { renderDescriptionMarkdown } from '../utils/markdown';
+import { renderDescriptionMarkdown, isUnsafeUrl } from '../utils/markdown';
 import { renderMermaid } from '../utils/mermaid';
 import MermaidDiagram from './MermaidDiagram';
 
@@ -70,15 +70,23 @@ function escapeHtml(s: string): string {
 
 /**
  * Base64-encode a UTF-8 string for safe embedding in a `data-*` attribute.
- * Uses `unescape(encodeURIComponent(...))` to round-trip multi-byte chars.
+ * Uses TextEncoder/btoa via a binary string round-trip so multi-byte chars
+ * survive correctly without relying on the deprecated `escape`/`unescape`
+ * globals (removed in strict ECMAScript and flagged by modern lints).
  */
 function encodeMermaidSource(s: string): string {
-  return btoa(unescape(encodeURIComponent(s)));
+  const bytes = new TextEncoder().encode(s);
+  let bin = '';
+  for (let i = 0; i < bytes.length; i++) bin += String.fromCharCode(bytes[i]);
+  return btoa(bin);
 }
 
 /** Inverse of `encodeMermaidSource`. */
 function decodeMermaidSource(s: string): string {
-  return decodeURIComponent(escape(atob(s)));
+  const bin = atob(s);
+  const bytes = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+  return new TextDecoder().decode(bytes);
 }
 
 /**
@@ -119,12 +127,16 @@ const mdParser = new Marked({
     // Open external links in a new tab; keep anchor links in-page
     link({ href, title, text }) {
       const titleAttr = title ? ` title="${escapeAttr(title)}"` : '';
-      if (href.startsWith('#')) {
+      // Strip dangerous schemes (javascript:/vbscript:/data:text/html, with
+      // case + control-char obfuscation) before rendering — defence-in-depth
+      // alongside the post-render sanitiser.
+      const cleanHref = isUnsafeUrl(href) ? '#' : href;
+      if (cleanHref.startsWith('#')) {
         // Prepend current heading prefix so anchors match prefixed heading IDs
-        const resolvedHref = headingIdPrefix ? `#${headingIdPrefix}${href.slice(1)}` : href;
+        const resolvedHref = headingIdPrefix && cleanHref !== '#' ? `#${headingIdPrefix}${cleanHref.slice(1)}` : cleanHref;
         return `<a href="${escapeAttr(resolvedHref)}"${titleAttr}>${text}</a>`;
       }
-      const safeHref = escapeAttr(href);
+      const safeHref = escapeAttr(cleanHref);
       return `<a href="${safeHref}"${titleAttr} target="_blank" rel="noopener noreferrer">${text}</a>`;
     },
     // Custom code renderer: emit a placeholder div for ```mermaid``` blocks
@@ -154,7 +166,9 @@ function sanitizeHtml(html: string): string {
   doc.querySelectorAll('script,style,iframe,object,embed,form,link,base,meta,noscript').forEach(el => el.remove());
   doc.querySelectorAll('*').forEach(el => {
     for (const attr of [...el.attributes]) {
-      if (attr.name.startsWith('on') || attr.value.trimStart().startsWith('javascript:')) {
+      const isEventHandler = attr.name.toLowerCase().startsWith('on');
+      const isUrlAttr = attr.name === 'href' || attr.name === 'src' || attr.name === 'xlink:href' || attr.name === 'action' || attr.name === 'formaction';
+      if (isEventHandler || (isUrlAttr && isUnsafeUrl(attr.value))) {
         el.removeAttribute(attr.name);
       }
     }
@@ -294,13 +308,14 @@ export default function StashViewer({ stash, onEdit, onDelete, onArchive, onBack
   }, []);
 
   useEffect(() => {
-    if (activeTab === 'access-log') {
-      setLogLoading(true);
-      api.getAccessLog(stash.id, 100)
-        .then(setAccessLog)
-        .catch(() => setAccessLog([]))
-        .finally(() => setLogLoading(false));
-    }
+    if (activeTab !== 'access-log') return;
+    let cancelled = false;
+    setLogLoading(true);
+    api.getAccessLog(stash.id, 100)
+      .then((log) => { if (!cancelled) setAccessLog(log); })
+      .catch(() => { if (!cancelled) setAccessLog([]); })
+      .finally(() => { if (!cancelled) setLogLoading(false); });
+    return () => { cancelled = true; };
   }, [activeTab, stash.id]);
 
   // Cleanup delete confirmation timer on unmount

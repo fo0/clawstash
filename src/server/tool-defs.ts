@@ -31,7 +31,9 @@ export const FileInputSchema = z.object({
   language: z.string().max(50).optional().describe('Programming language override (auto-detected from extension if omitted)'),
 });
 
-const McpTagsSchema = z.array(z.string().max(MAX_TAG_LENGTH)).max(MAX_TAGS);
+// Reject empty-string tags so MCP callers cannot silently push blank pills
+// (mirrors the REST `TagsSchema` constraint in src/server/validation.ts).
+const McpTagsSchema = z.array(z.string().min(1).max(MAX_TAG_LENGTH)).max(MAX_TAGS);
 const McpMetadataSchema = z.record(z.unknown()).refine(
   (val) => Object.keys(val).length <= MAX_METADATA_KEYS,
   { message: `Metadata cannot have more than ${MAX_METADATA_KEYS} keys` },

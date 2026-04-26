@@ -388,7 +388,12 @@ const MIGRATIONS: Migration[] = [
         }[];
         const filenames = files.map(f => f.filename).join(' ');
         const fileContent = files.map(f => f.content).join('\n');
-        const tags = (JSON.parse(s.tags) as string[]).join(' ');
+        // Defensive parse — a corrupt tags row should not abort the migration
+        let tags = '';
+        try {
+          const parsed = JSON.parse(s.tags);
+          if (Array.isArray(parsed)) tags = parsed.filter((t: unknown) => typeof t === 'string').join(' ');
+        } catch { /* leave tags empty */ }
         insertFts.run(s.id, s.name, s.description, tags, filenames, fileContent);
       }
 
@@ -661,14 +666,17 @@ export class ClawStashDB {
         insertVersionFile.run(uuidv4(), versionId, file.filename, file.content, file.language, file.sort_order);
       }
 
+      // Keep stash relations + FTS index inside the same transaction as the
+      // stash/file/version inserts. If any post-insert step fails, everything
+      // rolls back together and we never end up with a stash that has stale
+      // relations or a missing FTS row.
+      this.updateStashRelations(id, input.tags || []);
+      this.syncFtsIndex(id);
+
       return files;
     });
 
     const files = transaction();
-
-    // Update stash relations and FTS index for new stash
-    this.updateStashRelations(id, input.tags || []);
-    this.syncFtsIndex(id);
 
     return {
       id,
@@ -783,7 +791,7 @@ export class ClawStashDB {
 
     const filenames = files.map(f => f.filename).join(' ');
     const fileContent = files.map(f => f.content).join('\n');
-    const tags = (JSON.parse(stash.tags) as string[]).join(' ');
+    const tags = this.safeParseTags(stash.tags).join(' ');
 
     this.db.prepare(`
       INSERT INTO stashes_fts (stash_id, name, description, tags, filenames, file_content)
@@ -814,7 +822,7 @@ export class ClawStashDB {
         }[];
         const filenames = files.map(f => f.filename).join(' ');
         const fileContent = files.map(f => f.content).join('\n');
-        const tags = (JSON.parse(s.tags) as string[]).join(' ');
+        const tags = this.safeParseTags(s.tags).join(' ');
         insertFts.run(s.id, s.name, s.description, tags, filenames, fileContent);
       }
     });
@@ -909,8 +917,11 @@ export class ClawStashDB {
       params.push(limit, offset);
 
       rows = this.db.prepare(sql).all(...params) as typeof rows;
-    } catch {
-      // FTS5 MATCH syntax error → fall back to LIKE-based search
+    } catch (err) {
+      // FTS5 MATCH syntax error → fall back to LIKE-based search.
+      // Logged at warn level so production FTS regressions are visible
+      // (sanitization should prevent this in normal use).
+      console.warn('[DB] FTS5 search failed, falling back to LIKE:', err instanceof Error ? err.message : err);
       const fallback = this.listStashes({ search: query, tag, archived, limit, page });
       return {
         stashes: fallback.stashes.map(s => ({ ...s, relevance: 0 })),
@@ -1037,24 +1048,33 @@ export class ClawStashDB {
           insertFile.run(uuidv4(), id, file.filename, file.content, language, i);
         }
       }
+
+      // Keep stash relations + FTS index inside the same transaction as the
+      // version snapshot and stash mutation. A failure in either step now
+      // rolls the whole update back, instead of leaving the stash in a
+      // half-updated state where files changed but the FTS index still
+      // points at the old content.
+      const finalTags = input.tags !== undefined ? input.tags : existing.tags;
+      this.updateStashRelations(id, finalTags);
+      this.syncFtsIndex(id);
     });
 
     transaction();
-
-    // Update stash relations and FTS index
-    const finalTags = input.tags !== undefined ? input.tags : existing.tags;
-    this.updateStashRelations(id, finalTags);
-    this.syncFtsIndex(id);
 
     return this.getStash(id);
   }
 
   deleteStash(id: string): boolean {
-    const result = this.db.prepare('DELETE FROM stashes WHERE id = ?').run(id);
-    if (result.changes > 0) {
-      this.removeFtsIndex(id);
-    }
-    return result.changes > 0;
+    // Wrap the row delete + FTS cleanup so a mid-operation failure does not
+    // leave the FTS index pointing at a stash row that no longer exists.
+    const tx = this.db.transaction((stashId: string) => {
+      const result = this.db.prepare('DELETE FROM stashes WHERE id = ?').run(stashId);
+      if (result.changes > 0) {
+        this.removeFtsIndex(stashId);
+      }
+      return result.changes > 0;
+    });
+    return tx(id);
   }
 
   archiveStash(id: string, archived: boolean): Stash | null {
@@ -1068,7 +1088,7 @@ export class ClawStashDB {
     const rows = this.db.prepare('SELECT tags FROM stashes').all() as { tags: string }[];
     const tagMap = new Map<string, number>();
     for (const row of rows) {
-      const tags: string[] = JSON.parse(row.tags);
+      const tags = this.safeParseTags(row.tags);
       for (const tag of tags) {
         tagMap.set(tag, (tagMap.get(tag) || 0) + 1);
       }
@@ -1082,7 +1102,7 @@ export class ClawStashDB {
     const rows = this.db.prepare('SELECT metadata FROM stashes WHERE metadata != \'{}\'').all() as { metadata: string }[];
     const keySet = new Set<string>();
     for (const row of rows) {
-      const meta = JSON.parse(row.metadata);
+      const meta = this.safeParseMetadata(row.metadata);
       for (const key of Object.keys(meta)) {
         keySet.add(key);
       }
@@ -1100,7 +1120,7 @@ export class ClawStashDB {
     const edgeMap = new Map<string, number>();
 
     for (const row of rows) {
-      const tags: string[] = JSON.parse(row.tags);
+      const tags = this.safeParseTags(row.tags);
       for (const t of tags) {
         tagCounts.set(t, (tagCounts.get(t) || 0) + 1);
       }
@@ -1198,7 +1218,7 @@ export class ClawStashDB {
     `);
 
     for (const row of rows) {
-      const otherTags: string[] = JSON.parse(row.tags);
+      const otherTags = this.safeParseTags(row.tags);
       const shared = otherTags.filter(t => tagSet.has(t));
       if (shared.length > 0) {
         const [src, tgt] = [stashId, row.id].sort();
@@ -1212,7 +1232,7 @@ export class ClawStashDB {
       try { this.db.exec("DELETE FROM stash_relations WHERE relation_type = 'shared_tags'"); } catch (_) { /* table may not exist */ }
 
       const stashes = this.db.prepare('SELECT id, tags FROM stashes').all() as { id: string; tags: string }[];
-      const parsed = stashes.map(s => ({ id: s.id, tags: JSON.parse(s.tags) as string[] }));
+      const parsed = stashes.map(s => ({ id: s.id, tags: this.safeParseTags(s.tags) }));
 
       const insert = this.db.prepare(`
         INSERT INTO stash_relations (id, source_stash_id, target_stash_id, relation_type, weight, metadata)
@@ -1287,7 +1307,7 @@ export class ClawStashDB {
     const stashTagMap = new Map<string, string[]>();
 
     for (const row of stashRows) {
-      const stashTags: string[] = JSON.parse(row.tags);
+      const stashTags = this.safeParseTags(row.tags);
       stashTagMap.set(row.id, stashTags);
 
       nodes.push({
@@ -1339,13 +1359,14 @@ export class ClawStashDB {
 
     for (const rel of relations) {
       if (stashIds.has(rel.source_stash_id) && stashIds.has(rel.target_stash_id)) {
-        const meta = JSON.parse(rel.metadata);
+        const meta = this.safeParseMetadata(rel.metadata);
+        const sharedTags = Array.isArray(meta.shared_tags) ? (meta.shared_tags as unknown[]).filter(t => typeof t === 'string') as string[] : [];
         edges.push({
           source: rel.source_stash_id,
           target: rel.target_stash_id,
           type: 'shared_tags',
           weight: rel.weight,
-          metadata: { shared_tags: meta.shared_tags },
+          metadata: { shared_tags: sharedTags },
         });
       }
     }
@@ -1390,7 +1411,7 @@ export class ClawStashDB {
             version_number: v.version,
             created_by: v.created_by,
             created_at: v.created_at,
-            change_summary: JSON.parse(v.change_summary || '{}'),
+            change_summary: this.safeParseMetadata(v.change_summary),
           });
           edges.push({
             source: vNodeId,
@@ -1487,8 +1508,8 @@ export class ClawStashDB {
         stash_id: row.stash_id as string,
         name: (row.name as string) || '',
         description: (row.description as string) || '',
-        tags: JSON.parse(row.tags as string),
-        metadata: JSON.parse(row.metadata as string),
+        tags: this.safeParseTags(row.tags),
+        metadata: this.safeParseMetadata(row.metadata),
         version: row.version as number,
         created_by: (row.created_by as string) || '',
         created_at: row.created_at as string,
