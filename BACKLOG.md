@@ -34,6 +34,12 @@ Review findings not immediately fixed. **Only work on these upon explicit reques
 | 50 | 2026-03-19 | Code Smells | P2 | src/app/api/admin/export/route.ts:13,28 | Two `new Date()` calls — filename timestamp and manifest `exportedAt` may differ by milliseconds. Should capture once. | Accepted | #62 Codebase Review |
 | 51 | 2026-03-19 | Edge Cases | P2 | src/app/mcp/route.ts:39-41 | `transport.close()` throw prevents `mcpServer.close()` — should use try/finally for cleanup. | Deferred | #62 Codebase Review |
 | 52 | 2026-03-19 | Code Smells | P2 | src/components/api/icons.tsx + shared/icons.tsx | `CopyIcon` defined in two places with different SVG paths — should consolidate. | Accepted | #62 Codebase Review |
+| 53 | 2026-04-26 | Security | P3 | src/app/api/tokens/validate/route.ts:9 | Bearer token extracted via `auth.substring(7)` without `.trim()` — defensive only, `cs_`/`csa_` tokens have no whitespace. | Accepted | #97 GitNexus Code Review Round 1 |
+| 54 | 2026-04-26 | Security | P3 | src/components/StashViewer.tsx:344 + MermaidDiagram.tsx | Mermaid SVG injected raw via `innerHTML`/`dangerouslySetInnerHTML`; `mermaid` is initialized with `securityLevel: 'strict'` so this is mitigated, but defense-in-depth sanitization (e.g. DOMPurify) could be added. | Accepted | #97 GitNexus Code Review Round 1 |
+| 55 | 2026-04-26 | Code Smells | P3 | src/components/StashViewer.tsx:62-69 vs src/utils/markdown.ts | `escapeAttr` defined twice with identical bodies — consolidate into a shared util. | Accepted | #97 GitNexus Code Review Round 1 |
+| 56 | 2026-04-26 | Code Smells | P3 | src/utils/mermaid.ts | Mermaid initialized once with `theme: 'dark'`; theme switching would require re-init + force re-hydration. No theme toggle exists today, so no behavioral bug — track for future light/auto theme work. | Accepted | #97 GitNexus Code Review Round 1 |
+| 57 | 2026-04-26 | Code Smells | P3 | src/components/GraphViewer.tsx + src/components/StashGraphCanvas.tsx | Force-directed physics simulation (gravity, repulsion, edge attraction loops) duplicated across both files. Candidate for shared `simulatePhysics(nodes, edges, alpha, config)` helper. | Accepted | #97 GitNexus Code Review Round 1 |
+| 58 | 2026-04-26 | Code Smells | P3 | src/components/GraphViewer.tsx + src/components/StashGraphCanvas.tsx | Magic numbers (alpha decay 0.993, damping 0.55, speed cap 12, gravity ~0.008, edge ideal-dist 80) scattered across both physics simulations. Extract to named module-level constants. | Accepted | #97 GitNexus Code Review Round 1 |
 
 ## Done
 

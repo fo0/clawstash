@@ -909,8 +909,11 @@ export class ClawStashDB {
       params.push(limit, offset);
 
       rows = this.db.prepare(sql).all(...params) as typeof rows;
-    } catch {
-      // FTS5 MATCH syntax error → fall back to LIKE-based search
+    } catch (err) {
+      // FTS5 MATCH syntax error → fall back to LIKE-based search.
+      // Logged at warn level so production FTS regressions are visible
+      // (sanitization should prevent this in normal use).
+      console.warn('[DB] FTS5 search failed, falling back to LIKE:', err instanceof Error ? err.message : err);
       const fallback = this.listStashes({ search: query, tag, archived, limit, page });
       return {
         stashes: fallback.stashes.map(s => ({ ...s, relevance: 0 })),
@@ -1487,8 +1490,8 @@ export class ClawStashDB {
         stash_id: row.stash_id as string,
         name: (row.name as string) || '',
         description: (row.description as string) || '',
-        tags: JSON.parse(row.tags as string),
-        metadata: JSON.parse(row.metadata as string),
+        tags: this.safeParseTags(row.tags),
+        metadata: this.safeParseMetadata(row.metadata),
         version: row.version as number,
         created_by: (row.created_by as string) || '',
         created_at: row.created_at as string,

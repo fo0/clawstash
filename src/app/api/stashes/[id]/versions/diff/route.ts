@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getDb } from '@/server/singleton';
-import { checkScope, parsePositiveInt } from '@/app/api/_helpers';
+import { checkScope, parsePositiveInt, getAccessSource, getRequestInfo } from '@/app/api/_helpers';
 
 type Params = { params: Promise<{ id: string }> };
 
@@ -26,5 +26,7 @@ export async function GET(req: NextRequest, { params }: Params) {
   if (!version1 || !version2) {
     return NextResponse.json({ error: 'One or both versions not found' }, { status: 404 });
   }
+  const { ip, userAgent } = getRequestInfo(req);
+  db.logAccess(id, getAccessSource(req), `read_version_diff:${v1}..${v2}`, ip, userAgent);
   return NextResponse.json({ v1: version1, v2: version2 });
 }

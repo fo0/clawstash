@@ -70,15 +70,23 @@ function escapeHtml(s: string): string {
 
 /**
  * Base64-encode a UTF-8 string for safe embedding in a `data-*` attribute.
- * Uses `unescape(encodeURIComponent(...))` to round-trip multi-byte chars.
+ * Uses TextEncoder/btoa via a binary string round-trip so multi-byte chars
+ * survive correctly without relying on the deprecated `escape`/`unescape`
+ * globals (removed in strict ECMAScript and flagged by modern lints).
  */
 function encodeMermaidSource(s: string): string {
-  return btoa(unescape(encodeURIComponent(s)));
+  const bytes = new TextEncoder().encode(s);
+  let bin = '';
+  for (let i = 0; i < bytes.length; i++) bin += String.fromCharCode(bytes[i]);
+  return btoa(bin);
 }
 
 /** Inverse of `encodeMermaidSource`. */
 function decodeMermaidSource(s: string): string {
-  return decodeURIComponent(escape(atob(s)));
+  const bin = atob(s);
+  const bytes = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+  return new TextDecoder().decode(bytes);
 }
 
 /**
