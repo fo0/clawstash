@@ -53,141 +53,7 @@
 
 ## Project Structure
 
-```
-clawstash/
-├── package.json                # Dependencies and scripts
-├── tsconfig.json               # TypeScript config (strict, ES2022, Next.js plugin, @/* path alias)
-├── next.config.ts              # Next.js config (standalone output, better-sqlite3 external)
-├── Dockerfile                  # Multi-stage Docker build (Node 22-slim, Next.js standalone)
-├── docker-compose.yml          # Docker Compose deployment
-├── .env.example                # Environment variables template
-├── BACKLOG.md                  # Deferred review findings tracker
-├── MEMORY.md                   # Session-spanning project knowledge (long-term)
-├── SCRATCHPAD.md               # Temporary working context (short-term)
-├── agent_docs/                 # Agent process documentation
-│   ├── review_process.md       # Mandatory review process after every implementation
-│   ├── backlog_process.md      # Backlog tracking rules and format
-│   ├── memory_process.md       # Memory tracking rules and format
-│   ├── refactoring_guidelines.md  # Refactoring principles and rules
-│   └── diagram_prompt.md       # Architecture diagram generation instructions
-├── docs/                       # User-facing documentation (split from README)
-│   ├── api-reference.md        # REST API endpoints, examples, query parameters
-│   ├── mcp.md                  # MCP tools, token-efficient patterns, transport options
-│   ├── deployment.md           # Docker, production, CI/CD, GHCR setup
-│   ├── authentication.md       # Admin login, API tokens, scopes, security
-│   └── openclaw-onboarding-prompt.md  # Copy-paste onboarding prompt for OpenClaw agents
-├── .claude/
-│   └── skills/
-│       └── gitnexus/           # GitNexus code intelligence skills (explore, debug, refactor, review, impact, query)
-├── .github/
-│   └── workflows/
-│       └── docker-publish.yml  # CI: Type-check, build, push to GHCR
-├── scripts/
-│   └── generate-build-info.js  # Prebuild script: generates build metadata (git branch, commit, date)
-├── public/                     # Next.js static assets
-├── src/
-│   ├── middleware.ts            # Next.js middleware (CORS, security headers, login rate limiting)
-│   ├── app/                    # Next.js App Router
-│   │   ├── layout.tsx          # Root layout with metadata + global CSS
-│   │   ├── page.tsx            # Client component wrapper for <App />
-│   │   ├── [...slug]/
-│   │   │   └── page.tsx        # Catch-all route for client-side routing
-│   │   ├── mcp/
-│   │   │   └── route.ts        # MCP Streamable HTTP endpoint (POST/GET/DELETE)
-│   │   └── api/                # API Route Handlers
-│   │       ├── _helpers.ts     # Shared utilities (checkScope, checkAdmin, getBaseUrl)
-│   │       ├── health/route.ts # GET health check (no auth, DB status + stats)
-│   │       ├── stashes/
-│   │       │   ├── route.ts            # GET (list), POST (create)
-│   │       │   ├── stats/route.ts      # GET storage statistics
-│   │       │   ├── tags/route.ts       # GET all tags with counts
-│   │       │   ├── metadata-keys/route.ts  # GET unique metadata keys
-│   │       │   ├── graph/route.ts      # GET tag relationship graph
-│   │       │   ├── graph/stashes/route.ts  # GET stash relationship graph
-│   │       │   └── [id]/
-│   │       │       ├── route.ts        # GET, PATCH, DELETE single stash
-│   │       │       ├── access-log/route.ts  # GET access log
-│   │       │       ├── files/[filename]/raw/route.ts  # GET raw file content
-│   │       │       └── versions/
-│   │       │           ├── route.ts    # GET version list
-│   │       │           ├── diff/route.ts  # GET version diff
-│   │       │           └── [version]/
-│   │       │               ├── route.ts       # GET specific version
-│   │       │               └── restore/route.ts  # POST restore version
-│   │       ├── tokens/
-│   │       │   ├── route.ts            # GET (list), POST (create)
-│   │       │   ├── [id]/route.ts       # DELETE
-│   │       │   └── validate/route.ts   # POST validate token
-│   │       ├── admin/
-│   │       │   ├── auth/route.ts       # POST login
-│   │       │   ├── logout/route.ts     # POST logout
-│   │       │   ├── session/route.ts    # GET session status
-│   │       │   ├── export/route.ts     # GET ZIP download
-│   │       │   └── import/route.ts     # POST ZIP upload
-│   │       ├── openapi/route.ts        # GET OpenAPI schema
-│   │       ├── version/route.ts        # GET version info
-│   │       ├── mcp-spec/route.ts       # GET MCP specification
-│   │       ├── mcp-onboarding/route.ts # GET MCP onboarding guide
-│   │       └── mcp-tools/route.ts      # GET MCP tool summaries
-│   ├── server/                 # Server-side logic (used by API route handlers)
-│   │   ├── db.ts               # SQLite database layer (ClawStashDB class)
-│   │   ├── singleton.ts        # DB singleton with globalThis for HMR protection
-│   │   ├── auth.ts             # Auth utility (token extraction, validation, scope checking)
-│   │   ├── shared-text.ts      # Shared text constants (PURPOSE, TOKEN_EFFICIENT_GUIDE)
-│   │   ├── tool-defs.ts        # MCP tool definitions (Zod schemas + descriptions)
-│   │   ├── mcp-server.ts       # MCP server factory (imports tool-defs.ts, defines handlers)
-│   │   ├── mcp-spec.ts         # MCP spec generator (zodToJsonSchema + OpenAPI data types)
-│   │   ├── mcp.ts              # MCP server stdio transport entry point
-│   │   ├── openapi.ts          # OpenAPI 3.0 schema generator
-│   │   ├── validation.ts       # Zod schemas for API input validation + size limits
-│   │   └── version.ts          # Version check utility (build info + GitHub latest commit)
-│   ├── App.tsx                 # Main app component, state management
-│   ├── api.ts                  # API client (fetch wrapper)
-│   ├── types.ts                # Shared TypeScript interfaces
-│   ├── languages.ts            # PrismJS language detection, mapping, highlighting
-│   ├── hooks/
-│   │   ├── useClipboard.ts     # useClipboard + useClipboardWithKey hooks
-│   │   └── useClickOutside.ts  # Click-outside detection hook (used by Sidebar, TagCombobox, MetadataEditor)
-│   ├── utils/
-│   │   ├── clipboard.ts        # Copy-to-clipboard with fallback for non-HTTPS
-│   │   ├── format.ts           # Date formatting (formatDate, formatDateTime, formatRelativeTime)
-│   │   ├── markdown.ts         # Markdown rendering for descriptions (Marked + sanitization)
-│   │   └── mermaid.ts          # Lazy-loaded Mermaid renderer (shared util for .mmd files + inline ```mermaid blocks)
-│   ├── components/
-│   │   ├── Sidebar.tsx         # Left sidebar with search, tag filter, stash list, settings nav
-│   │   ├── Footer.tsx          # App footer with version (fetched from /api/version), build info toggle
-│   │   ├── Dashboard.tsx       # Home view with grid/list of stash cards
-│   │   ├── GraphViewer.tsx     # Force-directed tag graph visualization (canvas-based)
-│   │   ├── StashCard.tsx       # Individual stash card component
-│   │   ├── StashViewer.tsx     # Stash detail view with file display, TOC, access log, version history
-│   │   ├── StashGraphCanvas.tsx # Stash graph canvas component
-│   │   ├── VersionHistory.tsx  # Version history list, Confluence-style inline comparison radios, restore button
-│   │   ├── VersionDiff.tsx     # GitHub-style diff view (green/red) using jsdiff
-│   │   ├── SearchOverlay.tsx   # Alt+K quick search overlay with keyboard navigation
-│   │   ├── LoginScreen.tsx     # Password login gate
-│   │   ├── MermaidDiagram.tsx  # React wrapper around renderMermaid() for .mmd files
-│   │   ├── Settings.tsx        # Settings/admin area (general, API, storage, about)
-│   │   ├── shared/
-│   │   │   ├── icons.tsx       # Shared Octicon-style icons
-│   │   │   └── Spinner.tsx     # Loading spinner animation
-│   │   ├── api/                # API management sub-components
-│   │   │   ├── ApiManager.tsx  # Tab container: Tokens/REST/MCP tabs
-│   │   │   ├── TokensTab.tsx   # Token CRUD + Quick Access spec copy
-│   │   │   ├── RestTab.tsx     # REST API docs, Swagger explorer, examples
-│   │   │   ├── McpTab.tsx      # MCP Server config, tools, examples
-│   │   │   ├── SwaggerViewer.tsx # Swagger UI lazy-loader
-│   │   │   ├── api-data.ts    # Static data: endpoints, tools, scope labels, spec generators
-│   │   │   ├── icons.tsx       # API-specific icons
-│   │   │   └── useCopyToast.ts # Copy toast hook
-│   │   └── editor/             # Stash editor sub-components
-│   │       ├── StashEditor.tsx # Main create/edit form with file management
-│   │       ├── FileCodeEditor.tsx # PrismJS code editor wrapper
-│   │       ├── TagCombobox.tsx # Tag input with autocomplete dropdown
-│   │       └── MetadataEditor.tsx # Key-value editor with suggestions
-│   └── styles/
-│       └── app.css             # Global styles (CSS custom properties)
-└── data/                       # SQLite database directory (gitignored)
-```
+See `agent_docs/project-structure.md` for the full directory tree (extracted to keep this file under the 40k-char budget).
 
 ## Commands
 
@@ -257,13 +123,17 @@ npx gitnexus analyze       # Rebuild index (after structural changes or stale in
 - Prevents multiple DB connections during hot module replacement
 - Periodic session cleanup via `setInterval` (every 1 hour), interval reference stored on `globalThis` to prevent duplicates during HMR
 
-### Middleware (src/middleware.ts)
+### Middleware (src/middleware.ts) + Rate Limiter (src/server/auth-rate-limit.ts)
 
 - **CORS**: Permissive `Access-Control-Allow-Origin: *` on all `/api/*` and `/mcp` routes — required for AI agent access from any origin (localhost, LAN, remote)
 - **Preflight**: OPTIONS requests return 204 with CORS headers
 - **Security headers**: `X-Content-Type-Options: nosniff`, `Referrer-Policy: strict-origin-when-cross-origin`, `X-DNS-Prefetch-Control: off` on all routes
-- **Rate limiting**: In-memory sliding window on `/api/admin/auth` POST only (10 attempts per 15 min per IP). Returns 429 with `Retry-After` header. Stale entries cleaned every 5 min.
-- No restrictive headers (X-Frame-Options, HSTS, CSP) — intentionally omitted to not break agent/LAN/localhost access
+- **No restrictive headers** (X-Frame-Options, HSTS, CSP) — intentionally omitted to not break agent/LAN/localhost access
+- **Rate limiting** lives in `src/server/auth-rate-limit.ts` (NOT in middleware) so the success path can clear the per-IP counter. Invoked from:
+  - `/api/admin/auth` (POST): 10 attempts / 15 min per IP, recorded only on real attempts; cleared on successful login
+  - `/api/tokens/validate` (POST): 10 attempts / 15 min per IP (separate scope), neutralizes the brute-force oracle
+  - `/api/admin/session` (GET): same `token-validate` scope when a token is supplied
+- **Client-IP detection**: `getClientIp()` honours `X-Forwarded-For`/`X-Real-IP` only when `TRUST_PROXY=1` (or `=true`). Without it, missing IP falls back to a per-request random key (no shared `'unknown'` bucket)
 
 ### Input Validation (src/server/validation.ts)
 
@@ -519,6 +389,7 @@ REST API with Bearer token auth + MCP Server for AI agent integration (Streamabl
 | `NODE_ENV` | Environment mode | `development` | No |
 | `ADMIN_PASSWORD` | Admin password for login (unset = open access) | — | No |
 | `ADMIN_SESSION_HOURS` | Admin session duration in hours (0 = unlimited) | `24` | No |
+| `TRUST_PROXY` | Trust `X-Forwarded-*` headers (set to `1` or `true` when behind nginx, Traefik, Cloudflare, etc.) | off | No (recommended behind a reverse proxy) |
 
 ## GitNexus — Code Intelligence
 
@@ -570,11 +441,11 @@ npx gitnexus analyze
 
 Refactoring does NOT happen automatically. Only upon explicit user request, when repeated code smells emerge across multiple files in review, or when a feature implementation is significantly harder than expected due to code structure. See `agent_docs/refactoring_guidelines.md` for principles.
 
-- **`src/server/db.ts` (~1780 lines)**: Largest file by far. Strong candidate for splitting: token/session management → `TokenStore`, version history → `VersionStore`, FTS methods → `SearchStore`. The `detectLanguage()` function could move to a shared utility.
+- **`src/server/db.ts` (~1850 lines)**: Largest file by far. Strong candidate for splitting: token/session management → `TokenStore`, version history → `VersionStore`, FTS methods → `SearchStore`. (`detectLanguage()` is already extracted into `src/server/detect-language.ts`.)
 - **`src/server/openapi.ts` (~680 lines)**: Large schema definition. Could adopt `@asteasolutions/zod-to-openapi` to generate from Zod schemas in `tool-defs.ts` (currently only MCP spec uses zodToJsonSchema; OpenAPI schemas are still hand-written).
-- **`src/components/StashViewer.tsx` (~660 lines)**: Largest frontend component. File display, TOC, access log tab, and metadata display sections could be extracted into sub-components.
-- **`src/components/Settings.tsx` (~546 lines)**: Could extract Welcome Dashboard and Storage Stats sections into dedicated sub-components within a `settings/` directory.
-- **`src/languages.ts` (~334 lines)**: Extension map (65+ entries) and content-based detection heuristics are large but stable. Low priority.
+- **`src/components/StashViewer.tsx` (~780 lines)**: Largest frontend component. File display, TOC, access log tab, and metadata display sections could be extracted into sub-components.
+- **`src/components/Settings.tsx` (~560 lines)**: Could extract Welcome Dashboard and Storage Stats sections into dedicated sub-components within a `settings/` directory.
+- **`src/languages.ts` (~340 lines)**: Extension map (65+ entries) and content-based detection heuristics are large but stable. Low priority.
 - **No linter or test framework**: Adding ESLint + Vitest would significantly improve code quality assurance.
 - **No Prettier config**: Adding Prettier would enforce consistent formatting.
 
@@ -602,7 +473,7 @@ If `CLAUDE.md` exceeds ~40,000 characters: extract the largest section into `age
 <!-- gitnexus:start -->
 # GitNexus — Code Intelligence
 
-This project is indexed by GitNexus as **clawstash** (2152 symbols, 3843 relationships, 186 execution flows). Use the GitNexus MCP tools to understand code, assess impact, and navigate safely.
+This project is indexed by GitNexus as **clawstash** (2148 symbols, 3843 relationships, 185 execution flows). Use the GitNexus MCP tools to understand code, assess impact, and navigate safely.
 
 > If any GitNexus tool warns the index is stale, run `npx gitnexus analyze` in terminal first.
 

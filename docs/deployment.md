@@ -57,7 +57,7 @@ docker run -p 3000:3000 \
 
 ## Node.js (without Docker)
 
-**Prerequisites:** Node.js 18+
+**Prerequisites:** Node.js 22+ (project pins Node 22 LTS in CI and Docker; `better-sqlite3` 12.x requires ≥ 20)
 
 ### Development
 

@@ -1,3 +1,4 @@
+import { useMemo } from 'react';
 import type { StashListItem, LayoutMode } from '../types';
 import { formatRelativeTime } from '../utils/format';
 import { renderDescriptionMarkdown } from '../utils/markdown';
@@ -20,6 +21,12 @@ function getUniqueLanguages(stash: StashListItem): string[] {
 export default function StashCard({ stash, layout, onClick, onFilterTag }: Props) {
   const languages = getUniqueLanguages(stash);
   const title = stash.name || stash.files[0]?.filename || 'Untitled';
+  // Memoize the rendered markdown — `renderDescriptionMarkdown` runs a DOMParser
+  // sanitization pass on every call, which adds up across a 50-card dashboard.
+  const descriptionHtml = useMemo(
+    () => stash.description ? renderDescriptionMarkdown(stash.description) : '',
+    [stash.description]
+  );
 
   return (
     <div className={`stash-card ${layout}${stash.archived ? ' stash-card-archived' : ''}`} onClick={onClick} title={`Open stash: ${title}`}>
@@ -31,7 +38,7 @@ export default function StashCard({ stash, layout, onClick, onFilterTag }: Props
       {stash.description && (
         <div
           className="stash-card-description markdown-description"
-          dangerouslySetInnerHTML={{ __html: renderDescriptionMarkdown(stash.description) }}
+          dangerouslySetInnerHTML={{ __html: descriptionHtml }}
           onClick={(e) => { if ((e.target as HTMLElement).closest('a')) e.stopPropagation(); }}
         />
       )}

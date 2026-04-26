@@ -18,11 +18,14 @@ export function checkAdmin(req: NextRequest) {
   const db = getDb();
   const auth = requireAdminAuth(db, req);
   if (auth) return { ok: true as const };
-  const hasToken = !!req.headers.get('authorization') || !!req.nextUrl.searchParams.get('token');
-  if (!hasToken) {
-    return { ok: false as const, response: NextResponse.json({ error: 'Authorization required' }, { status: 401 }) };
+  // Mirror checkScope(): use extractToken() so non-Bearer Authorization
+  // schemes (e.g. Basic) are treated as "no Bearer token present" and
+  // surface 401 (Authentication required) rather than 403.
+  const token = extractToken(req);
+  if (!token) {
+    return { ok: false as const, response: NextResponse.json({ error: 'Authentication required. Provide a Bearer token.' }, { status: 401 }) };
   }
-  return { ok: false as const, response: NextResponse.json({ error: 'Admin access required' }, { status: 403 }) };
+  return { ok: false as const, response: NextResponse.json({ error: 'Admin access required.' }, { status: 403 }) };
 }
 
 export function getAccessSource(req: NextRequest): 'ui' | 'api' {

@@ -31,6 +31,10 @@ See [authentication.md](authentication.md) for token creation and scopes.
 | `/api/stashes/graph` | GET | Tag relationship graph (`?tag=&depth=&min_weight=&min_count=&limit=`) |
 | `/api/stashes/graph/stashes` | GET | Stash relationship graph |
 
+> **`?archived=` query param**: only the literal strings `true` and `false` are honored — any other value (e.g. `?archived=1`, `?archived=yes`) is silently ignored and the route falls back to the default (active stashes only). See BACKLOG #84 for the planned 400-on-invalid behavior.
+
+> **Raw file route response header**: `/api/stashes/:id/files/:filename/raw` returns `Content-Disposition: inline; filename*=UTF-8''…` so non-ASCII filenames are preserved when downloaded.
+
 ### Versions
 
 | Endpoint | Method | Description |
@@ -40,14 +44,14 @@ See [authentication.md](authentication.md) for token creation and scopes.
 | `/api/stashes/:id/versions/:version` | GET | Get a specific version snapshot |
 | `/api/stashes/:id/versions/:version/restore` | POST | Restore an old version |
 
-### Tokens (admin-protected)
+### Tokens
 
-| Endpoint | Method | Description |
-|----------|--------|-------------|
-| `/api/tokens` | GET | List API tokens |
-| `/api/tokens` | POST | Create API token |
-| `/api/tokens/:id` | DELETE | Delete API token |
-| `/api/tokens/validate` | POST | Validate a Bearer token |
+| Endpoint | Method | Auth | Description |
+|----------|--------|------|-------------|
+| `/api/tokens` | GET | admin | List API tokens |
+| `/api/tokens` | POST | admin | Create API token |
+| `/api/tokens/:id` | DELETE | admin | Delete API token |
+| `/api/tokens/validate` | POST | any Bearer | Validate a Bearer token (per-IP rate-limited: 10 attempts / 15 min) |
 
 ### Admin
 
