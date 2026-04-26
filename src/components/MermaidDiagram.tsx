@@ -50,6 +50,14 @@ function saveScale(key: string, scale: number): void {
   }
 }
 
+function clearStoredScale(key: string): void {
+  try {
+    window.localStorage.removeItem(STORAGE_PREFIX + key);
+  } catch {
+    /* ignore */
+  }
+}
+
 /**
  * Renders a Mermaid diagram from a source string with a zoom/pan toolbar,
  * fullscreen toggle and persistent zoom level (per `storageKey`).
@@ -115,6 +123,31 @@ export default function MermaidDiagram({ code, className, storageKey }: Props) {
   const actualSize = useCallback(() => {
     wrapperRef.current?.setTransform(0, 0, 1, ANIMATION_MS);
   }, []);
+
+  // Reset view: clear any persisted custom zoom for this file AND fit to
+  // width. Distinguishes from `Fit` (which only re-fits without forgetting
+  // the stored value) so the user can return to defaults.
+  const resetView = useCallback(() => {
+    if (storageKey) {
+      clearStoredScale(storageKey);
+      pendingScaleRef.current = null;
+      if (persistTimerRef.current) {
+        clearTimeout(persistTimerRef.current);
+        persistTimerRef.current = null;
+      }
+    }
+    fitToWidth();
+  }, [storageKey, fitToWidth]);
+
+  // When the storageKey changes mid-life (e.g. file switched while reusing
+  // the same component instance), the existing `initializedRef` guard would
+  // otherwise prevent the init effect below from picking up the new file's
+  // stored zoom. Reset the guard so the init effect re-runs against the new
+  // key. The render-effect already does this on `code` change; this covers
+  // the storageKey-only case.
+  useEffect(() => {
+    initializedRef.current = false;
+  }, [storageKey]);
 
   // After SVG injection: restore stored zoom or auto fit-to-width.
   useEffect(() => {
@@ -282,8 +315,8 @@ export default function MermaidDiagram({ code, className, storageKey }: Props) {
         <button
           type="button"
           className="btn btn-sm btn-ghost"
-          onClick={fitToWidth}
-          title="Reset"
+          onClick={resetView}
+          title="Reset view (clears saved zoom)"
           aria-label="Reset view"
         >
           ⟳
