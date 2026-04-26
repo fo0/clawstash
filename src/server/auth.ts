@@ -14,7 +14,14 @@ const ADMIN_SESSION_HOURS = () => {
   const val = process.env.ADMIN_SESSION_HOURS;
   if (val === undefined || val === '') return 24;
   const num = parseFloat(val);
-  return isNaN(num) ? 24 : num;
+  // 0 means "unlimited" (documented). Treat NaN, negatives, and infinities as
+  // misconfiguration and fall back to the safe 24h default rather than
+  // silently granting a never-expiring session. Without this guard,
+  // ADMIN_SESSION_HOURS=-5 produces createAdminSession(hours <= 0 → no
+  // expires_at), i.e. the same behaviour as the explicit "0 = unlimited"
+  // opt-in, which is almost certainly not what the operator intended.
+  if (!Number.isFinite(num) || num < 0) return 24;
+  return num;
 };
 
 export { ADMIN_PASSWORD, ADMIN_SESSION_HOURS };

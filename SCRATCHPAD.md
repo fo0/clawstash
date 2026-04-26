@@ -20,6 +20,30 @@ Temporary working context. **Clean up aggressively -- delete when resolved.**
 - `src/server/db.ts:searchStashes` -- warn-log on FTS5 -> LIKE fallback for production observability.
 - `src/components/StashViewer.tsx` -- modernized Mermaid base64 helpers; replaced deprecated `escape()`/`unescape()` with `TextEncoder`/`TextDecoder` round-trip.
 
+### Round 1 -- iteration 3 (2026-04-26)
+
+A third pass dispatched four parallel research subagents (db, mcp+api, frontend, validation+auth+spec) with explicit "do not re-find iter-1.1 / iter-1.2 / earlier-round / BACKLOG fixes" framing. Survivors after triage:
+
+**Fixed (P1):**
+- `src/server/db.ts:createStash` and `updateStash` -- `updateStashRelations()` and `syncFtsIndex()` ran *after* the outer transaction committed. A failure in either left a stash with stale `stash_relations` rows or an FTS row pointing at the previous content. Both calls are now folded **inside** the existing `this.db.transaction(...)` block. `updateStashRelations` is sync (better-sqlite3) and uses no inner transactions, so this is safe.
+- `src/server/db.ts:deleteStash` -- DELETE + `removeFtsIndex()` were two unrelated statements; a crash between them left an FTS row pointing at a non-existent stash. Wrapped in a single `this.db.transaction(...)`.
+
+**Fixed (P2):**
+- `src/server/auth.ts:ADMIN_SESSION_HOURS` -- `parseFloat("-5") = -5` slipped past `isNaN`, and `createAdminSession` only checks `if (hours > 0) expiresAt = ...`, so any negative value silently produced an unlimited session (same behaviour as the documented `0 = unlimited`). Now any non-finite or negative value falls back to the safe 24h default; `0` still maps to "unlimited" per CLAUDE.md.
+- `src/utils/markdown.ts:sanitizeHtml` -- inline `style` attributes now stripped alongside event handlers and unsafe URL attrs. Defense-in-depth against background-image / `expression()`-style vectors; markdown descriptions never need inline styles.
+- `src/server/validation.ts:TagsSchema` and `src/server/tool-defs.ts:McpTagsSchema` -- per-tag `z.string()` had no `.min(1)`, so `["", "python"]` passed validation, rendered as a blank pill, and inflated `getTagGraph` counts. Added `.min(1)` to both.
+
+**Deferred to BACKLOG.md (entries 72-73 added):**
+- #72 -- `archiveStash` non-atomic existence-check + UPDATE + getStash (benign idempotency window).
+- #73 -- empty-string file content accepted (likely intentional placeholder support; documented).
+
+**Skipped (already in BACKLOG):**
+- `/mcp` route try/finally cleanup (#51) -- agent re-found this; already accepted.
+- `listApiTokens`/`validateApiToken` raw `JSON.parse` for tokens.scopes (#70).
+
+**False positives surfaced by research subagents (documented for future rounds):**
+- `StashGraphCanvas.tsx:1002` and `GraphViewer.tsx:1098` "stale closure on setX in keydown handler" -- React guarantees `useState` setter identity is stable across renders, so empty / minimal dep arrays on these effects are correct, not a bug.
+
 ### Round 1 -- iteration 2 (2026-04-26)
 
 A second review pass surfaced bugs the first iteration missed; six parallel research subagents audited db, components, server, api, mcp, hooks again with the explicit "don't re-find iteration-1 fixes" framing.

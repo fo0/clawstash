@@ -602,7 +602,7 @@ If `CLAUDE.md` exceeds ~40,000 characters: extract the largest section into `age
 <!-- gitnexus:start -->
 # GitNexus — Code Intelligence
 
-This project is indexed by GitNexus as **clawstash** (2077 symbols, 3630 relationships, 179 execution flows). Use the GitNexus MCP tools to understand code, assess impact, and navigate safely.
+This project is indexed by GitNexus as **clawstash** (2098 symbols, 3671 relationships, 180 execution flows). Use the GitNexus MCP tools to understand code, assess impact, and navigate safely.
 
 > If any GitNexus tool warns the index is stale, run `npx gitnexus analyze` in terminal first.
 

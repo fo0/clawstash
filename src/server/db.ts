@@ -666,14 +666,17 @@ export class ClawStashDB {
         insertVersionFile.run(uuidv4(), versionId, file.filename, file.content, file.language, file.sort_order);
       }
 
+      // Keep stash relations + FTS index inside the same transaction as the
+      // stash/file/version inserts. If any post-insert step fails, everything
+      // rolls back together and we never end up with a stash that has stale
+      // relations or a missing FTS row.
+      this.updateStashRelations(id, input.tags || []);
+      this.syncFtsIndex(id);
+
       return files;
     });
 
     const files = transaction();
-
-    // Update stash relations and FTS index for new stash
-    this.updateStashRelations(id, input.tags || []);
-    this.syncFtsIndex(id);
 
     return {
       id,
@@ -1045,24 +1048,33 @@ export class ClawStashDB {
           insertFile.run(uuidv4(), id, file.filename, file.content, language, i);
         }
       }
+
+      // Keep stash relations + FTS index inside the same transaction as the
+      // version snapshot and stash mutation. A failure in either step now
+      // rolls the whole update back, instead of leaving the stash in a
+      // half-updated state where files changed but the FTS index still
+      // points at the old content.
+      const finalTags = input.tags !== undefined ? input.tags : existing.tags;
+      this.updateStashRelations(id, finalTags);
+      this.syncFtsIndex(id);
     });
 
     transaction();
-
-    // Update stash relations and FTS index
-    const finalTags = input.tags !== undefined ? input.tags : existing.tags;
-    this.updateStashRelations(id, finalTags);
-    this.syncFtsIndex(id);
 
     return this.getStash(id);
   }
 
   deleteStash(id: string): boolean {
-    const result = this.db.prepare('DELETE FROM stashes WHERE id = ?').run(id);
-    if (result.changes > 0) {
-      this.removeFtsIndex(id);
-    }
-    return result.changes > 0;
+    // Wrap the row delete + FTS cleanup so a mid-operation failure does not
+    // leave the FTS index pointing at a stash row that no longer exists.
+    const tx = this.db.transaction((stashId: string) => {
+      const result = this.db.prepare('DELETE FROM stashes WHERE id = ?').run(stashId);
+      if (result.changes > 0) {
+        this.removeFtsIndex(stashId);
+      }
+      return result.changes > 0;
+    });
+    return tx(id);
   }
 
   archiveStash(id: string, archived: boolean): Stash | null {

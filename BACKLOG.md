@@ -53,6 +53,8 @@ Review findings not immediately fixed. **Only work on these upon explicit reques
 | 69 | 2026-04-26 | Edge Cases | P3 | src/app/mcp/route.ts | JSON-RPC transport errors (parse / invalid request) all collapse to `-32603 Internal MCP error` / 500. Map SDK error types to proper JSON-RPC codes (-32700 / -32600) with 400 status. | Accepted | #97 GitNexus Code Review Round 1.2 |
 | 70 | 2026-04-26 | Security | P3 | src/server/db.ts:1574,1588 | API token `scopes` column read with raw `JSON.parse` — corrupted DB row would crash `validateApiToken` / `getTokens`. Lower priority since rows are written under our own control. | Accepted | #97 GitNexus Code Review Round 1.2 |
 | 71 | 2026-04-26 | Edge Cases | P3 | src/components/Footer.tsx | `fetch('/api/version').then(r => r.json())` does not check `r.ok` — silent drop on 5xx. Add `.ok` guard for diagnostics. | Accepted | #97 GitNexus Code Review Round 1.2 |
+| 72 | 2026-04-26 | Edge Cases | P3 | src/server/db.ts:archiveStash | Existence check + UPDATE + getStash are not wrapped in a single transaction. Idempotent UPDATE makes this benign today, but a concurrent DELETE between the existence check and the UPDATE yields a successful "archived" return for a stash that no longer exists. | Accepted | #97 GitNexus Code Review Round 1.3 |
+| 73 | 2026-04-26 | Edge Cases | P3 | src/server/validation.ts:FileSchema + tool-defs.ts:FileInputSchema | `content: z.string().max(...)` has no `.min(1)`, so empty-string file content is accepted. Likely intentional (placeholder files), but document or pin: empty files survive `createStash`/`updateStash` and get FTS-indexed as empty rows. | Accepted | #97 GitNexus Code Review Round 1.3 |
 
 ## Done
 

@@ -49,9 +49,16 @@ function sanitizeHtml(html: string): string {
   doc.querySelectorAll('script,style,iframe,object,embed,form,link,base,meta,noscript').forEach(el => el.remove());
   doc.querySelectorAll('*').forEach(el => {
     for (const attr of [...el.attributes]) {
-      const isEventHandler = attr.name.toLowerCase().startsWith('on');
-      const isUrlAttr = attr.name === 'href' || attr.name === 'src' || attr.name === 'xlink:href' || attr.name === 'action' || attr.name === 'formaction';
-      if (isEventHandler || (isUrlAttr && isUnsafeUrl(attr.value))) {
+      const lowerName = attr.name.toLowerCase();
+      const isEventHandler = lowerName.startsWith('on');
+      const isUrlAttr = lowerName === 'href' || lowerName === 'src' || lowerName === 'xlink:href' || lowerName === 'action' || lowerName === 'formaction';
+      // Drop inline style entirely. Modern browsers no longer execute
+      // `javascript:` inside CSS url(), but `style` is still a vector for UI
+      // redress / data exfil via background-image, and historically for IE
+      // `expression()`. Markdown descriptions never need inline styles, so
+      // stripping is the safe default.
+      const isStyleAttr = lowerName === 'style';
+      if (isEventHandler || isStyleAttr || (isUrlAttr && isUnsafeUrl(attr.value))) {
         el.removeAttribute(attr.name);
       }
     }
