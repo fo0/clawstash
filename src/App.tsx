@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import type { Stash, StashListItem, ViewMode, LayoutMode, SettingsSection, AdminSessionInfo, TagInfo } from './types';
 import { api, setAuthToken } from './api';
 import Sidebar from './components/Sidebar';
@@ -25,6 +25,12 @@ function getInitialRoute(): { view: ViewMode; stashId: string | null; analyzeSta
   const path = window.location.pathname;
   const analyzeMatch = path.match(/^\/stash\/([a-f0-9-]+)\/graph$/i);
   if (analyzeMatch) return { view: 'graph', stashId: null, analyzeStashId: analyzeMatch[1] };
+  // Edit must be checked BEFORE the generic /stash/:id match so that
+  // pushUrl(`/stash/${id}/edit`) round-trips correctly via popstate /
+  // direct deep-link load (otherwise the user is silently dropped into
+  // 'view' mode after pressing browser-back from the editor).
+  const editMatch = path.match(/^\/stash\/([a-f0-9-]+)\/edit$/i);
+  if (editMatch) return { view: 'edit', stashId: editMatch[1], analyzeStashId: null };
   const match = path.match(/^\/stash\/([a-f0-9-]+)/i);
   if (match) return { view: 'view', stashId: match[1], analyzeStashId: null };
   if (path === '/new') return { view: 'new', stashId: null, analyzeStashId: null };
@@ -85,8 +91,18 @@ export default function App() {
   // Handle initial URL route on mount
   useEffect(() => {
     const route = getInitialRoute();
-    if (route.view === 'view' && route.stashId) {
-      handleSelectStash(route.stashId);
+    if ((route.view === 'view' || route.view === 'edit') && route.stashId) {
+      // Load the stash so the editor / viewer have data to work with.
+      // For 'edit', we fetch then transition straight into editor mode.
+      api.getStash(route.stashId)
+        .then((stash) => {
+          setSelectedStash(stash);
+          setView(route.view);
+        })
+        .catch((err) => {
+          console.error('Failed to load stash from URL:', err);
+          setView('home');
+        });
     } else {
       setView(route.view);
       if (route.analyzeStashId) setAnalyzeStashId(route.analyzeStashId);
@@ -100,6 +116,18 @@ export default function App() {
       const route = getInitialRoute();
       if (route.view === 'view' && route.stashId) {
         handleSelectStash(route.stashId);
+      } else if (route.view === 'edit' && route.stashId) {
+        // Back-navigation into /stash/:id/edit must rehydrate the editor,
+        // not silently fall through to view mode.
+        api.getStash(route.stashId)
+          .then((stash) => {
+            setSelectedStash(stash);
+            setView('edit');
+          })
+          .catch((err) => {
+            console.error('Failed to load stash from popstate:', err);
+            setView('home');
+          });
       } else {
         setView(route.view);
         if (route.view === 'home') setSelectedStash(null);
@@ -109,6 +137,20 @@ export default function App() {
     window.addEventListener('popstate', onPopState);
     return () => window.removeEventListener('popstate', onPopState);
   // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Auto-close mobile sidebar on viewport resize to desktop. Without this,
+  // a user who opens the sidebar on mobile then resizes (or rotates) up to
+  // desktop width would leave `sidebarOpen=true`, and the invisible
+  // .sidebar-overlay backdrop continues to intercept clicks on desktop.
+  useEffect(() => {
+    if (typeof window === 'undefined' || !window.matchMedia) return;
+    const mq = window.matchMedia('(min-width: 640px)');
+    const onChange = (e: MediaQueryListEvent) => {
+      if (e.matches) setSidebarOpen(false);
+    };
+    mq.addEventListener('change', onChange);
+    return () => mq.removeEventListener('change', onChange);
   }, []);
 
   // Check admin session on mount and when token changes.
@@ -152,7 +194,14 @@ export default function App() {
     }
   }, []);
 
+  // Generation counter so an older in-flight listStashes() resolution
+  // cannot overwrite results from a newer typed-search. Without this, a
+  // fast typer's earlier (slower) request can win the race and the UI
+  // shows results for a stale prefix.
+  const loadStashesGenRef = useRef(0);
+
   const loadStashes = useCallback(async () => {
+    const gen = ++loadStashesGenRef.current;
     setLoading(true);
     try {
       const result = await api.listStashes({
@@ -161,20 +210,27 @@ export default function App() {
         // undefined = show all (active + archived), false = show only active (hide archived)
         archived: showArchived ? undefined : false,
       });
+      if (gen !== loadStashesGenRef.current) return;
       setStashes(result.stashes);
       setTotal(result.total);
     } catch (err) {
+      if (gen !== loadStashesGenRef.current) return;
       console.error('Failed to load stashes:', err);
     } finally {
-      setLoading(false);
+      if (gen === loadStashesGenRef.current) setLoading(false);
     }
   }, [search, filterTag, showArchived]);
 
   useEffect(() => {
-    // Only load stashes when authenticated or in open mode
-    if (adminSession && (adminSession.authenticated || !adminSession.authRequired)) {
+    // Only load stashes when authenticated or in open mode.
+    // Debounce the call so each keystroke in the sidebar search field does
+    // not fire a fresh request — without this, typing "react" issues five
+    // overlapping fetches and the slowest one wins the race (last-wins).
+    if (!adminSession || (!adminSession.authenticated && adminSession.authRequired)) return;
+    const timer = setTimeout(() => {
       loadStashes();
-    }
+    }, 200);
+    return () => clearTimeout(timer);
   }, [loadStashes, adminSession]);
 
   // Load tags once on auth, then refresh via loadTags() in save/delete handlers

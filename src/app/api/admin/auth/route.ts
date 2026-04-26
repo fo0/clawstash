@@ -7,7 +7,13 @@ import {
   checkAndRecordAuthAttempt,
   resetAuthAttempts,
   getClientIp,
+  RATE_LIMIT_WINDOW_SEC,
 } from '@/server/auth-rate-limit';
+
+// Rate-limit state lives in an in-memory Map; this route MUST run on the
+// Node runtime so the route handler can share state with itself across
+// requests (Edge runtime has per-request isolation).
+export const runtime = 'nodejs';
 
 export async function POST(req: NextRequest) {
   const password = ADMIN_PASSWORD();
@@ -20,7 +26,18 @@ export async function POST(req: NextRequest) {
     });
   }
 
-  // Per-IP brute-force throttle (10 attempts / 15 min).
+  // Parse + validate the body BEFORE recording a rate-limit attempt.
+  // Otherwise a client posting 10 malformed bodies (no `password` field,
+  // unparseable JSON, etc.) burns the bucket and locks out legitimate
+  // users for 15 minutes without ever guessing a password.
+  const body = await parseJsonBody(req);
+  if ('error' in body) return body.error;
+  const { password: inputPassword } = body.data as Record<string, unknown>;
+  if (!inputPassword || typeof inputPassword !== 'string') {
+    return NextResponse.json({ error: 'Password is required' }, { status: 400 });
+  }
+
+  // Now we have a real password attempt — apply the per-IP throttle.
   const ip = getClientIp(req);
   const limit = checkAndRecordAuthAttempt('login', ip);
   if (!limit.allowed) {
@@ -28,16 +45,9 @@ export async function POST(req: NextRequest) {
       { error: 'Too many login attempts. Please try again later.' },
       {
         status: 429,
-        headers: { 'Retry-After': String(limit.retryAfter ?? 60) },
+        headers: { 'Retry-After': String(limit.retryAfter ?? RATE_LIMIT_WINDOW_SEC) },
       },
     );
-  }
-
-  const body = await parseJsonBody(req);
-  if ('error' in body) return body.error;
-  const { password: inputPassword } = body.data as Record<string, unknown>;
-  if (!inputPassword || typeof inputPassword !== 'string') {
-    return NextResponse.json({ error: 'Password is required' }, { status: 400 });
   }
 
   const inputHash = crypto.createHash('sha256').update(inputPassword).digest();

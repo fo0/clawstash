@@ -135,6 +135,12 @@ export interface UpdateStashInput {
   tags?: string[];
   metadata?: Record<string, unknown>;
   files?: { filename: string; content: string; language?: string }[];
+  // When set alongside content fields, the archive flag flip is applied
+  // inside the SAME transaction as the content update, so a thrown content
+  // update cannot leave the archive flag flipped (or vice-versa). When set
+  // alone, callers should use `archiveStash()` instead — that path skips
+  // the version snapshot per the documented archive semantics.
+  archived?: boolean;
 }
 
 export interface ListStashesOptions {
@@ -747,7 +753,11 @@ export class ClawStashDB {
   }
 
   listStashes(options: ListStashesOptions = {}): { stashes: StashListItem[]; total: number } {
-    const { search, tag, archived, page = 1, limit = 50 } = options;
+    const { search, tag, archived } = options;
+    // Clamp at the DB layer so callers that bypass parsePositiveInt (MCP,
+    // direct DB) cannot send `page=0`/negative/non-int and produce a
+    // SQLite "OFFSET should be non-negative" error or a `LIMIT 0` page.
+    const { limit, offset } = this.clampPagination(options.page, options.limit, 50);
     const conditions: string[] = [];
     const params: unknown[] = [];
 
@@ -772,7 +782,6 @@ export class ClawStashDB {
     }
 
     const where = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
-    const offset = (page - 1) * limit;
 
     const countRow = this.db
       .prepare(`SELECT COUNT(*) as count FROM stashes g ${where}`)
@@ -857,12 +866,30 @@ export class ClawStashDB {
     if (tokens.length === 0 || tokens.length > 50) return '';
 
     return tokens.map(t => {
-      // Strip FTS5 special syntax characters (including +/- operators) to prevent query errors
-      const cleaned = t.replace(/['"()*{}[\]:^~!@#$%&\\<>+\-,;./|]/g, '');
+      // Strip FTS5 special syntax characters (including +/- operators) to prevent
+      // query errors. Strip C0 controls (\x00-\x1F, \x7F), backtick, and the FTS
+      // snippet sentinels (U+E000 / U+E001) — defense-in-depth so a query
+      // containing the sentinel cannot survive into the prepared statement and
+      // confuse downstream snippet detection.
+      // eslint-disable-next-line no-control-regex
+      const cleaned = t.replace(/['"()*{}[\]:^~!@#$%&\\<>+\-,;./|` -]/g, '');
       if (!cleaned) return null;
-      // Prefix matching: "pyth" matches "python"
+      // Prefix matching: "pyth" matches "python".
+      // Skip 1-char prefix scans — `a*` matches every word starting with `a` and
+      // can produce a very expensive scan with huge result sets on big DBs.
+      if (cleaned.length < 2) return cleaned;
       return cleaned + '*';
     }).filter(Boolean).join(' ');
+  }
+
+  // Clamp pagination params at the DB layer so callers that bypass the REST
+  // route's parsePositiveInt (MCP tool layer, direct DB consumers, future
+  // callers) can never produce SQLite OFFSET errors or empty `LIMIT 0` pages.
+  // Returns sane positive integers with the documented defaults.
+  private clampPagination(page: unknown, limit: unknown, defaultLimit: number): { page: number; limit: number; offset: number } {
+    const safePage = typeof page === 'number' && Number.isInteger(page) && page > 0 ? page : 1;
+    const safeLimit = typeof limit === 'number' && Number.isInteger(limit) && limit > 0 ? limit : defaultLimit;
+    return { page: safePage, limit: safeLimit, offset: (safePage - 1) * safeLimit };
   }
 
   // FTS5 snippet markers — Unicode private-use characters that cannot
@@ -880,7 +907,11 @@ export class ClawStashDB {
   }
 
   searchStashes(query: string, options: { tag?: string; archived?: boolean; limit?: number; page?: number } = {}): SearchStashesResult {
-    const { tag, archived, limit = 20, page = 1 } = options;
+    const { tag, archived } = options;
+    // Clamp at the DB layer so MCP callers (which don't go through
+    // parsePositiveInt) cannot send page=0 → negative OFFSET → SQLite
+    // throw, or limit=0 → empty results despite non-zero `total`.
+    const { limit, offset } = this.clampPagination(options.page, options.limit, 20);
     const ftsQuery = this.buildFtsQuery(query);
 
     if (!ftsQuery) {
@@ -950,7 +981,6 @@ export class ClawStashDB {
         params.push(archived ? 1 : 0);
       }
 
-      const offset = (page - 1) * limit;
       sql += ` ORDER BY f.rank LIMIT ? OFFSET ?`;
       params.push(limit, offset);
 
@@ -960,7 +990,9 @@ export class ClawStashDB {
       // Logged at warn level so production FTS regressions are visible
       // (sanitization should prevent this in normal use).
       console.warn('[DB] FTS5 search failed, falling back to LIKE:', err instanceof Error ? err.message : err);
-      const fallback = this.listStashes({ search: query, tag, archived, limit, page });
+      // Forward the original raw page/limit; listStashes clamps them
+      // identically. Both call paths converge on the same defaults.
+      const fallback = this.listStashes({ search: query, tag, archived, limit: options.limit, page: options.page });
       return {
         stashes: fallback.stashes.map(s => ({ ...s, relevance: 0 })),
         total: fallback.total,
@@ -1071,6 +1103,13 @@ export class ClawStashDB {
       if (input.metadata !== undefined) {
         updates.push('metadata = ?');
         params.push(JSON.stringify(input.metadata));
+      }
+      // Allow `archived` to be flipped inside the same transaction so the
+      // route handler can apply archive + content changes atomically (a
+      // thrown content update cannot half-flip the archive flag).
+      if (input.archived !== undefined) {
+        updates.push('archived = ?');
+        params.push(input.archived ? 1 : 0);
       }
 
       params.push(id);

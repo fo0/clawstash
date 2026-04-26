@@ -19,9 +19,26 @@ export const MAX_IMPORT_SIZE = 100 * 1024 * 1024; // 100MB for ZIP import
 
 // --- Shared Sub-Schemas ---
 
+/**
+ * Validates a filename: no path separators, no ".." segments, no null bytes,
+ * non-empty, within length cap. Used by both write-side schemas (Create/Update)
+ * and the read-side raw-file route, so traversal attempts are rejected
+ * symmetrically. Today the DB does an exact-match lookup so traversal cannot
+ * escape the row; this is defense-in-depth in case file storage ever becomes
+ * filesystem-backed.
+ */
+export function isValidFilename(filename: string): boolean {
+  if (typeof filename !== 'string') return false;
+  if (filename.length === 0 || filename.length > MAX_FILENAME_LENGTH) return false;
+  if (/[/\\]/.test(filename)) return false;
+  if (filename.includes('..')) return false;
+  if (filename.includes('\0')) return false;
+  return true;
+}
+
 const FileSchema = z.object({
   filename: z.string().min(1, 'Filename is required').max(MAX_FILENAME_LENGTH)
-    .refine(f => !/[/\\]/.test(f) && !f.includes('..') && !f.includes('\0'), 'Filename contains invalid characters'),
+    .refine(isValidFilename, 'Filename contains invalid characters'),
   content: z.string().max(MAX_FILE_CONTENT_LENGTH, 'File content exceeds 10MB limit'),
   language: z.string().max(50).optional(),
 });
