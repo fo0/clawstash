@@ -93,9 +93,12 @@ Create API tokens in the web GUI under **Settings > API & Tokens** (scopes: `rea
 | `search_stashes` | Full-text search with ranked results |
 | `update_stash` | Update existing stash content |
 | `delete_stash` | Remove a stash |
+| `archive_stash` | Archive/unarchive a stash without deleting |
 | `list_tags` | List all tags with usage counts |
 | `get_tag_graph` | Explore tag relationships |
 | `get_stats` | Storage statistics |
+| `get_rest_api_spec` | Fetch the OpenAPI 3.0 schema (JSON) |
+| `get_mcp_spec` | Fetch the full MCP specification (markdown) |
 | `refresh_tools` | Get latest tool specs (for connected agents) |
 | `check_version` | Check for updates |
 

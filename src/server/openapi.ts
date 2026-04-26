@@ -74,7 +74,11 @@ export function getOpenApiSpec(baseUrl: string): OpenApiSpec {
             updated_at: { type: 'string', format: 'date-time' },
             files: { type: 'array', items: { type: 'object', properties: { filename: { type: 'string' }, language: { type: 'string' } } } },
             relevance: { type: 'number', description: 'BM25 relevance score (only present in search results)' },
-            snippets: { type: 'string', description: 'Match snippets with **highlighted** terms (only present in search results)' },
+            snippets: {
+              type: 'object',
+              description: 'Match snippets per-field (only present in search results). Keys: name, description, tags, filenames, file_content. Matched terms wrapped with `**…**`.',
+              additionalProperties: { type: 'string' },
+            },
           },
         },
         CreateStashInput: {
@@ -566,7 +570,7 @@ export function getOpenApiSpec(baseUrl: string): OpenApiSpec {
         get: {
           tags: ['System'],
           summary: 'MCP onboarding guide for AI self-onboarding',
-          description: 'Returns the full MCP onboarding guide as markdown text. Includes quick start instructions, recommended workflows, and the complete MCP specification with all tool definitions, input schemas, return types, and data types. No authentication required — designed for AI agents to discover and onboard themselves. The equivalent MCP tool is `onboard`.',
+          description: 'Returns the full MCP onboarding guide as markdown text. Includes quick start instructions, recommended workflows, and the complete MCP specification with all tool definitions, input schemas, return types, and data types. No authentication required — designed for AI agents to discover and onboard themselves. The equivalent MCP tool is `refresh_tools`.',
           responses: {
             200: { description: 'MCP onboarding guide as text/plain (markdown)' },
           },

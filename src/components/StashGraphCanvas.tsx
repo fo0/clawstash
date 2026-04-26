@@ -1,6 +1,7 @@
 import { useRef, useEffect, useCallback, useState } from 'react';
 import type { StashGraphNode, StashGraphEdge, StashGraphResult } from '../types';
 import { api } from '../api';
+import { formatDateTime } from '../utils/format';
 
 interface Props {
   onSelectStash: (id: string) => void;
@@ -68,7 +69,7 @@ function buildRenderNodes(data: StashGraphResult): { nodes: RenderNode[]; edges:
   return { nodes, edges: data.edges };
 }
 
-function simulate(nodes: RenderNode[], edges: StashGraphEdge[], alpha: number, _timelineMode: boolean, _timeRange: { min: number; max: number }, _canvasW: number) {
+function simulate(nodes: RenderNode[], edges: StashGraphEdge[], alpha: number) {
   const nodeMap = new Map(nodes.map(n => [n.id, n]));
 
   // Center gravity
@@ -419,7 +420,12 @@ export default function StashGraphCanvas({ onSelectStash, analyzeStashId, onAnal
         console.error('Failed to load stash graph:', err);
         setLoading(false);
       });
-  }, [applyVisibilityFilter, kickAnimation]);
+    // Fetch once on mount. `applyVisibilityFilter` depends on `defaultDepth`,
+    // so listing it here would re-fetch the entire graph from the server every
+    // time the depth slider moved — but the next effect already re-applies the
+    // filter client-side from `allNodesRef`/`allEdgesRef`.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Re-filter when analysedStashes or defaultDepth changes
   useEffect(() => {
@@ -655,9 +661,8 @@ export default function StashGraphCanvas({ onSelectStash, analyzeStashId, onAnal
     const canvas = canvasRef.current;
     if (!canvas) return;
     const tick = () => {
-      const cw = (canvas.width || 800) / devicePixelRatio;
       if (alphaRef.current > 0.001) {
-        simulate(nodesRef.current, edgesRef.current, alphaRef.current, false, { min: 0, max: 0 }, cw);
+        simulate(nodesRef.current, edgesRef.current, alphaRef.current);
         alphaRef.current *= 0.993;
         if (!autoFitDoneRef.current && alphaRef.current < 0.7) {
           autoFitDoneRef.current = true;
@@ -1086,27 +1091,27 @@ export default function StashGraphCanvas({ onSelectStash, analyzeStashId, onAnal
       <div className="graph-actions" style={{ marginBottom: 12 }}>
         <span className="graph-stats">{nodeCount} nodes · {edgeCount} edges</span>
         <div className="stash-graph-depth-control">
-          <label>Tiefe:</label>
+          <label>Depth:</label>
           <button
             className="graph-depth-btn"
             onClick={() => setDefaultDepth(d => Math.max(1, d - 1))}
             disabled={defaultDepth <= 1}
-            title="Tiefe verringern"
+            title="Decrease depth"
           >-</button>
           <span className="stash-graph-depth-value">{defaultDepth}</span>
           <button
             className="graph-depth-btn"
             onClick={() => setDefaultDepth(d => Math.min(5, d + 1))}
             disabled={defaultDepth >= 5}
-            title="Tiefe erhöhen"
+            title="Increase depth"
           >+</button>
         </div>
         {analysedStashes.size > 0 && (
-          <button className="btn graph-reset-btn" onClick={handleClearAnalysis} title="Analyse zurücksetzen">
+          <button className="btn graph-reset-btn" onClick={handleClearAnalysis} title="Reset analysis">
             <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
               <path d="M3.72 3.72a.75.75 0 0 1 1.06 0L8 6.94l3.22-3.22a.749.749 0 0 1 1.275.326.749.749 0 0 1-.215.734L9.06 8l3.22 3.22a.749.749 0 0 1-.326 1.275.749.749 0 0 1-.734-.215L8 9.06l-3.22 3.22a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042L6.94 8 3.72 4.78a.75.75 0 0 1 0-1.06Z" />
             </svg>
-            Analyse zurücksetzen ({analysedStashes.size})
+            Reset analysis ({analysedStashes.size})
           </button>
         )}
         {trackedTags.size > 0 && (
@@ -1114,7 +1119,7 @@ export default function StashGraphCanvas({ onSelectStash, analyzeStashId, onAnal
             <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor" opacity="0.8">
               <path d="M1 7.775V2.75C1 1.784 1.784 1 2.75 1h5.025c.464 0 .91.184 1.238.513l6.25 6.25a1.75 1.75 0 0 1 0 2.474l-5.026 5.026a1.75 1.75 0 0 1-2.474 0l-6.25-6.25A1.752 1.752 0 0 1 1 7.775Zm1.5 0c0 .066.026.13.073.177l6.25 6.25a.25.25 0 0 0 .354 0l5.025-5.025a.25.25 0 0 0 0-.354l-6.25-6.25a.25.25 0 0 0-.177-.073H2.75a.25.25 0 0 0-.25.25ZM6 5a1 1 0 1 1 0 2 1 1 0 0 1 0-2Z" />
             </svg>
-            {trackedTags.size} Tag{trackedTags.size !== 1 ? 's' : ''} verfolgt
+            {trackedTags.size} tag{trackedTags.size !== 1 ? 's' : ''} tracked
           </span>
         )}
         {ignoredTags.size > 0 && (
@@ -1122,7 +1127,7 @@ export default function StashGraphCanvas({ onSelectStash, analyzeStashId, onAnal
             <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor" opacity="0.6">
               <path d="M1 7.775V2.75C1 1.784 1.784 1 2.75 1h5.025c.464 0 .91.184 1.238.513l6.25 6.25a1.75 1.75 0 0 1 0 2.474l-5.026 5.026a1.75 1.75 0 0 1-2.474 0l-6.25-6.25A1.752 1.752 0 0 1 1 7.775Zm1.5 0c0 .066.026.13.073.177l6.25 6.25a.25.25 0 0 0 .354 0l5.025-5.025a.25.25 0 0 0 0-.354l-6.25-6.25a.25.25 0 0 0-.177-.073H2.75a.25.25 0 0 0-.25.25ZM6 5a1 1 0 1 1 0 2 1 1 0 0 1 0-2Z" />
             </svg>
-            {ignoredTags.size} Tag{ignoredTags.size !== 1 ? 's' : ''} ignoriert
+            {ignoredTags.size} tag{ignoredTags.size !== 1 ? 's' : ''} ignored
           </span>
         )}
         {hoveredLabel && !popup && (
@@ -1206,23 +1211,23 @@ export default function StashGraphCanvas({ onSelectStash, analyzeStashId, onAnal
 
             {popup.node.created_at && (
               <div className="stash-graph-popup-times">
-                <div>Created: {new Date(popup.node.created_at).toLocaleString('de-DE')}</div>
+                <div>Created: {formatDateTime(popup.node.created_at)}</div>
                 {popup.node.updated_at && popup.node.updated_at !== popup.node.created_at && (
-                  <div>Updated: {new Date(popup.node.updated_at).toLocaleString('de-DE')}</div>
+                  <div>Updated: {formatDateTime(popup.node.updated_at)}</div>
                 )}
               </div>
             )}
 
             {popup.node.tags && popup.node.tags.length > 0 && (
               <div className="graph-popup-section">
-                <div className="graph-popup-section-title">Tags <span style={{ fontSize: '0.75em', opacity: 0.5 }}>(Klick zum Ignorieren)</span></div>
+                <div className="graph-popup-section-title">Tags <span style={{ fontSize: '0.75em', opacity: 0.5 }}>(click to ignore)</span></div>
                 <div className="graph-popup-connections">
                   {popup.node.tags.map(t => (
                     <span
                       key={t}
                       className={`graph-popup-conn-tag graph-popup-conn-tag-toggle${ignoredTags.has(t) ? ' graph-popup-conn-tag-ignored' : ''}`}
                       onClick={() => handleToggleIgnoreTag(t)}
-                      title={ignoredTags.has(t) ? `Tag "${t}" wieder berücksichtigen` : `Tag "${t}" ignorieren`}
+                      title={ignoredTags.has(t) ? `Re-include tag "${t}"` : `Ignore tag "${t}"`}
                     >
                       {t}
                       {ignoredTags.has(t) && (
@@ -1255,7 +1260,7 @@ export default function StashGraphCanvas({ onSelectStash, analyzeStashId, onAnal
                 <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor">
                   <path d="M8 2a6 6 0 1 0 0 12A6 6 0 0 0 8 2Zm0 1.5a4.5 4.5 0 1 1 0 9 4.5 4.5 0 0 1 0-9Zm0 2a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5Z" />
                 </svg>
-                {analysedStashes.has(popup.node.id) ? 'Analyse beenden' : 'Analyse'}
+                {analysedStashes.has(popup.node.id) ? 'End analysis' : 'Analyze'}
               </button>
               <button className="graph-popup-action-btn graph-popup-action-filter" onClick={() => { setPopup(null); onSelectStash(popup.node.id); }}>
                 <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor">
@@ -1302,7 +1307,7 @@ export default function StashGraphCanvas({ onSelectStash, analyzeStashId, onAnal
                     <path d="M3.72 3.72a.75.75 0 0 1 1.06 0L8 6.94l3.22-3.22a.749.749 0 0 1 1.275.326.749.749 0 0 1-.215.734L9.06 8l3.22 3.22a.749.749 0 0 1-.326 1.275.749.749 0 0 1-.734-.215L8 9.06l-3.22 3.22a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042L6.94 8 3.72 4.78a.75.75 0 0 1 0-1.06Z" />
                   )}
                 </svg>
-                {ignoredTags.has(popup.node.label) ? 'Aktivieren' : 'Deaktivieren'}
+                {ignoredTags.has(popup.node.label) ? 'Enable' : 'Disable'}
               </button>
               <button
                 className={`graph-popup-action-btn ${trackedTags.has(popup.node.label) ? 'graph-popup-action-filter' : 'graph-popup-action-analyse'}`}
@@ -1312,7 +1317,7 @@ export default function StashGraphCanvas({ onSelectStash, analyzeStashId, onAnal
                 <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor">
                   <path d="M8.75 1.75a.75.75 0 0 0-1.5 0V5H4a.75.75 0 0 0 0 1.5h3.25v3.25a.75.75 0 0 0 1.5 0V6.5H12A.75.75 0 0 0 12 5H8.75V1.75ZM4 13a.75.75 0 0 0 0 1.5h8a.75.75 0 0 0 0-1.5H4Z" />
                 </svg>
-                {trackedTags.has(popup.node.label) ? 'Nicht mehr verfolgen' : 'Verfolgen'}
+                {trackedTags.has(popup.node.label) ? 'Stop tracking' : 'Track'}
               </button>
             </div>
           </div>
