@@ -1,38 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
 
 // ---------------------------------------------------------------------------
-// Rate Limiter — in-memory, login endpoint only
+// Rate limiting for /api/admin/auth and /api/tokens/validate has moved to
+// the route handlers themselves (src/server/auth-rate-limit.ts), because:
+//   1. Middleware runs in Edge runtime, route handlers in Node runtime —
+//      separate `globalThis`, so state cannot be shared.
+//   2. We want to RESET the counter on a successful login (so a legitimate
+//      user who eventually got the password right isn't locked out for the
+//      rest of the 15-min window). The reset must happen in the same
+//      runtime that holds the counter.
 // ---------------------------------------------------------------------------
-
-const loginAttempts = new Map<string, { count: number; resetAt: number }>();
-const RATE_LIMIT_WINDOW_MS = 15 * 60 * 1000; // 15 minutes
-const RATE_LIMIT_MAX = 10; // max attempts per window
-
-function checkLoginRateLimit(ip: string): { allowed: boolean; retryAfter?: number } {
-  const now = Date.now();
-  const entry = loginAttempts.get(ip);
-
-  if (!entry || now > entry.resetAt) {
-    loginAttempts.set(ip, { count: 1, resetAt: now + RATE_LIMIT_WINDOW_MS });
-    return { allowed: true };
-  }
-
-  if (entry.count >= RATE_LIMIT_MAX) {
-    const retryAfter = Math.ceil((entry.resetAt - now) / 1000);
-    return { allowed: false, retryAfter };
-  }
-
-  entry.count++;
-  return { allowed: true };
-}
-
-// Periodic cleanup of stale rate-limit entries (every 5 min)
-setInterval(() => {
-  const now = Date.now();
-  for (const [ip, entry] of loginAttempts) {
-    if (now > entry.resetAt) loginAttempts.delete(ip);
-  }
-}, 5 * 60 * 1000);
 
 // ---------------------------------------------------------------------------
 // CORS headers — permissive for AI agent access from any origin
@@ -69,30 +46,6 @@ export function middleware(req: NextRequest) {
       status: 204,
       headers: { ...CORS_HEADERS, ...SECURITY_HEADERS },
     });
-  }
-
-  // Rate limit login endpoint
-  if (pathname === '/api/admin/auth' && req.method === 'POST') {
-    // Prefer x-forwarded-for (set by most proxies). Fall back to x-real-ip
-    // (nginx, traefik) before the shared "unknown" bucket — proxies that
-    // strip XFF but set x-real-ip would otherwise lump every client together.
-    const ip = req.headers.get('x-forwarded-for')?.split(',')[0].trim()
-      || req.headers.get('x-real-ip')?.trim()
-      || 'unknown';
-    const { allowed, retryAfter } = checkLoginRateLimit(ip);
-    if (!allowed) {
-      return NextResponse.json(
-        { error: 'Too many login attempts. Please try again later.' },
-        {
-          status: 429,
-          headers: {
-            ...CORS_HEADERS,
-            ...SECURITY_HEADERS,
-            'Retry-After': String(retryAfter),
-          },
-        },
-      );
-    }
   }
 
   // Build response with headers

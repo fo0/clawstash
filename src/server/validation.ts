@@ -33,10 +33,18 @@ const FileSchema = z.object({
 // node/edge counts.
 const TagsSchema = z.array(z.string().min(1, 'Tag cannot be empty').max(MAX_TAG_LENGTH)).max(MAX_TAGS);
 
-const MetadataSchema = z.record(z.unknown()).refine(
-  (val) => Object.keys(val).length <= MAX_METADATA_KEYS,
-  { message: `Metadata cannot have more than ${MAX_METADATA_KEYS} keys` }
-);
+// `z.record(z.unknown())` accepts arrays in Zod 3 (typeof [] === 'object').
+// Without the explicit Array.isArray refusal, an array submitted as
+// `metadata: [...]` would pass validation, then `safeParseMetadata` silently
+// drops it on read with no error to the caller. Reject up-front instead.
+const MetadataSchema = z.record(z.unknown())
+  .refine((val) => !Array.isArray(val), {
+    message: 'Metadata must be an object, not an array',
+  })
+  .refine(
+    (val) => Object.keys(val).length <= MAX_METADATA_KEYS,
+    { message: `Metadata cannot have more than ${MAX_METADATA_KEYS} keys` }
+  );
 
 // --- Stash Schemas ---
 

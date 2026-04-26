@@ -40,10 +40,19 @@ export default function StashEditor({ stash, onSave, onCancel }: Props) {
   const [availableMetaKeys, setAvailableMetaKeys] = useState<string[]>([]);
   const [firstFileManuallyEdited, setFirstFileManuallyEdited] = useState(!!stash);
 
+  // useRef(initialValue) re-evaluates `initialValue` on every render but only
+  // keeps the FIRST render's result. The naive `.map(() => counter++)` form
+  // therefore increments the counter on every re-render, leaking IDs and
+  // letting React reuse keys for new file slots. Use an initialised flag so
+  // the seeding runs exactly once.
   const fileIdCounter = useRef(0);
-  const fileIds = useRef<number[]>(
-    (stash ? stash.files : [{ filename: '', content: '', language: '' }]).map(() => fileIdCounter.current++)
-  );
+  const fileIds = useRef<number[]>([]);
+  const fileIdsInitialized = useRef(false);
+  if (!fileIdsInitialized.current) {
+    fileIdsInitialized.current = true;
+    const initialFiles = stash ? stash.files : [{ filename: '', content: '', language: '' }];
+    fileIds.current = initialFiles.map(() => fileIdCounter.current++);
+  }
 
   // Load available tags and metadata keys
   useEffect(() => {

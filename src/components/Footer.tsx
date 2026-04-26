@@ -19,7 +19,13 @@ export default function Footer() {
   useEffect(() => {
     let cancelled = false;
     fetch('/api/version')
-      .then(r => r.json())
+      .then(r => {
+        // Without an `r.ok` check, a 5xx silently parses an HTML error page
+        // as JSON and the catch swallows the SyntaxError, hiding the failure
+        // entirely. Treat non-2xx as an error so dev sees a console warning.
+        if (!r.ok) throw new Error(`HTTP ${r.status}`);
+        return r.json();
+      })
       .then(data => {
         if (!cancelled && data.current) {
           setBuildInfo({
@@ -29,7 +35,12 @@ export default function Footer() {
           });
         }
       })
-      .catch(() => { /* use defaults */ });
+      .catch((err) => {
+        // Surface in dev; production stays silent and uses default UI.
+        if (process.env.NODE_ENV !== 'production') {
+          console.warn('[Footer] /api/version fetch failed:', err);
+        }
+      });
     return () => { cancelled = true; };
   }, []);
 

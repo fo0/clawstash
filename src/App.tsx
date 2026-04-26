@@ -111,11 +111,19 @@ export default function App() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Check admin session on mount and when token changes
+  // Check admin session on mount and when token changes.
+  // Guard against the in-flight session check from a previous token resolving
+  // AFTER the new token's check (out-of-order responses) — without the
+  // `cancelled` flag, the stale resolution would overwrite the fresh one and
+  // briefly flip the UI back to authenticated:false (or vice-versa).
   useEffect(() => {
-    api.adminCheckSession().then(setAdminSession).catch(() => {
-      setAdminSession({ authenticated: false, authRequired: true });
-    });
+    let cancelled = false;
+    api.adminCheckSession()
+      .then((session) => { if (!cancelled) setAdminSession(session); })
+      .catch(() => {
+        if (!cancelled) setAdminSession({ authenticated: false, authRequired: true });
+      });
+    return () => { cancelled = true; };
   }, [adminToken]);
 
   const handleLogin = useCallback(async (password: string) => {
