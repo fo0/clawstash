@@ -406,6 +406,14 @@ export default function StashViewer({ stash, onEdit, onDelete, onArchive, onBack
 
   const title = stash.name || stash.files[0]?.filename || 'Untitled';
 
+  // Memoize the rendered description markdown — DOMParser sanitization runs
+  // on every call, so cache by description content for consistency with
+  // StashCard. (Stash content may render long markdown.)
+  const descriptionHtml = useMemo(
+    () => stash.description ? renderDescriptionMarkdown(stash.description) : '',
+    [stash.description]
+  );
+
   return (
     <div className="stash-viewer">
       {/* Screen-reader announcement for copy status */}
@@ -472,7 +480,7 @@ export default function StashViewer({ stash, onEdit, onDelete, onArchive, onBack
       </div>
 
       {stash.description && (
-        <div className="viewer-description markdown-description" dangerouslySetInnerHTML={{ __html: renderDescriptionMarkdown(stash.description) }} />
+        <div className="viewer-description markdown-description" dangerouslySetInnerHTML={{ __html: descriptionHtml }} />
       )}
 
       {(stash.tags.length > 0 || Object.keys(stash.metadata).length > 0) && (
@@ -672,7 +680,7 @@ export default function StashViewer({ stash, onEdit, onDelete, onArchive, onBack
           {stash.description && (
             <div className="metadata-section">
               <h3>Description</h3>
-              <div className="markdown-description" style={{ fontSize: '13px', color: 'var(--text-secondary)', lineHeight: 1.6 }} dangerouslySetInnerHTML={{ __html: renderDescriptionMarkdown(stash.description) }} />
+              <div className="markdown-description" style={{ fontSize: '13px', color: 'var(--text-secondary)', lineHeight: 1.6 }} dangerouslySetInnerHTML={{ __html: descriptionHtml }} />
             </div>
           )}
 

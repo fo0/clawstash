@@ -872,7 +872,7 @@ export class ClawStashDB {
       // containing the sentinel cannot survive into the prepared statement and
       // confuse downstream snippet detection.
       // eslint-disable-next-line no-control-regex
-      const cleaned = t.replace(/['"()*{}[\]:^~!@#$%&\\<>+\-,;./|` -]/g, '');
+      const cleaned = t.replace(/['"()*{}[\]:^~!@#$%&\\<>+\-,;./|`\x00-\x1F\x7F\uE000\uE001]/g, '');
       if (!cleaned) return null;
       // Prefix matching: "pyth" matches "python".
       // Skip 1-char prefix scans — `a*` matches every word starting with `a` and
@@ -1636,20 +1636,25 @@ export class ClawStashDB {
   }
 
   restoreStashVersion(stashId: string, version: number, createdBy = 'system'): Stash | null {
-    const versionData = this.getStashVersion(stashId, version);
-    if (!versionData) return null;
-
-    return this.updateStash(stashId, {
-      name: versionData.name,
-      description: versionData.description,
-      tags: versionData.tags,
-      metadata: versionData.metadata,
-      files: versionData.files.map(f => ({
-        filename: f.filename,
-        content: f.content,
-        language: f.language,
-      })),
-    }, createdBy);
+    // Wrap fetch + write in a single transaction so a concurrent updateStash
+    // between the version snapshot read and the restore write cannot silently
+    // win (which would leave the user with neither the requested version nor
+    // their previous content).
+    return this.db.transaction(() => {
+      const versionData = this.getStashVersion(stashId, version);
+      if (!versionData) return null;
+      return this.updateStash(stashId, {
+        name: versionData.name,
+        description: versionData.description,
+        tags: versionData.tags,
+        metadata: versionData.metadata,
+        files: versionData.files.map(f => ({
+          filename: f.filename,
+          content: f.content,
+          language: f.language,
+        })),
+      }, createdBy);
+    })();
   }
 
   // === API Token Management ===
@@ -1696,11 +1701,6 @@ export class ClawStashDB {
     const row = this.db.prepare('SELECT id, scopes FROM api_tokens WHERE token_hash = ?').get(tokenHash) as { id: string; scopes: string } | undefined;
     if (!row) return { valid: false, scopes: [] };
     return { valid: true, scopes: this.safeParseScopes(row.scopes), tokenId: row.id };
-  }
-
-  hasAnyTokens(): boolean {
-    const row = this.db.prepare('SELECT COUNT(*) as c FROM api_tokens').get() as { c: number };
-    return row.c > 0;
   }
 
   // === Admin Session Management ===

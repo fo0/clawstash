@@ -368,12 +368,13 @@ export default function GraphViewer({ stashes, tags, onFilterTag, onSelectStash,
     adjacencyRef.current = set;
   }, []);
 
-  // Sync highlight ref for draw loop
-  highlightTagRef.current = highlightTag;
-  // Rebuild adjacency when highlight changes (and no hover active)
-  if (!hoveredRef.current) {
-    rebuildAdjacency(highlightTag);
-  }
+  // Sync highlight ref for draw loop + rebuild adjacency on highlight change.
+  // Done in an effect (not render body) for React 19 concurrent-rendering safety;
+  // the rAF draw loop reads adjacencyRef so post-commit timing is fine.
+  useEffect(() => {
+    highlightTagRef.current = highlightTag;
+    if (!hoveredRef.current) rebuildAdjacency(highlightTag);
+  }, [highlightTag, rebuildAdjacency]);
 
   // Filtered tags for search dropdown
   const searchResults = searchQuery.length > 0

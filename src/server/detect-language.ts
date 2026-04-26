@@ -52,7 +52,8 @@ const EXTENSION_MAP: Record<string, string> = {
   '.cfg': 'ini',
   '.conf': 'ini',
   '.env': 'bash',
-  '.dockerfile': 'docker',
+  // Note: a bare `Dockerfile` has no extension, so basename matching is out of
+  // scope here; PrismJS-side detection in src/languages.ts handles the basename.
   '.lua': 'lua',
   '.r': 'r',
   '.dart': 'dart',
