@@ -40,10 +40,19 @@ export default function StashEditor({ stash, onSave, onCancel }: Props) {
   const [availableMetaKeys, setAvailableMetaKeys] = useState<string[]>([]);
   const [firstFileManuallyEdited, setFirstFileManuallyEdited] = useState(!!stash);
 
+  // useRef(initialValue) re-evaluates `initialValue` on every render but only
+  // keeps the FIRST render's result. The naive `.map(() => counter++)` form
+  // therefore increments the counter on every re-render, leaking IDs and
+  // letting React reuse keys for new file slots. Use an initialised flag so
+  // the seeding runs exactly once.
   const fileIdCounter = useRef(0);
-  const fileIds = useRef<number[]>(
-    (stash ? stash.files : [{ filename: '', content: '', language: '' }]).map(() => fileIdCounter.current++)
-  );
+  const fileIds = useRef<number[]>([]);
+  const fileIdsInitialized = useRef(false);
+  if (!fileIdsInitialized.current) {
+    fileIdsInitialized.current = true;
+    const initialFiles = stash ? stash.files : [{ filename: '', content: '', language: '' }];
+    fileIds.current = initialFiles.map(() => fileIdCounter.current++);
+  }
 
   // Load available tags and metadata keys
   useEffect(() => {
@@ -53,22 +62,27 @@ export default function StashEditor({ stash, onSave, onCancel }: Props) {
     return () => { cancelled = true; };
   }, []);
 
-  // Auto-name first file from stash name (only when creating new, and first file name wasn't manually edited)
+  // Auto-name first file from stash name (only when creating new, and first
+  // file name wasn't manually edited). Use functional setFiles so a fast
+  // typer cannot race an in-flight updateFile() and overwrite freshly-edited
+  // file content with a stale closure-captured snapshot. Removing `files`
+  // from the dep list also avoids recreating the callback on every keystroke.
   const handleNameChange = useCallback((newName: string) => {
     setName(newName);
-    if (!firstFileManuallyEdited && files.length > 0) {
-      const ext = files[0].filename ? files[0].filename.match(/\.[^.]+$/)?.[0] : '';
+    if (firstFileManuallyEdited) return;
+    setFiles((prev) => {
+      if (prev.length === 0) return prev;
+      const ext = prev[0].filename ? prev[0].filename.match(/\.[^.]+$/)?.[0] : '';
       const baseFileName = newName
         .toLowerCase()
         .replace(/[^a-z0-9]+/g, '-')
         .replace(/^-|-$/g, '');
-      if (baseFileName) {
-        const updated = [...files];
-        updated[0] = { ...updated[0], filename: baseFileName + (ext || '') };
-        setFiles(updated);
-      }
-    }
-  }, [firstFileManuallyEdited, files]);
+      if (!baseFileName) return prev;
+      const updated = [...prev];
+      updated[0] = { ...updated[0], filename: baseFileName + (ext || '') };
+      return updated;
+    });
+  }, [firstFileManuallyEdited]);
 
   const addFile = () => {
     setFiles([...files, { filename: '', content: '', language: '' }]);

@@ -34,10 +34,16 @@ export const FileInputSchema = z.object({
 // Reject empty-string tags so MCP callers cannot silently push blank pills
 // (mirrors the REST `TagsSchema` constraint in src/server/validation.ts).
 const McpTagsSchema = z.array(z.string().min(1).max(MAX_TAG_LENGTH)).max(MAX_TAGS);
-const McpMetadataSchema = z.record(z.unknown()).refine(
-  (val) => Object.keys(val).length <= MAX_METADATA_KEYS,
-  { message: `Metadata cannot have more than ${MAX_METADATA_KEYS} keys` },
-);
+// Reject arrays explicitly — `z.record(z.unknown())` accepts them in Zod 3
+// (typeof [] === 'object') but `safeParseMetadata` discards arrays on read.
+const McpMetadataSchema = z.record(z.unknown())
+  .refine((val) => !Array.isArray(val), {
+    message: 'Metadata must be an object, not an array',
+  })
+  .refine(
+    (val) => Object.keys(val).length <= MAX_METADATA_KEYS,
+    { message: `Metadata cannot have more than ${MAX_METADATA_KEYS} keys` },
+  );
 
 // ---------------------------------------------------------------------------
 // Tool definition type

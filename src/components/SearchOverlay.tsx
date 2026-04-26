@@ -26,6 +26,13 @@ export default function SearchOverlay({ open, onClose, onSelectStash }: Props) {
   useEffect(() => {
     if (open) {
       searchGenRef.current++;
+      // Cancel any in-flight debounce from a previous open of the overlay,
+      // otherwise a queued doSearch(value) from before the close fires
+      // ~200ms into the new open and briefly populates stale results.
+      if (debounceRef.current) {
+        clearTimeout(debounceRef.current);
+        debounceRef.current = undefined;
+      }
       setQuery('');
       setResults([]);
       setActiveIndex(0);

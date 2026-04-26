@@ -50,19 +50,19 @@ export async function PATCH(req: NextRequest, { params }: Params) {
     return NextResponse.json(stash);
   }
 
-  // If archived is set alongside other fields, apply both atomically
-  if (archived !== undefined) {
-    if (!db.stashExists(id)) {
-      return NextResponse.json({ error: 'Stash not found' }, { status: 404 });
-    }
-    db.archiveStash(id, archived);
-  }
-
-  const stash = db.updateStash(id, { name, description, tags, metadata, files }, source);
+  // archived alongside content fields — pass through to updateStash so the
+  // archive flip happens INSIDE the same transaction. Previously the route
+  // called archiveStash() (one tx) and then updateStash() (another tx); a
+  // thrown updateStash left the archive flag flipped without a corresponding
+  // content change. updateStash now accepts `archived` directly.
+  const stash = db.updateStash(id, { name, description, tags, metadata, files, archived }, source);
   if (!stash) {
     return NextResponse.json({ error: 'Stash not found' }, { status: 404 });
   }
   db.logAccess(stash.id, source, 'update', ip, userAgent);
+  if (archived !== undefined) {
+    db.logAccess(stash.id, source, archived ? 'archive' : 'unarchive', ip, userAgent);
+  }
   return NextResponse.json(stash);
 }
 
