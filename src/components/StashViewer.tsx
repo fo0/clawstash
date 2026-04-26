@@ -640,7 +640,7 @@ export default function StashViewer({ stash, onEdit, onDelete, onArchive, onBack
                 </div>
                 {showRendered && lang === 'mermaid' ? (
                   <div className="file-rendered file-mermaid">
-                    <MermaidDiagram code={file.content} />
+                    <MermaidDiagram code={file.content} storageKey={`${stash.id}:${file.filename}`} />
                   </div>
                 ) : showRendered && lang === 'markdown' ? (
                   <div className="file-rendered markdown-body" dangerouslySetInnerHTML={{ __html: renderedContent.get(file.id) || '' }} />
