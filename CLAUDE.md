@@ -44,6 +44,7 @@
 | Code Editor | react-simple-code-editor, PrismJS | 0.14, 1.30 |
 | Markdown Rendering | marked | 17 |
 | Diagram Rendering | mermaid (lazy-loaded) | 11 |
+| Diagram Viewer (zoom/pan) | react-zoom-pan-pinch | 3.7 |
 | Text Diffing | diff (jsdiff) | 8 |
 | Module System | ESM (`"type": "module"`) | — |
 | Containerization | Docker (multi-stage, standalone output) | — |
@@ -314,6 +315,7 @@ npx gitnexus analyze       # Rebuild index (after structural changes or stale in
 - Errors render inline as `.mermaid-error` blocks (red border, message + source echoed) — no app crash
 - Toggle Raw ⇄ Preview reuses the existing `renderPreview` toggle (Mermaid is part of `RENDERABLE_LANGUAGES`)
 - Theme: ClawStash is dark-only today; `mermaid.initialize` is called once with `theme: 'dark'`. Re-render hook is in place (deps include `renderedContent`/`renderPreview`/`activeTab`) so future theme switching can re-init + force re-hydration trivially.
+- **Zoom/pan toolbar** for the standalone `.mmd` viewer (`MermaidDiagram` component): + / − / Fit / 1:1 / Reset / Fullscreen buttons, current zoom % display, mouse-wheel zoom with Ctrl/Cmd modifier, pinch zoom on touch, drag to pan. Keyboard shortcuts (`+` / `-` / `0` / `f` / `Esc`) when the viewer has focus or is fullscreen. Initial render auto-fits to width; persistent zoom per stash file via `localStorage["clawstash_mermaid_zoom_${stash.id}:${filename}"]`. Powered by `react-zoom-pan-pinch`. Inline ` ```mermaid ` blocks in Markdown intentionally stay as static SVGs (separate DOM hydration path; small diagrams in practice).
 
 ### Language Utility (src/languages.ts)
 
@@ -473,7 +475,7 @@ If `CLAUDE.md` exceeds ~40,000 characters: extract the largest section into `age
 <!-- gitnexus:start -->
 # GitNexus — Code Intelligence
 
-This project is indexed by GitNexus as **clawstash** (2148 symbols, 3843 relationships, 185 execution flows). Use the GitNexus MCP tools to understand code, assess impact, and navigate safely.
+This project is indexed by GitNexus as **clawstash** (2153 symbols, 3846 relationships, 186 execution flows). Use the GitNexus MCP tools to understand code, assess impact, and navigate safely.
 
 > If any GitNexus tool warns the index is stale, run `npx gitnexus analyze` in terminal first.
 

@@ -5766,3 +5766,116 @@ body {
   padding: 0;
   background: var(--bg-primary);
 }
+
+/* Mermaid zoom/pan viewer (standalone .mmd / .mermaid files) */
+.mermaid-viewer {
+  position: relative;
+  width: 100%;
+  max-height: 70vh;
+  background: var(--bg-primary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius);
+  overflow: hidden;
+  outline: none;
+}
+
+.mermaid-viewer:focus-visible {
+  outline: 2px solid var(--accent-blue, #2f81f7);
+  outline-offset: -2px;
+}
+
+.mermaid-toolbar {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  z-index: 5;
+  display: flex;
+  gap: 4px;
+  align-items: center;
+  padding: 4px 6px;
+  background: rgba(22, 27, 34, 0.9);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius);
+  backdrop-filter: blur(4px);
+}
+
+.mermaid-toolbar .btn {
+  padding: 2px 8px;
+  min-width: 28px;
+  font-size: 13px;
+  line-height: 1;
+}
+
+.mermaid-zoom-display {
+  display: inline-block;
+  min-width: 48px;
+  padding: 0 4px;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+  color: var(--text-secondary);
+}
+
+.mermaid-transform-wrapper {
+  width: 100% !important;
+  height: 100% !important;
+  min-height: 320px;
+  cursor: grab;
+}
+
+.mermaid-transform-wrapper:active {
+  cursor: grabbing;
+}
+
+/* Within the zoom/pan transform context, the inner .mermaid-diagram should
+   not impose its own padding/border/overflow — the viewer wraps it. */
+.mermaid-transform-content .mermaid-diagram {
+  padding: 16px;
+  border: none;
+  background: transparent;
+  overflow: visible;
+}
+
+.mermaid-transform-content .mermaid-diagram svg {
+  /* Allow natural size inside the transform context: the wrapper scales it. */
+  max-width: none;
+  height: auto;
+  display: block;
+}
+
+/* Fullscreen modal */
+.mermaid-fullscreen-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  background: rgba(0, 0, 0, 0.85);
+  display: flex;
+  align-items: stretch;
+  justify-content: stretch;
+  padding: 24px;
+}
+
+.mermaid-viewer-fullscreen {
+  flex: 1;
+  max-height: none;
+  height: 100%;
+  background: var(--bg-secondary);
+}
+
+@media (max-width: 640px) {
+  .mermaid-viewer {
+    max-height: 60vh;
+  }
+  .mermaid-toolbar {
+    top: 4px;
+    right: 4px;
+    padding: 2px 4px;
+  }
+  .mermaid-toolbar .btn {
+    min-width: 24px;
+    padding: 2px 6px;
+  }
+  .mermaid-fullscreen-backdrop {
+    padding: 8px;
+  }
+}
