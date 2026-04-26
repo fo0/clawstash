@@ -100,32 +100,50 @@ export default function MermaidDiagram({ code, className, storageKey }: Props) {
     };
   }, [code]);
 
-  // Compute "fit-to-width" scale based on container vs. natural SVG width.
+  // Compute the scale that fits the diagram fully within the transform
+  // wrapper on BOTH axes. Reads layout (un-transformed) dimensions from the
+  // react-zoom-pan-pinch instance so the result is independent of the
+  // current zoom level.
   const computeFitScale = useCallback((): number => {
-    const cont = containerRef.current?.getBoundingClientRect();
-    const svg = contentRef.current?.querySelector('svg');
-    if (!cont || !svg) return 1;
-    const rect = svg.getBoundingClientRect();
-    const viewBoxWidth = svg.viewBox?.baseVal?.width;
-    // Use natural (un-transformed) width: prefer viewBox over current rect
-    // (rect reflects the current transform, viewBox is intrinsic).
-    const w = viewBoxWidth || rect.width || cont.width;
-    if (!w) return 1;
-    const fit = (cont.width - 32) / w; // 32px breathing room on each side
+    const instance = wrapperRef.current?.instance;
+    const wrapper = instance?.wrapperComponent;
+    const content = instance?.contentComponent;
+    if (!wrapper || !content) return 1;
+
+    const wrapperWidth = wrapper.offsetWidth;
+    const wrapperHeight = wrapper.offsetHeight;
+    // offsetWidth/offsetHeight reflect the layout box, never the transform —
+    // so this is the natural footprint of the diagram regardless of zoom.
+    const contentWidth = content.offsetWidth;
+    const contentHeight = content.offsetHeight;
+    if (!wrapperWidth || !wrapperHeight || !contentWidth || !contentHeight) {
+      return 1;
+    }
+
+    const PADDING_PER_SIDE = 16; // breathing room around the diagram
+    const scaleX = (wrapperWidth - PADDING_PER_SIDE * 2) / contentWidth;
+    const scaleY = (wrapperHeight - PADDING_PER_SIDE * 2) / contentHeight;
+    const fit = Math.min(scaleX, scaleY);
     return Math.min(MAX_SCALE, Math.max(MIN_SCALE, fit));
   }, []);
 
-  const fitToWidth = useCallback(() => {
+  const fitToView = useCallback(() => {
     const s = computeFitScale();
-    wrapperRef.current?.setTransform(0, 0, s, ANIMATION_MS);
+    // centerView positions the content so its center maps to the wrapper's
+    // center at the given scale (uses the library's wrapper/content
+    // offset dimensions internally). setTransform(0, 0, s) — used previously
+    // — anchors the content's top-left to the wrapper origin, which made
+    // the diagram appear in a corner instead of centered.
+    wrapperRef.current?.centerView(s, ANIMATION_MS);
   }, [computeFitScale]);
 
   const actualSize = useCallback(() => {
-    wrapperRef.current?.setTransform(0, 0, 1, ANIMATION_MS);
+    // Center 1:1 view in the wrapper instead of pinning it to the top-left.
+    wrapperRef.current?.centerView(1, ANIMATION_MS);
   }, []);
 
   // Reset view: clear any persisted custom zoom for this file AND fit to
-  // width. Distinguishes from `Fit` (which only re-fits without forgetting
+  // view. Distinguishes from `Fit` (which only re-fits without forgetting
   // the stored value) so the user can return to defaults.
   const resetView = useCallback(() => {
     if (storageKey) {
@@ -136,8 +154,8 @@ export default function MermaidDiagram({ code, className, storageKey }: Props) {
         persistTimerRef.current = null;
       }
     }
-    fitToWidth();
-  }, [storageKey, fitToWidth]);
+    fitToView();
+  }, [storageKey, fitToView]);
 
   // When the storageKey changes mid-life (e.g. file switched while reusing
   // the same component instance), the existing `initializedRef` guard would
@@ -149,15 +167,16 @@ export default function MermaidDiagram({ code, className, storageKey }: Props) {
     initializedRef.current = false;
   }, [storageKey]);
 
-  // After SVG injection: restore stored zoom or auto fit-to-width.
+  // After SVG injection: restore stored zoom or auto-fit, always centered.
   useEffect(() => {
     if (state.loading || state.error || !state.svg) return;
     if (initializedRef.current) return;
     const stored = loadStoredScale(storageKey);
-    // Wait one frame so the SVG has its bounding rect available.
+    // Wait one frame so the SVG has been laid out and the instance has
+    // its wrapper/content components attached.
     const id = requestAnimationFrame(() => {
       const target = stored ?? computeFitScale();
-      wrapperRef.current?.setTransform(0, 0, target, 0);
+      wrapperRef.current?.centerView(target, 0);
       setScale(target);
       initializedRef.current = true;
     });
@@ -214,7 +233,7 @@ export default function MermaidDiagram({ code, className, storageKey }: Props) {
           break;
         case '0':
           e.preventDefault();
-          fitToWidth();
+          fitToView();
           break;
         case 'f':
         case 'F':
@@ -225,7 +244,7 @@ export default function MermaidDiagram({ code, className, storageKey }: Props) {
           break;
       }
     },
-    [fitToWidth],
+    [fitToView],
   );
 
   const handleTransformed = useCallback(
@@ -297,9 +316,9 @@ export default function MermaidDiagram({ code, className, storageKey }: Props) {
         <button
           type="button"
           className="btn btn-sm btn-ghost"
-          onClick={fitToWidth}
-          title="Fit to width (0)"
-          aria-label="Fit to width"
+          onClick={fitToView}
+          title="Fit to view (0)"
+          aria-label="Fit to view"
         >
           Fit
         </button>
