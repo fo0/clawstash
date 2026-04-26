@@ -1,4 +1,4 @@
-import { useState, useEffect, type ReactNode } from 'react';
+import { useState, useEffect, useRef, type ReactNode } from 'react';
 import type { SettingsSection, LayoutMode, Stats, TagInfo } from '../types';
 import { api } from '../api';
 import ApiManager from './api/ApiManager';
@@ -277,6 +277,15 @@ function StorageSection() {
     }
   };
 
+  // Tracks whether the storage section is still mounted, so async ops launched
+  // from event handlers don't trigger setState-after-unmount warnings if the
+  // user navigates away mid-import / mid-export.
+  const sectionMountedRef = useRef(true);
+  useEffect(() => {
+    sectionMountedRef.current = true;
+    return () => { sectionMountedRef.current = false; };
+  }, []);
+
   const handleImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -289,15 +298,19 @@ function StorageSection() {
     setImportError(null);
     try {
       const result = await api.importData(file);
+      if (!sectionMountedRef.current) return;
       setImportResult(`Import successful: ${result.imported.stashes} stashes, ${result.imported.files} files, ${result.imported.versions} versions imported.`);
       // Reload stats
       const [statsData, tagsData] = await Promise.all([api.getStats(), api.getTags()]);
+      if (!sectionMountedRef.current) return;
       setStats(statsData);
       setTags(tagsData);
     } catch (err) {
-      setImportError(err instanceof Error ? err.message : 'Import failed');
+      if (sectionMountedRef.current) {
+        setImportError(err instanceof Error ? err.message : 'Import failed');
+      }
     } finally {
-      setImporting(false);
+      if (sectionMountedRef.current) setImporting(false);
     }
   };
 

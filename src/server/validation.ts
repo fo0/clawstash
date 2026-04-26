@@ -26,7 +26,12 @@ const FileSchema = z.object({
   language: z.string().max(50).optional(),
 });
 
-const TagsSchema = z.array(z.string().max(MAX_TAG_LENGTH)).max(MAX_TAGS);
+// Reject empty-string tags. `z.string()` accepts "" by default, so without
+// `.min(1)` callers could silently push `["", "python"]` into the tag list,
+// which then renders as a blank pill in the UI and matches everything in tag
+// filters. Tags also feed `getTagGraph`, where empty strings would inflate
+// node/edge counts.
+const TagsSchema = z.array(z.string().min(1, 'Tag cannot be empty').max(MAX_TAG_LENGTH)).max(MAX_TAGS);
 
 const MetadataSchema = z.record(z.unknown()).refine(
   (val) => Object.keys(val).length <= MAX_METADATA_KEYS,

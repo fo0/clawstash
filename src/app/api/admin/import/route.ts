@@ -9,6 +9,29 @@ export async function POST(req: NextRequest) {
   if (!admin.ok) return admin.response;
 
   try {
+    // Reject oversized uploads before buffering the entire body into memory.
+    // formData() reads the whole stream — without this guard a malicious admin
+    // token could OOM the process by uploading a multi-GB body. We require an
+    // explicit Content-Length header so chunked uploads (which would bypass
+    // the size guard) are rejected up-front.
+    const contentLengthHeader = req.headers.get('content-length');
+    if (contentLengthHeader === null) {
+      return NextResponse.json(
+        { error: 'Content-Length header required for import' },
+        { status: 411 },
+      );
+    }
+    const contentLength = parseInt(contentLengthHeader, 10);
+    if (!Number.isFinite(contentLength) || contentLength < 0) {
+      return NextResponse.json(
+        { error: 'Invalid Content-Length header' },
+        { status: 400 },
+      );
+    }
+    if (contentLength > MAX_IMPORT_SIZE) {
+      return NextResponse.json({ error: 'Import file too large (max 100MB)' }, { status: 413 });
+    }
+
     const formData = await req.formData();
     const file = formData.get('file');
     if (!file || !(file instanceof Blob)) {

@@ -32,10 +32,12 @@ export default function VersionHistory({ stashId, currentVersion, onRestore }: P
   const [diffLoading, setDiffLoading] = useState(false);
 
   useEffect(() => {
+    let cancelled = false;
     setLoading(true);
     setError(null);
     api.getVersions(stashId)
       .then((v) => {
+        if (cancelled) return;
         setVersions(v);
         // Auto-select the two most recent versions for quick comparison
         if (v.length >= 2) {
@@ -44,10 +46,12 @@ export default function VersionHistory({ stashId, currentVersion, onRestore }: P
         }
       })
       .catch(() => {
+        if (cancelled) return;
         setVersions([]);
         setError('Failed to load version history');
       })
-      .finally(() => setLoading(false));
+      .finally(() => { if (!cancelled) setLoading(false); });
+    return () => { cancelled = true; };
   }, [stashId, currentVersion]);
 
   const handleViewVersion = async (version: number) => {
