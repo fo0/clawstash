@@ -135,6 +135,12 @@ export interface UpdateStashInput {
   tags?: string[];
   metadata?: Record<string, unknown>;
   files?: { filename: string; content: string; language?: string }[];
+  // When set alongside content fields, the archive flag flip is applied
+  // inside the SAME transaction as the content update, so a thrown content
+  // update cannot leave the archive flag flipped (or vice-versa). When set
+  // alone, callers should use `archiveStash()` instead — that path skips
+  // the version snapshot per the documented archive semantics.
+  archived?: boolean;
 }
 
 export interface ListStashesOptions {
@@ -569,6 +575,25 @@ export class ClawStashDB {
     }
   }
 
+  // Defensive parser for `api_tokens.scopes` rows. Corruption of this column
+  // (manual SQL edit, partial migration, etc.) must not 500 out the token
+  // listing or auth check — the token simply ends up with an empty (or
+  // partially-valid) scope set and falls back to "no access". Mirrors the
+  // pattern of safeParseTags / safeParseMetadata.
+  private safeParseScopes(raw: unknown): TokenScope[] {
+    if (typeof raw !== 'string') return [];
+    try {
+      const parsed = JSON.parse(raw);
+      if (!Array.isArray(parsed)) return [];
+      const valid: readonly TokenScope[] = ['read', 'write', 'admin', 'mcp'];
+      return parsed.filter(
+        (s): s is TokenScope => typeof s === 'string' && (valid as readonly string[]).includes(s),
+      );
+    } catch {
+      return [];
+    }
+  }
+
   private rowToStash(row: Record<string, unknown>): Omit<Stash, 'files'> {
     return {
       id: row.id as string,
@@ -728,7 +753,11 @@ export class ClawStashDB {
   }
 
   listStashes(options: ListStashesOptions = {}): { stashes: StashListItem[]; total: number } {
-    const { search, tag, archived, page = 1, limit = 50 } = options;
+    const { search, tag, archived } = options;
+    // Clamp at the DB layer so callers that bypass parsePositiveInt (MCP,
+    // direct DB) cannot send `page=0`/negative/non-int and produce a
+    // SQLite "OFFSET should be non-negative" error or a `LIMIT 0` page.
+    const { limit, offset } = this.clampPagination(options.page, options.limit, 50);
     const conditions: string[] = [];
     const params: unknown[] = [];
 
@@ -753,7 +782,6 @@ export class ClawStashDB {
     }
 
     const where = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
-    const offset = (page - 1) * limit;
 
     const countRow = this.db
       .prepare(`SELECT COUNT(*) as count FROM stashes g ${where}`)
@@ -838,16 +866,52 @@ export class ClawStashDB {
     if (tokens.length === 0 || tokens.length > 50) return '';
 
     return tokens.map(t => {
-      // Strip FTS5 special syntax characters (including +/- operators) to prevent query errors
-      const cleaned = t.replace(/['"()*{}[\]:^~!@#$%&\\<>+\-,;./|]/g, '');
+      // Strip FTS5 special syntax characters (including +/- operators) to prevent
+      // query errors. Strip C0 controls (\x00-\x1F, \x7F), backtick, and the FTS
+      // snippet sentinels (U+E000 / U+E001) — defense-in-depth so a query
+      // containing the sentinel cannot survive into the prepared statement and
+      // confuse downstream snippet detection.
+      // eslint-disable-next-line no-control-regex
+      const cleaned = t.replace(/['"()*{}[\]:^~!@#$%&\\<>+\-,;./|` -]/g, '');
       if (!cleaned) return null;
-      // Prefix matching: "pyth" matches "python"
+      // Prefix matching: "pyth" matches "python".
+      // Skip 1-char prefix scans — `a*` matches every word starting with `a` and
+      // can produce a very expensive scan with huge result sets on big DBs.
+      if (cleaned.length < 2) return cleaned;
       return cleaned + '*';
     }).filter(Boolean).join(' ');
   }
 
+  // Clamp pagination params at the DB layer so callers that bypass the REST
+  // route's parsePositiveInt (MCP tool layer, direct DB consumers, future
+  // callers) can never produce SQLite OFFSET errors or empty `LIMIT 0` pages.
+  // Returns sane positive integers with the documented defaults.
+  private clampPagination(page: unknown, limit: unknown, defaultLimit: number): { page: number; limit: number; offset: number } {
+    const safePage = typeof page === 'number' && Number.isInteger(page) && page > 0 ? page : 1;
+    const safeLimit = typeof limit === 'number' && Number.isInteger(limit) && limit > 0 ? limit : defaultLimit;
+    return { page: safePage, limit: safeLimit, offset: (safePage - 1) * safeLimit };
+  }
+
+  // FTS5 snippet markers — Unicode private-use characters that cannot
+  // appear in legitimate user content. Used internally so we can detect a real
+  // snippet hit without false positives from literal "**" the user typed
+  // (markdown bold, `**kwargs`, etc.). Replaced with the public "**…**"
+  // markers before snippets leave this method, preserving the API contract.
+  private readonly FTS_SNIPPET_OPEN = '\uE000';
+  private readonly FTS_SNIPPET_CLOSE = '\uE001';
+
+  private formatSnippet(raw: string): string {
+    return raw
+      .split(this.FTS_SNIPPET_OPEN).join('**')
+      .split(this.FTS_SNIPPET_CLOSE).join('**');
+  }
+
   searchStashes(query: string, options: { tag?: string; archived?: boolean; limit?: number; page?: number } = {}): SearchStashesResult {
-    const { tag, archived, limit = 20, page = 1 } = options;
+    const { tag, archived } = options;
+    // Clamp at the DB layer so MCP callers (which don't go through
+    // parsePositiveInt) cannot send page=0 → negative OFFSET → SQLite
+    // throw, or limit=0 → empty results despite non-zero `total`.
+    const { limit, offset } = this.clampPagination(options.page, options.limit, 20);
     const ftsQuery = this.buildFtsQuery(query);
 
     if (!ftsQuery) {
@@ -888,13 +952,18 @@ export class ClawStashDB {
 
       countRow = this.db.prepare(countSql).get(...countParams) as { count: number };
 
+      // Use private-use Unicode markers (U+E000 / U+E001) so we can detect
+      // a real FTS hit without confusing it with literal "**" the user wrote
+      // (markdown bold, `**kwargs`, etc.). Replaced with "**" before return.
+      const O = this.FTS_SNIPPET_OPEN;
+      const C = this.FTS_SNIPPET_CLOSE;
       let sql = `
         SELECT f.stash_id, f.rank,
-          snippet(stashes_fts, 1, '**', '**', '…', 32) as name_snippet,
-          snippet(stashes_fts, 2, '**', '**', '…', 64) as desc_snippet,
-          snippet(stashes_fts, 3, '**', '**', '…', 32) as tags_snippet,
-          snippet(stashes_fts, 4, '**', '**', '…', 32) as filenames_snippet,
-          snippet(stashes_fts, 5, '**', '**', '…', 64) as content_snippet
+          snippet(stashes_fts, 1, '${O}', '${C}', '…', 32) as name_snippet,
+          snippet(stashes_fts, 2, '${O}', '${C}', '…', 64) as desc_snippet,
+          snippet(stashes_fts, 3, '${O}', '${C}', '…', 32) as tags_snippet,
+          snippet(stashes_fts, 4, '${O}', '${C}', '…', 32) as filenames_snippet,
+          snippet(stashes_fts, 5, '${O}', '${C}', '…', 64) as content_snippet
         FROM stashes_fts f
         JOIN stashes s ON s.id = f.stash_id
         WHERE stashes_fts MATCH ?
@@ -912,7 +981,6 @@ export class ClawStashDB {
         params.push(archived ? 1 : 0);
       }
 
-      const offset = (page - 1) * limit;
       sql += ` ORDER BY f.rank LIMIT ? OFFSET ?`;
       params.push(limit, offset);
 
@@ -922,7 +990,9 @@ export class ClawStashDB {
       // Logged at warn level so production FTS regressions are visible
       // (sanitization should prevent this in normal use).
       console.warn('[DB] FTS5 search failed, falling back to LIKE:', err instanceof Error ? err.message : err);
-      const fallback = this.listStashes({ search: query, tag, archived, limit, page });
+      // Forward the original raw page/limit; listStashes clamps them
+      // identically. Both call paths converge on the same defaults.
+      const fallback = this.listStashes({ search: query, tag, archived, limit: options.limit, page: options.page });
       return {
         stashes: fallback.stashes.map(s => ({ ...s, relevance: 0 })),
         total: fallback.total,
@@ -939,13 +1009,15 @@ export class ClawStashDB {
         .all(item.id) as StashFileInfo[];
       const total_size = files.reduce((sum, f) => sum + f.size, 0);
 
-      // Only include snippets that contain highlighted matches
+      // Only include snippets that contain highlighted matches. Detect via
+      // the private-use sentinel (cannot appear in user content), then format
+      // with the public "**…**" markers documented in the API contract.
       const snippets: Record<string, string> = {};
-      if (row.name_snippet && row.name_snippet.includes('**')) snippets.name = row.name_snippet;
-      if (row.desc_snippet && row.desc_snippet.includes('**')) snippets.description = row.desc_snippet;
-      if (row.tags_snippet && row.tags_snippet.includes('**')) snippets.tags = row.tags_snippet;
-      if (row.filenames_snippet && row.filenames_snippet.includes('**')) snippets.filenames = row.filenames_snippet;
-      if (row.content_snippet && row.content_snippet.includes('**')) snippets.file_content = row.content_snippet;
+      if (row.name_snippet && row.name_snippet.includes(this.FTS_SNIPPET_OPEN)) snippets.name = this.formatSnippet(row.name_snippet);
+      if (row.desc_snippet && row.desc_snippet.includes(this.FTS_SNIPPET_OPEN)) snippets.description = this.formatSnippet(row.desc_snippet);
+      if (row.tags_snippet && row.tags_snippet.includes(this.FTS_SNIPPET_OPEN)) snippets.tags = this.formatSnippet(row.tags_snippet);
+      if (row.filenames_snippet && row.filenames_snippet.includes(this.FTS_SNIPPET_OPEN)) snippets.filenames = this.formatSnippet(row.filenames_snippet);
+      if (row.content_snippet && row.content_snippet.includes(this.FTS_SNIPPET_OPEN)) snippets.file_content = this.formatSnippet(row.content_snippet);
 
       return {
         ...item,
@@ -1032,6 +1104,13 @@ export class ClawStashDB {
         updates.push('metadata = ?');
         params.push(JSON.stringify(input.metadata));
       }
+      // Allow `archived` to be flipped inside the same transaction so the
+      // route handler can apply archive + content changes atomically (a
+      // thrown content update cannot half-flip the archive flag).
+      if (input.archived !== undefined) {
+        updates.push('archived = ?');
+        params.push(input.archived ? 1 : 0);
+      }
 
       params.push(id);
       this.db.prepare(`UPDATE stashes SET ${updates.join(', ')} WHERE id = ?`).run(...params);
@@ -1078,9 +1157,19 @@ export class ClawStashDB {
   }
 
   archiveStash(id: string, archived: boolean): Stash | null {
-    const existing = this.db.prepare('SELECT 1 FROM stashes WHERE id = ?').get(id);
-    if (!existing) return null;
-    this.db.prepare('UPDATE stashes SET archived = ? WHERE id = ?').run(archived ? 1 : 0, id);
+    // Wrap existence check + UPDATE in a transaction so a concurrent DELETE
+    // landing between the SELECT and the UPDATE cannot produce a "stash
+    // archived OK" return for a row that no longer exists. The UPDATE alone
+    // is idempotent (changes = 0 if the row vanished), so the practical
+    // race window is small, but the contract is now correct.
+    const tx = this.db.transaction((stashId: string, flag: number): boolean => {
+      const exists = this.db.prepare('SELECT 1 FROM stashes WHERE id = ?').get(stashId);
+      if (!exists) return false;
+      this.db.prepare('UPDATE stashes SET archived = ? WHERE id = ?').run(flag, stashId);
+      return true;
+    });
+    const ok = tx(id, archived ? 1 : 0);
+    if (!ok) return null;
     return this.getStash(id);
   }
 
@@ -1157,7 +1246,11 @@ export class ClawStashDB {
         if (d === clampedDepth) break;
         const nextFrontier = new Set<string>();
         for (const edge of allEdges) {
-          if (min_weight && edge.weight < min_weight) continue;
+          // Use explicit > 0 check: `min_weight = 0` is falsy but still a
+          // legitimate "no minimum" value passed by MCP callers (the REST
+          // route layer's parsePositiveInt converts 0 → undefined, but the
+          // Zod schema for MCP tools accepts 0 directly).
+          if (typeof min_weight === 'number' && min_weight > 0 && edge.weight < min_weight) continue;
           if (frontier.has(edge.source) && !includedTags.has(edge.target)) {
             nextFrontier.add(edge.target);
           }
@@ -1176,18 +1269,18 @@ export class ClawStashDB {
     if (includedTags) {
       nodes = nodes.filter(n => includedTags!.has(n.tag));
     }
-    if (min_count) {
+    if (typeof min_count === 'number' && min_count > 0) {
       nodes = nodes.filter(n => n.count >= min_count);
     }
     nodes.sort((a, b) => b.count - a.count);
-    if (limit && limit > 0) {
+    if (typeof limit === 'number' && limit > 0) {
       nodes = nodes.slice(0, limit);
     }
 
     // Filter edges to only include nodes in the result set
     const nodeSet = new Set(nodes.map(n => n.tag));
     let edges = allEdges.filter(e => nodeSet.has(e.source) && nodeSet.has(e.target));
-    if (min_weight) {
+    if (typeof min_weight === 'number' && min_weight > 0) {
       edges = edges.filter(e => e.weight >= min_weight);
     }
     edges.sort((a, b) => b.weight - a.weight);
@@ -1588,7 +1681,7 @@ export class ClawStashDB {
       id: row.id,
       label: row.label,
       tokenPrefix: row.token_prefix,
-      scopes: JSON.parse(row.scopes),
+      scopes: this.safeParseScopes(row.scopes),
       createdAt: row.created_at,
     }));
   }
@@ -1602,7 +1695,7 @@ export class ClawStashDB {
     const tokenHash = this.hashToken(token);
     const row = this.db.prepare('SELECT id, scopes FROM api_tokens WHERE token_hash = ?').get(tokenHash) as { id: string; scopes: string } | undefined;
     if (!row) return { valid: false, scopes: [] };
-    return { valid: true, scopes: JSON.parse(row.scopes), tokenId: row.id };
+    return { valid: true, scopes: this.safeParseScopes(row.scopes), tokenId: row.id };
   }
 
   hasAnyTokens(): boolean {

@@ -6,8 +6,12 @@ interface BuildInfo {
   branch: string;
 }
 
-function formatBuildVersion(isoDate: string): string {
+function formatBuildVersion(isoDate: string): string | null {
   const d = new Date(isoDate);
+  // `new Date(undefined)` / `new Date('garbage')` → Invalid Date → all
+  // getUTC*() return NaN → "vNaNNaNNaN-NaNNaN" rendered in the UI.
+  // Return null instead so the caller can fall back to the default UI.
+  if (Number.isNaN(d.getTime())) return null;
   const pad = (n: number) => String(n).padStart(2, '0');
   return `v${d.getUTCFullYear()}${pad(d.getUTCMonth() + 1)}${pad(d.getUTCDate())}-${pad(d.getUTCHours())}${pad(d.getUTCMinutes())}`;
 }
@@ -19,17 +23,38 @@ export default function Footer() {
   useEffect(() => {
     let cancelled = false;
     fetch('/api/version')
-      .then(r => r.json())
-      .then(data => {
-        if (!cancelled && data.current) {
-          setBuildInfo({
-            buildDate: data.current.build_date,
-            commitHash: data.current.commit_sha || '',
-            branch: data.current.branch || '',
-          });
-        }
+      .then(r => {
+        // Without an `r.ok` check, a 5xx silently parses an HTML error page
+        // as JSON and the catch swallows the SyntaxError, hiding the failure
+        // entirely. Treat non-2xx as an error so dev sees a console warning.
+        if (!r.ok) throw new Error(`HTTP ${r.status}`);
+        return r.json();
       })
-      .catch(() => { /* use defaults */ });
+      .then(data => {
+        if (cancelled || !data.current) return;
+        // Validate build_date is a parseable string before storing — an
+        // unparseable value would otherwise render as "vNaNNaNNaN-NaNNaN"
+        // (formatBuildVersion now also guards, but rejecting up-front
+        // keeps the rest of the footer in its default state).
+        const buildDate = data.current.build_date;
+        if (typeof buildDate !== 'string' || Number.isNaN(new Date(buildDate).getTime())) {
+          if (process.env.NODE_ENV !== 'production') {
+            console.warn('[Footer] /api/version returned an invalid build_date:', buildDate);
+          }
+          return;
+        }
+        setBuildInfo({
+          buildDate,
+          commitHash: data.current.commit_sha || '',
+          branch: data.current.branch || '',
+        });
+      })
+      .catch((err) => {
+        // Surface in dev; production stays silent and uses default UI.
+        if (process.env.NODE_ENV !== 'production') {
+          console.warn('[Footer] /api/version fetch failed:', err);
+        }
+      });
     return () => { cancelled = true; };
   }, []);
 

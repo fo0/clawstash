@@ -19,9 +19,26 @@ export const MAX_IMPORT_SIZE = 100 * 1024 * 1024; // 100MB for ZIP import
 
 // --- Shared Sub-Schemas ---
 
+/**
+ * Validates a filename: no path separators, no ".." segments, no null bytes,
+ * non-empty, within length cap. Used by both write-side schemas (Create/Update)
+ * and the read-side raw-file route, so traversal attempts are rejected
+ * symmetrically. Today the DB does an exact-match lookup so traversal cannot
+ * escape the row; this is defense-in-depth in case file storage ever becomes
+ * filesystem-backed.
+ */
+export function isValidFilename(filename: string): boolean {
+  if (typeof filename !== 'string') return false;
+  if (filename.length === 0 || filename.length > MAX_FILENAME_LENGTH) return false;
+  if (/[/\\]/.test(filename)) return false;
+  if (filename.includes('..')) return false;
+  if (filename.includes('\0')) return false;
+  return true;
+}
+
 const FileSchema = z.object({
   filename: z.string().min(1, 'Filename is required').max(MAX_FILENAME_LENGTH)
-    .refine(f => !/[/\\]/.test(f) && !f.includes('..') && !f.includes('\0'), 'Filename contains invalid characters'),
+    .refine(isValidFilename, 'Filename contains invalid characters'),
   content: z.string().max(MAX_FILE_CONTENT_LENGTH, 'File content exceeds 10MB limit'),
   language: z.string().max(50).optional(),
 });
@@ -33,10 +50,18 @@ const FileSchema = z.object({
 // node/edge counts.
 const TagsSchema = z.array(z.string().min(1, 'Tag cannot be empty').max(MAX_TAG_LENGTH)).max(MAX_TAGS);
 
-const MetadataSchema = z.record(z.unknown()).refine(
-  (val) => Object.keys(val).length <= MAX_METADATA_KEYS,
-  { message: `Metadata cannot have more than ${MAX_METADATA_KEYS} keys` }
-);
+// `z.record(z.unknown())` accepts arrays in Zod 3 (typeof [] === 'object').
+// Without the explicit Array.isArray refusal, an array submitted as
+// `metadata: [...]` would pass validation, then `safeParseMetadata` silently
+// drops it on read with no error to the caller. Reject up-front instead.
+const MetadataSchema = z.record(z.unknown())
+  .refine((val) => !Array.isArray(val), {
+    message: 'Metadata must be an object, not an array',
+  })
+  .refine(
+    (val) => Object.keys(val).length <= MAX_METADATA_KEYS,
+    { message: `Metadata cannot have more than ${MAX_METADATA_KEYS} keys` }
+  );
 
 // --- Stash Schemas ---
 

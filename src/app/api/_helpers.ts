@@ -30,8 +30,17 @@ export function getAccessSource(req: NextRequest): 'ui' | 'api' {
 }
 
 export function getBaseUrl(req: NextRequest): string {
-  const proto = req.headers.get('x-forwarded-proto') || 'http';
-  const host = req.headers.get('x-forwarded-host') || req.headers.get('host') || 'localhost:3000';
+  // `x-forwarded-{proto,host}` are attacker-controlled without a trusted
+  // proxy boundary. Spoofed values flow into OpenAPI / MCP spec output (the
+  // schema's `servers[].url` and example URLs) and are echoed back to clients
+  // — useful for an attacker who wants to seed onboarding/spec text with a
+  // phishing host. Mirror `auth-rate-limit.ts:getClientIp`: only honour the
+  // forwarded headers when `TRUST_PROXY=1` (or =true) is explicitly set.
+  const trustProxy = process.env.TRUST_PROXY === '1' || process.env.TRUST_PROXY === 'true';
+  const proto = (trustProxy && req.headers.get('x-forwarded-proto')) || 'http';
+  const host = (trustProxy && req.headers.get('x-forwarded-host'))
+    || req.headers.get('host')
+    || 'localhost:3000';
   return `${proto}://${host}`;
 }
 

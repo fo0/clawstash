@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getDb } from '@/server/singleton';
 import { checkScope, getAccessSource, getRequestInfo } from '@/app/api/_helpers';
+import { isValidFilename } from '@/server/validation';
 
 type Params = { params: Promise<{ id: string; filename: string }> };
 
@@ -16,6 +17,14 @@ export async function GET(req: NextRequest, { params }: Params) {
     decodedFilename = decodeURIComponent(filename);
   } catch {
     return NextResponse.json({ error: 'Invalid filename encoding' }, { status: 400 });
+  }
+  // Symmetric validation with the write side: reject path separators,
+  // `..` segments and null bytes after URL-decode. The DB lookup is by
+  // exact match so traversal can't escape the row today, but rejecting
+  // up-front gives a clearer 400 than a misleading 404 and prevents
+  // future filesystem-backed storage from inheriting a known-bad path.
+  if (!isValidFilename(decodedFilename)) {
+    return NextResponse.json({ error: 'Filename contains invalid characters' }, { status: 400 });
   }
   const db = getDb();
   const file = db.getStashFile(id, decodedFilename);
