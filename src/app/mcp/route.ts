@@ -22,28 +22,39 @@ export async function POST(req: NextRequest) {
     return jsonRpcError(-32000, 'Authentication required. Provide a Bearer token with MCP scope.', 401);
   }
 
-  try {
-    const baseUrl = getBaseUrl(req);
-    const mcpServer = createMcpServer(db, baseUrl);
-    const transport = new WebStandardStreamableHTTPServerTransport({
-      sessionIdGenerator: undefined,
-      enableJsonResponse: true,
-    });
+  const baseUrl = getBaseUrl(req);
+  const mcpServer = createMcpServer(db, baseUrl);
+  const transport = new WebStandardStreamableHTTPServerTransport({
+    sessionIdGenerator: undefined,
+    enableJsonResponse: true,
+  });
 
+  try {
     // Connect server to transport
     await mcpServer.connect(transport);
 
     // Handle the request using Web Standard API (NextRequest extends Request)
     const response = await transport.handleRequest(req);
 
-    // Clean up (safe because enableJsonResponse ensures response is complete)
-    await transport.close();
-    await mcpServer.close();
-
     return response;
   } catch (err) {
     console.error('MCP error:', err);
     return jsonRpcError(-32603, 'Internal MCP error', 500);
+  } finally {
+    // Always tear both halves down — previously, if `transport.close()` threw,
+    // `mcpServer.close()` was never reached, leaking server-side state across
+    // requests in the stateless flow. We swallow cleanup errors per-handle so
+    // a half-broken transport does not also block the McpServer release.
+    try {
+      await transport.close();
+    } catch (closeErr) {
+      console.error('MCP transport close error:', closeErr);
+    }
+    try {
+      await mcpServer.close();
+    } catch (closeErr) {
+      console.error('MCP server close error:', closeErr);
+    }
   }
 }
 

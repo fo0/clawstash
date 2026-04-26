@@ -88,18 +88,29 @@ export default function App() {
     setAuthToken(adminToken);
   }, [adminToken]);
 
+  // Generation guard for popstate-triggered stash fetches. A user that mashes
+  // browser-back several times must not see the SLOWEST `getStash` resolution
+  // overwrite the freshest selection. Same pattern as `loadStashesGenRef`.
+  const popstateGenRef = useRef(0);
+
   // Handle initial URL route on mount
   useEffect(() => {
+    let cancelled = false;
     const route = getInitialRoute();
     if ((route.view === 'view' || route.view === 'edit') && route.stashId) {
       // Load the stash so the editor / viewer have data to work with.
       // For 'edit', we fetch then transition straight into editor mode.
+      // The `cancelled` flag prevents a slow initial fetch from clobbering a
+      // user-driven selection (e.g. they click another stash from the sidebar
+      // before the URL-derived stash finishes loading).
       api.getStash(route.stashId)
         .then((stash) => {
+          if (cancelled) return;
           setSelectedStash(stash);
           setView(route.view);
         })
         .catch((err) => {
+          if (cancelled) return;
           console.error('Failed to load stash from URL:', err);
           setView('home');
         });
@@ -107,6 +118,7 @@ export default function App() {
       setView(route.view);
       if (route.analyzeStashId) setAnalyzeStashId(route.analyzeStashId);
     }
+    return () => { cancelled = true; };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -114,17 +126,33 @@ export default function App() {
   useEffect(() => {
     const onPopState = () => {
       const route = getInitialRoute();
+      // Bump the generation for every popstate so an older in-flight fetch
+      // cannot land after a newer popstate's fetch has resolved. Without this,
+      // back-back-forward could leave the UI on the second-to-last stash.
+      const gen = ++popstateGenRef.current;
       if (route.view === 'view' && route.stashId) {
-        handleSelectStash(route.stashId);
+        api.getStash(route.stashId)
+          .then((stash) => {
+            if (gen !== popstateGenRef.current) return;
+            setSelectedStash(stash);
+            setView('view');
+            setSidebarOpen(false);
+          })
+          .catch((err) => {
+            if (gen !== popstateGenRef.current) return;
+            console.error('Failed to load stash from popstate:', err);
+          });
       } else if (route.view === 'edit' && route.stashId) {
         // Back-navigation into /stash/:id/edit must rehydrate the editor,
         // not silently fall through to view mode.
         api.getStash(route.stashId)
           .then((stash) => {
+            if (gen !== popstateGenRef.current) return;
             setSelectedStash(stash);
             setView('edit');
           })
           .catch((err) => {
+            if (gen !== popstateGenRef.current) return;
             console.error('Failed to load stash from popstate:', err);
             setView('home');
           });

@@ -354,7 +354,16 @@ export default function StashViewer({ stash, onEdit, onDelete, onArchive, onBack
         return;
       }
       renderMermaid(source).then((result) => {
-        if (cancelled) return;
+        // Two reasons we must bail on a late resolution:
+        // (1) the effect was cancelled (tab switch, prop change), and
+        // (2) the placeholder was detached from the DOM by a re-render
+        //     between the synchronous setAttribute('pending') above and
+        //     this async .then(). Writing innerHTML on a detached node is
+        //     wasted work AND causes the *next* hydration pass to skip the
+        //     replacement (selector excludes only `="true"`), leaving the
+        //     ‘pending’ marker behind — the placeholder would then never
+        //     render again until full remount.
+        if (cancelled || !document.contains(el)) return;
         if (result.svg) {
           el.innerHTML = result.svg;
           el.classList.add('mermaid-diagram');
@@ -371,6 +380,10 @@ export default function StashViewer({ stash, onEdit, onDelete, onArchive, onBack
     });
     return () => {
       cancelled = true;
+      // We deliberately leave any `data-rendered="pending"` markers in place.
+      // The selector above is `:not([data-rendered="true"])`, so "pending"
+      // placeholders are still picked up by the next hydration pass and the
+      // attribute is overwritten there — no orphan state remains.
     };
   }, [renderedContent, renderPreview, activeTab]);
 
