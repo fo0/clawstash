@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import type { Stash, StashListItem, ViewMode, LayoutMode, SettingsSection, AdminSessionInfo, TagInfo } from './types';
 import { api, setAuthToken } from './api';
 import { loadFavoriteIds, saveFavoriteIds, toggleFavorite } from './utils/favorites';
+import { SEARCH_DEBOUNCE_MS } from './utils/constants';
 import Sidebar from './components/Sidebar';
 import Dashboard from './components/Dashboard';
 import StashViewer from './components/StashViewer';
@@ -261,7 +262,7 @@ export default function App() {
     if (!adminSession || (!adminSession.authenticated && adminSession.authRequired)) return;
     const timer = setTimeout(() => {
       loadStashes();
-    }, 200);
+    }, SEARCH_DEBOUNCE_MS);
     return () => clearTimeout(timer);
   }, [loadStashes, adminSession]);
 

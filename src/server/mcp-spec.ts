@@ -10,11 +10,26 @@ import { getOpenApiSpec } from './openapi';
 import { CLAWSTASH_PURPOSE, TOKEN_EFFICIENT_GUIDE } from './shared-text';
 import { TOOL_DEFS } from './tool-defs';
 
-let mcpSpecCache: { key: string; value: string } | null = null;
+/**
+ * Single-entry memoization keyed by baseUrl. Last-write-wins; previous entry
+ * is dropped when the key changes. Bounded growth (one entry per cache var).
+ *
+ * Three MCP spec generators (spec, onboarding, refresh) share this caching
+ * shape. Per-baseUrl variation is rare in practice (typically one production
+ * host) but the cache cheaply absorbs repeated spec re-fetches inside a
+ * single baseUrl without leaking memory across hosts.
+ */
+function memoizeByBaseUrl<T>(generator: (baseUrl: string) => T): (baseUrl: string) => T {
+  let cache: { key: string; value: T } | null = null;
+  return (baseUrl: string): T => {
+    if (cache?.key === baseUrl) return cache.value;
+    const value = generator(baseUrl);
+    cache = { key: baseUrl, value };
+    return value;
+  };
+}
 
-export function getMcpSpecText(baseUrl: string): string {
-  if (mcpSpecCache?.key === baseUrl) return mcpSpecCache.value;
-
+export const getMcpSpecText = memoizeByBaseUrl((baseUrl: string): string => {
   const openapi = getOpenApiSpec(baseUrl);
   const schemas = openapi.components.schemas;
 
@@ -78,19 +93,14 @@ Data type schemas shared with the REST API (OpenAPI). Referenced in tool return 
 
 ${dataTypesSection}`;
 
-  mcpSpecCache = { key: baseUrl, value: result };
   return result;
-}
+});
 
 // ---------------------------------------------------------------------------
 // MCP Onboarding Text — wraps the spec with self-onboarding instructions
 // ---------------------------------------------------------------------------
 
-let onboardingCache: { key: string; value: string } | null = null;
-
-export function getMcpOnboardingText(baseUrl: string): string {
-  if (onboardingCache?.key === baseUrl) return onboardingCache.value;
-
+export const getMcpOnboardingText = memoizeByBaseUrl((baseUrl: string): string => {
   const spec = getMcpSpecText(baseUrl);
 
   const result = `# ClawStash MCP Onboarding Guide
@@ -123,19 +133,14 @@ You are reading the ClawStash MCP onboarding specification. This document contai
 
 ${spec}`;
 
-  onboardingCache = { key: baseUrl, value: result };
   return result;
-}
+});
 
 // ---------------------------------------------------------------------------
 // MCP Refresh Text — spec with update-focused framing for connected AI agents
 // ---------------------------------------------------------------------------
 
-let refreshCache: { key: string; value: string } | null = null;
-
-export function getMcpRefreshText(baseUrl: string): string {
-  if (refreshCache?.key === baseUrl) return refreshCache.value;
-
+export const getMcpRefreshText = memoizeByBaseUrl((baseUrl: string): string => {
   const spec = getMcpSpecText(baseUrl);
 
   const result = `# ClawStash MCP Tool Update
@@ -148,6 +153,5 @@ For initial onboarding (before MCP is connected), use the REST endpoint: \`GET $
 
 ${spec}`;
 
-  refreshCache = { key: baseUrl, value: result };
   return result;
-}
+});

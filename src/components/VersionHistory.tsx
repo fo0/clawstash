@@ -4,6 +4,7 @@ import { api } from '../api';
 import { formatRelativeTime } from '../utils/format';
 import VersionDiff from './VersionDiff';
 import { highlightCode, resolvePrismLanguage } from '../languages';
+import { DELETE_CONFIRM_TIMEOUT_MS } from '../utils/constants';
 import Spinner from './shared/Spinner';
 
 interface Props {
@@ -94,7 +95,7 @@ export default function VersionHistory({ stashId, currentVersion, onRestore }: P
     if (confirmRestore !== version) {
       setConfirmRestore(version);
       if (confirmTimerRef.current) clearTimeout(confirmTimerRef.current);
-      confirmTimerRef.current = setTimeout(() => setConfirmRestore(null), 3000);
+      confirmTimerRef.current = setTimeout(() => setConfirmRestore(null), DELETE_CONFIRM_TIMEOUT_MS);
       return;
     }
     setRestoring(true);

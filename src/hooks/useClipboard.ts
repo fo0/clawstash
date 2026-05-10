@@ -1,5 +1,6 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { copyToClipboard } from '../utils/clipboard';
+import { COPY_TOAST_DURATION_MS } from '../utils/constants';
 
 interface UseClipboardOptions {
   feedbackDuration?: number;
@@ -44,7 +45,7 @@ interface UseClipboardReturn {
  * Handles timeout cleanup on unmount and rapid clicks.
  */
 export function useClipboard(options: UseClipboardOptions = {}): UseClipboardReturn {
-  const { feedbackDuration = 2000 } = options;
+  const { feedbackDuration = COPY_TOAST_DURATION_MS } = options;
   const { state, trigger } = useClipboardBase<CopyStatus>('idle', feedbackDuration);
 
   const copy = useCallback(async (text: string) => {
@@ -68,7 +69,7 @@ interface UseClipboardWithKeyReturn {
  * Handles timeout cleanup on unmount and rapid clicks.
  */
 export function useClipboardWithKey(options: UseClipboardOptions = {}): UseClipboardWithKeyReturn {
-  const { feedbackDuration = 2000 } = options;
+  const { feedbackDuration = COPY_TOAST_DURATION_MS } = options;
   const { state, trigger } = useClipboardBase<{ key: string; ok: boolean } | null>(null, feedbackDuration);
 
   const copy = useCallback(async (key: string, text: string) => {
