@@ -9,6 +9,7 @@
 import { readFileSync, existsSync } from 'fs';
 import { execSync } from 'child_process';
 import path from 'path';
+import { formatBuildVersion } from '../utils/format';
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -29,11 +30,12 @@ interface BuildInfo {
   buildDate: string;
 }
 
-function formatBuildVersion(isoDate: string): string {
-  const d = new Date(isoDate);
-  const pad = (n: number) => String(n).padStart(2, '0');
-  return `v${d.getUTCFullYear()}${pad(d.getUTCMonth() + 1)}${pad(d.getUTCDate())}-${pad(d.getUTCHours())}${pad(d.getUTCMinutes())}`;
-}
+// `formatBuildVersion()` (utils/format) returns `string | null` so the UI
+// callsite can fall back to a default label on a bad build_date. Server
+// callsites here coalesce to 'unknown' to keep the public `version: string`
+// API contract stable; in practice `loadBuildInfo()` already falls back to
+// `new Date().toISOString()`, so the null branch is unreachable.
+const UNKNOWN_VERSION = 'unknown';
 
 function git(cmd: string): string {
   try {
@@ -87,7 +89,7 @@ let cacheExpiry = 0;
 
 async function fetchLatestCommit(): Promise<LatestCache> {
   const now = new Date().toISOString();
-  const userAgent = `ClawStash/${formatBuildVersion(buildInfo.buildDate)}`;
+  const userAgent = `ClawStash/${formatBuildVersion(buildInfo.buildDate) ?? UNKNOWN_VERSION}`;
 
   try {
     const res = await fetch(
@@ -156,7 +158,7 @@ export async function checkVersion(): Promise<VersionInfo> {
 
   return {
     current: {
-      version: formatBuildVersion(buildInfo.buildDate),
+      version: formatBuildVersion(buildInfo.buildDate) ?? UNKNOWN_VERSION,
       commit_sha: buildInfo.commitHash,
       build_date: buildInfo.buildDate,
       branch: buildInfo.branch,

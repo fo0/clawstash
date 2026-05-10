@@ -39,3 +39,17 @@ export function formatRelativeTime(dateStr: string): string {
   if (diffDays < 30) return `${Math.floor(diffDays / 7)}w ago`;
   return formatDate(dateStr);
 }
+
+/**
+ * Format an ISO date string as a vYYYYMMDD-HHMM build-version label (UTC).
+ *
+ * Returns null on Invalid Date so callers can fall back to a default UI
+ * instead of rendering "vNaNNaNNaN-NaNNaN" (`new Date('garbage')` →
+ * Invalid Date → all `getUTC*()` return NaN).
+ */
+export function formatBuildVersion(isoDate: string): string | null {
+  const d = new Date(isoDate);
+  if (Number.isNaN(d.getTime())) return null;
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return `v${d.getUTCFullYear()}${pad(d.getUTCMonth() + 1)}${pad(d.getUTCDate())}-${pad(d.getUTCHours())}${pad(d.getUTCMinutes())}`;
+}
