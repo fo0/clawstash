@@ -1,5 +1,6 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { copyToClipboard } from '../../utils/clipboard';
+import { COPY_TOAST_DURATION_MS } from '../../utils/constants';
 
 /**
  * Hook for copy-to-clipboard with auto-dismissing toast notification.
@@ -20,7 +21,7 @@ export function useCopyToast() {
     const success = await copyToClipboard(value);
     setCopyNotice(success ? `"${label}" copied` : 'Copy failed');
     if (timerRef.current) clearTimeout(timerRef.current);
-    timerRef.current = setTimeout(() => setCopyNotice(null), 2000);
+    timerRef.current = setTimeout(() => setCopyNotice(null), COPY_TOAST_DURATION_MS);
   }, []);
 
   return { copyNotice, handleCopy };

@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import type { StashListItem } from '../types';
 import { api } from '../api';
 import { formatRelativeTime } from '../utils/format';
+import { SEARCH_DEBOUNCE_MS } from '../utils/constants';
 
 interface Props {
   open: boolean;
@@ -67,7 +68,7 @@ export default function SearchOverlay({ open, onClose, onSelectStash }: Props) {
   const handleInputChange = (value: string) => {
     setQuery(value);
     if (debounceRef.current) clearTimeout(debounceRef.current);
-    debounceRef.current = setTimeout(() => doSearch(value), 200);
+    debounceRef.current = setTimeout(() => doSearch(value), SEARCH_DEBOUNCE_MS);
   };
 
   // Cleanup debounce on unmount

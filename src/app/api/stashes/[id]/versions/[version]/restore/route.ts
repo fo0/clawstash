@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getDb } from '@/server/singleton';
-import { checkScope, getAccessSource, getRequestInfo } from '@/app/api/_helpers';
+import { checkScope, getAccessSource, getRequestInfo, parsePositiveInt } from '@/app/api/_helpers';
 
 type Params = { params: Promise<{ id: string; version: string }> };
 
@@ -9,8 +9,8 @@ export async function POST(req: NextRequest, { params }: Params) {
   if (!scope.ok) return scope.response;
 
   const { id, version: versionStr } = await params;
-  const version = parseInt(versionStr, 10);
-  if (!Number.isInteger(version) || version < 1) {
+  const version = parsePositiveInt(versionStr);
+  if (version === undefined) {
     return NextResponse.json({ error: 'Invalid version number' }, { status: 400 });
   }
 

@@ -1,4 +1,5 @@
 import Prism from 'prismjs';
+import { escapeHtml } from './utils/html';
 
 // Import commonly used language definitions
 // NOTE: Order matters! Base grammars must be imported before dependents.
@@ -214,11 +215,7 @@ export function highlightCode(code: string, language: string): string {
   const prismLang = Prism.languages[language];
   if (!prismLang) {
     // Fallback: escape HTML entities for plain text
-    return code
-      .replace(/&/g, '&amp;')
-      .replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;')
-      .replace(/"/g, '&quot;');
+    return escapeHtml(code);
   }
   return Prism.highlight(code, prismLang, language);
 }
