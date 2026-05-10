@@ -1,11 +1,12 @@
 import Database from 'better-sqlite3';
 import { v4 as uuidv4 } from 'uuid';
-import crypto from 'crypto';
 import path from 'path';
 import fs from 'fs';
 import { detectLanguage } from './detect-language';
 import { INITIAL_SCHEMA_SQL } from './db-schema';
 import { applyPendingMigrations } from './db-migrations';
+import { TokenStore } from './stores/token-store';
+import { SessionStore } from './stores/session-store';
 import type {
   Stash,
   StashFile,
@@ -63,6 +64,8 @@ export type {
 
 export class ClawStashDB {
   private db: Database.Database;
+  private tokens: TokenStore;
+  private sessions: SessionStore;
 
   constructor(dbPath?: string) {
     const resolvedPath = dbPath || process.env.DATABASE_PATH || './data/clawstash.db';
@@ -74,6 +77,8 @@ export class ClawStashDB {
     this.db.pragma('journal_mode = WAL');
     this.db.pragma('foreign_keys = ON');
     this.init();
+    this.tokens = new TokenStore(this.db);
+    this.sessions = new SessionStore(this.db);
   }
 
   private init() {
@@ -98,25 +103,6 @@ export class ClawStashDB {
       return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed : {};
     } catch {
       return {};
-    }
-  }
-
-  // Defensive parser for `api_tokens.scopes` rows. Corruption of this column
-  // (manual SQL edit, partial migration, etc.) must not 500 out the token
-  // listing or auth check — the token simply ends up with an empty (or
-  // partially-valid) scope set and falls back to "no access". Mirrors the
-  // pattern of safeParseTags / safeParseMetadata.
-  private safeParseScopes(raw: unknown): TokenScope[] {
-    if (typeof raw !== 'string') return [];
-    try {
-      const parsed = JSON.parse(raw);
-      if (!Array.isArray(parsed)) return [];
-      const valid: readonly TokenScope[] = ['read', 'write', 'admin', 'mcp'];
-      return parsed.filter(
-        (s): s is TokenScope => typeof s === 'string' && (valid as readonly string[]).includes(s),
-      );
-    } catch {
-      return [];
     }
   }
 
@@ -1184,93 +1170,41 @@ export class ClawStashDB {
   }
 
   // === API Token Management ===
+  // Delegated to TokenStore (src/server/stores/token-store.ts).
 
-  private hashToken(token: string): string {
-    return crypto.createHash('sha256').update(token).digest('hex');
-  }
-
-  createApiToken(label: string, scopes: TokenScope[]): { id: string; token: string; label: string; scopes: TokenScope[] } {
-    const id = uuidv4();
-    const now = new Date().toISOString();
-    const rawToken = `cs_${crypto.randomBytes(24).toString('hex')}`;
-    const tokenHash = this.hashToken(rawToken);
-    const tokenPrefix = rawToken.substring(0, 7);
-
-    this.db.prepare(`
-      INSERT INTO api_tokens (id, label, token_hash, token_prefix, scopes, created_at)
-      VALUES (?, ?, ?, ?, ?, ?)
-    `).run(id, label || '', tokenHash, tokenPrefix, JSON.stringify(scopes), now);
-
-    return { id, token: rawToken, label: label || '', scopes };
+  createApiToken(label: string, scopes: TokenScope[]) {
+    return this.tokens.createApiToken(label, scopes);
   }
 
   listApiTokens(): ApiTokenListItem[] {
-    const rows = this.db.prepare('SELECT * FROM api_tokens ORDER BY created_at DESC').all() as {
-      id: string; label: string; token_prefix: string; scopes: string; created_at: string;
-    }[];
-    return rows.map((row) => ({
-      id: row.id,
-      label: row.label,
-      tokenPrefix: row.token_prefix,
-      scopes: this.safeParseScopes(row.scopes),
-      createdAt: row.created_at,
-    }));
+    return this.tokens.listApiTokens();
   }
 
   deleteApiToken(id: string): boolean {
-    const result = this.db.prepare('DELETE FROM api_tokens WHERE id = ?').run(id);
-    return result.changes > 0;
+    return this.tokens.deleteApiToken(id);
   }
 
-  validateApiToken(token: string): { valid: boolean; scopes: TokenScope[]; tokenId?: string } {
-    const tokenHash = this.hashToken(token);
-    const row = this.db.prepare('SELECT id, scopes FROM api_tokens WHERE token_hash = ?').get(tokenHash) as { id: string; scopes: string } | undefined;
-    if (!row) return { valid: false, scopes: [] };
-    return { valid: true, scopes: this.safeParseScopes(row.scopes), tokenId: row.id };
+  validateApiToken(token: string) {
+    return this.tokens.validateApiToken(token);
   }
 
   // === Admin Session Management ===
+  // Delegated to SessionStore (src/server/stores/session-store.ts).
 
-  createAdminSession(hours: number): { token: string; expiresAt: string | null } {
-    const id = uuidv4();
-    const now = new Date();
-    const rawToken = `csa_${crypto.randomBytes(24).toString('hex')}`;
-    const tokenHash = this.hashToken(rawToken);
-    let expiresAt: string | null = null;
-    if (hours > 0) {
-      expiresAt = new Date(now.getTime() + hours * 60 * 60 * 1000).toISOString();
-    }
-
-    this.db.prepare(`
-      INSERT INTO admin_sessions (id, token_hash, created_at, expires_at)
-      VALUES (?, ?, ?, ?)
-    `).run(id, tokenHash, now.toISOString(), expiresAt);
-
-    return { token: rawToken, expiresAt };
+  createAdminSession(hours: number) {
+    return this.sessions.createAdminSession(hours);
   }
 
-  validateAdminSession(token: string): { valid: boolean; expiresAt?: string | null } {
-    const tokenHash = this.hashToken(token);
-    const row = this.db.prepare('SELECT expires_at FROM admin_sessions WHERE token_hash = ?').get(tokenHash) as { expires_at: string | null } | undefined;
-    if (!row) return { valid: false };
-    if (row.expires_at && new Date(row.expires_at) < new Date()) {
-      // Expired - clean up
-      this.db.prepare('DELETE FROM admin_sessions WHERE token_hash = ?').run(tokenHash);
-      return { valid: false };
-    }
-    return { valid: true, expiresAt: row.expires_at };
+  validateAdminSession(token: string) {
+    return this.sessions.validateAdminSession(token);
   }
 
   deleteAdminSession(token: string): boolean {
-    const tokenHash = this.hashToken(token);
-    const result = this.db.prepare('DELETE FROM admin_sessions WHERE token_hash = ?').run(tokenHash);
-    return result.changes > 0;
+    return this.sessions.deleteAdminSession(token);
   }
 
   cleanExpiredSessions(): number {
-    const now = new Date().toISOString();
-    const result = this.db.prepare("DELETE FROM admin_sessions WHERE expires_at IS NOT NULL AND expires_at < ?").run(now);
-    return result.changes;
+    return this.sessions.cleanExpiredSessions();
   }
 
   // === Data Export/Import ===
