@@ -76,6 +76,9 @@ Review findings not immediately fixed. **Only work on these upon explicit reques
 | 104 | 2026-05-10 | Code Smells | P2 | src/server/db.ts | SearchStore + VersionStore extractions need cross-store callbacks (updateStash, listStashes, getStash). Apply Strategy/DI pattern in Round 2/3 before extracting these. | Accepted | #129 Round 1/3 Refactor |
 | 105 | 2026-05-10 | Code Smells | P2 | src/server/openapi.ts (697 LoC) | One 690-LoC function. Adopt `@asteasolutions/zod-to-openapi` to generate OpenAPI from existing Zod schemas in `tool-defs.ts` (mcp-spec.ts already uses zodToJsonSchema). Round 2/3 pattern application. | Accepted | #129 Round 1/3 Refactor |
 | 106 | 2026-05-10 | Code Smells | P2 | src/components/StashViewer.tsx (783) + Settings.tsx (559) + MermaidDiagram.tsx (401) | Sub-component extraction (TOC, access-log, metadata sections / Welcome dashboard, Storage Stats / Toolbar, render, zoom). Round 3/3 composition refactor. | Accepted | #129 Round 1/3 Refactor |
+| 108 | 2026-05-10 | Security | P2 | src/components/StashViewer.tsx:156 ↔ src/utils/markdown.ts:44 | Two `sanitizeHtml` implementations diverge on inline-`style` attribute stripping (markdown.ts strips, StashViewer.tsx does not). Consolidating is a behavior change, not a behavior-invariant refactor — needs security review before unification. | Deferred | #133 Round 3/3 Refactor |
+| 109 | 2026-05-10 | Code Smells | P3 | src/server/version.ts:97,150 | Magic literals `5000` (GitHub fetch timeout) and `60 * 1000` (failed-fetch retry window) — extract as `GITHUB_FETCH_TIMEOUT_MS` / `FAILED_FETCH_RETRY_MS`. Low value at single-use scale. | Deferred | #133 Round 3/3 Refactor |
+| 110 | 2026-05-10 | Code Smells | P3 | src/server/db.ts:logAccess | 5 positional params (`stashId`, `source`, `action`, `ip?`, `userAgent?`) — Object/Builder candidate. Private method, public types unaffected; defer until next time the signature changes. | Deferred | #133 Round 3/3 Refactor |
 
 ## Done
 

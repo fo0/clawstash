@@ -1,19 +1,10 @@
 import { useState, useEffect } from 'react';
+import { formatBuildVersion } from '../utils/format';
 
 interface BuildInfo {
   buildDate: string;
   commitHash: string;
   branch: string;
-}
-
-function formatBuildVersion(isoDate: string): string | null {
-  const d = new Date(isoDate);
-  // `new Date(undefined)` / `new Date('garbage')` → Invalid Date → all
-  // getUTC*() return NaN → "vNaNNaNNaN-NaNNaN" rendered in the UI.
-  // Return null instead so the caller can fall back to the default UI.
-  if (Number.isNaN(d.getTime())) return null;
-  const pad = (n: number) => String(n).padStart(2, '0');
-  return `v${d.getUTCFullYear()}${pad(d.getUTCMonth() + 1)}${pad(d.getUTCDate())}-${pad(d.getUTCHours())}${pad(d.getUTCMinutes())}`;
 }
 
 export default function Footer() {
