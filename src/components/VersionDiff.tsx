@@ -1,91 +1,10 @@
 import { useMemo } from 'react';
-import { diffLines } from 'diff';
 import type { StashVersion } from '../types';
+import { computeFileDiffs } from './version-diff-utils';
 
 interface Props {
   v1: StashVersion;
   v2: StashVersion;
-}
-
-interface FileDiff {
-  filename: string;
-  status: 'added' | 'removed' | 'modified' | 'unchanged';
-  hunks: DiffHunk[];
-}
-
-interface DiffHunk {
-  lines: DiffLine[];
-}
-
-interface DiffLine {
-  type: 'add' | 'remove' | 'context';
-  content: string;
-  oldLineNo?: number;
-  newLineNo?: number;
-}
-
-function computeFileDiffs(v1: StashVersion, v2: StashVersion): FileDiff[] {
-  const v1Files = new Map(v1.files.map(f => [f.filename, f.content]));
-  const v2Files = new Map(v2.files.map(f => [f.filename, f.content]));
-  const allFilenames = new Set([...v1Files.keys(), ...v2Files.keys()]);
-  const diffs: FileDiff[] = [];
-
-  for (const filename of allFilenames) {
-    const oldContent = v1Files.get(filename);
-    const newContent = v2Files.get(filename);
-
-    if (oldContent === undefined && newContent !== undefined) {
-      // File added
-      const lines = newContent.split('\n');
-      diffs.push({
-        filename,
-        status: 'added',
-        hunks: [{
-          lines: lines.map((line, i) => ({ type: 'add', content: line, newLineNo: i + 1 })),
-        }],
-      });
-    } else if (oldContent !== undefined && newContent === undefined) {
-      // File removed
-      const lines = oldContent.split('\n');
-      diffs.push({
-        filename,
-        status: 'removed',
-        hunks: [{
-          lines: lines.map((line, i) => ({ type: 'remove', content: line, oldLineNo: i + 1 })),
-        }],
-      });
-    } else if (oldContent !== undefined && newContent !== undefined) {
-      if (oldContent === newContent) {
-        diffs.push({ filename, status: 'unchanged', hunks: [] });
-        continue;
-      }
-      // Modified — compute line diff
-      const changes = diffLines(oldContent, newContent);
-      const lines: DiffLine[] = [];
-      let oldLine = 1;
-      let newLine = 1;
-
-      for (const change of changes) {
-        const changeLines = change.value.replace(/\n$/, '').split('\n');
-        for (const line of changeLines) {
-          if (change.added) {
-            lines.push({ type: 'add', content: line, newLineNo: newLine++ });
-          } else if (change.removed) {
-            lines.push({ type: 'remove', content: line, oldLineNo: oldLine++ });
-          } else {
-            lines.push({ type: 'context', content: line, oldLineNo: oldLine++, newLineNo: newLine++ });
-          }
-        }
-      }
-
-      diffs.push({ filename, status: 'modified', hunks: [{ lines }] });
-    }
-  }
-
-  // Sort: modified first, then added, then removed, then unchanged
-  const order = { modified: 0, added: 1, removed: 2, unchanged: 3 };
-  diffs.sort((a, b) => order[a.status] - order[b.status]);
-  return diffs;
 }
 
 function MetaDiff({ label, oldVal, newVal }: { label: string; oldVal: string; newVal: string }) {

@@ -85,26 +85,6 @@ export function isAuthEnabled(): boolean {
 }
 
 /**
- * Check if a token has admin access.
- * Returns true if no ADMIN_PASSWORD is set (open mode) or if token has admin privileges.
- */
-export function requireAdminAuth(db: ClawStashDB, req: NextRequest): AuthResult | null {
-  if (!isAuthEnabled()) {
-    return { authenticated: true, source: 'open', scopes: ['read', 'write', 'admin', 'mcp'] };
-  }
-
-  const token = extractToken(req);
-  if (!token) return null;
-
-  const auth = validateAuth(db, token);
-  if (auth.authenticated && auth.scopes.includes('admin')) {
-    return auth;
-  }
-
-  return null;
-}
-
-/**
  * Check if a token has a specific scope.
  * Returns true if no ADMIN_PASSWORD is set (open mode) or if token has the required scope.
  */
@@ -128,4 +108,15 @@ export function requireScopeAuth(db: ClawStashDB, req: NextRequest, scope: Token
   if (auth.scopes.includes(scope)) return auth;
 
   return null;
+}
+
+/**
+ * Check if a token has admin access.
+ *
+ * Trace-equivalent to `requireScopeAuth(db, req, 'admin')`: both short-circuit
+ * the same way for open-mode, missing token, non-admin scope, and admin scope.
+ * Kept as a named helper so admin-only call sites read clearly.
+ */
+export function requireAdminAuth(db: ClawStashDB, req: NextRequest): AuthResult | null {
+  return requireScopeAuth(db, req, 'admin');
 }

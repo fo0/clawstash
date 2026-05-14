@@ -361,7 +361,7 @@ export default function MermaidDiagram({ code, className, storageKey }: Props) {
         pinch={{ step: 5 }}
         panning={{ velocityDisabled: true }}
         doubleClick={{ disabled: true }}
-        onTransformed={handleTransformed}
+        onTransform={handleTransformed}
       >
         <TransformComponent
           wrapperClass="mermaid-transform-wrapper"

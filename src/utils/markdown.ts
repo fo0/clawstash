@@ -1,8 +1,5 @@
 import { Marked } from 'marked';
-
-function escapeAttr(s: string): string {
-  return s.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-}
+import { escapeHtml } from './html';
 
 /**
  * Test whether an attribute value carries a script-bearing URL scheme.
@@ -35,11 +32,11 @@ const descriptionParser = new Marked({
       // Strip dangerous schemes at render time as defence-in-depth alongside
       // the post-render sanitiser. Defaults to '#' so the anchor stays valid.
       const safeHref = isUnsafeUrl(href) ? '#' : href;
-      const titleAttr = title ? ` title="${escapeAttr(title)}"` : '';
+      const titleAttr = title ? ` title="${escapeHtml(title)}"` : '';
       if (safeHref.startsWith('#')) {
-        return `<a href="${escapeAttr(safeHref)}"${titleAttr}>${text}</a>`;
+        return `<a href="${escapeHtml(safeHref)}"${titleAttr}>${text}</a>`;
       }
-      return `<a href="${escapeAttr(safeHref)}"${titleAttr} target="_blank" rel="noopener noreferrer">${text}</a>`;
+      return `<a href="${escapeHtml(safeHref)}"${titleAttr} target="_blank" rel="noopener noreferrer">${text}</a>`;
     },
   },
 });

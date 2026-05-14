@@ -9,6 +9,8 @@ import VersionHistory from './VersionHistory';
 import { Marked } from 'marked';
 import { renderDescriptionMarkdown, isUnsafeUrl } from '../utils/markdown';
 import { renderMermaid } from '../utils/mermaid';
+import { DELETE_CONFIRM_TIMEOUT_MS } from '../utils/constants';
+import { escapeHtml } from '../utils/html';
 import MermaidDiagram from './MermaidDiagram';
 
 interface Props {
@@ -56,16 +58,6 @@ function resolveEffectiveLanguage(file: StashFile): string {
   const fromMeta = resolvePrismLanguage(file.language, file.filename);
   if (fromMeta !== 'text') return fromMeta;
   return detectLanguageFromContent(file.content);
-}
-
-/** Escape a string for safe use inside an HTML attribute value. */
-function escapeAttr(s: string): string {
-  return s.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-}
-
-/** Escape a string for safe use as HTML body content. */
-function escapeHtml(s: string): string {
-  return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }
 
 /**
@@ -121,12 +113,12 @@ const mdParser = new Marked({
       if (count > 0) slug = `${slug}-${count}`;
       const finalSlug = headingIdPrefix + slug;
       const rendered = this.parser.parseInline(tokens);
-      const safeSlug = escapeAttr(finalSlug);
+      const safeSlug = escapeHtml(finalSlug);
       return `<h${depth} id="${safeSlug}"><a class="heading-anchor" href="#${safeSlug}" aria-hidden="true">#</a>${rendered}</h${depth}>\n`;
     },
     // Open external links in a new tab; keep anchor links in-page
     link({ href, title, text }) {
-      const titleAttr = title ? ` title="${escapeAttr(title)}"` : '';
+      const titleAttr = title ? ` title="${escapeHtml(title)}"` : '';
       // Strip dangerous schemes (javascript:/vbscript:/data:text/html, with
       // case + control-char obfuscation) before rendering — defence-in-depth
       // alongside the post-render sanitiser.
@@ -134,9 +126,9 @@ const mdParser = new Marked({
       if (cleanHref.startsWith('#')) {
         // Prepend current heading prefix so anchors match prefixed heading IDs
         const resolvedHref = headingIdPrefix && cleanHref !== '#' ? `#${headingIdPrefix}${cleanHref.slice(1)}` : cleanHref;
-        return `<a href="${escapeAttr(resolvedHref)}"${titleAttr}>${text}</a>`;
+        return `<a href="${escapeHtml(resolvedHref)}"${titleAttr}>${text}</a>`;
       }
-      const safeHref = escapeAttr(cleanHref);
+      const safeHref = escapeHtml(cleanHref);
       return `<a href="${safeHref}"${titleAttr} target="_blank" rel="noopener noreferrer">${text}</a>`;
     },
     // Custom code renderer: emit a placeholder div for ```mermaid``` blocks
@@ -151,7 +143,7 @@ const mdParser = new Marked({
       }
       const body = escapeHtml(text.replace(/\n$/, '')) + '\n';
       if (language) {
-        return `<pre><code class="language-${escapeAttr(language)}">${body}</code></pre>\n`;
+        return `<pre><code class="language-${escapeHtml(language)}">${body}</code></pre>\n`;
       }
       return `<pre><code>${body}</code></pre>\n`;
     },
@@ -400,7 +392,7 @@ export default function StashViewer({ stash, onEdit, onDelete, onArchive, onBack
     } else {
       setShowDeleteConfirm(true);
       if (deleteTimerRef.current) clearTimeout(deleteTimerRef.current);
-      deleteTimerRef.current = setTimeout(() => setShowDeleteConfirm(false), 3000);
+      deleteTimerRef.current = setTimeout(() => setShowDeleteConfirm(false), DELETE_CONFIRM_TIMEOUT_MS);
     }
   };
 

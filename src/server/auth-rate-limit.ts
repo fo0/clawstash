@@ -25,6 +25,7 @@ import type { NextRequest } from 'next/server';
 export const RATE_LIMIT_WINDOW_MS = 15 * 60 * 1000; // 15 minutes
 export const RATE_LIMIT_WINDOW_SEC = Math.floor(RATE_LIMIT_WINDOW_MS / 1000);
 const RATE_LIMIT_MAX = 10; // max attempts per window per (scope, ip)
+const RATE_LIMIT_CLEANUP_INTERVAL_MS = 5 * 60 * 1000; // 5 minutes — sweep stale buckets
 
 type Scope = 'login' | 'token-validate';
 
@@ -47,7 +48,7 @@ if (!state.cleanupTimer) {
     for (const [key, entry] of state.attempts) {
       if (now > entry.resetAt) state.attempts.delete(key);
     }
-  }, 5 * 60 * 1000);
+  }, RATE_LIMIT_CLEANUP_INTERVAL_MS);
   // Don't keep the event loop alive for this cleanup interval.
   state.cleanupTimer.unref?.();
 }
