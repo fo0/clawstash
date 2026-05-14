@@ -8,6 +8,8 @@ updates:
     ignore:
       - dependency-name: "eslint"
         update-types: ["version-update:semver-major"]
+      - dependency-name: "electron"
+        update-types: ["version-update:semver-major"]
     groups:
       minor-and-patch:
         applies-to: version-updates
@@ -25,6 +27,8 @@ updates:
     open-pull-requests-limit: 10
     ignore:
       - dependency-name: "eslint"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "electron"
         update-types: ["version-update:semver-major"]
     groups:
       minor-and-patch:
