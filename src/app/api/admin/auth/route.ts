@@ -32,6 +32,9 @@ export async function POST(req: NextRequest) {
   // users for 15 minutes without ever guessing a password.
   const body = await parseJsonBody(req);
   if ('error' in body) return body.error;
+  if (typeof body.data !== 'object' || body.data === null || Array.isArray(body.data)) {
+    return NextResponse.json({ error: 'Invalid body' }, { status: 400 });
+  }
   const { password: inputPassword } = body.data as Record<string, unknown>;
   if (!inputPassword || typeof inputPassword !== 'string') {
     return NextResponse.json({ error: 'Password is required' }, { status: 400 });

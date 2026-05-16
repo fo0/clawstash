@@ -498,9 +498,12 @@ export class ClawStashDB {
 
       rows = this.db.prepare(sql).all(...params) as typeof rows;
     } catch (err) {
-      // FTS5 MATCH syntax error → fall back to LIKE-based search.
-      // Logged at warn level so production FTS regressions are visible
-      // (sanitization should prevent this in normal use).
+      // Only fall back to LIKE search for FTS5-specific errors (syntax /
+      // malformed MATCH). Other errors (Zod, schema, I/O, etc.) must
+      // propagate so real bugs are not silently swallowed.
+      const msg = err instanceof Error ? err.message.toLowerCase() : String(err).toLowerCase();
+      const isFtsSyntaxError = msg.includes('fts5') || msg.includes('syntax') || msg.includes('malformed');
+      if (!isFtsSyntaxError) throw err;
       console.warn('[DB] FTS5 search failed, falling back to LIKE:', err instanceof Error ? err.message : err);
       // Forward the original raw page/limit; listStashes clamps them
       // identically. Both call paths converge on the same defaults.
