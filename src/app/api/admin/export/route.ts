@@ -11,7 +11,12 @@ export async function GET(req: NextRequest) {
   try {
     const db = getDb();
     const data = db.exportAllData();
-    const timestamp = formatExportTimestamp();
+    // Capture a single export timestamp so the filename suffix and the
+    // manifest's `exportedAt` field always agree (previously two separate
+    // `new Date()` calls could differ by milliseconds — visibly so across
+    // a second / minute / day boundary).
+    const exportedAt = new Date();
+    const timestamp = formatExportTimestamp(exportedAt);
 
     // Build ZIP in memory using archiver
     const chunks: Buffer[] = [];
@@ -26,7 +31,7 @@ export async function GET(req: NextRequest) {
       archive.append(JSON.stringify(data.stash_files, null, 2), { name: 'stash_files.json' });
       archive.append(JSON.stringify(data.stash_versions, null, 2), { name: 'stash_versions.json' });
       archive.append(JSON.stringify(data.stash_version_files, null, 2), { name: 'stash_version_files.json' });
-      archive.append(JSON.stringify({ exportedAt: new Date().toISOString(), version: '1.0' }), { name: 'manifest.json' });
+      archive.append(JSON.stringify({ exportedAt: exportedAt.toISOString(), version: '1.0' }), { name: 'manifest.json' });
       archive.finalize();
     });
 
