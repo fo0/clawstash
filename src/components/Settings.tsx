@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, type ReactNode } from 'react';
 import type { SettingsSection, LayoutMode, Stats, TagInfo } from '../types';
 import { api } from '../api';
+import { formatExportTimestamp } from '../utils/format';
 import ApiManager from './api/ApiManager';
 import Spinner from './shared/Spinner';
 
@@ -264,8 +265,7 @@ function StorageSection() {
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
-      a.download = `clawstash-export-${timestamp}.zip`;
+      a.download = `clawstash-export-${formatExportTimestamp()}.zip`;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);

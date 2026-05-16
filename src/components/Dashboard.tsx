@@ -114,7 +114,27 @@ export default function Dashboard({
         </div>
       ) : (
         <div className={`stash-grid ${layout}`}>
-          <div className="new-stash-card" onClick={onNewStash} title="Create a new stash">
+          {/*
+            Keyboard-accessible "new stash" card. Was a bare <div onClick>
+            previously, so keyboard-only users (and most assistive tech)
+            could not invoke it. role+tabIndex+Enter/Space handler bring it
+            in line with the StashCard buttons next to it without changing
+            the existing pointer-click behavior.
+          */}
+          <div
+            className="new-stash-card"
+            onClick={onNewStash}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                onNewStash();
+              }
+            }}
+            role="button"
+            tabIndex={0}
+            aria-label="Create a new stash"
+            title="Create a new stash"
+          >
             <div className="new-stash-icon">
               <svg width="36" height="36" viewBox="0 0 16 16" fill="currentColor">
                 <path d="M8 2a.75.75 0 0 1 .75.75v4.5h4.5a.75.75 0 0 1 0 1.5h-4.5v4.5a.75.75 0 0 1-1.5 0v-4.5h-4.5a.75.75 0 0 1 0-1.5h4.5v-4.5A.75.75 0 0 1 8 2Z" />
