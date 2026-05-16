@@ -19,6 +19,7 @@
  *   caller into a single shared bucket — the previous behavior allowed a
  *   single attacker to lock out every legitimate admin).
  */
+import crypto from 'crypto';
 import type { NextRequest } from 'next/server';
 
 export const RATE_LIMIT_WINDOW_MS = 15 * 60 * 1000; // 15 minutes
@@ -123,8 +124,8 @@ export function getClientIp(req: NextRequest): string {
   const xRealIp = req.headers.get('x-real-ip')?.trim();
   if (xRealIp) return xRealIp;
 
-  // Deterministic fallback: all unproxied callers share this bucket.
-  // Prevents rate-limit bypass via parallelization when no IP header is
-  // available — per-request random keys made each attempt a new bucket.
-  return 'unknown-client';
+  // Per-request random bucket: effectively no rate-limit for THIS request,
+  // but other requests still have their own keys. Better than one shared
+  // 'unknown' bucket that any attacker can exhaust to lock out everyone.
+  return `anon-${crypto.randomBytes(8).toString('hex')}`;
 }
