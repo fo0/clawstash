@@ -19,6 +19,10 @@ const GITHUB_OWNER = 'fo0';
 const GITHUB_REPO = 'clawstash';
 const GITHUB_URL = `https://github.com/${GITHUB_OWNER}/${GITHUB_REPO}`;
 const CACHE_TTL_MS = 60 * 60 * 1000; // 1 hour
+/** Abort the GitHub commits fetch if it does not complete in this window. */
+const GITHUB_FETCH_TIMEOUT_MS = 5000;
+/** Retry sooner than the full TTL when the previous fetch failed. */
+const FAILED_FETCH_RETRY_MS = 60 * 1000;
 
 // ---------------------------------------------------------------------------
 // Build info (current version)
@@ -96,7 +100,7 @@ async function fetchLatestCommit(): Promise<LatestCache> {
       `https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}/commits/main`,
       {
         headers: { Accept: 'application/vnd.github+json', 'User-Agent': userAgent },
-        signal: AbortSignal.timeout(5000),
+        signal: AbortSignal.timeout(GITHUB_FETCH_TIMEOUT_MS),
       },
     );
 
@@ -149,7 +153,7 @@ export async function checkVersion(): Promise<VersionInfo> {
     // Only cache successful fetches for the full TTL; retry failures sooner.
     cacheExpiry = fresh.commit_sha !== null
       ? now + CACHE_TTL_MS
-      : now + 60 * 1000;
+      : now + FAILED_FETCH_RETRY_MS;
   }
 
   const updateAvailable = cache.commit_sha !== null
