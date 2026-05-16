@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import archiver from 'archiver';
 import { getDb } from '@/server/singleton';
 import { checkAdmin } from '@/app/api/_helpers';
+import { formatExportTimestamp } from '@/utils/format';
 
 export async function GET(req: NextRequest) {
   const admin = checkAdmin(req);
@@ -10,7 +11,7 @@ export async function GET(req: NextRequest) {
   try {
     const db = getDb();
     const data = db.exportAllData();
-    const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+    const timestamp = formatExportTimestamp();
 
     // Build ZIP in memory using archiver
     const chunks: Buffer[] = [];

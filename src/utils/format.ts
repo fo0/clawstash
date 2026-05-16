@@ -53,3 +53,16 @@ export function formatBuildVersion(isoDate: string): string | null {
   const pad = (n: number) => String(n).padStart(2, '0');
   return `v${d.getUTCFullYear()}${pad(d.getUTCMonth() + 1)}${pad(d.getUTCDate())}-${pad(d.getUTCHours())}${pad(d.getUTCMinutes())}`;
 }
+
+/**
+ * Filesystem-safe ISO timestamp for export filenames (`YYYY-MM-DDTHH-MM-SS`).
+ *
+ * The previous inline `toISOString().replace(/[:.]/g, '-').slice(0, 19)`
+ * pattern left a trailing `-` artifact (e.g. `2026-05-16T10-30-12-`) because
+ * the `.` in `.456Z` got replaced before the slice. Slicing first guarantees
+ * a clean separator-replaced label and DRYs the helper across export
+ * callsites (UI download name + Content-Disposition header).
+ */
+export function formatExportTimestamp(date: Date = new Date()): string {
+  return date.toISOString().slice(0, 19).replace(/[:.]/g, '-');
+}
