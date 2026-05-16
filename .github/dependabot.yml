@@ -6,20 +6,12 @@ updates:
       interval: "weekly"
     open-pull-requests-limit: 10
     ignore:
+      # eslint major: peer-dep conflicts (eslint-config-next still pins ^9)
       - dependency-name: "eslint"
         update-types: ["version-update:semver-major"]
+      # electron major: needs manual migration
       - dependency-name: "electron"
         update-types: ["version-update:semver-major"]
-    groups:
-      minor-and-patch:
-        applies-to: version-updates
-        update-types:
-          - "minor"
-          - "patch"
-      security:
-        applies-to: security-updates
-        patterns:
-          - "*"
   - package-ecosystem: "npm"
     directory: "/server"
     schedule:
@@ -30,16 +22,6 @@ updates:
         update-types: ["version-update:semver-major"]
       - dependency-name: "electron"
         update-types: ["version-update:semver-major"]
-    groups:
-      minor-and-patch:
-        applies-to: version-updates
-        update-types:
-          - "minor"
-          - "patch"
-      security:
-        applies-to: security-updates
-        patterns:
-          - "*"
   - package-ecosystem: "docker"
     directory: "/"
     schedule:
@@ -50,7 +32,3 @@ updates:
     schedule:
       interval: "weekly"
     open-pull-requests-limit: 5
-    groups:
-      actions:
-        patterns:
-          - "*"
