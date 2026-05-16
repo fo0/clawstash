@@ -4,11 +4,11 @@ This file defines the mandatory review process executed after every implementati
 
 ## Core Rules
 
-1. **Every implementation triggers a full review** — no exceptions, no user prompt needed.
-2. **Never commit without completed review** — all P0/P1 findings must be fixed first.
-3. **Deterministic checks run first** — linter/types/tests catch what they catch. The review covers what tools cannot.
-4. **Fix, don't list** — when a finding is actionable, fix it immediately. Don't just document it.
-5. **Re-review after fixes** — if fixes touched code, re-run automated checks and re-review affected categories only.
+1. **Every implementation triggers a full review** -- no exceptions, no user prompt needed.
+2. **Never commit without completed review** -- all P0/P1 findings must be fixed first.
+3. **Deterministic checks run first** -- linter/types/tests catch what they catch. The review covers what tools cannot.
+4. **Fix, don't list** -- when a finding is actionable, fix it immediately. Don't just document it.
+5. **Re-review after fixes** -- if fixes touched code, re-run automated checks and re-review affected categories only.
 
 ## Severity Definitions
 
@@ -16,9 +16,9 @@ Severity is based on impact, not category:
 
 | Severity | Definition | Examples |
 |----------|-----------|---------|
-| **P0 — Critical** | Can cause data loss, security breach, or production crash | SQL injection, unvalidated user input to exec(), missing auth checks on write endpoints, null deref in hot path |
-| **P1 — Important** | Functionally incorrect, poor DX, or fast-growing tech debt | Wrong error handling, missing edge cases, unsafe type casts, deprecated APIs |
-| **P2 — Nice-to-have** | Code smells, performance optimizations, style improvements | Duplicated code, missing memoization, magic numbers, long parameter lists |
+| **P0 -- Critical** | Can cause data loss, security breach, or production crash | SQL injection, unvalidated user input to exec(), missing auth checks on write endpoints, null deref in hot path |
+| **P1 -- Important** | Functionally incorrect, poor DX, or fast-growing tech debt | Wrong error handling, missing edge cases, unsafe type casts, deprecated APIs |
+| **P2 -- Nice-to-have** | Code smells, performance optimizations, style improvements | Duplicated code, missing memoization, magic numbers, long parameter lists |
 
 ## Workflow
 
@@ -36,7 +36,7 @@ Commit
 
 - **Automated checks fail and fix is unclear:** Document the failure, inform the user, do NOT commit. Suggest possible causes.
 - **Review finds issue outside current scope:** Log to BACKLOG.md with context, do not fix unless trivial.
-- **Circular fix loop (fix breaks something else):** After 2nd iteration -> inform user. After 3rd -> stop completely, present full context of the loop.
+- **Circular fix loop (fix breaks something else):** After 2nd iteration -> inform user. After 3rd -> invoke `.claude/skills/stuck/SKILL.md` -- the 4th attempt without user input is forbidden.
 
 ## Automated Checks
 
@@ -45,14 +45,25 @@ Run in this order before the review:
 ```bash
 npm install              # Dependencies current
 npx tsc --noEmit         # Types pass
+npm test                 # Tests (vitest)
 npm run build            # Build succeeds
 ```
 
-> **Note:** No linter or test framework configured yet. When added, insert between install and build:
+> **Note:** No linter is configured yet. When added, insert between install and typecheck:
 > ```bash
 > npm run lint           # No lint errors (when configured)
-> npm run test           # Tests green (when configured)
 > ```
+
+### Test execution constraints (autonomy + zero-cost)
+
+Apps in this workspace are built and verified by AI agents end-to-end. Tests must therefore be:
+
+- **Agent-runnable without setup** -- no manual env-var injection, no credentials prompt, no interactive login.
+- **Zero-cost** -- no real API calls (paid LLMs, SaaS APIs, payment processors), no real cloud resources, no real production DB writes.
+- **Deterministic** -- fake clocks, fake random, in-memory DBs, mocked transports.
+- **Self-contained** -- runnable on every change as part of the standard test command.
+
+External boundaries (HTTP, DB, queue, LLM, payment, mail) -> always mock or use ephemeral in-memory fakes. Real-service smoke/E2E tests only on explicit user request, never as default automated check. If a planned test would hit a paid or production resource, replace it with a mocked equivalent or move it to a manual checklist.
 
 ## Review Scope
 
@@ -79,14 +90,14 @@ npm run build            # Build succeeds
 
 Ordered by priority.
 
-### P0 — Critical (always fix immediately)
+### P0 -- Critical (always fix immediately)
 
 | # | Category | What to check |
 |---|----------|---------------|
 | 1 | **Security** | Injection (SQL/command/template), XSS, CSRF, hardcoded secrets, unsafe dynamic code execution, prototype pollution, insecure crypto, improper auth checks, unvalidated input at trust boundaries |
 | 2 | **Bugs & Logic Errors** | Off-by-one, null/undefined access, race conditions, incorrect conditionals, missing error handling at boundaries, wrong operator precedence, async pitfalls (unhandled promises, deadlocks), unclosed resources |
 
-### P1 — Important (always fix, unless effort disproportionate -> Backlog)
+### P1 -- Important (fix by default, defer only if disproportionate effort)
 
 | # | Category | What to check |
 |---|----------|---------------|
@@ -94,7 +105,7 @@ Ordered by priority.
 | 4 | **Typing & Type Safety** | Correct types, no unsafe casts without reason, proper generics, exhaustive switch/union/enum handling, return type accuracy (TypeScript strict mode) |
 | 5 | **Modern Coding Standards** | Idiomatic patterns (React 19, ES2024+, TypeScript strict), current best practices, no deprecated APIs, clean imports, proper naming, DRY, KISS, SRP |
 
-### P2 — Contextual (review when relevant, defer freely)
+### P2 -- Contextual (review when relevant, defer freely)
 
 | # | Category | What to check |
 |---|----------|---------------|
@@ -104,7 +115,7 @@ Ordered by priority.
 
 ## Review Execution
 
-1. **Re-read every changed file** with the Read tool — completely, not from memory. New files in full.
+1. **Re-read every changed file** with the Read tool -- completely, not from memory. New files in full.
 2. Evaluate each file against all categories (P0 first, then P1, then P2 where relevant).
 3. Fix findings inline where possible.
 4. Present results:
@@ -114,22 +125,22 @@ Ordered by priority.
 
 | # | Category | Sev | Status | Finding | Action |
 |---|----------|-----|--------|---------|--------|
-| 1 | Security | P0 | ⚠️ Fixed | Unvalidated input in X | Added validation |
-| 2 | Bugs & Logic | P0 | ✅ Pass | — | — |
-| 3 | Edge Cases | P1 | ✅ Pass | — | — |
+| 1 | Security | P0 | Fixed | Unvalidated input in X | Added validation |
+| 2 | Bugs & Logic | P0 | Pass | -- | -- |
+| 3 | Edge Cases | P1 | Pass | -- | -- |
 | ... | ... | ... | ... | ... | ... |
 
 Summary: X categories checked | Y fixed | Z deferred -> Backlog
 ```
 
-**Status:** ✅ Pass | ⚠️ Fixed | ❌ Blocked (needs user input) | 💡 Deferred -> Backlog
+**Status:** Pass | Fixed | Blocked (needs user input) | Deferred -> Backlog
 
 ## Fixing Rules
 
 | Severity | Action |
 |----------|--------|
 | P0 findings | Fix immediately, always |
-| P1 findings | Fix by default. Defer only if effort is clearly disproportionate — document reasoning in Backlog |
+| P1 findings | Fix by default. Defer only if effort is clearly disproportionate -- document reasoning in Backlog |
 | P2 findings | Fix if trivial (<5 min). Otherwise defer to Backlog |
 
 ## Regression & Complexity QA
@@ -154,14 +165,29 @@ Rules:
 
 ## Subagent Delegation
 
-For isolated, clearly bounded subtasks:
+For isolated, clearly bounded subtasks. Pick the matching `subagent_type` instead of always defaulting to `general-purpose`.
 
-| Task | When to delegate |
-|------|-----------------|
-| **Write tests** | >3 test files needed for a feature |
-| **Doc updates** | >2 documentation files affected |
-| **Refactoring chunks** | Independent subtasks of a larger refactoring |
-| **Boilerplate generation** | Repetitive structures (migrations, schemas, config) |
+| Task                              | When to delegate                | Recommended `subagent_type` |
+|-----------------------------------|--------------------------------|-----------------------------|
+| **Locate code / find symbols**    | Search across >3 paths or unknown location | `Explore` (read-only, fast, doesn't pollute main context) |
+| **Plan refactoring/feature**      | Non-trivial, >3 files affected, architectural choice | `Plan` |
+| **Write tests**                   | >3 test files for a feature    | `general-purpose` |
+| **Doc updates**                   | >2 documentation files         | `general-purpose` |
+| **Refactoring chunks**            | Independent subtasks of larger refactoring | `general-purpose` |
+| **Boilerplate generation**        | Migrations, schemas, repetitive configs | `general-purpose` |
+| **Independent code review**       | Second-opinion on diff         | `general-purpose` (or project-specific reviewer subagent if defined) |
+| **Q about Claude Code/SDK/API**   | "Can Claude do X?", hooks, MCP, SDK questions | `claude-code-guide` |
+
+## Subagent Selection Rules
+
+- **Use `Explore` for read-only search.** Specify breadth: `quick` (single targeted), `medium` (moderate), `very thorough` (multiple locations). Do NOT use for code review or open-ended analysis -- it reads excerpts, will miss content past its window.
+- **Use `Plan` before non-trivial implementation.** Then act on the plan in main thread, or hand the plan to `general-purpose` for execution.
+- **Use `general-purpose` for write+execute** tasks. Default for "do this work" delegations.
+- **Use `claude-code-guide` for tooling questions** about Claude Code itself (slash commands, hooks, MCP servers, SDK).
+- **Parallelize independent work** -- multiple Agent calls in one message when no dependencies exist.
+- **Prefer direct tools when target is known** -- `Read` for known path, `grep` via Bash for known symbol. Reserve subagents for open-ended or multi-step work.
+- **Pass full context** -- subagents have no conversation history. Include file paths, line numbers, what was already tried, and the goal.
+- **Trust but verify** -- a subagent's summary describes intent, not necessarily the actual change. Inspect diffs after write-capable subagents finish.
 
 The main agent retains responsibility for the review process itself.
 
@@ -176,3 +202,4 @@ Only commit when:
 - [ ] Documentation updated if needed
 - [ ] Commit message follows project's Git Conventions
 - [ ] UI review done (if UI changed)
+- [ ] (If GitNexus available) `gitnexus_detect_changes()` confirmed scope
