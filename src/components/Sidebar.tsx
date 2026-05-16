@@ -264,6 +264,10 @@ export default function Sidebar({ stashes, selectedId, search, onSearch, filterT
                 key={stash.id}
                 className={`sidebar-item ${selectedId === stash.id ? 'active' : ''}`}
                 onClick={() => onSelectStash(stash.id)}
+                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onSelectStash(stash.id); } }}
+                role="button"
+                tabIndex={0}
+                aria-current={selectedId === stash.id ? 'true' : undefined}
                 title={`${stash.name || stash.files[0]?.filename || 'Untitled'} — ${stash.files.length} file${stash.files.length !== 1 ? 's' : ''}`}
               >
                 <div className="sidebar-item-title">
@@ -301,6 +305,10 @@ export default function Sidebar({ stashes, selectedId, search, onSearch, filterT
                 key={section.id}
                 className={`sidebar-settings-nav-item ${settingsSection === section.id ? 'active' : ''}`}
                 onClick={() => { onSettingsSection(section.id); onClose?.(); }}
+                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onSettingsSection(section.id); onClose?.(); } }}
+                role="button"
+                tabIndex={0}
+                aria-pressed={settingsSection === section.id}
               >
                 <span className="sidebar-settings-nav-icon">{section.icon}</span>
                 {section.label}
@@ -312,6 +320,9 @@ export default function Sidebar({ stashes, selectedId, search, onSearch, filterT
             <div
               className="sidebar-settings-nav-item sidebar-settings-back"
               onClick={onGoHome}
+              onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onGoHome(); } }}
+              role="button"
+              tabIndex={0}
             >
               <span className="sidebar-settings-nav-icon">
                 <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">

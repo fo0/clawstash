@@ -237,6 +237,7 @@ export default function StashEditor({ stash, onSave, onCancel }: Props) {
                   onChange={(e) => updateFile(index, 'filename', e.target.value)}
                   placeholder="filename.ext"
                   className="form-input file-name-input"
+                  aria-label={`File ${index + 1} filename`}
                   title="Filename with extension (e.g. config.yml, main.py). The language is auto-detected from the extension."
                 />
                 <input
@@ -245,6 +246,7 @@ export default function StashEditor({ stash, onSave, onCancel }: Props) {
                   onChange={(e) => updateFile(index, 'language', e.target.value)}
                   placeholder="language (auto)"
                   className="form-input file-lang-input"
+                  aria-label={`File ${index + 1} language`}
                   title="Programming language. Leave blank to auto-detect from the file extension."
                 />
                 {files.length > 1 && (
