@@ -23,6 +23,27 @@ function getStoredAdminToken(): string {
   return localStorage.getItem('clawstash_admin_token') || '';
 }
 
+/**
+ * Read the persisted recent-tags list from localStorage.
+ *
+ * SSR-safe (guards against missing `window`/`localStorage`) and shape-safe:
+ * a corrupted entry (non-array, hand-edited object, or anything containing
+ * non-string elements) is silently dropped instead of poisoning downstream
+ * `.filter()` / `.map()` callers that assume `string[]`.
+ */
+function getStoredRecentTags(): string[] {
+  if (typeof window === 'undefined' || typeof localStorage === 'undefined') return [];
+  try {
+    const stored = localStorage.getItem('clawstash_recent_tags');
+    if (!stored) return [];
+    const parsed = JSON.parse(stored);
+    if (!Array.isArray(parsed)) return [];
+    return parsed.filter((v): v is string => typeof v === 'string');
+  } catch {
+    return [];
+  }
+}
+
 function getInitialRoute(): { view: ViewMode; stashId: string | null; analyzeStashId: string | null } {
   const path = window.location.pathname;
   const analyzeMatch = path.match(/^\/stash\/([a-f0-9-]+)\/graph$/i);
@@ -56,14 +77,7 @@ export default function App() {
   const [search, setSearch] = useState('');
   const [filterTag, setFilterTag] = useState('');
   const [tags, setTags] = useState<TagInfo[]>([]);
-  const [recentTags, setRecentTags] = useState<string[]>(() => {
-    try {
-      const stored = localStorage.getItem('clawstash_recent_tags');
-      return stored ? JSON.parse(stored) : [];
-    } catch {
-      return [];
-    }
-  });
+  const [recentTags, setRecentTags] = useState<string[]>(getStoredRecentTags);
   const [loading, setLoading] = useState(true);
   const [settingsSection, setSettingsSection] = useState<SettingsSection>('welcome');
   const [adminToken, setAdminToken] = useState<string>(getStoredAdminToken);
