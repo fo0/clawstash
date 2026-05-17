@@ -81,6 +81,9 @@ clawstash/
 │   │       └── mcp-tools/route.ts      # GET MCP tool summaries
 │   ├── server/                 # Server-side logic (used by API route handlers)
 │   │   ├── db.ts               # SQLite database layer (ClawStashDB class)
+│   │   ├── db-schema.ts        # SQLite table / index definitions
+│   │   ├── db-migrations.ts    # Schema migrations runner
+│   │   ├── db-types.ts         # Shared DB row / domain types
 │   │   ├── singleton.ts        # DB singleton with globalThis for HMR protection
 │   │   ├── auth.ts             # Auth utility (token extraction, validation, scope checking)
 │   │   ├── auth-rate-limit.ts  # In-memory per-IP rate limiter (login, token-validate, session)
@@ -92,7 +95,13 @@ clawstash/
 │   │   ├── mcp.ts              # MCP server stdio transport entry point
 │   │   ├── openapi.ts          # OpenAPI 3.0 schema generator
 │   │   ├── validation.ts       # Zod schemas for API input validation + size limits
-│   │   └── version.ts          # Version check utility (build info + GitHub latest commit)
+│   │   ├── version.ts          # Version check utility (build info + GitHub latest commit)
+│   │   ├── stores/             # Persistence stores split out from db.ts
+│   │   │   ├── _token-hash.ts  # Shared token hashing helper
+│   │   │   ├── session-store.ts # Admin session CRUD
+│   │   │   ├── token-store.ts  # API token CRUD
+│   │   │   └── __tests__/      # Store unit tests (vitest)
+│   │   └── __tests__/          # Server unit tests (vitest, e.g. mcp-spec)
 │   ├── App.tsx                 # Main app component, state management
 │   ├── api.ts                  # API client (fetch wrapper)
 │   ├── types.ts                # Shared TypeScript interfaces
@@ -102,9 +111,13 @@ clawstash/
 │   │   └── useClickOutside.ts  # Click-outside detection hook (used by Sidebar, TagCombobox, MetadataEditor)
 │   ├── utils/
 │   │   ├── clipboard.ts        # Copy-to-clipboard with fallback for non-HTTPS
+│   │   ├── constants.ts        # Shared client/server constants
+│   │   ├── favorites.ts        # Favorite-stash localStorage helpers
 │   │   ├── format.ts           # Date formatting (formatDate, formatDateTime, formatRelativeTime)
+│   │   ├── html.ts             # HTML sanitization helpers
 │   │   ├── markdown.ts         # Markdown rendering for descriptions (Marked + sanitization)
-│   │   └── mermaid.ts          # Lazy-loaded Mermaid renderer (shared util for .mmd files + inline ```mermaid blocks)
+│   │   ├── mermaid.ts          # Lazy-loaded Mermaid renderer (shared util for .mmd files + inline ```mermaid blocks)
+│   │   └── __tests__/          # Util unit tests (vitest: favorites, format, html)
 │   ├── components/
 │   │   ├── Sidebar.tsx         # Left sidebar with search, tag filter, stash list, settings nav
 │   │   ├── Footer.tsx          # App footer with version (fetched from /api/version), build info toggle
@@ -115,6 +128,8 @@ clawstash/
 │   │   ├── StashGraphCanvas.tsx # Stash graph canvas component
 │   │   ├── VersionHistory.tsx  # Version history list, Confluence-style inline comparison radios, restore button
 │   │   ├── VersionDiff.tsx     # GitHub-style diff view (green/red) using jsdiff
+│   │   ├── version-diff-utils.ts # Pure diff utilities extracted from VersionDiff (unit-tested)
+│   │   ├── __tests__/          # Component unit tests (vitest: version-diff-utils)
 │   │   ├── SearchOverlay.tsx   # Alt+K quick search overlay with keyboard navigation
 │   │   ├── LoginScreen.tsx     # Password login gate
 │   │   ├── MermaidDiagram.tsx  # React wrapper around renderMermaid() for .mmd files
