@@ -18,12 +18,14 @@ export default function RestTab({ baseUrl, openApiJson }: Props) {
       {/* REST API Overview */}
       <section className="api-section">
         <div className="api-section-header">
-          <span className="api-section-icon blue"><BookIcon /></span>
+          <span className="api-section-icon blue">
+            <BookIcon />
+          </span>
           <h2>REST API</h2>
         </div>
         <p className="api-hint">
-          Full REST API for programmatic access to all stash operations.
-          Authentication via Bearer token in the Authorization header.
+          Full REST API for programmatic access to all stash operations. Authentication via Bearer
+          token in the Authorization header.
         </p>
         <div className="api-copy-config-section">
           <div className="api-spec-copy-buttons">
@@ -43,10 +45,13 @@ export default function RestTab({ baseUrl, openApiJson }: Props) {
             </button>
           </div>
           <span className="api-hint" style={{ marginBottom: 0 }}>
-            Copies complete REST API reference with purpose description, all endpoints, and the full OpenAPI 3.0 specification.
+            Copies complete REST API reference with purpose description, all endpoints, and the full
+            OpenAPI 3.0 specification.
           </span>
           {expandedSpecs.has('rest-tab') && (
-            <pre className="api-code-block api-spec-preview">{getRestConfigText(baseUrl, openApiJson)}</pre>
+            <pre className="api-code-block api-spec-preview">
+              {getRestConfigText(baseUrl, openApiJson)}
+            </pre>
           )}
         </div>
       </section>
@@ -54,11 +59,14 @@ export default function RestTab({ baseUrl, openApiJson }: Props) {
       {/* Swagger Explorer */}
       <section className="api-section">
         <div className="api-section-header">
-          <span className="api-section-icon blue"><BookIcon /></span>
+          <span className="api-section-icon blue">
+            <BookIcon />
+          </span>
           <h2>API Explorer (Swagger UI)</h2>
         </div>
         <p className="api-hint">
-          Interactive API documentation with live testing. Click on an endpoint, then "Try it out" to execute requests directly.
+          Interactive API documentation with live testing. Click on an endpoint, then "Try it out"
+          to execute requests directly.
         </p>
         <SwaggerViewer />
       </section>
@@ -66,12 +74,12 @@ export default function RestTab({ baseUrl, openApiJson }: Props) {
       {/* OpenAPI JSON */}
       <section className="api-section">
         <div className="api-section-header">
-          <span className="api-section-icon blue"><BookIcon /></span>
+          <span className="api-section-icon blue">
+            <BookIcon />
+          </span>
           <h2>OpenAPI (Swagger) Schema</h2>
         </div>
-        <p className="api-hint">
-          Import this schema into Swagger UI or other API tools.
-        </p>
+        <p className="api-hint">Import this schema into Swagger UI or other API tools.</p>
         <div className="api-section-actions">
           <button
             className="btn btn-secondary"
@@ -80,21 +88,30 @@ export default function RestTab({ baseUrl, openApiJson }: Props) {
           >
             Copy OpenAPI JSON
           </button>
-          <a href="/api/openapi" className="btn btn-primary" target="_blank" rel="noopener noreferrer">
+          <a
+            href="/api/openapi"
+            className="btn btn-primary"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
             Download JSON
           </a>
         </div>
         {openApiJson ? (
           <pre className="api-code-block api-code-block-scroll">{openApiJson}</pre>
         ) : (
-          <div className="api-loading"><Spinner /> Loading schema...</div>
+          <div className="api-loading">
+            <Spinner /> Loading schema...
+          </div>
         )}
       </section>
 
       {/* REST Examples */}
       <section className="api-section">
         <div className="api-section-header">
-          <span className="api-section-icon green"><KeyIcon /></span>
+          <span className="api-section-icon green">
+            <KeyIcon />
+          </span>
           <h2>Examples</h2>
         </div>
         <div className="api-mgr-examples">

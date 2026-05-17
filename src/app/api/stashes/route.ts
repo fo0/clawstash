@@ -1,6 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getDb } from '@/server/singleton';
-import { checkScope, getAccessSource, parsePositiveInt, parseJsonBody, getRequestInfo } from '@/app/api/_helpers';
+import {
+  checkScope,
+  getAccessSource,
+  parsePositiveInt,
+  parseJsonBody,
+  getRequestInfo,
+} from '@/app/api/_helpers';
 import { CreateStashSchema, formatZodError } from '@/server/validation';
 
 // GET /api/stashes - List stashes (FTS5 ranked search when search query is present)

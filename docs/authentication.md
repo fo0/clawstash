@@ -35,12 +35,12 @@ API tokens authenticate REST API and MCP requests. Create them in the web GUI.
 
 ### Token Scopes
 
-| Scope | Access |
-|-------|--------|
-| `read` | Read stashes and data |
-| `write` | Read + write (implies read) |
+| Scope   | Access                                               |
+| ------- | ---------------------------------------------------- |
+| `read`  | Read stashes and data                                |
+| `write` | Read + write (implies read)                          |
 | `admin` | Full access including token management (implies all) |
-| `mcp` | MCP server access |
+| `mcp`   | MCP server access                                    |
 
 ### Use a Token
 
@@ -72,9 +72,9 @@ For MCP, include the token in the `Authorization` header of your MCP client conf
 
 ## Token Format
 
-| Prefix | Type | Example |
-|--------|------|---------|
-| `cs_` | API token | `cs_a1b2c3d4e5f6...` |
+| Prefix | Type          | Example               |
+| ------ | ------------- | --------------------- |
+| `cs_`  | API token     | `cs_a1b2c3d4e5f6...`  |
 | `csa_` | Admin session | `csa_f6e5d4c3b2a1...` |
 
 Tokens are stored as SHA-256 hashes in the database — the plain token is only shown once at creation.

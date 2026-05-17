@@ -1,5 +1,13 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import type { Stash, StashListItem, ViewMode, LayoutMode, SettingsSection, AdminSessionInfo, TagInfo } from './types';
+import type {
+  Stash,
+  StashListItem,
+  ViewMode,
+  LayoutMode,
+  SettingsSection,
+  AdminSessionInfo,
+  TagInfo,
+} from './types';
 import { api, setAuthToken } from './api';
 import { loadFavoriteIds, saveFavoriteIds, toggleFavorite } from './utils/favorites';
 import { SEARCH_DEBOUNCE_MS } from './utils/constants';
@@ -44,7 +52,11 @@ function getStoredRecentTags(): string[] {
   }
 }
 
-function getInitialRoute(): { view: ViewMode; stashId: string | null; analyzeStashId: string | null } {
+function getInitialRoute(): {
+  view: ViewMode;
+  stashId: string | null;
+  analyzeStashId: string | null;
+} {
   const path = window.location.pathname;
   const analyzeMatch = path.match(/^\/stash\/([a-f0-9-]+)\/graph$/i);
   if (analyzeMatch) return { view: 'graph', stashId: null, analyzeStashId: analyzeMatch[1] };
@@ -72,7 +84,9 @@ export default function App() {
   const [stashes, setStashes] = useState<StashListItem[]>([]);
   const [total, setTotal] = useState(0);
   const [view, setView] = useState<ViewMode>('home');
-  const [layout, setLayout] = useState<LayoutMode>(() => getStoredPreference('clawstash_layout', 'grid'));
+  const [layout, setLayout] = useState<LayoutMode>(() =>
+    getStoredPreference('clawstash_layout', 'grid'),
+  );
   const [selectedStash, setSelectedStash] = useState<Stash | null>(null);
   const [search, setSearch] = useState('');
   const [filterTag, setFilterTag] = useState('');
@@ -95,7 +109,7 @@ export default function App() {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.altKey && e.key.toLowerCase() === 'k') {
         e.preventDefault();
-        setSearchOpen(prev => !prev);
+        setSearchOpen((prev) => !prev);
       }
     };
     window.addEventListener('keydown', handleKeyDown);
@@ -122,7 +136,8 @@ export default function App() {
       // The `cancelled` flag prevents a slow initial fetch from clobbering a
       // user-driven selection (e.g. they click another stash from the sidebar
       // before the URL-derived stash finishes loading).
-      api.getStash(route.stashId)
+      api
+        .getStash(route.stashId)
         .then((stash) => {
           if (cancelled) return;
           setSelectedStash(stash);
@@ -137,8 +152,10 @@ export default function App() {
       setView(route.view);
       if (route.analyzeStashId) setAnalyzeStashId(route.analyzeStashId);
     }
-    return () => { cancelled = true; };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Handle browser back/forward navigation
@@ -150,7 +167,8 @@ export default function App() {
       // back-back-forward could leave the UI on the second-to-last stash.
       const gen = ++popstateGenRef.current;
       if (route.view === 'view' && route.stashId) {
-        api.getStash(route.stashId)
+        api
+          .getStash(route.stashId)
           .then((stash) => {
             if (gen !== popstateGenRef.current) return;
             setSelectedStash(stash);
@@ -164,7 +182,8 @@ export default function App() {
       } else if (route.view === 'edit' && route.stashId) {
         // Back-navigation into /stash/:id/edit must rehydrate the editor,
         // not silently fall through to view mode.
-        api.getStash(route.stashId)
+        api
+          .getStash(route.stashId)
           .then((stash) => {
             if (gen !== popstateGenRef.current) return;
             setSelectedStash(stash);
@@ -183,7 +202,7 @@ export default function App() {
     };
     window.addEventListener('popstate', onPopState);
     return () => window.removeEventListener('popstate', onPopState);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Auto-close mobile sidebar on viewport resize to desktop. Without this,
@@ -207,12 +226,17 @@ export default function App() {
   // briefly flip the UI back to authenticated:false (or vice-versa).
   useEffect(() => {
     let cancelled = false;
-    api.adminCheckSession()
-      .then((session) => { if (!cancelled) setAdminSession(session); })
+    api
+      .adminCheckSession()
+      .then((session) => {
+        if (!cancelled) setAdminSession(session);
+      })
       .catch(() => {
         if (!cancelled) setAdminSession({ authenticated: false, authRequired: true });
       });
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, [adminToken]);
 
   const handleLogin = useCallback(async (password: string) => {
@@ -289,7 +313,7 @@ export default function App() {
 
   // Clear stale tag filter when the active tag no longer exists
   useEffect(() => {
-    if (filterTag && tags.length > 0 && !tags.some(t => t.tag === filterTag)) {
+    if (filterTag && tags.length > 0 && !tags.some((t) => t.tag === filterTag)) {
       setFilterTag('');
     }
   }, [tags, filterTag]);
@@ -297,9 +321,9 @@ export default function App() {
   // Remove stale entries from recent tags
   useEffect(() => {
     if (tags.length === 0) return;
-    const tagNames = new Set(tags.map(t => t.tag));
-    setRecentTags(prev => {
-      const cleaned = prev.filter(t => tagNames.has(t));
+    const tagNames = new Set(tags.map((t) => t.tag));
+    setRecentTags((prev) => {
+      const cleaned = prev.filter((t) => tagNames.has(t));
       if (cleaned.length !== prev.length) {
         localStorage.setItem('clawstash_recent_tags', JSON.stringify(cleaned));
       }
@@ -344,7 +368,7 @@ export default function App() {
   };
 
   const handleToggleFavorite = useCallback((id: string) => {
-    setFavoriteIds(prev => {
+    setFavoriteIds((prev) => {
       const next = toggleFavorite(prev, id);
       saveFavoriteIds(next);
       return next;
@@ -356,7 +380,7 @@ export default function App() {
   // because the list is filtered (search / tag / archive), so a missing id
   // there does not imply the stash was deleted.
   const removeFavoriteId = useCallback((id: string) => {
-    setFavoriteIds(prev => {
+    setFavoriteIds((prev) => {
       if (!prev.has(id)) return prev;
       const next = new Set(prev);
       next.delete(id);
@@ -412,8 +436,8 @@ export default function App() {
     const newTag = tag === filterTag ? '' : tag;
     setFilterTag(newTag);
     if (newTag) {
-      setRecentTags(prev => {
-        const updated = [newTag, ...prev.filter(t => t !== newTag)].slice(0, 3);
+      setRecentTags((prev) => {
+        const updated = [newTag, ...prev.filter((t) => t !== newTag)].slice(0, 3);
         localStorage.setItem('clawstash_recent_tags', JSON.stringify(updated));
         return updated;
       });
@@ -477,7 +501,7 @@ export default function App() {
         tags={tags}
         recentTags={recentTags}
         showArchived={showArchived}
-        onToggleShowArchived={() => setShowArchived(prev => !prev)}
+        onToggleShowArchived={() => setShowArchived((prev) => !prev)}
         onSelectStash={handleSelectStash}
         onNewStash={handleNewStash}
         onGoHome={handleGoHome}
@@ -492,15 +516,46 @@ export default function App() {
       />
       <div className="main-wrapper">
         <header className="mobile-header">
-          <button className="mobile-menu-btn" onClick={() => setSidebarOpen(true)} aria-label="Open menu">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <line x1="3" y1="6" x2="21" y2="6" /><line x1="3" y1="12" x2="21" y2="12" /><line x1="3" y1="18" x2="21" y2="18" />
+          <button
+            className="mobile-menu-btn"
+            onClick={() => setSidebarOpen(true)}
+            aria-label="Open menu"
+          >
+            <svg
+              width="20"
+              height="20"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <line x1="3" y1="6" x2="21" y2="6" />
+              <line x1="3" y1="12" x2="21" y2="12" />
+              <line x1="3" y1="18" x2="21" y2="18" />
             </svg>
           </button>
-          <span className="mobile-header-title" onClick={handleGoHome}>ClawStash</span>
-          <button className="mobile-search-btn" onClick={() => setSearchOpen(prev => !prev)} aria-label="Search">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" />
+          <span className="mobile-header-title" onClick={handleGoHome}>
+            ClawStash
+          </span>
+          <button
+            className="mobile-search-btn"
+            onClick={() => setSearchOpen((prev) => !prev)}
+            aria-label="Search"
+          >
+            <svg
+              width="18"
+              height="18"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <circle cx="11" cy="11" r="8" />
+              <line x1="21" y1="21" x2="16.65" y2="16.65" />
             </svg>
           </button>
         </header>
@@ -515,7 +570,7 @@ export default function App() {
               showArchived={showArchived}
               favoriteIds={favoriteIds}
               onToggleFavorite={handleToggleFavorite}
-              onToggleShowArchived={() => setShowArchived(prev => !prev)}
+              onToggleShowArchived={() => setShowArchived((prev) => !prev)}
               onLayoutChange={handleLayoutChange}
               onSelectStash={handleSelectStash}
               onNewStash={handleNewStash}
@@ -540,7 +595,14 @@ export default function App() {
             <StashEditor
               stash={view === 'edit' ? selectedStash : null}
               onSave={handleSaveStash}
-              onCancel={selectedStash ? () => { setView('view'); if (selectedStash) pushUrl(`/stash/${selectedStash.id}`); } : handleGoHome}
+              onCancel={
+                selectedStash
+                  ? () => {
+                      setView('view');
+                      if (selectedStash) pushUrl(`/stash/${selectedStash.id}`);
+                    }
+                  : handleGoHome
+              }
             />
           )}
           {view === 'settings' && (

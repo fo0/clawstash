@@ -34,14 +34,22 @@ export const getMcpSpecText = memoizeByBaseUrl((baseUrl: string): string => {
   const schemas = openapi.components.schemas;
 
   // Format data types from OpenAPI schemas
-  const schemaNames = ['Stash', 'StashListItem', 'StashFile', 'CreateStashInput', 'UpdateStashInput', 'Stats', 'AccessLogEntry'];
+  const schemaNames = [
+    'Stash',
+    'StashListItem',
+    'StashFile',
+    'CreateStashInput',
+    'UpdateStashInput',
+    'Stats',
+    'AccessLogEntry',
+  ];
   const dataTypesSection = schemaNames
-    .filter(name => schemas[name])
-    .map(name => `### ${name}\n\`\`\`json\n${JSON.stringify(schemas[name], null, 2)}\n\`\`\``)
+    .filter((name) => schemas[name])
+    .map((name) => `### ${name}\n\`\`\`json\n${JSON.stringify(schemas[name], null, 2)}\n\`\`\``)
     .join('\n\n');
 
   // Format tool definitions — input schemas auto-derived from Zod via zodToJsonSchema
-  const toolsSection = TOOL_DEFS.map(t => {
+  const toolsSection = TOOL_DEFS.map((t) => {
     const jsonSchema = zodToJsonSchema(t.schema, { target: 'openApi3' });
     return `### ${t.name}
 ${t.description}
@@ -54,15 +62,19 @@ ${JSON.stringify(jsonSchema, null, 2)}
 **Returns:** \`${t.returns}\``;
   }).join('\n\n---\n\n');
 
-  const clientConfig = JSON.stringify({
-    mcpServers: {
-      clawstash: {
-        type: 'streamable-http',
-        url: `${baseUrl}/mcp`,
-        headers: { Authorization: 'Bearer YOUR_API_TOKEN' },
+  const clientConfig = JSON.stringify(
+    {
+      mcpServers: {
+        clawstash: {
+          type: 'streamable-http',
+          url: `${baseUrl}/mcp`,
+          headers: { Authorization: 'Bearer YOUR_API_TOKEN' },
+        },
       },
     },
-  }, null, 2);
+    null,
+    2,
+  );
 
   const result = `# ClawStash MCP Server Specification
 

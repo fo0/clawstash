@@ -19,6 +19,7 @@ git rev-parse --abbrev-ref HEAD && git status --porcelain && git log origin/$(gi
 ```
 
 Classify:
+
 - `main` / `master` / `develop` / `trunk` -> **main branch mode** (conservative)
 - anything else -> **feature branch mode** (standard)
 
@@ -31,6 +32,7 @@ Classify:
 ### 3. Run automated checks
 
 Execute the project's lint/typecheck/test/build commands from CLAUDE.md. If any fail:
+
 - **Feature branch:** report failure, stop. Do not commit.
 - **Main branch:** hard stop. Never push to main on red.
 

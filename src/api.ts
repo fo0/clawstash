@@ -1,4 +1,21 @@
-import type { Stash, StashListResponse, CreateStashInput, UpdateStashInput, TagInfo, Stats, AccessLogEntry, TokenListItem, NewlyCreatedToken, TokenScope, AdminSessionInfo, AdminLoginResponse, TagGraphResult, StashGraphResult, StashVersionListItem, StashVersion } from './types';
+import type {
+  Stash,
+  StashListResponse,
+  CreateStashInput,
+  UpdateStashInput,
+  TagInfo,
+  Stats,
+  AccessLogEntry,
+  TokenListItem,
+  NewlyCreatedToken,
+  TokenScope,
+  AdminSessionInfo,
+  AdminLoginResponse,
+  TagGraphResult,
+  StashGraphResult,
+  StashVersionListItem,
+  StashVersion,
+} from './types';
 
 const BASE = '/api/stashes';
 
@@ -30,7 +47,13 @@ async function request<T>(url: string, init?: RequestInit): Promise<T> {
 }
 
 export const api = {
-  listStashes(params?: { search?: string; tag?: string; archived?: boolean; page?: number; limit?: number }): Promise<StashListResponse> {
+  listStashes(params?: {
+    search?: string;
+    tag?: string;
+    archived?: boolean;
+    page?: number;
+    limit?: number;
+  }): Promise<StashListResponse> {
     const qs = new URLSearchParams();
     if (params?.search) qs.set('search', params.search);
     if (params?.tag) qs.set('tag', params.tag);
@@ -49,7 +72,11 @@ export const api = {
   },
 
   updateStash(id: string, input: UpdateStashInput): Promise<Stash> {
-    return request(`${BASE}/${id}`, { method: 'PATCH', headers: getHeaders(), body: JSON.stringify(input) });
+    return request(`${BASE}/${id}`, {
+      method: 'PATCH',
+      headers: getHeaders(),
+      body: JSON.stringify(input),
+    });
   },
 
   deleteStash(id: string): Promise<void> {
@@ -57,7 +84,11 @@ export const api = {
   },
 
   archiveStash(id: string, archived: boolean): Promise<Stash> {
-    return request(`${BASE}/${id}`, { method: 'PATCH', headers: getHeaders(), body: JSON.stringify({ archived }) });
+    return request(`${BASE}/${id}`, {
+      method: 'PATCH',
+      headers: getHeaders(),
+      body: JSON.stringify({ archived }),
+    });
   },
 
   getTags(): Promise<TagInfo[]> {
@@ -85,15 +116,28 @@ export const api = {
     return request(`${BASE}/${id}/versions/${version}`, { headers: getHeaders() });
   },
 
-  getVersionDiff(id: string, v1: number, v2: number): Promise<{ v1: StashVersion; v2: StashVersion }> {
+  getVersionDiff(
+    id: string,
+    v1: number,
+    v2: number,
+  ): Promise<{ v1: StashVersion; v2: StashVersion }> {
     return request(`${BASE}/${id}/versions/diff?v1=${v1}&v2=${v2}`, { headers: getHeaders() });
   },
 
   restoreVersion(id: string, version: number): Promise<Stash> {
-    return request(`${BASE}/${id}/versions/${version}/restore`, { method: 'POST', headers: getHeaders() });
+    return request(`${BASE}/${id}/versions/${version}/restore`, {
+      method: 'POST',
+      headers: getHeaders(),
+    });
   },
 
-  getTagGraph(params?: { tag?: string; depth?: number; min_weight?: number; min_count?: number; limit?: number }): Promise<TagGraphResult> {
+  getTagGraph(params?: {
+    tag?: string;
+    depth?: number;
+    min_weight?: number;
+    min_count?: number;
+    limit?: number;
+  }): Promise<TagGraphResult> {
     const qs = new URLSearchParams();
     if (params?.tag) qs.set('tag', params.tag);
     if (params?.depth !== undefined) qs.set('depth', String(params.depth));
@@ -103,16 +147,28 @@ export const api = {
     return request(`${BASE}/graph${qs.toString() ? `?${qs}` : ''}`, { headers: getHeaders() });
   },
 
-  getStashGraph(params?: { mode?: string; since?: string; until?: string; tag?: string; limit?: number; include_versions?: boolean; min_shared_tags?: number }): Promise<StashGraphResult> {
+  getStashGraph(params?: {
+    mode?: string;
+    since?: string;
+    until?: string;
+    tag?: string;
+    limit?: number;
+    include_versions?: boolean;
+    min_shared_tags?: number;
+  }): Promise<StashGraphResult> {
     const qs = new URLSearchParams();
     if (params?.mode) qs.set('mode', params.mode);
     if (params?.since) qs.set('since', params.since);
     if (params?.until) qs.set('until', params.until);
     if (params?.tag) qs.set('tag', params.tag);
     if (params?.limit !== undefined) qs.set('limit', String(params.limit));
-    if (params?.include_versions !== undefined) qs.set('include_versions', String(params.include_versions));
-    if (params?.min_shared_tags !== undefined) qs.set('min_shared_tags', String(params.min_shared_tags));
-    return request(`${BASE}/graph/stashes${qs.toString() ? `?${qs}` : ''}`, { headers: getHeaders() });
+    if (params?.include_versions !== undefined)
+      qs.set('include_versions', String(params.include_versions));
+    if (params?.min_shared_tags !== undefined)
+      qs.set('min_shared_tags', String(params.min_shared_tags));
+    return request(`${BASE}/graph/stashes${qs.toString() ? `?${qs}` : ''}`, {
+      headers: getHeaders(),
+    });
   },
 
   // Token management
@@ -121,7 +177,11 @@ export const api = {
   },
 
   createToken(label: string, scopes: TokenScope[]): Promise<NewlyCreatedToken> {
-    return request('/api/tokens', { method: 'POST', headers: getHeaders(), body: JSON.stringify({ label, scopes }) });
+    return request('/api/tokens', {
+      method: 'POST',
+      headers: getHeaders(),
+      body: JSON.stringify({ label, scopes }),
+    });
   },
 
   deleteToken(id: string): Promise<void> {
@@ -130,7 +190,11 @@ export const api = {
 
   // Admin auth
   adminLogin(password: string): Promise<AdminLoginResponse> {
-    return request('/api/admin/auth', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ password }) });
+    return request('/api/admin/auth', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ password }),
+    });
   },
 
   adminLogout(): Promise<void> {
@@ -173,7 +237,12 @@ export const api = {
   },
 
   // Data import (upload ZIP file)
-  async importData(file: File): Promise<{ message: string; imported: { stashes: number; files: number; versions: number; versionFiles: number } }> {
+  async importData(
+    file: File,
+  ): Promise<{
+    message: string;
+    imported: { stashes: number; files: number; versions: number; versionFiles: number };
+  }> {
     const formData = new FormData();
     formData.append('file', file);
     const headers: Record<string, string> = {};

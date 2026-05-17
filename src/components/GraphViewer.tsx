@@ -77,7 +77,8 @@ function assignClusters(nodes: GraphNode[], edges: GraphEdge[]): void {
   }
 
   function union(a: string, b: string) {
-    const ra = find(a), rb = find(b);
+    const ra = find(a),
+      rb = find(b);
     if (ra !== rb) parent.set(ra, rb);
   }
 
@@ -157,8 +158,8 @@ function initClusterLayout(nodes: GraphNode[]): void {
 }
 
 function buildGraph(stashes: StashListItem[], tags: TagInfo[]) {
-  const tagMap = new Map(tags.map(t => [t.tag, t.count]));
-  const nodes: GraphNode[] = tags.map(t => ({
+  const tagMap = new Map(tags.map((t) => [t.tag, t.count]));
+  const nodes: GraphNode[] = tags.map((t) => ({
     id: t.tag,
     label: t.tag,
     count: t.count,
@@ -173,7 +174,7 @@ function buildGraph(stashes: StashListItem[], tags: TagInfo[]) {
 
   const edgeMap = new Map<string, number>();
   for (const stash of stashes) {
-    const stashTags = stash.tags.filter(t => tagMap.has(t));
+    const stashTags = stash.tags.filter((t) => tagMap.has(t));
     for (let i = 0; i < stashTags.length; i++) {
       for (let j = i + 1; j < stashTags.length; j++) {
         const key = JSON.stringify([stashTags[i], stashTags[j]].sort());
@@ -196,7 +197,7 @@ function buildGraph(stashes: StashListItem[], tags: TagInfo[]) {
 }
 
 function buildGraphFromApi(data: TagGraphResult) {
-  const nodes: GraphNode[] = data.nodes.map(t => ({
+  const nodes: GraphNode[] = data.nodes.map((t) => ({
     id: t.tag,
     label: t.tag,
     count: t.count,
@@ -209,7 +210,7 @@ function buildGraphFromApi(data: TagGraphResult) {
     cluster: 0,
   }));
 
-  const edges: GraphEdge[] = data.edges.map(e => ({
+  const edges: GraphEdge[] = data.edges.map((e) => ({
     source: e.source,
     target: e.target,
     weight: e.weight,
@@ -223,8 +224,8 @@ function buildGraphFromApi(data: TagGraphResult) {
 }
 
 function simulate(nodes: GraphNode[], edges: GraphEdge[], alpha: number) {
-  const nodeMap = new Map(nodes.map(n => [n.id, n]));
-  const multiCluster = new Set(nodes.map(n => n.cluster)).size > 1;
+  const nodeMap = new Map(nodes.map((n) => [n.id, n]));
+  const multiCluster = new Set(nodes.map((n) => n.cluster)).size > 1;
 
   // 1. Center gravity — degree-proportional so hubs anchor the layout
   for (const node of nodes) {
@@ -243,7 +244,10 @@ function simulate(nodes: GraphNode[], edges: GraphEdge[], alpha: number) {
       c.n++;
       centroids.set(node.cluster, c);
     }
-    for (const c of centroids.values()) { c.x /= c.n; c.y /= c.n; }
+    for (const c of centroids.values()) {
+      c.x /= c.n;
+      c.y /= c.n;
+    }
 
     for (const node of nodes) {
       const c = centroids.get(node.cluster)!;
@@ -266,7 +270,7 @@ function simulate(nodes: GraphNode[], edges: GraphEdge[], alpha: number) {
       const degFactor = (a.degree + 1) * (b.degree + 1);
       const clusterBoost = multiCluster && a.cluster !== b.cluster ? 2.0 : 1.0;
       // 1/dist (not 1/dist²) gives longer-range repulsion → better cluster separation
-      const force = clusterBoost * degFactor * 40 * alpha / dist;
+      const force = (clusterBoost * degFactor * 40 * alpha) / dist;
       const fx = (dx / dist) * force;
       const fy = (dy / dist) * force;
       a.vx -= fx;
@@ -323,7 +327,15 @@ function simulate(nodes: GraphNode[], edges: GraphEdge[], alpha: number) {
   }
 }
 
-export default function GraphViewer({ stashes, tags, onFilterTag, onSelectStash, onGoHome, analyzeStashId, onAnalyzeStashConsumed }: Props) {
+export default function GraphViewer({
+  stashes,
+  tags,
+  onFilterTag,
+  onSelectStash,
+  onGoHome,
+  analyzeStashId,
+  onAnalyzeStashConsumed,
+}: Props) {
   const [graphTab, setGraphTab] = useState<'tags' | 'stashes'>('stashes');
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -359,7 +371,10 @@ export default function GraphViewer({ stashes, tags, onFilterTag, onSelectStash,
 
   // Rebuild adjacency set for a given node (O(edges) once, then O(1) lookups in draw)
   const rebuildAdjacency = useCallback((nodeId: string | null) => {
-    if (!nodeId) { adjacencyRef.current = null; return; }
+    if (!nodeId) {
+      adjacencyRef.current = null;
+      return;
+    }
     const set = new Set<string>();
     for (const e of edgesRef.current) {
       if (e.source === nodeId) set.add(e.target);
@@ -377,9 +392,10 @@ export default function GraphViewer({ stashes, tags, onFilterTag, onSelectStash,
   }, [highlightTag, rebuildAdjacency]);
 
   // Filtered tags for search dropdown
-  const searchResults = searchQuery.length > 0
-    ? tags.filter(t => t.tag.toLowerCase().includes(searchQuery.toLowerCase())).slice(0, 8)
-    : [];
+  const searchResults =
+    searchQuery.length > 0
+      ? tags.filter((t) => t.tag.toLowerCase().includes(searchQuery.toLowerCase())).slice(0, 8)
+      : [];
 
   // Auto-fit: compute zoom/pan to show all nodes within the viewport (smooth)
   const autoFit = useCallback(() => {
@@ -392,7 +408,10 @@ export default function GraphViewer({ stashes, tags, onFilterTag, onSelectStash,
     const h = canvas.height / dpr;
     if (w <= 0 || h <= 0) return;
 
-    let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+    let minX = Infinity,
+      maxX = -Infinity,
+      minY = Infinity,
+      maxY = -Infinity;
     for (const node of nodes) {
       const pad = node.radius + 25;
       minX = Math.min(minX, node.x - pad);
@@ -406,11 +425,10 @@ export default function GraphViewer({ stashes, tags, onFilterTag, onSelectStash,
     if (graphW <= 0 || graphH <= 0) return;
 
     const padding = 60;
-    const zoom = Math.max(0.2, Math.min(
-      (w - padding * 2) / graphW,
-      (h - padding * 2) / graphH,
-      1.5
-    ));
+    const zoom = Math.max(
+      0.2,
+      Math.min((w - padding * 2) / graphW, (h - padding * 2) / graphH, 1.5),
+    );
 
     const cx = (minX + maxX) / 2;
     const cy = (minY + maxY) / 2;
@@ -426,7 +444,7 @@ export default function GraphViewer({ stashes, tags, onFilterTag, onSelectStash,
     if (nodes.length < 5) return Infinity;
     const cached = glowThresholdRef.current;
     if (cached && cached.nodeCount === nodes.length) return cached.value;
-    const counts = nodes.map(n => n.count).sort((a, b) => b - a);
+    const counts = nodes.map((n) => n.count).sort((a, b) => b - a);
     const value = counts[Math.floor(counts.length * 0.2)] || counts[0];
     glowThresholdRef.current = { nodeCount: nodes.length, value };
     return value;
@@ -439,7 +457,7 @@ export default function GraphViewer({ stashes, tags, onFilterTag, onSelectStash,
     nodesRef.current = nodes;
     edgesRef.current = edges;
     setEdgeCount(edges.length);
-    hasManyCluster.current = new Set(nodes.map(n => n.cluster)).size > 1;
+    hasManyCluster.current = new Set(nodes.map((n) => n.cluster)).size > 1;
     glowThresholdRef.current = null;
     alphaRef.current = 1;
     autoFitDoneRef.current = false;
@@ -450,21 +468,26 @@ export default function GraphViewer({ stashes, tags, onFilterTag, onSelectStash,
   useEffect(() => {
     if (!focusTag) return;
     let cancelled = false;
-    api.getTagGraph({ tag: focusTag, depth: focusDepth }).then(data => {
-      if (cancelled) return;
-      const { nodes, edges } = buildGraphFromApi(data);
-      nodesRef.current = nodes;
-      edgesRef.current = edges;
-      setEdgeCount(edges.length);
-      hasManyCluster.current = new Set(nodes.map(n => n.cluster)).size > 1;
-      glowThresholdRef.current = null;
-      alphaRef.current = 1;
-      autoFitDoneRef.current = false;
-      startLoop();
-    }).catch(err => {
-      console.error('Failed to load focus graph:', err);
-    });
-    return () => { cancelled = true; };
+    api
+      .getTagGraph({ tag: focusTag, depth: focusDepth })
+      .then((data) => {
+        if (cancelled) return;
+        const { nodes, edges } = buildGraphFromApi(data);
+        nodesRef.current = nodes;
+        edgesRef.current = edges;
+        setEdgeCount(edges.length);
+        hasManyCluster.current = new Set(nodes.map((n) => n.cluster)).size > 1;
+        glowThresholdRef.current = null;
+        alphaRef.current = 1;
+        autoFitDoneRef.current = false;
+        startLoop();
+      })
+      .catch((err) => {
+        console.error('Failed to load focus graph:', err);
+      });
+    return () => {
+      cancelled = true;
+    };
   }, [focusTag, focusDepth]);
 
   const screenToWorld = useCallback((sx: number, sy: number, canvas: HTMLCanvasElement) => {
@@ -508,9 +531,11 @@ export default function GraphViewer({ stashes, tags, onFilterTag, onSelectStash,
 
     const nodes = nodesRef.current;
     const edges = edgesRef.current;
-    const nodeMap = new Map(nodes.map(n => [n.id, n]));
+    const nodeMap = new Map(nodes.map((n) => [n.id, n]));
     const hovered = hoveredRef.current;
-    const highlighted = highlightTagRef.current ? nodeMap.get(highlightTagRef.current) || null : null;
+    const highlighted = highlightTagRef.current
+      ? nodeMap.get(highlightTagRef.current) || null
+      : null;
     // Active node: hover takes priority over persistent highlight
     const activeNode = hovered || highlighted;
     const zoom = zoomRef.current;
@@ -522,7 +547,8 @@ export default function GraphViewer({ stashes, tags, onFilterTag, onSelectStash,
       const a = nodeMap.get(edge.source);
       const b = nodeMap.get(edge.target);
       if (!a || !b) continue;
-      const isActive = activeNode && (activeNode.id === edge.source || activeNode.id === edge.target);
+      const isActive =
+        activeNode && (activeNode.id === edge.source || activeNode.id === edge.target);
 
       ctx.beginPath();
       ctx.moveTo(a.x, a.y);
@@ -579,8 +605,12 @@ export default function GraphViewer({ stashes, tags, onFilterTag, onSelectStash,
       // Glow for high-count nodes
       if (node.count >= glowThreshold) {
         const gradient = ctx.createRadialGradient(
-          node.x, node.y, node.radius,
-          node.x, node.y, node.radius * 2.2
+          node.x,
+          node.y,
+          node.radius,
+          node.x,
+          node.y,
+          node.radius * 2.2,
         );
         const glowColor = isFocusNode ? '#58a6ff' : baseColor;
         const gr = parseInt(glowColor.slice(1, 3), 16);
@@ -761,31 +791,37 @@ export default function GraphViewer({ stashes, tags, onFilterTag, onSelectStash,
   }, []);
 
   // Show popup for a node
-  const showPopup = useCallback((node: GraphNode, screenX: number, screenY: number) => {
-    const connections = getConnections(node.id);
-    setPopup({
-      tag: node.id,
-      count: node.count,
-      screenX,
-      screenY,
-      connections,
-      stashes: [],
-      loadingStashes: true,
-    });
+  const showPopup = useCallback(
+    (node: GraphNode, screenX: number, screenY: number) => {
+      const connections = getConnections(node.id);
+      setPopup({
+        tag: node.id,
+        count: node.count,
+        screenX,
+        screenY,
+        connections,
+        stashes: [],
+        loadingStashes: true,
+      });
 
-    // Fetch stashes with this tag
-    api.listStashes({ tag: node.id, limit: 3 }).then(res => {
-      setPopup(prev => prev && prev.tag === node.id
-        ? { ...prev, stashes: res.stashes, loadingStashes: false }
-        : prev
-      );
-    }).catch(() => {
-      setPopup(prev => prev && prev.tag === node.id
-        ? { ...prev, loadingStashes: false }
-        : prev
-      );
-    });
-  }, [getConnections]);
+      // Fetch stashes with this tag
+      api
+        .listStashes({ tag: node.id, limit: 3 })
+        .then((res) => {
+          setPopup((prev) =>
+            prev && prev.tag === node.id
+              ? { ...prev, stashes: res.stashes, loadingStashes: false }
+              : prev,
+          );
+        })
+        .catch(() => {
+          setPopup((prev) =>
+            prev && prev.tag === node.id ? { ...prev, loadingStashes: false } : prev,
+          );
+        });
+    },
+    [getConnections],
+  );
 
   // Close popup
   const closePopup = useCallback(() => setPopup(null), []);
@@ -812,7 +848,12 @@ export default function GraphViewer({ stashes, tags, onFilterTag, onSelectStash,
         startLoopRef.current();
       } else {
         isPanningRef.current = true;
-        panStartRef.current = { x: e.clientX, y: e.clientY, panX: panRef.current.x, panY: panRef.current.y };
+        panStartRef.current = {
+          x: e.clientX,
+          y: e.clientY,
+          panX: panRef.current.x,
+          panY: panRef.current.y,
+        };
         // Close popup and clear highlight when clicking empty canvas
         closePopup();
         setHighlightTag(null);
@@ -971,7 +1012,12 @@ export default function GraphViewer({ stashes, tags, onFilterTag, onSelectStash,
           alphaRef.current = Math.max(alphaRef.current, 0.3);
           startLoopRef.current();
         } else {
-          panStartRef.current = { x: touch.clientX, y: touch.clientY, panX: panRef.current.x, panY: panRef.current.y };
+          panStartRef.current = {
+            x: touch.clientX,
+            y: touch.clientY,
+            panX: panRef.current.x,
+            panY: panRef.current.y,
+          };
           closePopup();
           setHighlightTag(null);
         }
@@ -1012,7 +1058,9 @@ export default function GraphViewer({ stashes, tags, onFilterTag, onSelectStash,
 
         if (dragRef.current) {
           e.preventDefault();
-          const moveDist = Math.sqrt((touch.clientX - touchStartPos.x) ** 2 + (touch.clientY - touchStartPos.y) ** 2);
+          const moveDist = Math.sqrt(
+            (touch.clientX - touchStartPos.x) ** 2 + (touch.clientY - touchStartPos.y) ** 2,
+          );
           if (moveDist > 8) isTouchDragging = true;
           const { x: wx, y: wy } = screenToWorld(sx, sy, canvas);
           dragRef.current.node.x = wx - dragRef.current.offsetX;
@@ -1044,7 +1092,12 @@ export default function GraphViewer({ stashes, tags, onFilterTag, onSelectStash,
         // Recapture single remaining touch as new pan start
         if (e.touches.length === 1) {
           const touch = e.touches[0];
-          panStartRef.current = { x: touch.clientX, y: touch.clientY, panX: panRef.current.x, panY: panRef.current.y };
+          panStartRef.current = {
+            x: touch.clientX,
+            y: touch.clientY,
+            panX: panRef.current.x,
+            panY: panRef.current.y,
+          };
         }
         return;
       }
@@ -1063,7 +1116,9 @@ export default function GraphViewer({ stashes, tags, onFilterTag, onSelectStash,
       // Tap on empty space (no pan movement)
       if (!isTouchPanning && Date.now() - touchStartTime < 300) {
         const t = e.changedTouches[0];
-        const dist = Math.sqrt((t.clientX - touchStartPos.x) ** 2 + (t.clientY - touchStartPos.y) ** 2);
+        const dist = Math.sqrt(
+          (t.clientX - touchStartPos.x) ** 2 + (t.clientY - touchStartPos.y) ** 2,
+        );
         if (dist < 10) {
           closePopup();
           setHighlightTag(null);
@@ -1117,7 +1172,7 @@ export default function GraphViewer({ stashes, tags, onFilterTag, onSelectStash,
       nodesRef.current = nodes;
       edgesRef.current = edges;
       setEdgeCount(edges.length);
-      hasManyCluster.current = new Set(nodes.map(n => n.cluster)).size > 1;
+      hasManyCluster.current = new Set(nodes.map((n) => n.cluster)).size > 1;
     }
     startLoopRef.current();
   };
@@ -1144,12 +1199,12 @@ export default function GraphViewer({ stashes, tags, onFilterTag, onSelectStash,
   };
 
   const handleDepthChange = (delta: number) => {
-    setFocusDepth(prev => Math.max(1, Math.min(4, prev + delta)));
+    setFocusDepth((prev) => Math.max(1, Math.min(4, prev + delta)));
   };
 
   // Locate: pan to a tag and highlight it
   const handleLocateTag = (tagId: string) => {
-    const node = nodesRef.current.find(n => n.id === tagId);
+    const node = nodesRef.current.find((n) => n.id === tagId);
     if (!node) return;
 
     // Zoom in if too far out
@@ -1194,16 +1249,24 @@ export default function GraphViewer({ stashes, tags, onFilterTag, onSelectStash,
     return { left, top };
   };
 
-  const nodeCount = focusTag
-    ? nodesRef.current.length
-    : tags.length;
+  const nodeCount = focusTag ? nodesRef.current.length : tags.length;
 
   const isStashTab = graphTab === 'stashes';
 
   const tabSwitcher = (
     <div className="graph-tab-switcher">
-      <button className={`graph-tab-btn ${isStashTab ? 'active' : ''}`} onClick={() => setGraphTab('stashes')}>Stashes</button>
-      <button className={`graph-tab-btn ${!isStashTab ? 'active' : ''}`} onClick={() => setGraphTab('tags')}>Tags</button>
+      <button
+        className={`graph-tab-btn ${isStashTab ? 'active' : ''}`}
+        onClick={() => setGraphTab('stashes')}
+      >
+        Stashes
+      </button>
+      <button
+        className={`graph-tab-btn ${!isStashTab ? 'active' : ''}`}
+        onClick={() => setGraphTab('tags')}
+      >
+        Tags
+      </button>
     </div>
   );
 
@@ -1220,7 +1283,11 @@ export default function GraphViewer({ stashes, tags, onFilterTag, onSelectStash,
             {tabSwitcher}
           </div>
         </div>
-        <StashGraphCanvas onSelectStash={onSelectStash} analyzeStashId={analyzeStashId} onAnalyzeStashConsumed={onAnalyzeStashConsumed} />
+        <StashGraphCanvas
+          onSelectStash={onSelectStash}
+          analyzeStashId={analyzeStashId}
+          onAnalyzeStashConsumed={onAnalyzeStashConsumed}
+        />
       </div>
     );
   }
@@ -1235,7 +1302,9 @@ export default function GraphViewer({ stashes, tags, onFilterTag, onSelectStash,
             </svg>
           </button>
           {tabSwitcher}
-          <span className="graph-stats">{nodeCount} tags · {edgeCount} connections</span>
+          <span className="graph-stats">
+            {nodeCount} tags · {edgeCount} connections
+          </span>
         </div>
         <div className="graph-actions">
           {focusTag && (
@@ -1250,14 +1319,18 @@ export default function GraphViewer({ stashes, tags, onFilterTag, onSelectStash,
                   onClick={() => handleDepthChange(-1)}
                   disabled={focusDepth <= 1}
                   title="Decrease depth"
-                >-</button>
+                >
+                  -
+                </button>
                 <span>depth {focusDepth}</span>
                 <button
                   className="graph-depth-btn"
                   onClick={() => handleDepthChange(1)}
                   disabled={focusDepth >= 4}
                   title="Increase depth"
-                >+</button>
+                >
+                  +
+                </button>
               </span>
               <button className="graph-focus-clear" onClick={handleClearFocus} title="Clear focus">
                 <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor">
@@ -1272,13 +1345,21 @@ export default function GraphViewer({ stashes, tags, onFilterTag, onSelectStash,
                 <path d="M10.68 11.74a6 6 0 0 1-7.922-8.982 6 6 0 0 1 8.982 7.922l3.04 3.04a.749.749 0 0 1-.326 1.275.749.749 0 0 1-.734-.215ZM11.5 7a4.499 4.499 0 1 0-8.997 0A4.499 4.499 0 0 0 11.5 7Z" />
               </svg>
               <span>{highlightTag}</span>
-              <button className="graph-highlight-focus" onClick={() => handleFocusTag(highlightTag)} title="Focus on this tag">
+              <button
+                className="graph-highlight-focus"
+                onClick={() => handleFocusTag(highlightTag)}
+                title="Focus on this tag"
+              >
                 <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor">
                   <path d="M8 2a6 6 0 1 0 0 12A6 6 0 0 0 8 2Zm0 1.5a4.5 4.5 0 1 1 0 9 4.5 4.5 0 0 1 0-9Zm0 2a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5Z" />
                 </svg>
                 Focus
               </button>
-              <button className="graph-highlight-clear" onClick={clearHighlight} title="Clear highlight">
+              <button
+                className="graph-highlight-clear"
+                onClick={clearHighlight}
+                title="Clear highlight"
+              >
                 <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor">
                   <path d="M3.72 3.72a.75.75 0 0 1 1.06 0L8 6.94l3.22-3.22a.749.749 0 0 1 1.275.326.749.749 0 0 1-.215.734L9.06 8l3.22 3.22a.749.749 0 0 1-.326 1.275.749.749 0 0 1-.734-.215L8 9.06l-3.22 3.22a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042L6.94 8 3.72 4.78a.75.75 0 0 1 0-1.06Z" />
                 </svg>
@@ -1295,7 +1376,13 @@ export default function GraphViewer({ stashes, tags, onFilterTag, onSelectStash,
           )}
           <div className="graph-search-wrapper">
             <div className="graph-search-box">
-              <svg className="graph-search-icon" width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
+              <svg
+                className="graph-search-icon"
+                width="14"
+                height="14"
+                viewBox="0 0 16 16"
+                fill="currentColor"
+              >
                 <path d="M10.68 11.74a6 6 0 0 1-7.922-8.982 6 6 0 0 1 8.982 7.922l3.04 3.04a.749.749 0 0 1-.326 1.275.749.749 0 0 1-.734-.215ZM11.5 7a4.499 4.499 0 1 0-8.997 0A4.499 4.499 0 0 0 11.5 7Z" />
               </svg>
               <input
@@ -1304,17 +1391,22 @@ export default function GraphViewer({ stashes, tags, onFilterTag, onSelectStash,
                 className="graph-search-input"
                 placeholder="Search tags..."
                 value={searchQuery}
-                onChange={e => { setSearchQuery(e.target.value); setSearchOpen(true); }}
+                onChange={(e) => {
+                  setSearchQuery(e.target.value);
+                  setSearchOpen(true);
+                }}
                 onFocus={() => setSearchOpen(true)}
-                onBlur={() => { setTimeout(() => setSearchOpen(false), 150); }}
-                onKeyDown={e => {
+                onBlur={() => {
+                  setTimeout(() => setSearchOpen(false), 150);
+                }}
+                onKeyDown={(e) => {
                   if (e.key === 'Escape') {
                     setSearchOpen(false);
                     setSearchQuery('');
                     searchInputRef.current?.blur();
                   } else if (e.key === 'Enter' && searchResults.length > 0) {
                     const tag = searchResults[0].tag;
-                    const inGraph = nodesRef.current.some(n => n.id === tag);
+                    const inGraph = nodesRef.current.some((n) => n.id === tag);
                     if (inGraph) {
                       handleLocateTag(tag);
                     } else {
@@ -1326,7 +1418,10 @@ export default function GraphViewer({ stashes, tags, onFilterTag, onSelectStash,
               {searchQuery && (
                 <button
                   className="graph-search-clear"
-                  onClick={() => { setSearchQuery(''); setSearchOpen(false); }}
+                  onClick={() => {
+                    setSearchQuery('');
+                    setSearchOpen(false);
+                  }}
                   title="Clear search"
                 >
                   <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor">
@@ -1337,40 +1432,50 @@ export default function GraphViewer({ stashes, tags, onFilterTag, onSelectStash,
             </div>
             {searchOpen && searchQuery && (
               <div className="graph-search-dropdown">
-                {searchResults.length > 0 ? searchResults.map(t => {
-                  const inGraph = nodesRef.current.some(n => n.id === t.tag);
-                  return (
-                    <div key={t.tag} className="graph-search-result">
-                      <button
-                        className="graph-search-result-locate"
-                        onClick={() => inGraph ? handleLocateTag(t.tag) : handleFocusTag(t.tag)}
-                        title={inGraph ? 'Locate in graph' : 'Not in current view — click to focus'}
-                      >
-                        <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor">
-                          <path d="M1 7.775V2.75C1 1.784 1.784 1 2.75 1h5.025c.464 0 .91.184 1.238.513l6.25 6.25a1.75 1.75 0 0 1 0 2.474l-5.026 5.026a1.75 1.75 0 0 1-2.474 0l-6.25-6.25A1.752 1.752 0 0 1 1 7.775Zm1.5 0c0 .066.026.13.073.177l6.25 6.25a.25.25 0 0 0 .354 0l5.025-5.025a.25.25 0 0 0 0-.354l-6.25-6.25a.25.25 0 0 0-.177-.073H2.75a.25.25 0 0 0-.25.25ZM6 5a1 1 0 1 1 0 2 1 1 0 0 1 0-2Z" />
-                        </svg>
-                        <span className="graph-search-result-name">{t.tag}</span>
-                        <span className="graph-search-result-count">{t.count}</span>
-                        {!inGraph && <span className="graph-search-result-badge">not in view</span>}
-                      </button>
-                      <button
-                        className="graph-search-result-focus"
-                        onClick={() => handleFocusTag(t.tag)}
-                        title="Focus graph on this tag"
-                      >
-                        <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor">
-                          <path d="M8 2a6 6 0 1 0 0 12A6 6 0 0 0 8 2Zm0 1.5a4.5 4.5 0 1 1 0 9 4.5 4.5 0 0 1 0-9Zm0 2a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5Z" />
-                        </svg>
-                      </button>
-                    </div>
-                  );
-                }) : (
+                {searchResults.length > 0 ? (
+                  searchResults.map((t) => {
+                    const inGraph = nodesRef.current.some((n) => n.id === t.tag);
+                    return (
+                      <div key={t.tag} className="graph-search-result">
+                        <button
+                          className="graph-search-result-locate"
+                          onClick={() => (inGraph ? handleLocateTag(t.tag) : handleFocusTag(t.tag))}
+                          title={
+                            inGraph ? 'Locate in graph' : 'Not in current view — click to focus'
+                          }
+                        >
+                          <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor">
+                            <path d="M1 7.775V2.75C1 1.784 1.784 1 2.75 1h5.025c.464 0 .91.184 1.238.513l6.25 6.25a1.75 1.75 0 0 1 0 2.474l-5.026 5.026a1.75 1.75 0 0 1-2.474 0l-6.25-6.25A1.752 1.752 0 0 1 1 7.775Zm1.5 0c0 .066.026.13.073.177l6.25 6.25a.25.25 0 0 0 .354 0l5.025-5.025a.25.25 0 0 0 0-.354l-6.25-6.25a.25.25 0 0 0-.177-.073H2.75a.25.25 0 0 0-.25.25ZM6 5a1 1 0 1 1 0 2 1 1 0 0 1 0-2Z" />
+                          </svg>
+                          <span className="graph-search-result-name">{t.tag}</span>
+                          <span className="graph-search-result-count">{t.count}</span>
+                          {!inGraph && (
+                            <span className="graph-search-result-badge">not in view</span>
+                          )}
+                        </button>
+                        <button
+                          className="graph-search-result-focus"
+                          onClick={() => handleFocusTag(t.tag)}
+                          title="Focus graph on this tag"
+                        >
+                          <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor">
+                            <path d="M8 2a6 6 0 1 0 0 12A6 6 0 0 0 8 2Zm0 1.5a4.5 4.5 0 1 1 0 9 4.5 4.5 0 0 1 0-9Zm0 2a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5Z" />
+                          </svg>
+                        </button>
+                      </div>
+                    );
+                  })
+                ) : (
                   <div className="graph-search-empty">No tags found</div>
                 )}
               </div>
             )}
           </div>
-          <button className="btn graph-reset-btn" onClick={handleResetView} title="Reset graph layout and zoom">
+          <button
+            className="btn graph-reset-btn"
+            onClick={handleResetView}
+            title="Reset graph layout and zoom"
+          >
             <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
               <path d="M3.38 8A4.62 4.62 0 0 1 8 3.38a4.63 4.63 0 0 1 3.27 1.35L9.74 6.26h4.51V1.75l-1.49 1.49A6.12 6.12 0 0 0 8 1.88 6.13 6.13 0 0 0 1.88 8Z" />
               <path d="M12.62 8A4.62 4.62 0 0 1 8 12.62a4.63 4.63 0 0 1-3.27-1.35l1.53-1.53H1.75v4.51l1.49-1.49A6.12 6.12 0 0 0 8 14.12 6.13 6.13 0 0 0 14.12 8Z" />
@@ -1380,7 +1485,11 @@ export default function GraphViewer({ stashes, tags, onFilterTag, onSelectStash,
         </div>
       </div>
       <div className="graph-canvas-container" ref={containerRef}>
-        <canvas ref={canvasRef} className="graph-canvas" style={{ cursor: 'grab', touchAction: 'none' }} />
+        <canvas
+          ref={canvasRef}
+          className="graph-canvas"
+          style={{ cursor: 'grab', touchAction: 'none' }}
+        />
         {tags.length === 0 && !focusTag && (
           <div className="graph-empty">
             <svg width="36" height="36" viewBox="0 0 16 16" fill="currentColor" opacity="0.3">
@@ -1392,7 +1501,12 @@ export default function GraphViewer({ stashes, tags, onFilterTag, onSelectStash,
 
         {/* Node click popup */}
         {popup && (
-          <div className="graph-node-popup" style={getPopupStyle()} role="dialog" aria-label={`Tag: ${popup.tag}`}>
+          <div
+            className="graph-node-popup"
+            style={getPopupStyle()}
+            role="dialog"
+            aria-label={`Tag: ${popup.tag}`}
+          >
             <div className="graph-popup-header">
               <div className="graph-popup-tag">
                 <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
@@ -1406,13 +1520,15 @@ export default function GraphViewer({ stashes, tags, onFilterTag, onSelectStash,
                 </svg>
               </button>
             </div>
-            <div className="graph-popup-count">Used in {popup.count} {popup.count === 1 ? 'stash' : 'stashes'}</div>
+            <div className="graph-popup-count">
+              Used in {popup.count} {popup.count === 1 ? 'stash' : 'stashes'}
+            </div>
 
             {popup.connections.length > 0 && (
               <div className="graph-popup-section">
                 <div className="graph-popup-section-title">Connected Tags</div>
                 <div className="graph-popup-connections">
-                  {popup.connections.map(c => (
+                  {popup.connections.map((c) => (
                     <span key={c.tag} className="graph-popup-conn-tag">
                       {c.tag}
                       <span className="graph-popup-conn-weight">{c.weight}</span>
@@ -1428,11 +1544,14 @@ export default function GraphViewer({ stashes, tags, onFilterTag, onSelectStash,
                 <div className="graph-popup-loading">Loading...</div>
               ) : popup.stashes.length > 0 ? (
                 <div className="graph-popup-stashes">
-                  {popup.stashes.map(s => (
+                  {popup.stashes.map((s) => (
                     <button
                       key={s.id}
                       className="graph-popup-stash"
-                      onClick={() => { closePopup(); onSelectStash(s.id); }}
+                      onClick={() => {
+                        closePopup();
+                        onSelectStash(s.id);
+                      }}
                     >
                       <span className="graph-popup-stash-name">{s.name || 'Untitled'}</span>
                       <span className="graph-popup-stash-meta">
@@ -1447,13 +1566,22 @@ export default function GraphViewer({ stashes, tags, onFilterTag, onSelectStash,
             </div>
 
             <div className="graph-popup-actions">
-              <button className="graph-popup-action-btn graph-popup-action-filter" onClick={() => { closePopup(); onFilterTag(popup.tag); }}>
+              <button
+                className="graph-popup-action-btn graph-popup-action-filter"
+                onClick={() => {
+                  closePopup();
+                  onFilterTag(popup.tag);
+                }}
+              >
                 <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor">
                   <path d="M.75 3h14.5a.75.75 0 0 1 0 1.5H.75a.75.75 0 0 1 0-1.5ZM3 7.75A.75.75 0 0 1 3.75 7h8.5a.75.75 0 0 1 0 1.5h-8.5A.75.75 0 0 1 3 7.75Zm3 4a.75.75 0 0 1 .75-.75h2.5a.75.75 0 0 1 0 1.5h-2.5a.75.75 0 0 1-.75-.75Z" />
                 </svg>
                 Filter Dashboard
               </button>
-              <button className="graph-popup-action-btn graph-popup-action-focus" onClick={() => handleFocusTag(popup.tag)}>
+              <button
+                className="graph-popup-action-btn graph-popup-action-focus"
+                onClick={() => handleFocusTag(popup.tag)}
+              >
                 <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor">
                   <path d="M8 2a6 6 0 1 0 0 12A6 6 0 0 0 8 2Zm0 1.5a4.5 4.5 0 1 1 0 9 4.5 4.5 0 0 1 0-9Zm0 2a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5Z" />
                 </svg>

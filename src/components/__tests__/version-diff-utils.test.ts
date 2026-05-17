@@ -66,7 +66,7 @@ describe('diffModifiedFile', () => {
   it('preserves context lines and tags adds/removes', () => {
     const r = diffModifiedFile('a.txt', 'a\nb\nc', 'a\nB\nc');
     expect(r.status).toBe('modified');
-    const types = r.hunks[0].lines.map(l => l.type);
+    const types = r.hunks[0].lines.map((l) => l.type);
     expect(types).toContain('add');
     expect(types).toContain('remove');
     expect(types).toContain('context');
@@ -74,8 +74,8 @@ describe('diffModifiedFile', () => {
 
   it('counts old/new line numbers independently', () => {
     const r = diffModifiedFile('a.txt', 'keep\nold', 'keep\nnew\nextra');
-    const adds = r.hunks[0].lines.filter(l => l.type === 'add');
-    const removes = r.hunks[0].lines.filter(l => l.type === 'remove');
+    const adds = r.hunks[0].lines.filter((l) => l.type === 'add');
+    const removes = r.hunks[0].lines.filter((l) => l.type === 'remove');
     expect(adds.length).toBeGreaterThan(0);
     expect(removes.length).toBeGreaterThan(0);
     // every add line carries newLineNo, every remove carries oldLineNo
@@ -97,7 +97,7 @@ describe('computeFileDiffs', () => {
       { filename: 'changed.txt', content: 'a\nB' },
     ]);
     const diffs = computeFileDiffs(v1, v2);
-    const byName = Object.fromEntries(diffs.map(d => [d.filename, d.status]));
+    const byName = Object.fromEntries(diffs.map((d) => [d.filename, d.status]));
     expect(byName).toEqual({
       'changed.txt': 'modified',
       'new.txt': 'added',
@@ -117,7 +117,7 @@ describe('computeFileDiffs', () => {
       { filename: 'new', content: 'b' },
       { filename: 'changed', content: 'b' },
     ]);
-    const order = computeFileDiffs(v1, v2).map(d => d.status);
+    const order = computeFileDiffs(v1, v2).map((d) => d.status);
     expect(order).toEqual(['modified', 'added', 'removed', 'unchanged']);
   });
 

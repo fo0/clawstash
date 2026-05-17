@@ -27,6 +27,7 @@ git log --oneline -10
 ```
 
 Plus:
+
 - Last error message verbatim (no paraphrasing)
 - Last 3 commands run and their exit codes
 - Files touched in this loop
@@ -45,15 +46,15 @@ If you can't articulate the attempts as distinct approaches -> that itself is th
 
 ### 3. Diagnose Loop Type
 
-| Pattern                                                           | Likely cause                                  | Action                                |
-|-------------------------------------------------------------------|-----------------------------------------------|---------------------------------------|
-| Same fix re-applied because tests still fail                      | Test is wrong, not the code                   | Question the test                     |
-| Lint passes locally, fails in CI                                  | Tooling-version drift                         | Pin versions, check `.tool-versions` / lockfile |
-| Import / module-not-found that "should work"                      | Cache, build artifacts, stale lockfile        | Clean caches, re-install deps         |
-| Type error surviving every cast                                   | Wrong type model, not wrong cast              | Step back, redesign types             |
-| Test flake (passes/fails non-deterministically)                   | Async race / shared state / clock dependency  | Treat as flake -> BACKLOG.md           |
-| Network / external-API error                                      | Unmocked external dep                         | Apply autonomy + zero-cost rule -- mock |
-| Build infra (timeout / OOM / runner)                              | NOT a code defect                             | Surface to CI skill, do not "fix" code |
+| Pattern                                         | Likely cause                                 | Action                                          |
+| ----------------------------------------------- | -------------------------------------------- | ----------------------------------------------- |
+| Same fix re-applied because tests still fail    | Test is wrong, not the code                  | Question the test                               |
+| Lint passes locally, fails in CI                | Tooling-version drift                        | Pin versions, check `.tool-versions` / lockfile |
+| Import / module-not-found that "should work"    | Cache, build artifacts, stale lockfile       | Clean caches, re-install deps                   |
+| Type error surviving every cast                 | Wrong type model, not wrong cast             | Step back, redesign types                       |
+| Test flake (passes/fails non-deterministically) | Async race / shared state / clock dependency | Treat as flake -> BACKLOG.md                    |
+| Network / external-API error                    | Unmocked external dep                        | Apply autonomy + zero-cost rule -- mock         |
+| Build infra (timeout / OOM / runner)            | NOT a code defect                            | Surface to CI skill, do not "fix" code          |
 
 ### 4. Surface to User
 
@@ -95,6 +96,6 @@ Then **stop**. Do NOT take a 4th attempt without user input.
 
 ## After User Response
 
-- User picks a concrete option -> execute, with attempt counter reset for the *new* approach (not for the underlying defect).
+- User picks a concrete option -> execute, with attempt counter reset for the _new_ approach (not for the underlying defect).
 - User asks for more info -> produce the requested data, do NOT take it as license to retry.
 - User says "keep trying" -> ask once: "Same approach or a new angle? If same, I will stop after one more attempt." Then enforce that.

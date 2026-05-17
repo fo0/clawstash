@@ -301,7 +301,11 @@ export default function MermaidDiagram({ code, className, storageKey }: Props) {
         >
           −
         </button>
-        <span className="mermaid-zoom-display" aria-live="polite" aria-label={`Zoom ${zoomPct} percent`}>
+        <span
+          className="mermaid-zoom-display"
+          aria-live="polite"
+          aria-label={`Zoom ${zoomPct} percent`}
+        >
           {zoomPct}%
         </span>
         <button

@@ -15,11 +15,19 @@ function installLocalStorageStub() {
   const store = new Map<string, string>();
   const stub = {
     getItem: (k: string) => (store.has(k) ? store.get(k)! : null),
-    setItem: (k: string, v: string) => { store.set(k, v); },
-    removeItem: (k: string) => { store.delete(k); },
-    clear: () => { store.clear(); },
+    setItem: (k: string, v: string) => {
+      store.set(k, v);
+    },
+    removeItem: (k: string) => {
+      store.delete(k);
+    },
+    clear: () => {
+      store.clear();
+    },
     key: (i: number) => Array.from(store.keys())[i] ?? null,
-    get length() { return store.size; },
+    get length() {
+      return store.size;
+    },
   } as unknown as Storage;
   vi.stubGlobal('localStorage', stub);
   // `loadFavoriteIds` also guards on `window`; provide a minimal stub.
@@ -71,29 +79,29 @@ describe('sortStashesWithFavorites', () => {
 
   it('returns input order untouched when there are no favorites', () => {
     const result = sortStashesWithFavorites(stashes, new Set());
-    expect(result.map(s => s.id)).toEqual(['a', 'b', 'c', 'd']);
+    expect(result.map((s) => s.id)).toEqual(['a', 'b', 'c', 'd']);
   });
 
   it('lifts a favorite to the top while preserving non-favorite order', () => {
     const result = sortStashesWithFavorites(stashes, new Set(['c']));
-    expect(result.map(s => s.id)).toEqual(['c', 'a', 'b', 'd']);
+    expect(result.map((s) => s.id)).toEqual(['c', 'a', 'b', 'd']);
   });
 
   it('keeps favorites in the original input order among themselves', () => {
     const result = sortStashesWithFavorites(stashes, new Set(['d', 'b']));
     // `b` appears before `d` in the input, so favorites group is [b, d];
     // non-favorites group is [a, c] in original order.
-    expect(result.map(s => s.id)).toEqual(['b', 'd', 'a', 'c']);
+    expect(result.map((s) => s.id)).toEqual(['b', 'd', 'a', 'c']);
   });
 
   it('handles all stashes being favorites', () => {
     const result = sortStashesWithFavorites(stashes, new Set(['a', 'b', 'c', 'd']));
-    expect(result.map(s => s.id)).toEqual(['a', 'b', 'c', 'd']);
+    expect(result.map((s) => s.id)).toEqual(['a', 'b', 'c', 'd']);
   });
 
   it('ignores favorite ids that are not in the current list', () => {
     const result = sortStashesWithFavorites(stashes, new Set(['zzz']));
-    expect(result.map(s => s.id)).toEqual(['a', 'b', 'c', 'd']);
+    expect(result.map((s) => s.id)).toEqual(['a', 'b', 'c', 'd']);
   });
 
   it('returns a new array even when no reordering happens', () => {
@@ -190,25 +198,21 @@ describe('end-to-end toggle action', () => {
 
     // 1. Initial load — no favorites yet, default order.
     let favorites = loadFavoriteIds();
-    expect(sortStashesWithFavorites(stashes, favorites).map(s => s.id))
-      .toEqual(['a', 'b', 'c']);
+    expect(sortStashesWithFavorites(stashes, favorites).map((s) => s.id)).toEqual(['a', 'b', 'c']);
 
     // 2. User toggles `c` as favorite — UI updates live.
     favorites = toggleFavorite(favorites, 'c');
     saveFavoriteIds(favorites);
-    expect(sortStashesWithFavorites(stashes, favorites).map(s => s.id))
-      .toEqual(['c', 'a', 'b']);
+    expect(sortStashesWithFavorites(stashes, favorites).map((s) => s.id)).toEqual(['c', 'a', 'b']);
 
     // 3. Page reload — state is restored from localStorage.
     favorites = loadFavoriteIds();
-    expect(sortStashesWithFavorites(stashes, favorites).map(s => s.id))
-      .toEqual(['c', 'a', 'b']);
+    expect(sortStashesWithFavorites(stashes, favorites).map((s) => s.id)).toEqual(['c', 'a', 'b']);
 
     // 4. User unfavorites `c` — order returns to default.
     favorites = toggleFavorite(favorites, 'c');
     saveFavoriteIds(favorites);
-    expect(sortStashesWithFavorites(stashes, favorites).map(s => s.id))
-      .toEqual(['a', 'b', 'c']);
+    expect(sortStashesWithFavorites(stashes, favorites).map((s) => s.id)).toEqual(['a', 'b', 'c']);
 
     // 5. Reload again — empty favorites persist.
     favorites = loadFavoriteIds();

@@ -11,26 +11,26 @@ This file documents:
 
 > Edit this list when adding/removing MCP integrations from the project. The optimizer preserves user edits on re-run.
 
-| MCP        | Purpose in this project                                                              | Notes                                                                                                |
-|------------|--------------------------------------------------------------------------------------|------------------------------------------------------------------------------------------------------|
-| `gitnexus` | Code intelligence -- symbol graph, impact, refactor for the clawstash TS/Next.js code | Run `npx gitnexus analyze` to (re)build the local index. Index lives in `.gitnexus/` (gitignored).   |
-| `github`   | Repo / issue / PR metadata when the `gh` CLI is unavailable in the host environment    | Skill files (`pr`, `ci`) prefer `gh` CLI when available; MCP is a fallback only.                     |
-| Clawstash's own MCP server | The application under development exposes its own MCP server at `/mcp` (Streamable HTTP) and via `npm run mcp` (stdio) | Used for end-to-end testing of MCP tools the project ships -- not for agent task automation.         |
+| MCP                        | Purpose in this project                                                                                                | Notes                                                                                              |
+| -------------------------- | ---------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------- |
+| `gitnexus`                 | Code intelligence -- symbol graph, impact, refactor for the clawstash TS/Next.js code                                  | Run `npx gitnexus analyze` to (re)build the local index. Index lives in `.gitnexus/` (gitignored). |
+| `github`                   | Repo / issue / PR metadata when the `gh` CLI is unavailable in the host environment                                    | Skill files (`pr`, `ci`) prefer `gh` CLI when available; MCP is a fallback only.                   |
+| Clawstash's own MCP server | The application under development exposes its own MCP server at `/mcp` (Streamable HTTP) and via `npm run mcp` (stdio) | Used for end-to-end testing of MCP tools the project ships -- not for agent task automation.       |
 
 ## Common MCPs (reference -- not necessarily used here)
 
-| MCP            | Typical use                                                  |
-|----------------|--------------------------------------------------------------|
-| `gitnexus`     | Code intelligence -- symbol graph, impact, refactor (manifest-driven feature in this optimizer) |
-| `filesystem`   | Sandboxed file access beyond CWD                            |
-| `github`       | Issue / PR / repo metadata via API (alternative to `gh`)    |
-| `postgres` / `mysql` / `sqlite` | Live DB schema introspection + read queries |
-| `puppeteer` / `playwright` | Headless browser, used for UI automation, scraping, e2e |
-| `fetch`        | HTTP fetch wrapper                                          |
-| `slack`        | Read/post messages -- for ops integrations                   |
-| `sentry`       | Error tracking lookup                                       |
-| `notion` / `linear` / `jira` | Work tracking integrations                  |
-| `aws` / `gcp` / `azure` | Cloud resource queries (use carefully -- non-zero cost) |
+| MCP                             | Typical use                                                                                     |
+| ------------------------------- | ----------------------------------------------------------------------------------------------- |
+| `gitnexus`                      | Code intelligence -- symbol graph, impact, refactor (manifest-driven feature in this optimizer) |
+| `filesystem`                    | Sandboxed file access beyond CWD                                                                |
+| `github`                        | Issue / PR / repo metadata via API (alternative to `gh`)                                        |
+| `postgres` / `mysql` / `sqlite` | Live DB schema introspection + read queries                                                     |
+| `puppeteer` / `playwright`      | Headless browser, used for UI automation, scraping, e2e                                         |
+| `fetch`                         | HTTP fetch wrapper                                                                              |
+| `slack`                         | Read/post messages -- for ops integrations                                                      |
+| `sentry`                        | Error tracking lookup                                                                           |
+| `notion` / `linear` / `jira`    | Work tracking integrations                                                                      |
+| `aws` / `gcp` / `azure`         | Cloud resource queries (use carefully -- non-zero cost)                                         |
 
 ## Selection Heuristic for the Agent
 

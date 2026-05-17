@@ -21,12 +21,15 @@ export default function McpTab({ baseUrl, mcpSpec, mcpTools }: Props) {
       {/* MCP Server Overview */}
       <section className="api-section">
         <div className="api-section-header">
-          <span className="api-section-icon purple"><ServerIcon /></span>
+          <span className="api-section-icon purple">
+            <ServerIcon />
+          </span>
           <h2>MCP Server</h2>
         </div>
         <p className="api-hint">
-          ClawStash provides a remote MCP Server (Model Context Protocol) via Streamable HTTP.
-          AI assistants like Claude Desktop, Cursor, or any MCP client can access your stashes directly.
+          ClawStash provides a remote MCP Server (Model Context Protocol) via Streamable HTTP. AI
+          assistants like Claude Desktop, Cursor, or any MCP client can access your stashes
+          directly.
         </p>
 
         {/* Copy Config for AI */}
@@ -49,20 +52,26 @@ export default function McpTab({ baseUrl, mcpSpec, mcpTools }: Props) {
             </button>
           </div>
           <span className="api-hint" style={{ marginBottom: 0 }}>
-            Copies complete MCP specification with tool definitions (JSON Schema), data types, token-efficient usage patterns, and purpose description.
+            Copies complete MCP specification with tool definitions (JSON Schema), data types,
+            token-efficient usage patterns, and purpose description.
           </span>
-          {expandedSpecs.has('mcp-tab') && (
-            mcpSpec
-              ? <pre className="api-code-block api-spec-preview">{mcpSpec}</pre>
-              : <div className="api-loading"><Spinner /> Loading spec...</div>
-          )}
+          {expandedSpecs.has('mcp-tab') &&
+            (mcpSpec ? (
+              <pre className="api-code-block api-spec-preview">{mcpSpec}</pre>
+            ) : (
+              <div className="api-loading">
+                <Spinner /> Loading spec...
+              </div>
+            ))}
         </div>
       </section>
 
       {/* Connection Info */}
       <section className="api-section">
         <div className="api-section-header">
-          <span className="api-section-icon purple"><WifiIcon /></span>
+          <span className="api-section-icon purple">
+            <WifiIcon />
+          </span>
           <h2>Connection Details</h2>
         </div>
         <div className="api-mcp-details">
@@ -84,7 +93,9 @@ export default function McpTab({ baseUrl, mcpSpec, mcpTools }: Props) {
       {/* MCP Client Configuration */}
       <section className="api-section">
         <div className="api-section-header">
-          <span className="api-section-icon purple"><ServerIcon /></span>
+          <span className="api-section-icon purple">
+            <ServerIcon />
+          </span>
           <h2>Client Configuration</h2>
         </div>
 
@@ -92,8 +103,8 @@ export default function McpTab({ baseUrl, mcpSpec, mcpTools }: Props) {
         <div className="api-mcp-config">
           <div className="api-section-label">Streamable HTTP (remote)</div>
           <p className="api-hint">
-            Add this to your MCP client configuration (e.g. Claude Desktop, Cursor, etc.).
-            Replace YOUR_API_TOKEN with an API token that has the MCP scope.
+            Add this to your MCP client configuration (e.g. Claude Desktop, Cursor, etc.). Replace
+            YOUR_API_TOKEN with an API token that has the MCP scope.
           </p>
           <div className="api-code-block-wrapper">
             <pre className="api-code-block">{streamableConfigJson}</pre>
@@ -110,9 +121,7 @@ export default function McpTab({ baseUrl, mcpSpec, mcpTools }: Props) {
         {/* Stdio fallback */}
         <div className="api-mcp-config">
           <div className="api-section-label">Stdio Transport (local alternative)</div>
-          <p className="api-hint">
-            For local use, you can also run the MCP server via stdio:
-          </p>
+          <p className="api-hint">For local use, you can also run the MCP server via stdio:</p>
           <div className="api-code-block-wrapper">
             <pre className="api-code-block">{stdioConfigJson}</pre>
             <button
@@ -129,7 +138,9 @@ export default function McpTab({ baseUrl, mcpSpec, mcpTools }: Props) {
       {/* Available Tools */}
       <section className="api-section">
         <div className="api-section-header">
-          <span className="api-section-icon purple"><ServerIcon /></span>
+          <span className="api-section-icon purple">
+            <ServerIcon />
+          </span>
           <h2>Available Tools ({mcpTools.length})</h2>
         </div>
         {mcpTools.length > 0 ? (
@@ -142,14 +153,18 @@ export default function McpTab({ baseUrl, mcpSpec, mcpTools }: Props) {
             ))}
           </div>
         ) : (
-          <div className="api-loading"><Spinner /> Loading tools...</div>
+          <div className="api-loading">
+            <Spinner /> Loading tools...
+          </div>
         )}
       </section>
 
       {/* MCP Examples */}
       <section className="api-section">
         <div className="api-section-header">
-          <span className="api-section-icon green"><KeyIcon /></span>
+          <span className="api-section-icon green">
+            <KeyIcon />
+          </span>
           <h2>Examples</h2>
         </div>
         <div className="api-mgr-examples">

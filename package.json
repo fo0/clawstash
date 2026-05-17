@@ -22,7 +22,9 @@
     "mcp": "tsx src/server/mcp.ts",
     "test": "vitest run",
     "test:run": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "format": "prettier --write .",
+    "format:check": "prettier --check ."
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.27.1",
@@ -51,6 +53,7 @@
     "@types/prismjs": "^1.26.6",
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.0.0",
+    "prettier": "3.8.3",
     "typescript": "^6.0.3",
     "vitest": "^4.1.6"
   }

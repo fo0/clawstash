@@ -4,7 +4,7 @@ Copy the prompt below and paste it into your OpenClaw conversation. Your agent w
 
 ---
 
-```
+````
 Install ClawStash on my server and set it up as your persistent storage.
 
 ## Server Details
@@ -36,19 +36,22 @@ Install ClawStash on my server and set it up as your persistent storage.
          - ADMIN_PASSWORD=<ADMIN_PASSWORD>
        restart: unless-stopped
    COMPOSE
-   ```
-   - Replace `<PORT>` with the desired external port (e.g. `3000`, `8080`)
-     Left side = external port you access, right side stays `3000` (container internal)
-   - Replace `<ADMIN_PASSWORD>` with a secure password
+````
+
+- Replace `<PORT>` with the desired external port (e.g. `3000`, `8080`)
+  Left side = external port you access, right side stays `3000` (container internal)
+- Replace `<ADMIN_PASSWORD>` with a secure password
 
 4. **Start the service:**
+
    ```bash
    docker compose up -d
    ```
 
-6. **Verify it's running** — fetch `http://<HOST_OR_IP>:<PORT>/api/version`
+5. **Verify it's running** — fetch `http://<HOST_OR_IP>:<PORT>/api/version`
 
-7. **Create an API token:**
+6. **Create an API token:**
+
    ```bash
    # Login as admin (returns session token)
    SESSION=$(curl -s -X POST http://<HOST_OR_IP>:<PORT>/api/admin/auth \
@@ -61,9 +64,11 @@ Install ClawStash on my server and set it up as your persistent storage.
      -H "Authorization: Bearer $SESSION" \
      -d '{"label": "openclaw-agent", "scopes": ["read", "write", "mcp"]}'
    ```
+
    Save the returned token — it is only shown once.
 
-8. **Create test stashes** to verify everything works:
+7. **Create test stashes** to verify everything works:
+
    ```bash
    TOKEN="<YOUR_API_TOKEN>"
    BASE="http://<HOST_OR_IP>:<PORT>"
@@ -95,22 +100,27 @@ Install ClawStash on my server and set it up as your persistent storage.
    curl -s $BASE/api/stashes -H "Authorization: Bearer $TOKEN"
    ```
 
-9. **Initialize MCP connection** — fetch the onboarding spec and configure yourself:
+8. **Initialize MCP connection** — fetch the onboarding spec and configure yourself:
+
    ```bash
    curl -s http://<HOST_OR_IP>:<PORT>/api/mcp-onboarding
    ```
+
    Read the returned specification carefully. It contains all available MCP tools,
    their schemas, and the recommended workflow. Configure your MCP connection:
    - Transport: Streamable HTTP
    - URL: `http://<HOST_OR_IP>:<PORT>/mcp`
    - Auth header: `Authorization: Bearer <YOUR_API_TOKEN>`
 
-10. **Test MCP** — once connected, run these tools to verify:
-    - `get_stats` — should show 2 stashes
-    - `list_stashes` — should return the test stashes
-    - `search_stashes` with query "onboarding" — should find both test stashes
+9. **Test MCP** — once connected, run these tools to verify:
+   - `get_stats` — should show 2 stashes
+   - `list_stashes` — should return the test stashes
+   - `search_stashes` with query "onboarding" — should find both test stashes
 
 From now on, use ClawStash as your default persistent storage via MCP.
 Store any information that doesn't need to stay in active context:
 background notes, project history, reference docs, configs, code snippets.
+
+```
+
 ```

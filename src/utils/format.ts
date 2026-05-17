@@ -3,8 +3,11 @@
  */
 export function formatDateTime(dateStr: string): string {
   return new Date(dateStr).toLocaleString('en-US', {
-    day: '2-digit', month: '2-digit', year: 'numeric',
-    hour: '2-digit', minute: '2-digit',
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
   });
 }
 
@@ -13,7 +16,9 @@ export function formatDateTime(dateStr: string): string {
  */
 export function formatDate(dateStr: string): string {
   return new Date(dateStr).toLocaleDateString('en-US', {
-    day: 'numeric', month: 'numeric', year: 'numeric',
+    day: 'numeric',
+    month: 'numeric',
+    year: 'numeric',
   });
 }
 

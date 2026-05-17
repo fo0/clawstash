@@ -75,12 +75,16 @@ describe('TokenStore', () => {
 
   it('listApiTokens returns rows ordered by created_at DESC', () => {
     // Insert with explicit timestamps to control ordering deterministically
-    db.prepare(`INSERT INTO api_tokens (id, label, token_hash, token_prefix, scopes, created_at)
-                VALUES (?, ?, ?, ?, ?, ?)`).run('a', 'old', 'h1', 'cs_old', '["read"]', '2020-01-01T00:00:00Z');
-    db.prepare(`INSERT INTO api_tokens (id, label, token_hash, token_prefix, scopes, created_at)
-                VALUES (?, ?, ?, ?, ?, ?)`).run('b', 'new', 'h2', 'cs_new', '["read"]', '2026-01-01T00:00:00Z');
+    db.prepare(
+      `INSERT INTO api_tokens (id, label, token_hash, token_prefix, scopes, created_at)
+                VALUES (?, ?, ?, ?, ?, ?)`,
+    ).run('a', 'old', 'h1', 'cs_old', '["read"]', '2020-01-01T00:00:00Z');
+    db.prepare(
+      `INSERT INTO api_tokens (id, label, token_hash, token_prefix, scopes, created_at)
+                VALUES (?, ?, ?, ?, ?, ?)`,
+    ).run('b', 'new', 'h2', 'cs_new', '["read"]', '2026-01-01T00:00:00Z');
     const list = store.listApiTokens();
-    expect(list.map(t => t.label)).toEqual(['new', 'old']);
+    expect(list.map((t) => t.label)).toEqual(['new', 'old']);
   });
 
   it('deleteApiToken returns true for known id and false for unknown', () => {
@@ -90,25 +94,35 @@ describe('TokenStore', () => {
   });
 
   it('safeParseScopes filters unknown values from corrupted rows', () => {
-    db.prepare(`INSERT INTO api_tokens (id, label, token_hash, token_prefix, scopes, created_at)
-                VALUES (?, ?, ?, ?, ?, ?)`)
-      .run('x', 'corrupt', 'deadbeef', 'cs_dead', '["read","wat",42,"admin"]', '2026-01-01T00:00:00Z');
+    db.prepare(
+      `INSERT INTO api_tokens (id, label, token_hash, token_prefix, scopes, created_at)
+                VALUES (?, ?, ?, ?, ?, ?)`,
+    ).run(
+      'x',
+      'corrupt',
+      'deadbeef',
+      'cs_dead',
+      '["read","wat",42,"admin"]',
+      '2026-01-01T00:00:00Z',
+    );
     const list = store.listApiTokens();
     expect(list[0].scopes).toEqual(['read', 'admin']);
   });
 
   it('safeParseScopes returns [] for invalid JSON', () => {
-    db.prepare(`INSERT INTO api_tokens (id, label, token_hash, token_prefix, scopes, created_at)
-                VALUES (?, ?, ?, ?, ?, ?)`)
-      .run('y', 'broken', 'beefdead', 'cs_beef', '{not json', '2026-01-01T00:00:00Z');
+    db.prepare(
+      `INSERT INTO api_tokens (id, label, token_hash, token_prefix, scopes, created_at)
+                VALUES (?, ?, ?, ?, ?, ?)`,
+    ).run('y', 'broken', 'beefdead', 'cs_beef', '{not json', '2026-01-01T00:00:00Z');
     const list = store.listApiTokens();
     expect(list[0].scopes).toEqual([]);
   });
 
   it('safeParseScopes returns [] for non-array JSON', () => {
-    db.prepare(`INSERT INTO api_tokens (id, label, token_hash, token_prefix, scopes, created_at)
-                VALUES (?, ?, ?, ?, ?, ?)`)
-      .run('z', 'object', 'abcdef00', 'cs_obj', '{"read":true}', '2026-01-01T00:00:00Z');
+    db.prepare(
+      `INSERT INTO api_tokens (id, label, token_hash, token_prefix, scopes, created_at)
+                VALUES (?, ?, ?, ?, ?, ?)`,
+    ).run('z', 'object', 'abcdef00', 'cs_obj', '{"read":true}', '2026-01-01T00:00:00Z');
     const list = store.listApiTokens();
     expect(list[0].scopes).toEqual([]);
   });
@@ -119,9 +133,10 @@ describe('TokenStore', () => {
     const crypto = require('crypto') as typeof import('crypto');
     const raw = 'cs_' + 'a'.repeat(48);
     const hash = crypto.createHash('sha256').update(raw).digest('hex');
-    db.prepare(`INSERT INTO api_tokens (id, label, token_hash, token_prefix, scopes, created_at)
-                VALUES (?, ?, ?, ?, ?, ?)`)
-      .run('m', 'mix', hash, raw.substring(0, 7), '["read","bogus","mcp"]', '2026-01-01T00:00:00Z');
+    db.prepare(
+      `INSERT INTO api_tokens (id, label, token_hash, token_prefix, scopes, created_at)
+                VALUES (?, ?, ?, ?, ?, ?)`,
+    ).run('m', 'mix', hash, raw.substring(0, 7), '["read","bogus","mcp"]', '2026-01-01T00:00:00Z');
     const v = store.validateApiToken(raw);
     expect(v).toEqual({ valid: true, scopes: ['read', 'mcp'], tokenId: 'm' });
   });

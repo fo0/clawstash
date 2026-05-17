@@ -9,10 +9,7 @@ interface UseClipboardOptions {
 type CopyStatus = 'idle' | 'copied' | 'failed';
 
 /** Internal base hook: manages copy + timed status reset + cleanup. */
-function useClipboardBase<T>(
-  idleValue: T,
-  feedbackDuration: number,
-) {
+function useClipboardBase<T>(idleValue: T, feedbackDuration: number) {
   const [state, setState] = useState(idleValue);
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -22,13 +19,16 @@ function useClipboardBase<T>(
     };
   }, []);
 
-  const trigger = useCallback(async (text: string, successValue: T, failValue: T): Promise<boolean> => {
-    const success = await copyToClipboard(text);
-    if (timeoutRef.current) clearTimeout(timeoutRef.current);
-    setState(success ? successValue : failValue);
-    timeoutRef.current = setTimeout(() => setState(idleValue), feedbackDuration);
-    return success;
-  }, [idleValue, feedbackDuration]);
+  const trigger = useCallback(
+    async (text: string, successValue: T, failValue: T): Promise<boolean> => {
+      const success = await copyToClipboard(text);
+      if (timeoutRef.current) clearTimeout(timeoutRef.current);
+      setState(success ? successValue : failValue);
+      timeoutRef.current = setTimeout(() => setState(idleValue), feedbackDuration);
+      return success;
+    },
+    [idleValue, feedbackDuration],
+  );
 
   return { state, trigger };
 }
@@ -48,9 +48,12 @@ export function useClipboard(options: UseClipboardOptions = {}): UseClipboardRet
   const { feedbackDuration = COPY_TOAST_DURATION_MS } = options;
   const { state, trigger } = useClipboardBase<CopyStatus>('idle', feedbackDuration);
 
-  const copy = useCallback(async (text: string) => {
-    await trigger(text, 'copied', 'failed');
-  }, [trigger]);
+  const copy = useCallback(
+    async (text: string) => {
+      await trigger(text, 'copied', 'failed');
+    },
+    [trigger],
+  );
 
   return { status: state, copied: state === 'copied', copy };
 }
@@ -70,11 +73,17 @@ interface UseClipboardWithKeyReturn {
  */
 export function useClipboardWithKey(options: UseClipboardOptions = {}): UseClipboardWithKeyReturn {
   const { feedbackDuration = COPY_TOAST_DURATION_MS } = options;
-  const { state, trigger } = useClipboardBase<{ key: string; ok: boolean } | null>(null, feedbackDuration);
+  const { state, trigger } = useClipboardBase<{ key: string; ok: boolean } | null>(
+    null,
+    feedbackDuration,
+  );
 
-  const copy = useCallback(async (key: string, text: string) => {
-    await trigger(text, { key, ok: true }, { key, ok: false });
-  }, [trigger]);
+  const copy = useCallback(
+    async (key: string, text: string) => {
+      await trigger(text, { key, ok: true }, { key, ok: false });
+    },
+    [trigger],
+  );
 
   const isCopied = (key: string) => state?.key === key && state.ok === true;
   const isFailed = (key: string) => state?.key === key && state.ok === false;

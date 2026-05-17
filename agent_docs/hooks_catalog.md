@@ -7,6 +7,7 @@ Ready-to-paste hook snippets that enforce optimizer rules beyond the Tier-1 mini
 > **Tier-3** = optional, situational -- copy only if you actively want the behavior.
 
 ## How to use
+
 1. Open `.claude/settings.json`.
 2. Find the matching trigger (`PostToolUse`, `PreToolUse`, `Stop`, `PreCompact`, `UserPromptSubmit`).
 3. Append the snippet's hook entry to the trigger's array. Don't duplicate matchers -- merge into existing matcher's `hooks` list.
@@ -28,6 +29,7 @@ Ready-to-paste hook snippets that enforce optimizer rules beyond the Tier-1 mini
   ]
 }
 ```
+
 Trigger: `PostToolUse`
 
 ### SCRATCHPAD.md size warning (>8,000 chars)
@@ -43,6 +45,7 @@ Trigger: `PostToolUse`
   ]
 }
 ```
+
 Trigger: `PostToolUse`
 
 ### Stop -- scratchpad cleanup reminder
@@ -57,6 +60,7 @@ Trigger: `PostToolUse`
   ]
 }
 ```
+
 Trigger: `Stop`
 
 ### PreCompact -- dump scratchpad state
@@ -71,6 +75,7 @@ Trigger: `Stop`
   ]
 }
 ```
+
 Trigger: `PreCompact`
 
 ### Stop -- review reminder
@@ -85,6 +90,7 @@ Trigger: `PreCompact`
   ]
 }
 ```
+
 Trigger: `Stop`
 
 ### Block push to main on red
@@ -100,6 +106,7 @@ Trigger: `Stop`
   ]
 }
 ```
+
 Trigger: `PreToolUse`. Project commands inserted from CLAUDE.md (no linter configured yet; test framework is vitest -- `npm test`).
 
 ### Block force-push without confirmation
@@ -115,6 +122,7 @@ Trigger: `PreToolUse`. Project commands inserted from CLAUDE.md (no linter confi
   ]
 }
 ```
+
 Trigger: `PreToolUse`
 
 ### Mermaid validate on save
@@ -130,6 +138,7 @@ Trigger: `PreToolUse`
   ]
 }
 ```
+
 Trigger: `PostToolUse`
 
 ### Doc-update reminder after src/ edit
@@ -145,6 +154,7 @@ Trigger: `PostToolUse`
   ]
 }
 ```
+
 Trigger: `PostToolUse`
 
 ---
@@ -164,6 +174,7 @@ Trigger: `PostToolUse`
   ]
 }
 ```
+
 Trigger: `PreToolUse`
 
 ### GitNexus pre-commit scope check
@@ -179,6 +190,7 @@ Trigger: `PreToolUse`
   ]
 }
 ```
+
 Trigger: `PreToolUse`
 
 ### Conventional Commits format check
@@ -194,6 +206,7 @@ Trigger: `PreToolUse`
   ]
 }
 ```
+
 Trigger: `PreToolUse`
 
 ### Done-skill auto-trigger on "done"/"fertig"
@@ -208,6 +221,7 @@ Trigger: `PreToolUse`
   ]
 }
 ```
+
 Trigger: `UserPromptSubmit`
 
 ### Dependency-install warning
@@ -223,11 +237,13 @@ Trigger: `UserPromptSubmit`
   ]
 }
 ```
+
 Trigger: `PreToolUse`
 
 ---
 
 ## Notes
+
 - `$CLAUDE_PROJECT_DIR`, `$CLAUDE_TOOL_INPUT`, `$CLAUDE_USER_PROMPT` are environment variables Claude Code sets per hook event. If a snippet relies on a variable not yet exposed in your version, the hook silently no-ops -- no harm.
 - Exit code `2` from a `PreToolUse` hook blocks the tool call. Other non-zero exits print stderr but don't block.
 - Hooks run in the user's shell. Quote paths, escape `$` carefully when copying.

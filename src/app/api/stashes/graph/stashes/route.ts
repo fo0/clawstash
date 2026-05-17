@@ -10,7 +10,10 @@ export async function GET(req: NextRequest) {
 
   const { searchParams } = req.nextUrl;
   const rawMode = searchParams.get('mode');
-  const mode = rawMode && VALID_MODES.has(rawMode) ? rawMode as 'relations' | 'timeline' | 'versions' : undefined;
+  const mode =
+    rawMode && VALID_MODES.has(rawMode)
+      ? (rawMode as 'relations' | 'timeline' | 'versions')
+      : undefined;
   const since = searchParams.get('since') || undefined;
   const until = searchParams.get('until') || undefined;
   const tag = searchParams.get('tag') || undefined;
@@ -18,5 +21,7 @@ export async function GET(req: NextRequest) {
   const include_versions = searchParams.get('include_versions') === 'true';
   const min_shared_tags = parsePositiveInt(searchParams.get('min_shared_tags'));
 
-  return NextResponse.json(getDb().getStashGraph({ mode, since, until, tag, limit, include_versions, min_shared_tags }));
+  return NextResponse.json(
+    getDb().getStashGraph({ mode, since, until, tag, limit, include_versions, min_shared_tags }),
+  );
 }

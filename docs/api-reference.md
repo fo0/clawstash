@@ -16,20 +16,20 @@ See [authentication.md](authentication.md) for token creation and scopes.
 
 ### Stashes
 
-| Endpoint | Method | Description |
-|----------|--------|-------------|
-| `/api/stashes` | GET | List stashes (`?search=&tag=&archived=&page=&limit=`) |
-| `/api/stashes` | POST | Create a stash |
-| `/api/stashes/:id` | GET | Get a single stash with all files |
-| `/api/stashes/:id` | PATCH | Update a stash |
-| `/api/stashes/:id` | DELETE | Delete a stash |
-| `/api/stashes/:id/files/:filename/raw` | GET | Raw file content |
-| `/api/stashes/:id/access-log` | GET | Access log (`?limit=`) |
-| `/api/stashes/stats` | GET | Storage statistics |
-| `/api/stashes/tags` | GET | All tags with counts |
-| `/api/stashes/metadata-keys` | GET | All unique metadata keys |
-| `/api/stashes/graph` | GET | Tag relationship graph (`?tag=&depth=&min_weight=&min_count=&limit=`) |
-| `/api/stashes/graph/stashes` | GET | Stash relationship graph |
+| Endpoint                               | Method | Description                                                           |
+| -------------------------------------- | ------ | --------------------------------------------------------------------- |
+| `/api/stashes`                         | GET    | List stashes (`?search=&tag=&archived=&page=&limit=`)                 |
+| `/api/stashes`                         | POST   | Create a stash                                                        |
+| `/api/stashes/:id`                     | GET    | Get a single stash with all files                                     |
+| `/api/stashes/:id`                     | PATCH  | Update a stash                                                        |
+| `/api/stashes/:id`                     | DELETE | Delete a stash                                                        |
+| `/api/stashes/:id/files/:filename/raw` | GET    | Raw file content                                                      |
+| `/api/stashes/:id/access-log`          | GET    | Access log (`?limit=`)                                                |
+| `/api/stashes/stats`                   | GET    | Storage statistics                                                    |
+| `/api/stashes/tags`                    | GET    | All tags with counts                                                  |
+| `/api/stashes/metadata-keys`           | GET    | All unique metadata keys                                              |
+| `/api/stashes/graph`                   | GET    | Tag relationship graph (`?tag=&depth=&min_weight=&min_count=&limit=`) |
+| `/api/stashes/graph/stashes`           | GET    | Stash relationship graph                                              |
 
 > **`?archived=` query param**: only the literal strings `true` and `false` are honored — any other value (e.g. `?archived=1`, `?archived=yes`) is silently ignored and the route falls back to the default (active stashes only). See BACKLOG #84 for the planned 400-on-invalid behavior.
 
@@ -37,42 +37,42 @@ See [authentication.md](authentication.md) for token creation and scopes.
 
 ### Versions
 
-| Endpoint | Method | Description |
-|----------|--------|-------------|
-| `/api/stashes/:id/versions` | GET | List all versions (descending) |
-| `/api/stashes/:id/versions/diff` | GET | Compare two versions (`?v1=&v2=`) |
-| `/api/stashes/:id/versions/:version` | GET | Get a specific version snapshot |
-| `/api/stashes/:id/versions/:version/restore` | POST | Restore an old version |
+| Endpoint                                     | Method | Description                       |
+| -------------------------------------------- | ------ | --------------------------------- |
+| `/api/stashes/:id/versions`                  | GET    | List all versions (descending)    |
+| `/api/stashes/:id/versions/diff`             | GET    | Compare two versions (`?v1=&v2=`) |
+| `/api/stashes/:id/versions/:version`         | GET    | Get a specific version snapshot   |
+| `/api/stashes/:id/versions/:version/restore` | POST   | Restore an old version            |
 
 ### Tokens
 
-| Endpoint | Method | Auth | Description |
-|----------|--------|------|-------------|
-| `/api/tokens` | GET | admin | List API tokens |
-| `/api/tokens` | POST | admin | Create API token |
-| `/api/tokens/:id` | DELETE | admin | Delete API token |
-| `/api/tokens/validate` | POST | any Bearer | Validate a Bearer token (per-IP rate-limited: 10 attempts / 15 min) |
+| Endpoint               | Method | Auth       | Description                                                         |
+| ---------------------- | ------ | ---------- | ------------------------------------------------------------------- |
+| `/api/tokens`          | GET    | admin      | List API tokens                                                     |
+| `/api/tokens`          | POST   | admin      | Create API token                                                    |
+| `/api/tokens/:id`      | DELETE | admin      | Delete API token                                                    |
+| `/api/tokens/validate` | POST   | any Bearer | Validate a Bearer token (per-IP rate-limited: 10 attempts / 15 min) |
 
 ### Admin
 
-| Endpoint | Method | Description |
-|----------|--------|-------------|
-| `/api/admin/auth` | POST | Login with password |
-| `/api/admin/logout` | POST | Invalidate session |
-| `/api/admin/session` | GET | Check session status |
-| `/api/admin/export` | GET | Export all data as ZIP |
-| `/api/admin/import` | POST | Import data from ZIP |
+| Endpoint             | Method | Description            |
+| -------------------- | ------ | ---------------------- |
+| `/api/admin/auth`    | POST   | Login with password    |
+| `/api/admin/logout`  | POST   | Invalidate session     |
+| `/api/admin/session` | GET    | Check session status   |
+| `/api/admin/export`  | GET    | Export all data as ZIP |
+| `/api/admin/import`  | POST   | Import data from ZIP   |
 
 ### System
 
-| Endpoint | Method | Description |
-|----------|--------|-------------|
-| `/api/health` | GET | Health check (no auth required) — returns status, timestamp, database stats |
-| `/api/openapi` | GET | OpenAPI 3.0 schema (JSON) |
-| `/api/mcp-spec` | GET | MCP specification (markdown) |
-| `/api/mcp-onboarding` | GET | MCP onboarding guide for AI agents |
-| `/api/mcp-tools` | GET | MCP tool summaries (JSON) |
-| `/api/version` | GET | Current version + latest available |
+| Endpoint              | Method | Description                                                                 |
+| --------------------- | ------ | --------------------------------------------------------------------------- |
+| `/api/health`         | GET    | Health check (no auth required) — returns status, timestamp, database stats |
+| `/api/openapi`        | GET    | OpenAPI 3.0 schema (JSON)                                                   |
+| `/api/mcp-spec`       | GET    | MCP specification (markdown)                                                |
+| `/api/mcp-onboarding` | GET    | MCP onboarding guide for AI agents                                          |
+| `/api/mcp-tools`      | GET    | MCP tool summaries (JSON)                                                   |
+| `/api/version`        | GET    | Current version + latest available                                          |
 
 ## Examples
 
@@ -185,14 +185,14 @@ const response = await fetch('http://localhost:3000/api/stashes', {
   method: 'POST',
   headers: {
     'Content-Type': 'application/json',
-    'Authorization': 'Bearer cs_your_token'
+    Authorization: 'Bearer cs_your_token',
   },
   body: JSON.stringify({
     name: 'My Stash',
     description: 'Created via JS',
     tags: ['example'],
-    files: [{ filename: 'hello.js', content: 'console.log("hello")' }]
-  })
+    files: [{ filename: 'hello.js', content: 'console.log("hello")' }],
+  }),
 });
 const stash = await response.json();
 ```

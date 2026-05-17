@@ -90,7 +90,7 @@ export class ClawStashDB {
     if (typeof raw !== 'string') return [];
     try {
       const parsed = JSON.parse(raw);
-      return Array.isArray(parsed) ? parsed.filter(t => typeof t === 'string') : [];
+      return Array.isArray(parsed) ? parsed.filter((t) => typeof t === 'string') : [];
     } catch {
       return [];
     }
@@ -133,13 +133,23 @@ export class ClawStashDB {
     };
   }
 
-  logAccess(stashId: string, source: 'api' | 'mcp' | 'ui', action: string, ip?: string, userAgent?: string): void {
+  logAccess(
+    stashId: string,
+    source: 'api' | 'mcp' | 'ui',
+    action: string,
+    ip?: string,
+    userAgent?: string,
+  ): void {
     const id = uuidv4();
     const now = new Date().toISOString();
-    this.db.prepare(`
+    this.db
+      .prepare(
+        `
       INSERT INTO access_log (id, stash_id, source, action, timestamp, ip, user_agent)
       VALUES (?, ?, ?, ?, ?, ?, ?)
-    `).run(id, stashId, source, action, now, ip || null, userAgent || null);
+    `,
+      )
+      .run(id, stashId, source, action, now, ip || null, userAgent || null);
   }
 
   getAccessLog(stashId: string, limit = 100): AccessLogEntry[] {
@@ -198,9 +208,27 @@ export class ClawStashDB {
 
       // Store initial version (v1) so it can be compared with future updates
       const versionId = uuidv4();
-      insertVersion.run(versionId, id, name, description, tagsJson, metadataJson, 1, 'system', now, '{}');
+      insertVersion.run(
+        versionId,
+        id,
+        name,
+        description,
+        tagsJson,
+        metadataJson,
+        1,
+        'system',
+        now,
+        '{}',
+      );
       for (const file of files) {
-        insertVersionFile.run(uuidv4(), versionId, file.filename, file.content, file.language, file.sort_order);
+        insertVersionFile.run(
+          uuidv4(),
+          versionId,
+          file.filename,
+          file.content,
+          file.language,
+          file.sort_order,
+        );
       }
 
       // Keep stash relations + FTS index inside the same transaction as the
@@ -235,7 +263,9 @@ export class ClawStashDB {
   }
 
   getStash(id: string): Stash | null {
-    const row = this.db.prepare('SELECT * FROM stashes WHERE id = ?').get(id) as Record<string, unknown> | undefined;
+    const row = this.db.prepare('SELECT * FROM stashes WHERE id = ?').get(id) as
+      | Record<string, unknown>
+      | undefined;
     if (!row) return null;
 
     const files = this.db
@@ -246,11 +276,15 @@ export class ClawStashDB {
   }
 
   getStashMeta(id: string): StashMeta | null {
-    const row = this.db.prepare('SELECT * FROM stashes WHERE id = ?').get(id) as Record<string, unknown> | undefined;
+    const row = this.db.prepare('SELECT * FROM stashes WHERE id = ?').get(id) as
+      | Record<string, unknown>
+      | undefined;
     if (!row) return null;
 
     const files = this.db
-      .prepare('SELECT filename, language, LENGTH(content) as size FROM stash_files WHERE stash_id = ? ORDER BY sort_order')
+      .prepare(
+        'SELECT filename, language, LENGTH(content) as size FROM stash_files WHERE stash_id = ? ORDER BY sort_order',
+      )
       .all(id) as StashFileInfo[];
 
     const total_size = files.reduce((sum, f) => sum + f.size, 0);
@@ -306,7 +340,9 @@ export class ClawStashDB {
     const stashes: StashListItem[] = rows.map((row) => {
       const item = this.rowToListItem(row);
       const files = this.db
-        .prepare('SELECT filename, language, LENGTH(content) as size FROM stash_files WHERE stash_id = ? ORDER BY sort_order')
+        .prepare(
+          'SELECT filename, language, LENGTH(content) as size FROM stash_files WHERE stash_id = ? ORDER BY sort_order',
+        )
         .all(item.id) as StashFileInfo[];
       const total_size = files.reduce((sum, f) => sum + f.size, 0);
       return { ...item, total_size, files };
@@ -320,23 +356,36 @@ export class ClawStashDB {
   private syncFtsIndex(stashId: string): void {
     this.db.prepare('DELETE FROM stashes_fts WHERE stash_id = ?').run(stashId);
 
-    const stash = this.db.prepare('SELECT name, description, tags FROM stashes WHERE id = ?').get(stashId) as {
-      name: string; description: string; tags: string;
-    } | undefined;
+    const stash = this.db
+      .prepare('SELECT name, description, tags FROM stashes WHERE id = ?')
+      .get(stashId) as
+      | {
+          name: string;
+          description: string;
+          tags: string;
+        }
+      | undefined;
     if (!stash) return;
 
-    const files = this.db.prepare('SELECT filename, content FROM stash_files WHERE stash_id = ? ORDER BY sort_order').all(stashId) as {
-      filename: string; content: string;
+    const files = this.db
+      .prepare('SELECT filename, content FROM stash_files WHERE stash_id = ? ORDER BY sort_order')
+      .all(stashId) as {
+      filename: string;
+      content: string;
     }[];
 
-    const filenames = files.map(f => f.filename).join(' ');
-    const fileContent = files.map(f => f.content).join('\n');
+    const filenames = files.map((f) => f.filename).join(' ');
+    const fileContent = files.map((f) => f.content).join('\n');
     const tags = this.safeParseTags(stash.tags).join(' ');
 
-    this.db.prepare(`
+    this.db
+      .prepare(
+        `
       INSERT INTO stashes_fts (stash_id, name, description, tags, filenames, file_content)
       VALUES (?, ?, ?, ?, ?, ?)
-    `).run(stashId, stash.name, stash.description, tags, filenames, fileContent);
+    `,
+      )
+      .run(stashId, stash.name, stash.description, tags, filenames, fileContent);
   }
 
   private removeFtsIndex(stashId: string): void {
@@ -348,7 +397,10 @@ export class ClawStashDB {
       this.db.prepare('DELETE FROM stashes_fts').run();
 
       const stashes = this.db.prepare('SELECT id, name, description, tags FROM stashes').all() as {
-        id: string; name: string; description: string; tags: string;
+        id: string;
+        name: string;
+        description: string;
+        tags: string;
       }[];
 
       const insertFts = this.db.prepare(`
@@ -357,11 +409,16 @@ export class ClawStashDB {
       `);
 
       for (const s of stashes) {
-        const files = this.db.prepare('SELECT filename, content FROM stash_files WHERE stash_id = ? ORDER BY sort_order').all(s.id) as {
-          filename: string; content: string;
+        const files = this.db
+          .prepare(
+            'SELECT filename, content FROM stash_files WHERE stash_id = ? ORDER BY sort_order',
+          )
+          .all(s.id) as {
+          filename: string;
+          content: string;
         }[];
-        const filenames = files.map(f => f.filename).join(' ');
-        const fileContent = files.map(f => f.content).join('\n');
+        const filenames = files.map((f) => f.filename).join(' ');
+        const fileContent = files.map((f) => f.content).join('\n');
         const tags = this.safeParseTags(s.tags).join(' ');
         insertFts.run(s.id, s.name, s.description, tags, filenames, fileContent);
       }
@@ -377,30 +434,41 @@ export class ClawStashDB {
     const tokens = trimmed.split(/\s+/).filter(Boolean);
     if (tokens.length === 0 || tokens.length > 50) return '';
 
-    return tokens.map(t => {
-      // Strip FTS5 special syntax characters (including +/- operators) to prevent
-      // query errors. Strip C0 controls (\x00-\x1F, \x7F), backtick, and the FTS
-      // snippet sentinels (U+E000 / U+E001) — defense-in-depth so a query
-      // containing the sentinel cannot survive into the prepared statement and
-      // confuse downstream snippet detection.
-      // eslint-disable-next-line no-control-regex
-      const cleaned = t.replace(/['"()*{}[\]:^~!@#$%&\\<>+\-,;./|`\x00-\x1F\x7F\uE000\uE001]/g, '');
-      if (!cleaned) return null;
-      // Prefix matching: "pyth" matches "python".
-      // Skip 1-char prefix scans — `a*` matches every word starting with `a` and
-      // can produce a very expensive scan with huge result sets on big DBs.
-      if (cleaned.length < 2) return cleaned;
-      return cleaned + '*';
-    }).filter(Boolean).join(' ');
+    return tokens
+      .map((t) => {
+        // Strip FTS5 special syntax characters (including +/- operators) to prevent
+        // query errors. Strip C0 controls (\x00-\x1F, \x7F), backtick, and the FTS
+        // snippet sentinels (U+E000 / U+E001) — defense-in-depth so a query
+        // containing the sentinel cannot survive into the prepared statement and
+        // confuse downstream snippet detection.
+        // eslint-disable-next-line no-control-regex
+        const cleaned = t.replace(
+          /['"()*{}[\]:^~!@#$%&\\<>+\-,;./|`\x00-\x1F\x7F\uE000\uE001]/g,
+          '',
+        );
+        if (!cleaned) return null;
+        // Prefix matching: "pyth" matches "python".
+        // Skip 1-char prefix scans — `a*` matches every word starting with `a` and
+        // can produce a very expensive scan with huge result sets on big DBs.
+        if (cleaned.length < 2) return cleaned;
+        return cleaned + '*';
+      })
+      .filter(Boolean)
+      .join(' ');
   }
 
   // Clamp pagination params at the DB layer so callers that bypass the REST
   // route's parsePositiveInt (MCP tool layer, direct DB consumers, future
   // callers) can never produce SQLite OFFSET errors or empty `LIMIT 0` pages.
   // Returns sane positive integers with the documented defaults.
-  private clampPagination(page: unknown, limit: unknown, defaultLimit: number): { page: number; limit: number; offset: number } {
+  private clampPagination(
+    page: unknown,
+    limit: unknown,
+    defaultLimit: number,
+  ): { page: number; limit: number; offset: number } {
     const safePage = typeof page === 'number' && Number.isInteger(page) && page > 0 ? page : 1;
-    const safeLimit = typeof limit === 'number' && Number.isInteger(limit) && limit > 0 ? limit : defaultLimit;
+    const safeLimit =
+      typeof limit === 'number' && Number.isInteger(limit) && limit > 0 ? limit : defaultLimit;
     return { page: safePage, limit: safeLimit, offset: (safePage - 1) * safeLimit };
   }
 
@@ -413,12 +481,13 @@ export class ClawStashDB {
   private readonly FTS_SNIPPET_CLOSE = '\uE001';
 
   private formatSnippet(raw: string): string {
-    return raw
-      .split(this.FTS_SNIPPET_OPEN).join('**')
-      .split(this.FTS_SNIPPET_CLOSE).join('**');
+    return raw.split(this.FTS_SNIPPET_OPEN).join('**').split(this.FTS_SNIPPET_CLOSE).join('**');
   }
 
-  searchStashes(query: string, options: { tag?: string; archived?: boolean; limit?: number; page?: number } = {}): SearchStashesResult {
+  searchStashes(
+    query: string,
+    options: { tag?: string; archived?: boolean; limit?: number; page?: number } = {},
+  ): SearchStashesResult {
     const { tag, archived } = options;
     // Clamp at the DB layer so MCP callers (which don't go through
     // parsePositiveInt) cannot send page=0 → negative OFFSET → SQLite
@@ -502,25 +571,39 @@ export class ClawStashDB {
       // malformed MATCH). Other errors (Zod, schema, I/O, etc.) must
       // propagate so real bugs are not silently swallowed.
       const msg = err instanceof Error ? err.message.toLowerCase() : String(err).toLowerCase();
-      const isFtsSyntaxError = msg.includes('fts5') || msg.includes('syntax') || msg.includes('malformed');
+      const isFtsSyntaxError =
+        msg.includes('fts5') || msg.includes('syntax') || msg.includes('malformed');
       if (!isFtsSyntaxError) throw err;
-      console.warn('[DB] FTS5 search failed, falling back to LIKE:', err instanceof Error ? err.message : err);
+      console.warn(
+        '[DB] FTS5 search failed, falling back to LIKE:',
+        err instanceof Error ? err.message : err,
+      );
       // Forward the original raw page/limit; listStashes clamps them
       // identically. Both call paths converge on the same defaults.
-      const fallback = this.listStashes({ search: query, tag, archived, limit: options.limit, page: options.page });
+      const fallback = this.listStashes({
+        search: query,
+        tag,
+        archived,
+        limit: options.limit,
+        page: options.page,
+      });
       return {
-        stashes: fallback.stashes.map(s => ({ ...s, relevance: 0 })),
+        stashes: fallback.stashes.map((s) => ({ ...s, relevance: 0 })),
         total: fallback.total,
         query,
       };
     }
 
     // Build results with full stash list info (outside try/catch so real DB errors propagate)
-    const stashes: SearchStashItem[] = rows.map(row => {
-      const stashRow = this.db.prepare('SELECT * FROM stashes WHERE id = ?').get(row.stash_id) as Record<string, unknown>;
+    const stashes: SearchStashItem[] = rows.map((row) => {
+      const stashRow = this.db
+        .prepare('SELECT * FROM stashes WHERE id = ?')
+        .get(row.stash_id) as Record<string, unknown>;
       const item = this.rowToListItem(stashRow);
       const files = this.db
-        .prepare('SELECT filename, language, LENGTH(content) as size FROM stash_files WHERE stash_id = ? ORDER BY sort_order')
+        .prepare(
+          'SELECT filename, language, LENGTH(content) as size FROM stash_files WHERE stash_id = ? ORDER BY sort_order',
+        )
         .all(item.id) as StashFileInfo[];
       const total_size = files.reduce((sum, f) => sum + f.size, 0);
 
@@ -528,11 +611,16 @@ export class ClawStashDB {
       // the private-use sentinel (cannot appear in user content), then format
       // with the public "**…**" markers documented in the API contract.
       const snippets: Record<string, string> = {};
-      if (row.name_snippet && row.name_snippet.includes(this.FTS_SNIPPET_OPEN)) snippets.name = this.formatSnippet(row.name_snippet);
-      if (row.desc_snippet && row.desc_snippet.includes(this.FTS_SNIPPET_OPEN)) snippets.description = this.formatSnippet(row.desc_snippet);
-      if (row.tags_snippet && row.tags_snippet.includes(this.FTS_SNIPPET_OPEN)) snippets.tags = this.formatSnippet(row.tags_snippet);
-      if (row.filenames_snippet && row.filenames_snippet.includes(this.FTS_SNIPPET_OPEN)) snippets.filenames = this.formatSnippet(row.filenames_snippet);
-      if (row.content_snippet && row.content_snippet.includes(this.FTS_SNIPPET_OPEN)) snippets.file_content = this.formatSnippet(row.content_snippet);
+      if (row.name_snippet && row.name_snippet.includes(this.FTS_SNIPPET_OPEN))
+        snippets.name = this.formatSnippet(row.name_snippet);
+      if (row.desc_snippet && row.desc_snippet.includes(this.FTS_SNIPPET_OPEN))
+        snippets.description = this.formatSnippet(row.desc_snippet);
+      if (row.tags_snippet && row.tags_snippet.includes(this.FTS_SNIPPET_OPEN))
+        snippets.tags = this.formatSnippet(row.tags_snippet);
+      if (row.filenames_snippet && row.filenames_snippet.includes(this.FTS_SNIPPET_OPEN))
+        snippets.filenames = this.formatSnippet(row.filenames_snippet);
+      if (row.content_snippet && row.content_snippet.includes(this.FTS_SNIPPET_OPEN))
+        snippets.file_content = this.formatSnippet(row.content_snippet);
 
       return {
         ...item,
@@ -556,12 +644,13 @@ export class ClawStashDB {
     // Compute change summary
     const changeSummary: Record<string, unknown> = {};
     if (input.name !== undefined && input.name !== existing.name) changeSummary.name = true;
-    if (input.description !== undefined && input.description !== existing.description) changeSummary.description = true;
+    if (input.description !== undefined && input.description !== existing.description)
+      changeSummary.description = true;
     if (input.tags !== undefined) {
       const oldTags = new Set(existing.tags);
       const newTags = new Set(input.tags);
-      const added = input.tags.filter(t => !oldTags.has(t));
-      const removed = existing.tags.filter(t => !newTags.has(t));
+      const added = input.tags.filter((t) => !oldTags.has(t));
+      const removed = existing.tags.filter((t) => !newTags.has(t));
       if (added.length || removed.length) {
         changeSummary.tags = true;
         changeSummary.tags_added = added;
@@ -574,28 +663,44 @@ export class ClawStashDB {
     const transaction = this.db.transaction(() => {
       // Snapshot current state into stash_versions before applying changes
       // Skip if this version was already recorded (e.g. v1 stored during creation)
-      const existingVersionRecord = this.db.prepare(
-        'SELECT id FROM stash_versions WHERE stash_id = ? AND version = ?'
-      ).get(id, existing.version) as { id: string } | undefined;
+      const existingVersionRecord = this.db
+        .prepare('SELECT id FROM stash_versions WHERE stash_id = ? AND version = ?')
+        .get(id, existing.version) as { id: string } | undefined;
 
       if (!existingVersionRecord) {
         const versionId = uuidv4();
-        this.db.prepare(`
+        this.db
+          .prepare(
+            `
           INSERT INTO stash_versions (id, stash_id, name, description, tags, metadata, version, created_by, created_at, change_summary)
           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        `).run(
-          versionId, id,
-          existing.name, existing.description,
-          JSON.stringify(existing.tags), JSON.stringify(existing.metadata),
-          existing.version, createdBy, now,
-          JSON.stringify(changeSummary)
-        );
+        `,
+          )
+          .run(
+            versionId,
+            id,
+            existing.name,
+            existing.description,
+            JSON.stringify(existing.tags),
+            JSON.stringify(existing.metadata),
+            existing.version,
+            createdBy,
+            now,
+            JSON.stringify(changeSummary),
+          );
         const insertVersionFile = this.db.prepare(`
           INSERT INTO stash_version_files (id, version_id, filename, content, language, sort_order)
           VALUES (?, ?, ?, ?, ?, ?)
         `);
         for (const file of existing.files) {
-          insertVersionFile.run(uuidv4(), versionId, file.filename, file.content, file.language, file.sort_order);
+          insertVersionFile.run(
+            uuidv4(),
+            versionId,
+            file.filename,
+            file.content,
+            file.language,
+            file.sort_order,
+          );
         }
       }
 
@@ -703,7 +808,9 @@ export class ClawStashDB {
   }
 
   getAllMetadataKeys(): string[] {
-    const rows = this.db.prepare('SELECT metadata FROM stashes WHERE metadata != \'{}\'').all() as { metadata: string }[];
+    const rows = this.db.prepare("SELECT metadata FROM stashes WHERE metadata != '{}'").all() as {
+      metadata: string;
+    }[];
     const keySet = new Set<string>();
     for (const row of rows) {
       const meta = this.safeParseMetadata(row.metadata);
@@ -748,7 +855,12 @@ export class ClawStashDB {
 
     if (tag) {
       if (!tagCounts.has(tag)) {
-        return { nodes: [], edges: [], stash_count: rows.length, filter: { tag, depth: clampedDepth } };
+        return {
+          nodes: [],
+          edges: [],
+          stash_count: rows.length,
+          filter: { tag, depth: clampedDepth },
+        };
       }
 
       // BFS from focus tag up to clampedDepth hops
@@ -765,7 +877,8 @@ export class ClawStashDB {
           // legitimate "no minimum" value passed by MCP callers (the REST
           // route layer's parsePositiveInt converts 0 → undefined, but the
           // Zod schema for MCP tools accepts 0 directly).
-          if (typeof min_weight === 'number' && min_weight > 0 && edge.weight < min_weight) continue;
+          if (typeof min_weight === 'number' && min_weight > 0 && edge.weight < min_weight)
+            continue;
           if (frontier.has(edge.source) && !includedTags.has(edge.target)) {
             nextFrontier.add(edge.target);
           }
@@ -778,14 +891,13 @@ export class ClawStashDB {
     }
 
     // Filter nodes
-    let nodes = Array.from(tagCounts.entries())
-      .map(([t, count]) => ({ tag: t, count }));
+    let nodes = Array.from(tagCounts.entries()).map(([t, count]) => ({ tag: t, count }));
 
     if (includedTags) {
-      nodes = nodes.filter(n => includedTags!.has(n.tag));
+      nodes = nodes.filter((n) => includedTags!.has(n.tag));
     }
     if (typeof min_count === 'number' && min_count > 0) {
-      nodes = nodes.filter(n => n.count >= min_count);
+      nodes = nodes.filter((n) => n.count >= min_count);
     }
     nodes.sort((a, b) => b.count - a.count);
     if (typeof limit === 'number' && limit > 0) {
@@ -793,10 +905,10 @@ export class ClawStashDB {
     }
 
     // Filter edges to only include nodes in the result set
-    const nodeSet = new Set(nodes.map(n => n.tag));
-    let edges = allEdges.filter(e => nodeSet.has(e.source) && nodeSet.has(e.target));
+    const nodeSet = new Set(nodes.map((n) => n.tag));
+    let edges = allEdges.filter((e) => nodeSet.has(e.source) && nodeSet.has(e.target));
     if (typeof min_weight === 'number' && min_weight > 0) {
-      edges = edges.filter(e => e.weight >= min_weight);
+      edges = edges.filter((e) => e.weight >= min_weight);
     }
     edges.sort((a, b) => b.weight - a.weight);
 
@@ -811,13 +923,18 @@ export class ClawStashDB {
 
   private updateStashRelations(stashId: string, tags: string[]): void {
     // Delete old shared_tags relations for this stash
-    this.db.prepare(
-      "DELETE FROM stash_relations WHERE (source_stash_id = ? OR target_stash_id = ?) AND relation_type = 'shared_tags'"
-    ).run(stashId, stashId);
+    this.db
+      .prepare(
+        "DELETE FROM stash_relations WHERE (source_stash_id = ? OR target_stash_id = ?) AND relation_type = 'shared_tags'",
+      )
+      .run(stashId, stashId);
 
     if (tags.length === 0) return;
 
-    const rows = this.db.prepare('SELECT id, tags FROM stashes WHERE id != ?').all(stashId) as { id: string; tags: string }[];
+    const rows = this.db.prepare('SELECT id, tags FROM stashes WHERE id != ?').all(stashId) as {
+      id: string;
+      tags: string;
+    }[];
     const tagSet = new Set(tags);
 
     const insert = this.db.prepare(`
@@ -827,7 +944,7 @@ export class ClawStashDB {
 
     for (const row of rows) {
       const otherTags = this.safeParseTags(row.tags);
-      const shared = otherTags.filter(t => tagSet.has(t));
+      const shared = otherTags.filter((t) => tagSet.has(t));
       if (shared.length > 0) {
         const [src, tgt] = [stashId, row.id].sort();
         insert.run(uuidv4(), src, tgt, shared.length, JSON.stringify({ shared_tags: shared }));
@@ -837,10 +954,17 @@ export class ClawStashDB {
 
   private rebuildStashRelations(): void {
     const rebuild = this.db.transaction(() => {
-      try { this.db.exec("DELETE FROM stash_relations WHERE relation_type = 'shared_tags'"); } catch (_) { /* table may not exist */ }
+      try {
+        this.db.exec("DELETE FROM stash_relations WHERE relation_type = 'shared_tags'");
+      } catch (_) {
+        /* table may not exist */
+      }
 
-      const stashes = this.db.prepare('SELECT id, tags FROM stashes').all() as { id: string; tags: string }[];
-      const parsed = stashes.map(s => ({ id: s.id, tags: this.safeParseTags(s.tags) }));
+      const stashes = this.db.prepare('SELECT id, tags FROM stashes').all() as {
+        id: string;
+        tags: string;
+      }[];
+      const parsed = stashes.map((s) => ({ id: s.id, tags: this.safeParseTags(s.tags) }));
 
       const insert = this.db.prepare(`
         INSERT INTO stash_relations (id, source_stash_id, target_stash_id, relation_type, weight, metadata)
@@ -849,7 +973,7 @@ export class ClawStashDB {
 
       for (let i = 0; i < parsed.length; i++) {
         for (let j = i + 1; j < parsed.length; j++) {
-          const shared = parsed[i].tags.filter(t => parsed[j].tags.includes(t));
+          const shared = parsed[i].tags.filter((t) => parsed[j].tags.includes(t));
           if (shared.length > 0) {
             const [src, tgt] = [parsed[i].id, parsed[j].id].sort();
             insert.run(uuidv4(), src, tgt, shared.length, JSON.stringify({ shared_tags: shared }));
@@ -863,10 +987,19 @@ export class ClawStashDB {
   // === Stash Graph ===
 
   getStashGraph(options: StashGraphOptions = {}): StashGraphResult {
-    const { mode = 'relations', since, until, tag, limit = 200, include_versions = false, min_shared_tags = 1 } = options;
+    const {
+      mode = 'relations',
+      since,
+      until,
+      tag,
+      limit = 200,
+      include_versions = false,
+      min_shared_tags = 1,
+    } = options;
 
     // Fetch stashes with optional filters
-    let query = 'SELECT s.id, s.name, s.tags, s.created_at, s.updated_at, s.version, COUNT(sf.id) as file_count, COALESCE(SUM(LENGTH(sf.content)), 0) as total_size FROM stashes s LEFT JOIN stash_files sf ON sf.stash_id = s.id';
+    let query =
+      'SELECT s.id, s.name, s.tags, s.created_at, s.updated_at, s.version, COUNT(sf.id) as file_count, COALESCE(SUM(LENGTH(sf.content)), 0) as total_size FROM stashes s LEFT JOIN stash_files sf ON sf.stash_id = s.id';
     const conditions: string[] = [];
     const params: unknown[] = [];
 
@@ -894,20 +1027,26 @@ export class ClawStashDB {
     }
 
     const stashRows = this.db.prepare(query).all(...params) as {
-      id: string; name: string; tags: string; created_at: string; updated_at: string;
-      version: number; file_count: number; total_size: number;
+      id: string;
+      name: string;
+      tags: string;
+      created_at: string;
+      updated_at: string;
+      version: number;
+      file_count: number;
+      total_size: number;
     }[];
 
     if (stashRows.length === 0) {
       return { nodes: [], edges: [], time_range: { min: '', max: '' }, total_stashes: 0 };
     }
 
-    const stashIds = new Set(stashRows.map(r => r.id));
+    const stashIds = new Set(stashRows.map((r) => r.id));
     const nodes: StashGraphNode[] = [];
     const edges: StashGraphEdge[] = [];
 
     // Time range
-    const timestamps = stashRows.map(r => r.created_at).sort();
+    const timestamps = stashRows.map((r) => r.created_at).sort();
     const timeRange = { min: timestamps[0], max: timestamps[timestamps.length - 1] };
 
     // Add stash nodes
@@ -959,16 +1098,27 @@ export class ClawStashDB {
     }
 
     // Add shared_tags edges from precomputed relations
-    const relations = this.db.prepare(`
+    const relations = this.db
+      .prepare(
+        `
       SELECT source_stash_id, target_stash_id, weight, metadata
       FROM stash_relations
       WHERE relation_type = 'shared_tags' AND weight >= ?
-    `).all(min_shared_tags) as { source_stash_id: string; target_stash_id: string; weight: number; metadata: string }[];
+    `,
+      )
+      .all(min_shared_tags) as {
+      source_stash_id: string;
+      target_stash_id: string;
+      weight: number;
+      metadata: string;
+    }[];
 
     for (const rel of relations) {
       if (stashIds.has(rel.source_stash_id) && stashIds.has(rel.target_stash_id)) {
         const meta = this.safeParseMetadata(rel.metadata);
-        const sharedTags = Array.isArray(meta.shared_tags) ? (meta.shared_tags as unknown[]).filter(t => typeof t === 'string') as string[] : [];
+        const sharedTags = Array.isArray(meta.shared_tags)
+          ? ((meta.shared_tags as unknown[]).filter((t) => typeof t === 'string') as string[])
+          : [];
         edges.push({
           source: rel.source_stash_id,
           target: rel.target_stash_id,
@@ -993,7 +1143,7 @@ export class ClawStashDB {
               target: stashRows[j].id,
               type: 'temporal_proximity',
               weight: Math.max(0.1, 1 - delta / TEMPORAL_WINDOW_MS),
-              metadata: { time_delta_hours: Math.round(delta / (60 * 60 * 1000) * 10) / 10 },
+              metadata: { time_delta_hours: Math.round((delta / (60 * 60 * 1000)) * 10) / 10 },
             });
           }
         }
@@ -1003,10 +1153,20 @@ export class ClawStashDB {
     // Version nodes & edges
     if (include_versions) {
       for (const row of stashRows) {
-        const versions = this.db.prepare(`
+        const versions = this.db
+          .prepare(
+            `
           SELECT id, version, created_by, created_at, change_summary
           FROM stash_versions WHERE stash_id = ? ORDER BY version ASC
-        `).all(row.id) as { id: string; version: number; created_by: string; created_at: string; change_summary: string }[];
+        `,
+          )
+          .all(row.id) as {
+          id: string;
+          version: number;
+          created_by: string;
+          created_at: string;
+          change_summary: string;
+        }[];
 
         let prevNodeId = row.id; // current stash is the "head"
         for (let vi = versions.length - 1; vi >= 0; vi--) {
@@ -1032,17 +1192,29 @@ export class ClawStashDB {
       }
     }
 
-    const totalStashes = (this.db.prepare('SELECT COUNT(*) as c FROM stashes').get() as { c: number }).c;
+    const totalStashes = (
+      this.db.prepare('SELECT COUNT(*) as c FROM stashes').get() as { c: number }
+    ).c;
 
     return { nodes, edges, time_range: timeRange, total_stashes: totalStashes };
   }
 
-  getStats(): { totalStashes: number; totalFiles: number; topLanguages: { language: string; count: number }[] } {
-    const totalStashes = (this.db.prepare('SELECT COUNT(*) as c FROM stashes').get() as { c: number }).c;
-    const totalFiles = (this.db.prepare('SELECT COUNT(*) as c FROM stash_files').get() as { c: number }).c;
+  getStats(): {
+    totalStashes: number;
+    totalFiles: number;
+    topLanguages: { language: string; count: number }[];
+  } {
+    const totalStashes = (
+      this.db.prepare('SELECT COUNT(*) as c FROM stashes').get() as { c: number }
+    ).c;
+    const totalFiles = (
+      this.db.prepare('SELECT COUNT(*) as c FROM stash_files').get() as { c: number }
+    ).c;
 
     const langRows = this.db
-      .prepare("SELECT language, COUNT(*) as count FROM stash_files WHERE language != '' GROUP BY language ORDER BY count DESC LIMIT 10")
+      .prepare(
+        "SELECT language, COUNT(*) as count FROM stash_files WHERE language != '' GROUP BY language ORDER BY count DESC LIMIT 10",
+      )
       .all() as { language: string; count: number }[];
 
     return { totalStashes, totalFiles, topLanguages: langRows };
@@ -1051,16 +1223,20 @@ export class ClawStashDB {
   // === Version History ===
 
   getStashVersions(stashId: string): StashVersionListItem[] {
-    const rows = this.db.prepare(`
+    const rows = this.db
+      .prepare(
+        `
       SELECT sv.*, COUNT(svf.id) as file_count, COALESCE(SUM(LENGTH(svf.content)), 0) as total_size
       FROM stash_versions sv
       LEFT JOIN stash_version_files svf ON svf.version_id = sv.id
       WHERE sv.stash_id = ?
       GROUP BY sv.id
       ORDER BY sv.version DESC
-    `).all(stashId) as (Record<string, unknown>)[];
+    `,
+      )
+      .all(stashId) as Record<string, unknown>[];
 
-    const versions = rows.map(row => ({
+    const versions = rows.map((row) => ({
       id: row.id as string,
       stash_id: row.stash_id as string,
       name: (row.name as string) || '',
@@ -1073,16 +1249,20 @@ export class ClawStashDB {
     }));
 
     // Include the current (live) version at the top if it's newer than the latest stored version
-    const stashRow = this.db.prepare(
-      'SELECT id, name, description, version, updated_at FROM stashes WHERE id = ?'
-    ).get(stashId) as { id: string; name: string; description: string; version: number; updated_at: string } | undefined;
+    const stashRow = this.db
+      .prepare('SELECT id, name, description, version, updated_at FROM stashes WHERE id = ?')
+      .get(stashId) as
+      | { id: string; name: string; description: string; version: number; updated_at: string }
+      | undefined;
 
     if (stashRow) {
       const latestStoredVersion = versions.length > 0 ? versions[0].version : 0;
       if (stashRow.version > latestStoredVersion) {
-        const fileStats = this.db.prepare(
-          'SELECT COUNT(*) as file_count, COALESCE(SUM(LENGTH(content)), 0) as total_size FROM stash_files WHERE stash_id = ?'
-        ).get(stashId) as { file_count: number; total_size: number };
+        const fileStats = this.db
+          .prepare(
+            'SELECT COUNT(*) as file_count, COALESCE(SUM(LENGTH(content)), 0) as total_size FROM stash_files WHERE stash_id = ?',
+          )
+          .get(stashId) as { file_count: number; total_size: number };
 
         versions.unshift({
           id: `current-${stashId}`,
@@ -1102,14 +1282,16 @@ export class ClawStashDB {
   }
 
   getStashVersion(stashId: string, version: number): StashVersion | null {
-    const row = this.db.prepare(
-      'SELECT * FROM stash_versions WHERE stash_id = ? AND version = ?'
-    ).get(stashId, version) as Record<string, unknown> | undefined;
+    const row = this.db
+      .prepare('SELECT * FROM stash_versions WHERE stash_id = ? AND version = ?')
+      .get(stashId, version) as Record<string, unknown> | undefined;
 
     if (row) {
-      const files = this.db.prepare(
-        'SELECT filename, content, language, sort_order FROM stash_version_files WHERE version_id = ? ORDER BY sort_order'
-      ).all(row.id as string) as StashVersionFile[];
+      const files = this.db
+        .prepare(
+          'SELECT filename, content, language, sort_order FROM stash_version_files WHERE version_id = ? ORDER BY sort_order',
+        )
+        .all(row.id as string) as StashVersionFile[];
 
       return {
         id: row.id as string,
@@ -1138,7 +1320,7 @@ export class ClawStashDB {
         version: stash.version,
         created_by: 'current',
         created_at: stash.updated_at,
-        files: stash.files.map(f => ({
+        files: stash.files.map((f) => ({
           filename: f.filename,
           content: f.content,
           language: f.language,
@@ -1158,17 +1340,21 @@ export class ClawStashDB {
     return this.db.transaction(() => {
       const versionData = this.getStashVersion(stashId, version);
       if (!versionData) return null;
-      return this.updateStash(stashId, {
-        name: versionData.name,
-        description: versionData.description,
-        tags: versionData.tags,
-        metadata: versionData.metadata,
-        files: versionData.files.map(f => ({
-          filename: f.filename,
-          content: f.content,
-          language: f.language,
-        })),
-      }, createdBy);
+      return this.updateStash(
+        stashId,
+        {
+          name: versionData.name,
+          description: versionData.description,
+          tags: versionData.tags,
+          metadata: versionData.metadata,
+          files: versionData.files.map((f) => ({
+            filename: f.filename,
+            content: f.content,
+            language: f.language,
+          })),
+        },
+        createdBy,
+      );
     })();
   }
 
@@ -1219,9 +1405,17 @@ export class ClawStashDB {
     stash_version_files: Record<string, unknown>[];
   } {
     const stashes = this.db.prepare('SELECT * FROM stashes').all() as Record<string, unknown>[];
-    const stash_files = this.db.prepare('SELECT * FROM stash_files').all() as Record<string, unknown>[];
-    const stash_versions = this.db.prepare('SELECT * FROM stash_versions').all() as Record<string, unknown>[];
-    const stash_version_files = this.db.prepare('SELECT * FROM stash_version_files').all() as Record<string, unknown>[];
+    const stash_files = this.db.prepare('SELECT * FROM stash_files').all() as Record<
+      string,
+      unknown
+    >[];
+    const stash_versions = this.db.prepare('SELECT * FROM stash_versions').all() as Record<
+      string,
+      unknown
+    >[];
+    const stash_version_files = this.db
+      .prepare('SELECT * FROM stash_version_files')
+      .all() as Record<string, unknown>[];
     return { stashes, stash_files, stash_versions, stash_version_files };
   }
 
@@ -1240,8 +1434,16 @@ export class ClawStashDB {
       this.db.exec('DELETE FROM stashes');
 
       // Also clear stash_relations and FTS index
-      try { this.db.exec('DELETE FROM stash_relations'); } catch (_) { /* table may not exist */ }
-      try { this.db.exec('DELETE FROM stashes_fts'); } catch (_) { /* table may not exist */ }
+      try {
+        this.db.exec('DELETE FROM stash_relations');
+      } catch (_) {
+        /* table may not exist */
+      }
+      try {
+        this.db.exec('DELETE FROM stashes_fts');
+      } catch (_) {
+        /* table may not exist */
+      }
 
       let stashCount = 0;
       let fileCount = 0;
@@ -1271,7 +1473,17 @@ export class ClawStashDB {
       // "false" / "0" must NOT be treated as truthy (they are by `?:`).
       for (const s of data.stashes) {
         const archivedFlag = s.archived === true || s.archived === 1 ? 1 : 0;
-        insertStash.run(s.id, s.name, s.description, s.tags, s.metadata, s.version ?? 1, archivedFlag, s.created_at, s.updated_at);
+        insertStash.run(
+          s.id,
+          s.name,
+          s.description,
+          s.tags,
+          s.metadata,
+          s.version ?? 1,
+          archivedFlag,
+          s.created_at,
+          s.updated_at,
+        );
         stashCount++;
       }
 
@@ -1284,7 +1496,18 @@ export class ClawStashDB {
       // Insert stash versions (including change_summary)
       if (data.stash_versions) {
         for (const v of data.stash_versions) {
-          insertVersion.run(v.id, v.stash_id, v.name, v.description, v.tags, v.metadata, v.version, v.created_by, v.created_at, v.change_summary ?? '{}');
+          insertVersion.run(
+            v.id,
+            v.stash_id,
+            v.name,
+            v.description,
+            v.tags,
+            v.metadata,
+            v.version,
+            v.created_by,
+            v.created_at,
+            v.change_summary ?? '{}',
+          );
           versionCount++;
         }
       }
@@ -1292,12 +1515,24 @@ export class ClawStashDB {
       // Insert stash version files
       if (data.stash_version_files) {
         for (const vf of data.stash_version_files) {
-          insertVersionFile.run(vf.id, vf.version_id, vf.filename, vf.content, vf.language, vf.sort_order);
+          insertVersionFile.run(
+            vf.id,
+            vf.version_id,
+            vf.filename,
+            vf.content,
+            vf.language,
+            vf.sort_order,
+          );
           versionFileCount++;
         }
       }
 
-      return { stashes: stashCount, files: fileCount, versions: versionCount, versionFiles: versionFileCount };
+      return {
+        stashes: stashCount,
+        files: fileCount,
+        versions: versionCount,
+        versionFiles: versionFileCount,
+      };
     });
 
     const result = tx();

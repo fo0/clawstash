@@ -25,14 +25,9 @@ export async function POST(req: NextRequest) {
   }
 
   const { label, scopes } = parsed.data;
-  const resolvedScopes: TokenScope[] = scopes && scopes.length > 0
-    ? scopes
-    : ['read'];
+  const resolvedScopes: TokenScope[] = scopes && scopes.length > 0 ? scopes : ['read'];
 
-  const result = getDb().createApiToken(
-    label?.trim() || '',
-    resolvedScopes,
-  );
+  const result = getDb().createApiToken(label?.trim() || '', resolvedScopes);
 
   return NextResponse.json(result, { status: 201 });
 }

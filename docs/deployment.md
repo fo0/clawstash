@@ -22,7 +22,7 @@ services:
     # comment out: build: .
     image: ghcr.io/fo0/clawstash:latest
     ports:
-      - "${PORT:-3000}:3000"
+      - '${PORT:-3000}:3000'
     volumes:
       - clawstash-data:/app/data
     environment:
@@ -77,12 +77,12 @@ Both serve on port 3000 (configurable via `PORT` env variable).
 
 ## Environment Variables
 
-| Variable | Description | Default |
-|----------|-------------|---------|
-| `PORT` | Server port | `3000` |
-| `DATABASE_PATH` | SQLite database path | `./data/clawstash.db` |
-| `ADMIN_PASSWORD` | Admin password (unset = open access) | — |
-| `ADMIN_SESSION_HOURS` | Session duration in hours (0 = unlimited) | `24` |
+| Variable              | Description                               | Default               |
+| --------------------- | ----------------------------------------- | --------------------- |
+| `PORT`                | Server port                               | `3000`                |
+| `DATABASE_PATH`       | SQLite database path                      | `./data/clawstash.db` |
+| `ADMIN_PASSWORD`      | Admin password (unset = open access)      | —                     |
+| `ADMIN_SESSION_HOURS` | Session duration in hours (0 = unlimited) | `24`                  |
 
 Copy `.env.example` and adjust as needed:
 

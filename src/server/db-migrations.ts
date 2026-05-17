@@ -21,21 +21,21 @@ export const MIGRATIONS: Migration[] = [
     version: 1,
     name: 'add_stashes_version_column',
     up: (db) => {
-      const columns = db.prepare("PRAGMA table_info(stashes)").all() as { name: string }[];
-      if (!columns.some(c => c.name === 'version')) {
+      const columns = db.prepare('PRAGMA table_info(stashes)').all() as { name: string }[];
+      if (!columns.some((c) => c.name === 'version')) {
         db.exec('ALTER TABLE stashes ADD COLUMN version INTEGER NOT NULL DEFAULT 1');
       }
-    }
+    },
   },
   {
     version: 2,
     name: 'add_stash_change_summary',
     up: (db) => {
-      const columns = db.prepare("PRAGMA table_info(stash_versions)").all() as { name: string }[];
-      if (!columns.some(c => c.name === 'change_summary')) {
+      const columns = db.prepare('PRAGMA table_info(stash_versions)').all() as { name: string }[];
+      if (!columns.some((c) => c.name === 'change_summary')) {
         db.exec("ALTER TABLE stash_versions ADD COLUMN change_summary TEXT NOT NULL DEFAULT '{}'");
       }
-    }
+    },
   },
   {
     version: 3,
@@ -45,7 +45,7 @@ export const MIGRATIONS: Migration[] = [
         CREATE INDEX IF NOT EXISTS idx_stashes_tags ON stashes(tags);
         CREATE INDEX IF NOT EXISTS idx_stash_versions_created_at ON stash_versions(created_at);
       `);
-    }
+    },
   },
   {
     version: 4,
@@ -67,7 +67,7 @@ export const MIGRATIONS: Migration[] = [
         CREATE INDEX IF NOT EXISTS idx_stash_relations_target ON stash_relations(target_stash_id);
         CREATE INDEX IF NOT EXISTS idx_stash_relations_type ON stash_relations(relation_type);
       `);
-    }
+    },
   },
   {
     version: 5,
@@ -83,17 +83,23 @@ export const MIGRATIONS: Migration[] = [
 
         CREATE INDEX IF NOT EXISTS idx_graph_cache_expires ON graph_cache(expires_at);
       `);
-    }
+    },
   },
   {
     version: 6,
     name: 'backfill_stash_relations',
     up: (db) => {
-      const stashes = db.prepare('SELECT id, tags FROM stashes').all() as { id: string; tags: string }[];
+      const stashes = db.prepare('SELECT id, tags FROM stashes').all() as {
+        id: string;
+        tags: string;
+      }[];
       const parsed: { id: string; tags: string[] }[] = [];
       for (const s of stashes) {
-        try { parsed.push({ id: s.id, tags: JSON.parse(s.tags) as string[] }); }
-        catch { /* skip stashes with corrupted tags JSON */ }
+        try {
+          parsed.push({ id: s.id, tags: JSON.parse(s.tags) as string[] });
+        } catch {
+          /* skip stashes with corrupted tags JSON */
+        }
       }
 
       const insert = db.prepare(`
@@ -103,27 +109,38 @@ export const MIGRATIONS: Migration[] = [
 
       for (let i = 0; i < parsed.length; i++) {
         for (let j = i + 1; j < parsed.length; j++) {
-          const shared = parsed[i].tags.filter(t => parsed[j].tags.includes(t));
+          const shared = parsed[i].tags.filter((t) => parsed[j].tags.includes(t));
           if (shared.length > 0) {
             const [src, tgt] = [parsed[i].id, parsed[j].id].sort();
             insert.run(uuidv4(), src, tgt, shared.length, JSON.stringify({ shared_tags: shared }));
           }
         }
       }
-    }
+    },
   },
   {
     version: 7,
     name: 'backfill_initial_version_records',
     up: (db) => {
       // Find stashes that have NO version records at all (never updated, or created before versioning)
-      const stashes = db.prepare(`
+      const stashes = db
+        .prepare(
+          `
         SELECT s.id, s.name, s.description, s.tags, s.metadata, s.created_at
         FROM stashes s
         WHERE NOT EXISTS (
           SELECT 1 FROM stash_versions sv WHERE sv.stash_id = s.id
         )
-      `).all() as { id: string; name: string; description: string; tags: string; metadata: string; created_at: string }[];
+      `,
+        )
+        .all() as {
+        id: string;
+        name: string;
+        description: string;
+        tags: string;
+        metadata: string;
+        created_at: string;
+      }[];
 
       if (stashes.length === 0) return;
 
@@ -141,14 +158,30 @@ export const MIGRATIONS: Migration[] = [
         const versionId = uuidv4();
         insertVersion.run(versionId, s.id, s.name, s.description, s.tags, s.metadata, s.created_at);
 
-        const files = db.prepare('SELECT filename, content, language, sort_order FROM stash_files WHERE stash_id = ? ORDER BY sort_order').all(s.id) as { filename: string; content: string; language: string; sort_order: number }[];
+        const files = db
+          .prepare(
+            'SELECT filename, content, language, sort_order FROM stash_files WHERE stash_id = ? ORDER BY sort_order',
+          )
+          .all(s.id) as {
+          filename: string;
+          content: string;
+          language: string;
+          sort_order: number;
+        }[];
         for (const f of files) {
-          insertVersionFile.run(uuidv4(), versionId, f.filename, f.content, f.language, f.sort_order);
+          insertVersionFile.run(
+            uuidv4(),
+            versionId,
+            f.filename,
+            f.content,
+            f.language,
+            f.sort_order,
+          );
         }
       }
 
       console.log(`[DB] Backfilled initial version records for ${stashes.length} stash(es)`);
-    }
+    },
   },
   {
     version: 8,
@@ -169,7 +202,10 @@ export const MIGRATIONS: Migration[] = [
 
       // Backfill existing stashes
       const stashes = db.prepare('SELECT id, name, description, tags FROM stashes').all() as {
-        id: string; name: string; description: string; tags: string;
+        id: string;
+        name: string;
+        description: string;
+        tags: string;
       }[];
 
       const insertFts = db.prepare(`
@@ -178,33 +214,41 @@ export const MIGRATIONS: Migration[] = [
       `);
 
       for (const s of stashes) {
-        const files = db.prepare('SELECT filename, content FROM stash_files WHERE stash_id = ? ORDER BY sort_order').all(s.id) as {
-          filename: string; content: string;
+        const files = db
+          .prepare(
+            'SELECT filename, content FROM stash_files WHERE stash_id = ? ORDER BY sort_order',
+          )
+          .all(s.id) as {
+          filename: string;
+          content: string;
         }[];
-        const filenames = files.map(f => f.filename).join(' ');
-        const fileContent = files.map(f => f.content).join('\n');
+        const filenames = files.map((f) => f.filename).join(' ');
+        const fileContent = files.map((f) => f.content).join('\n');
         // Defensive parse — a corrupt tags row should not abort the migration
         let tags = '';
         try {
           const parsed = JSON.parse(s.tags);
-          if (Array.isArray(parsed)) tags = parsed.filter((t: unknown) => typeof t === 'string').join(' ');
-        } catch { /* leave tags empty */ }
+          if (Array.isArray(parsed))
+            tags = parsed.filter((t: unknown) => typeof t === 'string').join(' ');
+        } catch {
+          /* leave tags empty */
+        }
         insertFts.run(s.id, s.name, s.description, tags, filenames, fileContent);
       }
 
       console.log(`[DB] FTS5 search index created and backfilled for ${stashes.length} stash(es)`);
-    }
+    },
   },
   {
     version: 9,
     name: 'add_stashes_archived_column',
     up: (db) => {
-      const columns = db.prepare("PRAGMA table_info(stashes)").all() as { name: string }[];
-      if (!columns.some(c => c.name === 'archived')) {
+      const columns = db.prepare('PRAGMA table_info(stashes)').all() as { name: string }[];
+      if (!columns.some((c) => c.name === 'archived')) {
         db.exec('ALTER TABLE stashes ADD COLUMN archived INTEGER NOT NULL DEFAULT 0');
         db.exec('CREATE INDEX IF NOT EXISTS idx_stashes_archived ON stashes(archived)');
       }
-    }
+    },
   },
 ];
 
@@ -225,13 +269,15 @@ export function applyPendingMigrations(db: Database.Database): number {
 
   // Load already-applied versions
   const applied = new Set(
-    (db.prepare('SELECT version FROM schema_migrations').all() as { version: number }[])
-      .map(r => r.version)
+    (db.prepare('SELECT version FROM schema_migrations').all() as { version: number }[]).map(
+      (r) => r.version,
+    ),
   );
 
   // Run pending migrations in a transaction
-  const pending = MIGRATIONS.filter(m => !applied.has(m.version))
-    .sort((a, b) => a.version - b.version);
+  const pending = MIGRATIONS.filter((m) => !applied.has(m.version)).sort(
+    (a, b) => a.version - b.version,
+  );
 
   if (pending.length === 0) return 0;
 
@@ -239,9 +285,11 @@ export function applyPendingMigrations(db: Database.Database): number {
     for (const migration of pending) {
       console.log(`[DB] Running migration ${migration.version}: ${migration.name}`);
       migration.up(db);
-      db.prepare(
-        'INSERT INTO schema_migrations (version, name, applied_at) VALUES (?, ?, ?)'
-      ).run(migration.version, migration.name, new Date().toISOString());
+      db.prepare('INSERT INTO schema_migrations (version, name, applied_at) VALUES (?, ?, ?)').run(
+        migration.version,
+        migration.name,
+        new Date().toISOString(),
+      );
     }
   });
 

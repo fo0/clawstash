@@ -14,14 +14,14 @@ export default function Footer() {
   useEffect(() => {
     let cancelled = false;
     fetch('/api/version')
-      .then(r => {
+      .then((r) => {
         // Without an `r.ok` check, a 5xx silently parses an HTML error page
         // as JSON and the catch swallows the SyntaxError, hiding the failure
         // entirely. Treat non-2xx as an error so dev sees a console warning.
         if (!r.ok) throw new Error(`HTTP ${r.status}`);
         return r.json();
       })
-      .then(data => {
+      .then((data) => {
         if (cancelled || !data.current) return;
         // Validate build_date is a parseable string before storing — an
         // unparseable value would otherwise render as "vNaNNaNNaN-NaNNaN"
@@ -46,7 +46,9 @@ export default function Footer() {
           console.warn('[Footer] /api/version fetch failed:', err);
         }
       });
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   const buildDate = buildInfo ? new Date(buildInfo.buildDate) : null;
@@ -65,7 +67,10 @@ export default function Footer() {
     <footer className="app-footer">
       <div className="footer-row">
         <div className="footer-left">
-          <span className="footer-title" title={buildVersion ? `ClawStash ${buildVersion}` : 'ClawStash'}>
+          <span
+            className="footer-title"
+            title={buildVersion ? `ClawStash ${buildVersion}` : 'ClawStash'}
+          >
             ClawStash {buildVersion && <span className="footer-version">{buildVersion}</span>}
           </span>
           {buildInfo && (
@@ -75,7 +80,16 @@ export default function Footer() {
               onClick={() => setShowDetails((prev) => !prev)}
               title="Toggle build details"
             >
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <svg
+                width="14"
+                height="14"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
                 <circle cx="12" cy="12" r="10" />
                 <path d="M12 16v-4" />
                 <path d="M12 8h.01" />
@@ -90,7 +104,16 @@ export default function Footer() {
             <div className="footer-details-desktop">
               {buildInfo.branch && (
                 <span className="footer-detail" title={`Branch: ${buildInfo.branch}`}>
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <svg
+                    width="14"
+                    height="14"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
                     <line x1="6" x2="6" y1="3" y2="15" />
                     <circle cx="18" cy="6" r="3" />
                     <circle cx="6" cy="18" r="3" />
@@ -101,7 +124,16 @@ export default function Footer() {
               )}
               {buildInfo.commitHash && (
                 <span className="footer-detail" title={`Commit: ${buildInfo.commitHash}`}>
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <svg
+                    width="14"
+                    height="14"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
                     <circle cx="12" cy="12" r="3" />
                     <line x1="3" x2="9" y1="12" y2="12" />
                     <line x1="15" x2="21" y1="12" y2="12" />
@@ -111,7 +143,16 @@ export default function Footer() {
               )}
               {formattedDate && formattedTime && (
                 <span className="footer-detail" title={`Built: ${formattedDate} ${formattedTime}`}>
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <svg
+                    width="14"
+                    height="14"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
                     <rect width="18" height="18" x="3" y="4" rx="2" ry="2" />
                     <line x1="16" x2="16" y1="2" y2="6" />
                     <line x1="8" x2="8" y1="2" y2="6" />
@@ -153,7 +194,9 @@ export default function Footer() {
           {formattedDate && formattedTime && (
             <div className="footer-mobile-row">
               <span className="footer-mobile-label">Built:</span>
-              <span>{formattedDate} {formattedTime}</span>
+              <span>
+                {formattedDate} {formattedTime}
+              </span>
             </div>
           )}
         </div>

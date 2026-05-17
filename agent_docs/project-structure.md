@@ -2,7 +2,7 @@
 
 Extracted from `CLAUDE.md` (size budget 40k chars). Update this file when files are added, moved, or removed.
 
-```
+````
 clawstash/
 ├── package.json                # Dependencies and scripts
 ├── tsconfig.json               # TypeScript config (strict, ES2022, Next.js plugin, @/* path alias)
@@ -154,4 +154,4 @@ clawstash/
 │   └── styles/
 │       └── app.css             # Global styles (CSS custom properties)
 └── data/                       # SQLite database directory (gitignored)
-```
+````

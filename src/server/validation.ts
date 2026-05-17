@@ -37,7 +37,10 @@ export function isValidFilename(filename: string): boolean {
 }
 
 const FileSchema = z.object({
-  filename: z.string().min(1, 'Filename is required').max(MAX_FILENAME_LENGTH)
+  filename: z
+    .string()
+    .min(1, 'Filename is required')
+    .max(MAX_FILENAME_LENGTH)
     .refine(isValidFilename, 'Filename contains invalid characters'),
   content: z.string().max(MAX_FILE_CONTENT_LENGTH, 'File content exceeds 10MB limit'),
   language: z.string().max(50).optional(),
@@ -48,20 +51,22 @@ const FileSchema = z.object({
 // which then renders as a blank pill in the UI and matches everything in tag
 // filters. Tags also feed `getTagGraph`, where empty strings would inflate
 // node/edge counts.
-const TagsSchema = z.array(z.string().min(1, 'Tag cannot be empty').max(MAX_TAG_LENGTH)).max(MAX_TAGS);
+const TagsSchema = z
+  .array(z.string().min(1, 'Tag cannot be empty').max(MAX_TAG_LENGTH))
+  .max(MAX_TAGS);
 
 // `z.record(z.unknown())` accepts arrays in Zod 3 (typeof [] === 'object').
 // Without the explicit Array.isArray refusal, an array submitted as
 // `metadata: [...]` would pass validation, then `safeParseMetadata` silently
 // drops it on read with no error to the caller. Reject up-front instead.
-const MetadataSchema = z.record(z.unknown())
+const MetadataSchema = z
+  .record(z.unknown())
   .refine((val) => !Array.isArray(val), {
     message: 'Metadata must be an object, not an array',
   })
-  .refine(
-    (val) => Object.keys(val).length <= MAX_METADATA_KEYS,
-    { message: `Metadata cannot have more than ${MAX_METADATA_KEYS} keys` }
-  );
+  .refine((val) => Object.keys(val).length <= MAX_METADATA_KEYS, {
+    message: `Metadata cannot have more than ${MAX_METADATA_KEYS} keys`,
+  });
 
 // --- Stash Schemas ---
 
@@ -86,14 +91,20 @@ export const UpdateStashSchema = z.object({
 
 export const CreateTokenSchema = z.object({
   label: z.string().max(200).optional().default(''),
-  scopes: z.array(z.enum(['read', 'write', 'admin', 'mcp'])).min(1).transform(s => [...new Set(s)]).optional(),
+  scopes: z
+    .array(z.enum(['read', 'write', 'admin', 'mcp']))
+    .min(1)
+    .transform((s) => [...new Set(s)])
+    .optional(),
 });
 
 // --- Helpers ---
 
 export function formatZodError(error: z.ZodError): string {
-  return error.issues.map(i => {
-    const path = i.path.length > 0 ? `${i.path.join('.')}: ` : '';
-    return `${path}${i.message}`;
-  }).join('; ');
+  return error.issues
+    .map((i) => {
+      const path = i.path.length > 0 ? `${i.path.join('.')}: ` : '';
+      return `${path}${i.message}`;
+    })
+    .join('; ');
 }

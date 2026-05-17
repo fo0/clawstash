@@ -21,7 +21,11 @@ export function isUnsafeUrl(value: string): boolean {
     if (code > 0x20 && code !== 0x7f) cleaned += value[i];
   }
   cleaned = cleaned.toLowerCase();
-  return cleaned.startsWith('javascript:') || cleaned.startsWith('vbscript:') || cleaned.startsWith('data:text/html');
+  return (
+    cleaned.startsWith('javascript:') ||
+    cleaned.startsWith('vbscript:') ||
+    cleaned.startsWith('data:text/html')
+  );
 }
 
 const descriptionParser = new Marked({
@@ -43,12 +47,19 @@ const descriptionParser = new Marked({
 
 function sanitizeHtml(html: string): string {
   const doc = new DOMParser().parseFromString(html, 'text/html');
-  doc.querySelectorAll('script,style,iframe,object,embed,form,link,base,meta,noscript').forEach(el => el.remove());
-  doc.querySelectorAll('*').forEach(el => {
+  doc
+    .querySelectorAll('script,style,iframe,object,embed,form,link,base,meta,noscript')
+    .forEach((el) => el.remove());
+  doc.querySelectorAll('*').forEach((el) => {
     for (const attr of [...el.attributes]) {
       const lowerName = attr.name.toLowerCase();
       const isEventHandler = lowerName.startsWith('on');
-      const isUrlAttr = lowerName === 'href' || lowerName === 'src' || lowerName === 'xlink:href' || lowerName === 'action' || lowerName === 'formaction';
+      const isUrlAttr =
+        lowerName === 'href' ||
+        lowerName === 'src' ||
+        lowerName === 'xlink:href' ||
+        lowerName === 'action' ||
+        lowerName === 'formaction';
       // Drop inline style entirely. Modern browsers no longer execute
       // `javascript:` inside CSS url(), but `style` is still a vector for UI
       // redress / data exfil via background-image, and historically for IE

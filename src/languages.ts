@@ -243,7 +243,9 @@ export function detectLanguageFromContent(content: string): string {
     try {
       JSON.parse(trimmed);
       return 'json';
-    } catch { /* not JSON */ }
+    } catch {
+      /* not JSON */
+    }
   }
 
   // Markdown: score common patterns
@@ -252,7 +254,11 @@ export function detectLanguageFromContent(content: string): string {
   }
 
   // HTML fragments: multiple HTML tags present
-  const tagCount = (trimmed.match(/<(?:div|p|span|h[1-6]|ul|ol|li|table|tr|td|th|a|img|section|article|nav|header|footer|form|input|button|br|hr)\b/gi) || []).length;
+  const tagCount = (
+    trimmed.match(
+      /<(?:div|p|span|h[1-6]|ul|ol|li|table|tr|td|th|a|img|section|article|nav|header|footer|form|input|button|br|hr)\b/gi,
+    ) || []
+  ).length;
   if (tagCount >= 3) {
     return 'markup';
   }
@@ -271,11 +277,11 @@ function isLikelyMarkdown(content: string): boolean {
   let score = 0;
   const checks = [
     // ATX headings
-    () => lines.some(l => /^#{1,6}\s+\S/.test(l)),
+    () => lines.some((l) => /^#{1,6}\s+\S/.test(l)),
     // Unordered list items
-    () => lines.filter(l => /^\s*[-*+]\s+\S/.test(l)).length >= 2,
+    () => lines.filter((l) => /^\s*[-*+]\s+\S/.test(l)).length >= 2,
     // Ordered list items
-    () => lines.filter(l => /^\s*\d+\.\s+\S/.test(l)).length >= 2,
+    () => lines.filter((l) => /^\s*\d+\.\s+\S/.test(l)).length >= 2,
     // Links [text](url)
     () => /\[.+?\]\(.+?\)/.test(sample),
     // Bold/italic
@@ -283,11 +289,11 @@ function isLikelyMarkdown(content: string): boolean {
     // Code blocks (fenced)
     () => /^```/m.test(sample),
     // Blockquotes
-    () => lines.some(l => /^>\s/.test(l)),
+    () => lines.some((l) => /^>\s/.test(l)),
     // Images
     () => /!\[.*?\]\(.+?\)/.test(sample),
     // Horizontal rules
-    () => lines.some(l => /^(?:---+|\*\*\*+|___+)\s*$/.test(l)),
+    () => lines.some((l) => /^(?:---+|\*\*\*+|___+)\s*$/.test(l)),
   ];
 
   for (const check of checks) {

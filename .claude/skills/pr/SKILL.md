@@ -20,6 +20,7 @@ gh auth status && gh repo view --json name,owner
 ```
 
 If `gh` is missing or unauthenticated:
+
 - Print: `gh CLI required. Install: https://cli.github.com — then run: gh auth login`
 - Stop. Do NOT fall back to manual PR creation via web.
 
@@ -27,12 +28,12 @@ If `gh` is missing or unauthenticated:
 
 Before normal auto-routing, detect dep-bot PRs by **head branch pattern** (not by author — author can be spoofed):
 
-| Bot          | Branch pattern               |
-|--------------|------------------------------|
-| Dependabot   | `dependabot/**`              |
-| Renovate     | `renovate/**` or `renovate-bot/**` |
-| Snyk         | `snyk-fix/**` / `snyk-upgrade/**` |
-| pyup         | `pyup-update-**`             |
+| Bot        | Branch pattern                     |
+| ---------- | ---------------------------------- |
+| Dependabot | `dependabot/**`                    |
+| Renovate   | `renovate/**` or `renovate-bot/**` |
+| Snyk       | `snyk-fix/**` / `snyk-upgrade/**`  |
+| pyup       | `pyup-update-**`                   |
 
 When a dep-bot PR is detected (i.e. checking out, viewing, or working with a branch matching one of these patterns), follow the **Dep-Bot PR Workflow** below instead of standard `/pr` routing.
 
@@ -50,6 +51,7 @@ When a dep-bot PR is detected (i.e. checking out, viewing, or working with a bra
 7. **Never auto-merge** dep-bot PRs without explicit user command (same rule as `/pr merge`).
 
 Report:
+
 ```
 Dep-bot PR detected (<bot>): <N> packages bumped
 Bumps: <package@from->to, ...>
@@ -73,21 +75,21 @@ HEAD_SHA=$(git rev-parse HEAD)
 
 Decision matrix:
 
-| State | Action |
-|-------|--------|
-| Branch is `main`/`master`/`develop`/`trunk` | Stop: `On main branch — no PR needed.` |
-| No PR exists for branch | -> **create** (see Phase A) |
-| PR exists, `headRefOid != HEAD_SHA` (local ahead of PR) | -> **push + update body** (see Phase B) |
-| PR exists, `headRefOid == HEAD_SHA`, body summary stale vs commits | -> **update body only** (see Phase B) |
-| PR exists, fully synced | -> **status** (see Phase C, read-only report) |
-| PR exists but in `MERGED`/`CLOSED` state | Report final state + URL, stop |
+| State                                                              | Action                                        |
+| ------------------------------------------------------------------ | --------------------------------------------- |
+| Branch is `main`/`master`/`develop`/`trunk`                        | Stop: `On main branch — no PR needed.`        |
+| No PR exists for branch                                            | -> **create** (see Phase A)                   |
+| PR exists, `headRefOid != HEAD_SHA` (local ahead of PR)            | -> **push + update body** (see Phase B)       |
+| PR exists, `headRefOid == HEAD_SHA`, body summary stale vs commits | -> **update body only** (see Phase B)         |
+| PR exists, fully synced                                            | -> **status** (see Phase C, read-only report) |
+| PR exists but in `MERGED`/`CLOSED` state                           | Report final state + URL, stop                |
 
 Always print the detected phase before acting: `Detected: no PR exists -> creating.` / `Detected: PR #42 behind local -> pushing and updating.` / `Detected: PR #42 in sync -> showing status.`
 
 ## Phase A — Create
 
 1. **Push if needed:** if branch has no upstream -> `git push -u origin <branch>`.
-2. **Title:** derived from branch name OR latest commit subject (see *Branch-name -> title heuristics* below). Keep <=70 chars.
+2. **Title:** derived from branch name OR latest commit subject (see _Branch-name -> title heuristics_ below). Keep <=70 chars.
 3. **Body:** generated from commits between base and HEAD:
 
    ```bash
@@ -96,15 +98,19 @@ Always print the detected phase before acting: `Detected: no PR exists -> creati
    ```
 
    Format:
+
    ```markdown
    ## Summary
+
    - <1-3 bullet points from commit subjects, deduplicated>
 
    ## Test plan
+
    - [ ] <what the user/reviewer needs to verify>
 
    Generated with [Claude Code](https://claude.com/claude-code)
    ```
+
 4. **Create:** `gh pr create --title "..." --body "$(cat <<'EOF' ... EOF)"`. Use HEREDOC for body.
 5. **Report URL** from gh output.
 
@@ -128,6 +134,7 @@ gh pr checks
 ```
 
 Report compact:
+
 ```
 PR #N: <state> | CI: <pass/fail/pending> | Review: <approved/changes_requested/pending> | Mergeable: <yes/no/conflict>
 URL: <url>
@@ -148,6 +155,7 @@ Group by reviewer + file. Show unresolved comments first. Do NOT auto-fix — su
 **Never run without explicit user command.** Even if CI is green and approvals exist. Default `/pr` never reaches this phase.
 
 Pre-flight:
+
 1. `gh pr view --json state,statusCheckRollup,reviewDecision,mergeable` — verify mergeable.
 2. CI must be green. If not -> stop: `Cannot merge: CI failing.`
 3. If `reviewDecision != APPROVED` and repo requires approval -> stop: `Cannot merge: review approval required.`
@@ -177,11 +185,11 @@ Report: `Merged PR #N (<strategy>). Branch deleted.`
 
 ## Error Recovery
 
-| Failure | Action |
-|---------|--------|
-| `gh` not installed | Stop, print install instructions |
-| `gh auth status` fails | Stop, print `gh auth login` |
-| `git push` rejected (non-fast-forward) | Stop, ask user before force operations |
-| `gh pr create` fails due to existing PR | Re-run auto-route (will land in Phase B) |
-| Merge conflict on `gh pr merge` | Stop, instruct user to rebase/merge locally |
-| Required status check not yet started | Print pending state, do not retry-loop |
+| Failure                                 | Action                                      |
+| --------------------------------------- | ------------------------------------------- |
+| `gh` not installed                      | Stop, print install instructions            |
+| `gh auth status` fails                  | Stop, print `gh auth login`                 |
+| `git push` rejected (non-fast-forward)  | Stop, ask user before force operations      |
+| `gh pr create` fails due to existing PR | Re-run auto-route (will land in Phase B)    |
+| Merge conflict on `gh pr merge`         | Stop, instruct user to rebase/merge locally |
+| Required status check not yet started   | Print pending state, do not retry-loop      |
