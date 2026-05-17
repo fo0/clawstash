@@ -31,7 +31,15 @@ export default function StashCard({ stash, layout, isFavorite, onClick, onFilter
   );
 
   return (
-    <div className={`stash-card ${layout}${stash.archived ? ' stash-card-archived' : ''}`} onClick={onClick} title={`Open stash: ${title}`}>
+    <div
+      className={`stash-card ${layout}${stash.archived ? ' stash-card-archived' : ''}`}
+      onClick={onClick}
+      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onClick(); } }}
+      role="button"
+      tabIndex={0}
+      aria-label={`Open stash: ${title}`}
+      title={`Open stash: ${title}`}
+    >
       <div className="stash-card-header">
         <span className="stash-card-title">{title}</span>
         {stash.archived && <span className="stash-card-archived-badge">Archived</span>}
@@ -85,6 +93,10 @@ export default function StashCard({ stash, layout, isFavorite, onClick, onFilter
               key={tag}
               className="stash-tag"
               onClick={(e) => { e.stopPropagation(); onFilterTag(tag); }}
+              onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); onFilterTag(tag); } }}
+              role="button"
+              tabIndex={0}
+              aria-label={`Filter by tag: ${tag}`}
               title={`Filter by tag: ${tag}`}
             >
               {tag}

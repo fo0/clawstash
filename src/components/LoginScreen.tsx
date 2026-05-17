@@ -31,8 +31,10 @@ export default function LoginScreen({ onLogin }: Props) {
           <span className="login-logo-text">ClawStash</span>
         </div>
         <p className="login-hint">Enter your password to continue.</p>
-        {error && <div className="login-error">{error}</div>}
+        {error && <div className="login-error" role="alert">{error}</div>}
+        <label htmlFor="login-password" className="sr-only">Password</label>
         <input
+          id="login-password"
           type="password"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
@@ -40,6 +42,7 @@ export default function LoginScreen({ onLogin }: Props) {
           className="form-input login-input"
           disabled={loading}
           autoFocus
+          aria-describedby={error ? 'login-error-msg' : undefined}
         />
         <button
           type="submit"
