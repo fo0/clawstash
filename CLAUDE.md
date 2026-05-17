@@ -296,7 +296,7 @@ npx gitnexus analyze
 - The SQLite database auto-creates in the `data/` directory on first run
 - DB singleton uses `globalThis` to survive Next.js HMR reloads in development
 - MCP is available as Streamable HTTP at `/mcp` (Next.js route handler) and as stdio via `npm run mcp`
-- Docker uses multi-stage build with Node 22-slim; requires python3/make/g++ for better-sqlite3 native addon compilation
+- Docker uses multi-stage build with Node 26-slim; requires python3/make/g++ for better-sqlite3 native addon compilation
 - Docker volume maps to `/app/data` for database persistence
 - CI/CD pipeline: type-check -> (optional lint) -> (optional test) -> build -> Docker push to GHCR
 

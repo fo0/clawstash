@@ -7,7 +7,7 @@ clawstash/
 ├── package.json                # Dependencies and scripts
 ├── tsconfig.json               # TypeScript config (strict, ES2022, Next.js plugin, @/* path alias)
 ├── next.config.ts              # Next.js config (standalone output, better-sqlite3 external)
-├── Dockerfile                  # Multi-stage Docker build (Node 22-slim, Next.js standalone)
+├── Dockerfile                  # Multi-stage Docker build (Node 26-slim, Next.js standalone)
 ├── docker-compose.yml          # Docker Compose deployment
 ├── .env.example                # Environment variables template
 ├── BACKLOG.md                  # Deferred review findings tracker
