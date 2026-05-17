@@ -57,7 +57,7 @@ docker run -p 3000:3000 \
 
 ## Node.js (without Docker)
 
-**Prerequisites:** Node.js 22+ (project pins Node 22 LTS in CI and Docker; `better-sqlite3` 12.x requires ≥ 20)
+**Prerequisites:** Node.js 26+ (project pins Node 26 in Docker; `better-sqlite3` 12.x requires ≥ 20)
 
 ### Development
 
@@ -109,7 +109,7 @@ Triggers on push to `main`/`master` and manual dispatch.
 ## Architecture Notes
 
 - Next.js standalone output mode for minimal Docker images
-- Multi-stage Docker build with Node 22-slim
+- Multi-stage Docker build with Node 26-slim
 - `better-sqlite3` requires native compilation (python3/make/g++ in build stage)
 - Single process serves frontend + API + MCP endpoint
 - SQLite WAL mode for concurrent read performance
