@@ -5,7 +5,7 @@ services:
     # Or use pre-built GHCR image (comment out build, uncomment image):
     # image: ghcr.io/fo0/clawstash:latest
     ports:
-      - "${PORT:-3000}:3000"
+      - '${PORT:-3000}:3000'
     volumes:
       - clawstash-data:/app/data
     environment:

@@ -1,6 +1,6 @@
 ---
 name: gitnexus-explore
-description: "Use when the user wants to understand, navigate, or explore the codebase. Examples: \"How does X work?\", \"Where is Y defined?\", \"Show me the flow for Z\", \"What calls this function?\", \"Explain this module\""
+description: 'Use when the user wants to understand, navigate, or explore the codebase. Examples: "How does X work?", "Where is Y defined?", "Show me the flow for Z", "What calls this function?", "Explain this module"'
 ---
 
 # Codebase Exploration with GitNexus
@@ -25,16 +25,17 @@ description: "Use when the user wants to understand, navigate, or explore the co
 
 ## Tool Selection Guide
 
-| Question | Tool | Example |
-|----------|------|---------|
-| "Where is X?" / "How does X work?" | `gitnexus_query` | `gitnexus_query({query: "user authentication flow"})` |
-| "What uses X?" / "What does X depend on?" | `gitnexus_context` | `gitnexus_context({name: "AuthService"})` |
-| "What's affected if I change X?" | `gitnexus_impact` | `gitnexus_impact({target: "AuthService", direction: "upstream"})` |
-| "Show all functions that call Y and are called by Z" | `gitnexus_cypher` | Custom Cypher query |
+| Question                                             | Tool               | Example                                                           |
+| ---------------------------------------------------- | ------------------ | ----------------------------------------------------------------- |
+| "Where is X?" / "How does X work?"                   | `gitnexus_query`   | `gitnexus_query({query: "user authentication flow"})`             |
+| "What uses X?" / "What does X depend on?"            | `gitnexus_context` | `gitnexus_context({name: "AuthService"})`                         |
+| "What's affected if I change X?"                     | `gitnexus_impact`  | `gitnexus_impact({target: "AuthService", direction: "upstream"})` |
+| "Show all functions that call Y and are called by Z" | `gitnexus_cypher`  | Custom Cypher query                                               |
 
 ## Examples
 
 ### Understand a module
+
 ```
 gitnexus_query({query: "payment processing"})
 -> Found: PaymentService, StripeAdapter, PaymentController
@@ -46,6 +47,7 @@ gitnexus_context({name: "PaymentService"})
 ```
 
 ### Trace execution flow
+
 ```
 gitnexus_impact({target: "processPayment", direction: "downstream"})
 -> d=1: StripeAdapter.charge, OrderService.updateStatus, NotificationService.sendReceipt

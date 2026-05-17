@@ -32,7 +32,11 @@ export async function POST(req: NextRequest) {
   const limit = checkAndRecordAuthAttempt('token-validate', ip);
   if (!limit.allowed) {
     return NextResponse.json(
-      { valid: false, scopes: [], error: 'Too many token-validation attempts. Please try again later.' },
+      {
+        valid: false,
+        scopes: [],
+        error: 'Too many token-validation attempts. Please try again later.',
+      },
       {
         status: 429,
         headers: { 'Retry-After': String(limit.retryAfter ?? RATE_LIMIT_WINDOW_SEC) },

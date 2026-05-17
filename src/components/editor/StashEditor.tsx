@@ -27,12 +27,12 @@ export default function StashEditor({ stash, onSave, onCancel }: Props) {
   const [description, setDescription] = useState(stash?.description || '');
   const [tags, setTags] = useState<string[]>(stash?.tags || []);
   const [metadataEntries, setMetadataEntries] = useState<MetadataEntry[]>(
-    stash && Object.keys(stash.metadata).length > 0 ? metadataToEntries(stash.metadata) : []
+    stash && Object.keys(stash.metadata).length > 0 ? metadataToEntries(stash.metadata) : [],
   );
   const [files, setFiles] = useState<FileInput[]>(
     stash
       ? stash.files.map((f) => ({ filename: f.filename, content: f.content, language: f.language }))
-      : [{ filename: '', content: '', language: '' }]
+      : [{ filename: '', content: '', language: '' }],
   );
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
@@ -57,9 +57,21 @@ export default function StashEditor({ stash, onSave, onCancel }: Props) {
   // Load available tags and metadata keys
   useEffect(() => {
     let cancelled = false;
-    api.getTags().then((t) => { if (!cancelled) setAvailableTags(t); }).catch(() => {});
-    api.getMetadataKeys().then((k) => { if (!cancelled) setAvailableMetaKeys(k); }).catch(() => {});
-    return () => { cancelled = true; };
+    api
+      .getTags()
+      .then((t) => {
+        if (!cancelled) setAvailableTags(t);
+      })
+      .catch(() => {});
+    api
+      .getMetadataKeys()
+      .then((k) => {
+        if (!cancelled) setAvailableMetaKeys(k);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   // Auto-name first file from stash name (only when creating new, and first
@@ -67,22 +79,25 @@ export default function StashEditor({ stash, onSave, onCancel }: Props) {
   // typer cannot race an in-flight updateFile() and overwrite freshly-edited
   // file content with a stale closure-captured snapshot. Removing `files`
   // from the dep list also avoids recreating the callback on every keystroke.
-  const handleNameChange = useCallback((newName: string) => {
-    setName(newName);
-    if (firstFileManuallyEdited) return;
-    setFiles((prev) => {
-      if (prev.length === 0) return prev;
-      const ext = prev[0].filename ? prev[0].filename.match(/\.[^.]+$/)?.[0] : '';
-      const baseFileName = newName
-        .toLowerCase()
-        .replace(/[^a-z0-9]+/g, '-')
-        .replace(/^-|-$/g, '');
-      if (!baseFileName) return prev;
-      const updated = [...prev];
-      updated[0] = { ...updated[0], filename: baseFileName + (ext || '') };
-      return updated;
-    });
-  }, [firstFileManuallyEdited]);
+  const handleNameChange = useCallback(
+    (newName: string) => {
+      setName(newName);
+      if (firstFileManuallyEdited) return;
+      setFiles((prev) => {
+        if (prev.length === 0) return prev;
+        const ext = prev[0].filename ? prev[0].filename.match(/\.[^.]+$/)?.[0] : '';
+        const baseFileName = newName
+          .toLowerCase()
+          .replace(/[^a-z0-9]+/g, '-')
+          .replace(/^-|-$/g, '');
+        if (!baseFileName) return prev;
+        const updated = [...prev];
+        updated[0] = { ...updated[0], filename: baseFileName + (ext || '') };
+        return updated;
+      });
+    },
+    [firstFileManuallyEdited],
+  );
 
   const addFile = () => {
     setFiles([...files, { filename: '', content: '', language: '' }]);
@@ -156,7 +171,12 @@ export default function StashEditor({ stash, onSave, onCancel }: Props) {
             </svg>
             Cancel
           </button>
-          <button className="btn btn-primary" onClick={handleSave} disabled={saving} title="Save this stash">
+          <button
+            className="btn btn-primary"
+            onClick={handleSave}
+            disabled={saving}
+            title="Save this stash"
+          >
             <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
               <path d="M13.78 4.22a.75.75 0 0 1 0 1.06l-7.25 7.25a.75.75 0 0 1-1.06 0L2.22 9.28a.751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018L6 10.94l6.72-6.72a.75.75 0 0 1 1.06 0Z" />
             </svg>
@@ -211,7 +231,11 @@ export default function StashEditor({ stash, onSave, onCancel }: Props) {
             <InfoIcon tooltip="Key-value pairs for storing structured data like model name, agent ID, or purpose. Searchable via API/MCP. Choose from existing keys or create new ones." />
             <span className="label-hint"> - optional</span>
           </label>
-          <MetadataEditor entries={metadataEntries} onChange={setMetadataEntries} availableKeys={availableMetaKeys} />
+          <MetadataEditor
+            entries={metadataEntries}
+            onChange={setMetadataEntries}
+            availableKeys={availableMetaKeys}
+          />
         </div>
 
         <div className="editor-files">
@@ -220,7 +244,11 @@ export default function StashEditor({ stash, onSave, onCancel }: Props) {
               Files
               <InfoIcon tooltip="Each stash can contain one or more files. Files are the actual content you want to store — code snippets, configs, prompts, or any text. The language is auto-detected from the file extension." />
             </h3>
-            <button className="btn btn-sm btn-secondary" onClick={addFile} title="Add another file to this stash">
+            <button
+              className="btn btn-sm btn-secondary"
+              onClick={addFile}
+              title="Add another file to this stash"
+            >
               <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor">
                 <path d="M8 2a.75.75 0 0 1 .75.75v4.5h4.5a.75.75 0 0 1 0 1.5h-4.5v4.5a.75.75 0 0 1-1.5 0v-4.5h-4.5a.75.75 0 0 1 0-1.5h4.5v-4.5A.75.75 0 0 1 8 2Z" />
               </svg>

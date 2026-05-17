@@ -17,7 +17,10 @@ export async function GET(req: NextRequest, { params }: Params) {
   const v1 = parsePositiveInt(req.nextUrl.searchParams.get('v1'));
   const v2 = parsePositiveInt(req.nextUrl.searchParams.get('v2'));
   if (!v1 || !v2 || v1 === v2) {
-    return NextResponse.json({ error: 'Provide two different positive version numbers as v1 and v2 query parameters' }, { status: 400 });
+    return NextResponse.json(
+      { error: 'Provide two different positive version numbers as v1 and v2 query parameters' },
+      { status: 400 },
+    );
   }
 
   // getStashVersion supports both historical versions and the current live version

@@ -105,7 +105,7 @@ async function fetchLatestCommit(): Promise<LatestCache> {
     );
 
     if (res.ok) {
-      const data = await res.json() as {
+      const data = (await res.json()) as {
         sha: string;
         commit: { message: string; committer: { date: string } | null };
       };
@@ -151,14 +151,13 @@ export async function checkVersion(): Promise<VersionInfo> {
     const fresh = await fetchLatestCommit();
     cache = fresh;
     // Only cache successful fetches for the full TTL; retry failures sooner.
-    cacheExpiry = fresh.commit_sha !== null
-      ? now + CACHE_TTL_MS
-      : now + FAILED_FETCH_RETRY_MS;
+    cacheExpiry = fresh.commit_sha !== null ? now + CACHE_TTL_MS : now + FAILED_FETCH_RETRY_MS;
   }
 
-  const updateAvailable = cache.commit_sha !== null
-    && buildInfo.commitHash !== ''
-    && cache.commit_sha !== buildInfo.commitHash;
+  const updateAvailable =
+    cache.commit_sha !== null &&
+    buildInfo.commitHash !== '' &&
+    cache.commit_sha !== buildInfo.commitHash;
 
   return {
     current: {
@@ -167,11 +166,13 @@ export async function checkVersion(): Promise<VersionInfo> {
       build_date: buildInfo.buildDate,
       branch: buildInfo.branch,
     },
-    latest: cache.commit_sha ? {
-      commit_sha: cache.commit_sha,
-      commit_date: cache.commit_date,
-      commit_message: cache.commit_message,
-    } : null,
+    latest: cache.commit_sha
+      ? {
+          commit_sha: cache.commit_sha,
+          commit_date: cache.commit_date,
+          commit_message: cache.commit_message,
+        }
+      : null,
     update_available: updateAvailable,
     github_url: GITHUB_URL,
     checked_at: cache.checked_at,

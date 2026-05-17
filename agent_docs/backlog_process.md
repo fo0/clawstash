@@ -21,18 +21,19 @@ Review findings not immediately fixed. **Only work on these upon explicit reques
 
 ## Open
 
-| # | Date | Category | Priority | File:Line | Finding | Status | Source |
-|---|------|----------|----------|-----------|---------|--------|--------|
-| 1 | 2026-02-13 | Performance | P2 | server/db.ts:42 | N+1 query in stash list | Deferred | Feature: Dashboard |
+| #   | Date       | Category    | Priority | File:Line       | Finding                 | Status   | Source             |
+| --- | ---------- | ----------- | -------- | --------------- | ----------------------- | -------- | ------------------ |
+| 1   | 2026-02-13 | Performance | P2       | server/db.ts:42 | N+1 query in stash list | Deferred | Feature: Dashboard |
 
 ## Done
 
-| # | Date | Done | Category | File:Line | Finding |
-|---|------|------|----------|-----------|---------|
-| 1 | 2026-02-10 | 2026-02-13 | Security | server/auth.ts:18 | Missing rate limit |
+| #   | Date       | Done       | Category | File:Line         | Finding            |
+| --- | ---------- | ---------- | -------- | ----------------- | ------------------ |
+| 1   | 2026-02-10 | 2026-02-13 | Security | server/auth.ts:18 | Missing rate limit |
 ```
 
 ### Location Format
+
 Use `File -> Function/Component` instead of line numbers. Line numbers go stale after every commit.
 
 ### Status Values

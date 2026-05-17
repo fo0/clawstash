@@ -32,17 +32,23 @@ export class SessionStore {
       expiresAt = new Date(now.getTime() + hours * 60 * 60 * 1000).toISOString();
     }
 
-    this.db.prepare(`
+    this.db
+      .prepare(
+        `
       INSERT INTO admin_sessions (id, token_hash, created_at, expires_at)
       VALUES (?, ?, ?, ?)
-    `).run(id, tokenHash, now.toISOString(), expiresAt);
+    `,
+      )
+      .run(id, tokenHash, now.toISOString(), expiresAt);
 
     return { token: rawToken, expiresAt };
   }
 
   validateAdminSession(token: string): { valid: boolean; expiresAt?: string | null } {
     const tokenHash = hashToken(token);
-    const row = this.db.prepare('SELECT expires_at FROM admin_sessions WHERE token_hash = ?').get(tokenHash) as { expires_at: string | null } | undefined;
+    const row = this.db
+      .prepare('SELECT expires_at FROM admin_sessions WHERE token_hash = ?')
+      .get(tokenHash) as { expires_at: string | null } | undefined;
     if (!row) return { valid: false };
     if (row.expires_at && new Date(row.expires_at) < new Date()) {
       // Expired - clean up
@@ -54,13 +60,17 @@ export class SessionStore {
 
   deleteAdminSession(token: string): boolean {
     const tokenHash = hashToken(token);
-    const result = this.db.prepare('DELETE FROM admin_sessions WHERE token_hash = ?').run(tokenHash);
+    const result = this.db
+      .prepare('DELETE FROM admin_sessions WHERE token_hash = ?')
+      .run(tokenHash);
     return result.changes > 0;
   }
 
   cleanExpiredSessions(): number {
     const now = new Date().toISOString();
-    const result = this.db.prepare("DELETE FROM admin_sessions WHERE expires_at IS NOT NULL AND expires_at < ?").run(now);
+    const result = this.db
+      .prepare('DELETE FROM admin_sessions WHERE expires_at IS NOT NULL AND expires_at < ?')
+      .run(now);
     return result.changes;
   }
 }

@@ -1,6 +1,6 @@
 ---
 name: gitnexus-debug
-description: "Use when the user is debugging an issue, tracing an error, or trying to understand why something is broken. Examples: \"Why is X returning null?\", \"Where does this error come from?\", \"Trace the data flow for Y\", \"Find where this value gets modified\""
+description: 'Use when the user is debugging an issue, tracing an error, or trying to understand why something is broken. Examples: "Why is X returning null?", "Where does this error come from?", "Trace the data flow for Y", "Find where this value gets modified"'
 ---
 
 # Debugging with GitNexus
@@ -27,6 +27,7 @@ description: "Use when the user is debugging an issue, tracing an error, or tryi
 ## Debugging Patterns
 
 ### Trace an error source
+
 ```
 gitnexus_context({name: "getUserProfile"})
 -> Incoming: ProfileController.show(), SettingsController.load()
@@ -39,6 +40,7 @@ gitnexus_impact({target: "UserRepository.findById", direction: "upstream"})
 ```
 
 ### Find what changed
+
 ```
 gitnexus_detect_changes({scope: "all"})
 -> Changed: 3 files, 5 symbols
@@ -49,6 +51,7 @@ gitnexus_detect_changes({scope: "all"})
 ```
 
 ### Trace data flow
+
 ```
 gitnexus_cypher({query: "MATCH path=(source)-[:CodeRelation*1..4]->(target:Function {name: 'saveOrder'}) RETURN path"})
 -> Shows all paths that lead to saveOrder -- find where data gets transformed

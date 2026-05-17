@@ -15,16 +15,16 @@ When a session begins, read in this order. Stop early if a file is missing.
 
 ## Workflow Triggers
 
-| User says...                                           | Skill to load                                     |
-|--------------------------------------------------------|---------------------------------------------------|
-| "done" / "fertig" / "finished" / "/done"               | `.claude/skills/done/SKILL.md`                    |
-| "PR" / "create PR" / "/pr"                             | `.claude/skills/pr/SKILL.md`                      |
-| "review" / "/review"                                   | `.claude/skills/review/SKILL.md`                  |
-| "security review" / "/security-review"                 | `.claude/skills/security-review/SKILL.md`         |
-| "rollback" / "revert" / "undo" / "/rollback"           | `.claude/skills/rollback/SKILL.md`                |
-| "CI" / "fix CI" / "check the build" / "/ci"            | `.claude/skills/ci/SKILL.md`                      |
-| "stuck" / "loop" / "going in circles" / "/stuck"       | `.claude/skills/stuck/SKILL.md`                   |
-| Diagram request                                        | `agent_docs/diagram_prompt.md` -> `docs/ARCHITECTURE.mmd` |
+| User says...                                     | Skill to load                                             |
+| ------------------------------------------------ | --------------------------------------------------------- |
+| "done" / "fertig" / "finished" / "/done"         | `.claude/skills/done/SKILL.md`                            |
+| "PR" / "create PR" / "/pr"                       | `.claude/skills/pr/SKILL.md`                              |
+| "review" / "/review"                             | `.claude/skills/review/SKILL.md`                          |
+| "security review" / "/security-review"           | `.claude/skills/security-review/SKILL.md`                 |
+| "rollback" / "revert" / "undo" / "/rollback"     | `.claude/skills/rollback/SKILL.md`                        |
+| "CI" / "fix CI" / "check the build" / "/ci"      | `.claude/skills/ci/SKILL.md`                              |
+| "stuck" / "loop" / "going in circles" / "/stuck" | `.claude/skills/stuck/SKILL.md`                           |
+| Diagram request                                  | `agent_docs/diagram_prompt.md` -> `docs/ARCHITECTURE.mmd` |
 
 > After every implementation, the review process in `agent_docs/review_process.md` is available via the `review` skill -- done-skill does NOT auto-run reviews.
 > Unresolved findings go to `BACKLOG.md` per `agent_docs/backlog_process.md`.
@@ -35,16 +35,16 @@ When a session begins, read in this order. Stop early if a file is missing.
 
 ## Output Languages
 
-| Surface                                | Language                          |
-|----------------------------------------|-----------------------------------|
-| Chat / status messages to user         | User's language (default: German) |
-| Code, identifiers, comments            | English                           |
-| Commit messages                        | English (Conventional Commits)    |
-| PR titles + bodies                     | English                           |
-| GitHub issue comments                  | English                           |
-| Generated files (CLAUDE.md, agent_docs/*, MEMORY.md, SCRATCHPAD.md, BACKLOG.md, skills) | English |
-| Console / log output of the app        | English                           |
-| User-facing UI strings                 | English                           |
+| Surface                                                                                  | Language                          |
+| ---------------------------------------------------------------------------------------- | --------------------------------- |
+| Chat / status messages to user                                                           | User's language (default: German) |
+| Code, identifiers, comments                                                              | English                           |
+| Commit messages                                                                          | English (Conventional Commits)    |
+| PR titles + bodies                                                                       | English                           |
+| GitHub issue comments                                                                    | English                           |
+| Generated files (CLAUDE.md, agent_docs/\*, MEMORY.md, SCRATCHPAD.md, BACKLOG.md, skills) | English                           |
+| Console / log output of the app                                                          | English                           |
+| User-facing UI strings                                                                   | English                           |
 
 ## Performance / Modes
 
@@ -58,6 +58,7 @@ When a session begins, read in this order. Stop early if a file is missing.
 **ClawStash** is an AI-optimized stash storage system, built specifically for AI agents with REST API, MCP (Model Context Protocol) support, and a web GUI.
 
 **Core features:**
+
 - Text and file storage with multi-file support per stash
 - Name + Description: Separate title and AI-optimized description per stash
 - Archive: Hide stashes from default listings without deleting (toggle in UI, API, and MCP)
@@ -73,25 +74,25 @@ When a session begins, read in this order. Stop early if a file is missing.
 
 ## Tech Stack
 
-| Component | Technology | Version |
-|-----------|-----------|---------|
-| Language | TypeScript (strict mode) | 6 |
-| Framework | Next.js (App Router) | 16 |
-| Frontend | React | 19 |
-| Database | SQLite (better-sqlite3) | 12 |
-| MCP Server | @modelcontextprotocol/sdk | 1.27 |
-| Validation | Zod | 3.24 |
-| Code Editor | react-simple-code-editor, PrismJS | 0.14, 1.30 |
-| Markdown Rendering | marked | 18 |
-| Diagram Rendering | mermaid (lazy-loaded) | 11 |
-| Diagram Viewer (zoom/pan) | react-zoom-pan-pinch | 4 |
-| Text Diffing | diff (jsdiff) | 9 |
-| Module System | ESM (`"type": "module"`) | -- |
-| Containerization | Docker (multi-stage, standalone output) | -- |
-| CI/CD | GitHub Actions -> GHCR | -- |
-| Package Manager | npm (`package-lock.json`) | -- |
-| Linter/Formatter | -- (not configured) | -- |
-| Test Framework | vitest | 4.x |
+| Component                 | Technology                              | Version    |
+| ------------------------- | --------------------------------------- | ---------- |
+| Language                  | TypeScript (strict mode)                | 6          |
+| Framework                 | Next.js (App Router)                    | 16         |
+| Frontend                  | React                                   | 19         |
+| Database                  | SQLite (better-sqlite3)                 | 12         |
+| MCP Server                | @modelcontextprotocol/sdk               | 1.27       |
+| Validation                | Zod                                     | 3.24       |
+| Code Editor               | react-simple-code-editor, PrismJS       | 0.14, 1.30 |
+| Markdown Rendering        | marked                                  | 18         |
+| Diagram Rendering         | mermaid (lazy-loaded)                   | 11         |
+| Diagram Viewer (zoom/pan) | react-zoom-pan-pinch                    | 4          |
+| Text Diffing              | diff (jsdiff)                           | 9          |
+| Module System             | ESM (`"type": "module"`)                | --         |
+| Containerization          | Docker (multi-stage, standalone output) | --         |
+| CI/CD                     | GitHub Actions -> GHCR                  | --         |
+| Package Manager           | npm (`package-lock.json`)               | --         |
+| Linter/Formatter          | -- (not configured)                     | --         |
+| Test Framework            | vitest                                  | 4.x        |
 
 ## Project Structure
 
@@ -126,6 +127,7 @@ npx gitnexus analyze       # Rebuild index (after structural changes or stale in
 ```
 
 > **Note:** No linter is configured yet. When added, extend automated checks:
+>
 > ```bash
 > npm run lint             # Lint + Format (when configured)
 > ```
@@ -147,6 +149,7 @@ Full pattern descriptions live in `agent_docs/key-patterns.md`. CLAUDE.md keeps 
 - **MCP Server** (`src/server/mcp-server.ts`, `src/server/mcp.ts`) -- factory function reads `tool-defs.ts`, Streamable HTTP at `/mcp` + stdio via `npm run mcp`.
 
 ### Error Handling
+
 Try/catch in async route handlers; UI components keep error state in React. Validation errors go through `formatZodError()` for human-readable strings.
 
 ## Coding Conventions
@@ -190,27 +193,28 @@ Significant decisions are recorded as ADRs under `docs/adr/`. Triggers + format:
 
 ## Environment Variables
 
-| Variable | Description | Default | Required |
-|----------|-------------|---------|----------|
-| `PORT` | Server port | `3000` | No |
-| `DATABASE_PATH` | Path to SQLite database file | `./data/clawstash.db` | No |
-| `NODE_ENV` | Environment mode | `development` | No |
-| `ADMIN_PASSWORD` | Admin password for login (unset = open access) | -- | No |
-| `ADMIN_SESSION_HOURS` | Admin session duration in hours (0 = unlimited) | `24` | No |
-| `TRUST_PROXY` | Trust `X-Forwarded-*` headers (set to `1` or `true` when behind nginx, Traefik, Cloudflare, etc.) | off | No (recommended behind a reverse proxy) |
+| Variable              | Description                                                                                       | Default               | Required                                |
+| --------------------- | ------------------------------------------------------------------------------------------------- | --------------------- | --------------------------------------- |
+| `PORT`                | Server port                                                                                       | `3000`                | No                                      |
+| `DATABASE_PATH`       | Path to SQLite database file                                                                      | `./data/clawstash.db` | No                                      |
+| `NODE_ENV`            | Environment mode                                                                                  | `development`         | No                                      |
+| `ADMIN_PASSWORD`      | Admin password for login (unset = open access)                                                    | --                    | No                                      |
+| `ADMIN_SESSION_HOURS` | Admin session duration in hours (0 = unlimited)                                                   | `24`                  | No                                      |
+| `TRUST_PROXY`         | Trust `X-Forwarded-*` headers (set to `1` or `true` when behind nginx, Traefik, Cloudflare, etc.) | off                   | No (recommended behind a reverse proxy) |
 
 Full list / details: `.env.example`.
 
 ### Secrets Locations
 
-| Secret class            | Where it lives                                      | Never commit |
-|-------------------------|-----------------------------------------------------|--------------|
-| Local dev secrets       | `.env` (gitignored), template in `.env.example`     | Yes          |
-| CI/CD secrets           | GitHub Actions secrets (`gh secret set`)            | Yes          |
-| Production secrets      | Deployment platform's secret store (Docker host env / orchestrator secret manager) | Yes |
-| Test fixtures           | Synthetic values only -- never real credentials      | Yes          |
+| Secret class       | Where it lives                                                                     | Never commit |
+| ------------------ | ---------------------------------------------------------------------------------- | ------------ |
+| Local dev secrets  | `.env` (gitignored), template in `.env.example`                                    | Yes          |
+| CI/CD secrets      | GitHub Actions secrets (`gh secret set`)                                           | Yes          |
+| Production secrets | Deployment platform's secret store (Docker host env / orchestrator secret manager) | Yes          |
+| Test fixtures      | Synthetic values only -- never real credentials                                    | Yes          |
 
 Rules:
+
 - New secret needed -> add to `.env.example` with placeholder + comment, document in CLAUDE.md, request from user.
 - Never `gh secret set` from agent code without explicit user command.
 - Audit step in `security-review` skill scans for committed secrets (gitleaks / trufflehog).
@@ -262,13 +266,14 @@ CI failure handling is in `.claude/skills/ci/SKILL.md`. Triggered by `/ci`, "fix
 For complex / parallel / read-heavy work, delegate to a Claude Code subagent rather than running everything in main context.
 
 | `subagent_type`     | Use for                                              |
-|---------------------|------------------------------------------------------|
+| ------------------- | ---------------------------------------------------- |
 | `Explore`           | Read-only search, locate symbols / files             |
 | `Plan`              | Design implementation strategy for non-trivial tasks |
 | `general-purpose`   | Multi-step write+execute, write tests/docs, refactor |
 | `claude-code-guide` | Questions about Claude Code itself (hooks, MCP, SDK) |
 
 Rules:
+
 - Direct tools beat subagents when the target is known (`Read` for known path, `grep` for known symbol).
 - Parallelize independent subagent calls in a single message.
 - Pass full context -- subagents have no conversation history.
@@ -316,25 +321,27 @@ Refactoring does NOT happen automatically. Only upon explicit user request, when
 
 After every code change, check and update:
 
-| File | Update when... |
-|------|---------------|
-| `CLAUDE.md` | New components, config files, patterns, or technical details |
-| `README.md` | New features, value proposition, onboarding changes for users |
-| `BACKLOG.md` | Unresolved review findings (Accepted/Deferred) -- see `agent_docs/backlog_process.md` |
-| `MEMORY.md` | Architecture decisions, gotchas, external deps, user preferences |
-| `SCRATCHPAD.md` | Current working context, open questions, short-lived notes |
-| `docs/api-reference.md` | New API endpoints, query parameters, examples |
-| `docs/mcp.md` | New MCP tools, transport options, usage patterns |
-| `docs/deployment.md` | Docker, CI/CD, or production setup changes |
-| `docs/authentication.md` | Auth flow, token, or scope changes |
-| `docs/ARCHITECTURE.mmd` | Structural changes (new modules, changed data flow, new external deps) |
-| `agent_docs/key-patterns.md` | Implementation pattern details that don't belong in CLAUDE.md |
-| `.env.example` | New configuration options added |
+| File                         | Update when...                                                                        |
+| ---------------------------- | ------------------------------------------------------------------------------------- |
+| `CLAUDE.md`                  | New components, config files, patterns, or technical details                          |
+| `README.md`                  | New features, value proposition, onboarding changes for users                         |
+| `BACKLOG.md`                 | Unresolved review findings (Accepted/Deferred) -- see `agent_docs/backlog_process.md` |
+| `MEMORY.md`                  | Architecture decisions, gotchas, external deps, user preferences                      |
+| `SCRATCHPAD.md`              | Current working context, open questions, short-lived notes                            |
+| `docs/api-reference.md`      | New API endpoints, query parameters, examples                                         |
+| `docs/mcp.md`                | New MCP tools, transport options, usage patterns                                      |
+| `docs/deployment.md`         | Docker, CI/CD, or production setup changes                                            |
+| `docs/authentication.md`     | Auth flow, token, or scope changes                                                    |
+| `docs/ARCHITECTURE.mmd`      | Structural changes (new modules, changed data flow, new external deps)                |
+| `agent_docs/key-patterns.md` | Implementation pattern details that don't belong in CLAUDE.md                         |
+| `.env.example`               | New configuration options added                                                       |
 
 ### Size monitoring
+
 If `CLAUDE.md` exceeds ~40,000 characters: extract the largest section into `agent_docs/` and replace with a one-line reference. Do this proactively -- don't wait for warnings.
 
 <!-- gitnexus:start -->
+
 # GitNexus -- Code Intelligence
 
 This project is indexed by GitNexus as **clawstash** (2191 symbols, 3899 relationships, 189 execution flows). Use the GitNexus MCP tools to understand code, assess impact, and navigate safely.
@@ -358,23 +365,23 @@ This project is indexed by GitNexus as **clawstash** (2191 symbols, 3899 relatio
 
 ## Resources
 
-| Resource | Use for |
-|----------|---------|
-| `gitnexus://repo/clawstash/context` | Codebase overview, check index freshness |
-| `gitnexus://repo/clawstash/clusters` | All functional areas |
-| `gitnexus://repo/clawstash/processes` | All execution flows |
-| `gitnexus://repo/clawstash/process/{name}` | Step-by-step execution trace |
+| Resource                                   | Use for                                  |
+| ------------------------------------------ | ---------------------------------------- |
+| `gitnexus://repo/clawstash/context`        | Codebase overview, check index freshness |
+| `gitnexus://repo/clawstash/clusters`       | All functional areas                     |
+| `gitnexus://repo/clawstash/processes`      | All execution flows                      |
+| `gitnexus://repo/clawstash/process/{name}` | Step-by-step execution trace             |
 
 ## Skill Files
 
-| Task | Read this skill file |
-|------|---------------------|
-| Understand architecture / "How does X work?" | `.claude/skills/gitnexus/gitnexus-exploring/SKILL.md` |
-| Blast radius / "What breaks if I change X?" | `.claude/skills/gitnexus/gitnexus-impact-analysis/SKILL.md` |
-| Trace bugs / "Why is X failing?" | `.claude/skills/gitnexus/gitnexus-debugging/SKILL.md` |
-| Rename / extract / split / refactor | `.claude/skills/gitnexus/gitnexus-refactoring/SKILL.md` |
-| Tools, resources, schema reference | `.claude/skills/gitnexus/gitnexus-guide/SKILL.md` |
-| Index, status, clean, wiki CLI commands | `.claude/skills/gitnexus/gitnexus-cli/SKILL.md` |
+| Task                                         | Read this skill file                                        |
+| -------------------------------------------- | ----------------------------------------------------------- |
+| Understand architecture / "How does X work?" | `.claude/skills/gitnexus/gitnexus-exploring/SKILL.md`       |
+| Blast radius / "What breaks if I change X?"  | `.claude/skills/gitnexus/gitnexus-impact-analysis/SKILL.md` |
+| Trace bugs / "Why is X failing?"             | `.claude/skills/gitnexus/gitnexus-debugging/SKILL.md`       |
+| Rename / extract / split / refactor          | `.claude/skills/gitnexus/gitnexus-refactoring/SKILL.md`     |
+| Tools, resources, schema reference           | `.claude/skills/gitnexus/gitnexus-guide/SKILL.md`           |
+| Index, status, clean, wiki CLI commands      | `.claude/skills/gitnexus/gitnexus-cli/SKILL.md`             |
 
 <!-- gitnexus:end -->
 

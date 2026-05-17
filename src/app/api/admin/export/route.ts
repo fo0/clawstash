@@ -30,8 +30,12 @@ export async function GET(req: NextRequest) {
       archive.append(JSON.stringify(data.stashes, null, 2), { name: 'stashes.json' });
       archive.append(JSON.stringify(data.stash_files, null, 2), { name: 'stash_files.json' });
       archive.append(JSON.stringify(data.stash_versions, null, 2), { name: 'stash_versions.json' });
-      archive.append(JSON.stringify(data.stash_version_files, null, 2), { name: 'stash_version_files.json' });
-      archive.append(JSON.stringify({ exportedAt: exportedAt.toISOString(), version: '1.0' }), { name: 'manifest.json' });
+      archive.append(JSON.stringify(data.stash_version_files, null, 2), {
+        name: 'stash_version_files.json',
+      });
+      archive.append(JSON.stringify({ exportedAt: exportedAt.toISOString(), version: '1.0' }), {
+        name: 'manifest.json',
+      });
       archive.finalize();
     });
 

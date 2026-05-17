@@ -7,18 +7,38 @@ import Spinner from './shared/Spinner';
 
 // --- Welcome Section ---
 
-const WELCOME_CARDS: { section: SettingsSection; title: string; description: string; color: string; icon: ReactNode }[] = [
+const WELCOME_CARDS: {
+  section: SettingsSection;
+  title: string;
+  description: string;
+  color: string;
+  icon: ReactNode;
+}[] = [
   {
     section: 'general',
     title: 'General',
     description: 'Customize application preferences and default layout.',
     color: 'var(--accent-orange)',
     icon: (
-      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <line x1="4" x2="4" y1="21" y2="14" /><line x1="4" x2="4" y1="10" y2="3" />
-        <line x1="12" x2="12" y1="21" y2="12" /><line x1="12" x2="12" y1="8" y2="3" />
-        <line x1="20" x2="20" y1="21" y2="16" /><line x1="20" x2="20" y1="12" y2="3" />
-        <line x1="2" x2="6" y1="14" y2="14" /><line x1="10" x2="14" y1="8" y2="8" /><line x1="18" x2="22" y1="16" y2="16" />
+      <svg
+        width="22"
+        height="22"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      >
+        <line x1="4" x2="4" y1="21" y2="14" />
+        <line x1="4" x2="4" y1="10" y2="3" />
+        <line x1="12" x2="12" y1="21" y2="12" />
+        <line x1="12" x2="12" y1="8" y2="3" />
+        <line x1="20" x2="20" y1="21" y2="16" />
+        <line x1="20" x2="20" y1="12" y2="3" />
+        <line x1="2" x2="6" y1="14" y2="14" />
+        <line x1="10" x2="14" y1="8" y2="8" />
+        <line x1="18" x2="22" y1="16" y2="16" />
       </svg>
     ),
   },
@@ -28,7 +48,16 @@ const WELCOME_CARDS: { section: SettingsSection; title: string; description: str
     description: 'Manage API tokens, REST API docs, and MCP configuration.',
     color: '#3bc9db',
     icon: (
-      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <svg
+        width="22"
+        height="22"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      >
         <path d="m15 7-6.5 6.5a1.5 1.5 0 0 0 3 3L18 10" />
         <path d="m18 10 2-2a1.5 1.5 0 0 0-3-3l-2 2" />
         <path d="m8 16-1.5 1.5" />
@@ -42,7 +71,16 @@ const WELCOME_CARDS: { section: SettingsSection; title: string; description: str
     description: 'Database statistics, languages, and tag overview.',
     color: '#b197fc',
     icon: (
-      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <svg
+        width="22"
+        height="22"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      >
         <ellipse cx="12" cy="5" rx="9" ry="3" />
         <path d="M3 5V19A9 3 0 0 0 21 19V5" />
         <path d="M3 12A9 3 0 0 0 21 12" />
@@ -55,9 +93,19 @@ const WELCOME_CARDS: { section: SettingsSection; title: string; description: str
     description: 'Application information, features, and tech stack.',
     color: 'var(--accent-green)',
     icon: (
-      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <svg
+        width="22"
+        height="22"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      >
         <circle cx="12" cy="12" r="10" />
-        <path d="M12 16v-4" /><path d="M12 8h.01" />
+        <path d="M12 16v-4" />
+        <path d="M12 8h.01" />
       </svg>
     ),
   },
@@ -72,24 +120,40 @@ function WelcomeSection({ onNavigate }: WelcomeSectionProps) {
 
   useEffect(() => {
     let cancelled = false;
-    api.getStats().then((data) => {
-      if (!cancelled) setStats(data);
-    }).catch(() => {});
-    return () => { cancelled = true; };
+    api
+      .getStats()
+      .then((data) => {
+        if (!cancelled) setStats(data);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   return (
     <div className="settings-section-content">
       <div className="settings-welcome-header">
         <div className="settings-welcome-icon">
-          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <svg
+            width="28"
+            height="28"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
             <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z" />
             <circle cx="12" cy="12" r="3" />
           </svg>
         </div>
         <div>
           <h2 className="settings-welcome-title">Admin Dashboard</h2>
-          <p className="settings-welcome-subtitle">Administration and configuration for ClawStash</p>
+          <p className="settings-welcome-subtitle">
+            Administration and configuration for ClawStash
+          </p>
         </div>
       </div>
 
@@ -128,9 +192,19 @@ function WelcomeSection({ onNavigate }: WelcomeSectionProps) {
       </div>
 
       <div className="settings-welcome-hint">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <svg
+          width="16"
+          height="16"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        >
           <circle cx="12" cy="12" r="10" />
-          <path d="M12 16v-4" /><path d="M12 8h.01" />
+          <path d="M12 16v-4" />
+          <path d="M12 8h.01" />
         </svg>
         <span>
           ClawStash is AI-optimized stash storage with REST API, MCP support, and a web dashboard.
@@ -145,18 +219,41 @@ function WelcomeSection({ onNavigate }: WelcomeSectionProps) {
 
 function SlidersIcon() {
   return (
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <line x1="4" x2="4" y1="21" y2="14" /><line x1="4" x2="4" y1="10" y2="3" />
-      <line x1="12" x2="12" y1="21" y2="12" /><line x1="12" x2="12" y1="8" y2="3" />
-      <line x1="20" x2="20" y1="21" y2="16" /><line x1="20" x2="20" y1="12" y2="3" />
-      <line x1="2" x2="6" y1="14" y2="14" /><line x1="10" x2="14" y1="8" y2="8" /><line x1="18" x2="22" y1="16" y2="16" />
+    <svg
+      width="20"
+      height="20"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <line x1="4" x2="4" y1="21" y2="14" />
+      <line x1="4" x2="4" y1="10" y2="3" />
+      <line x1="12" x2="12" y1="21" y2="12" />
+      <line x1="12" x2="12" y1="8" y2="3" />
+      <line x1="20" x2="20" y1="21" y2="16" />
+      <line x1="20" x2="20" y1="12" y2="3" />
+      <line x1="2" x2="6" y1="14" y2="14" />
+      <line x1="10" x2="14" y1="8" y2="8" />
+      <line x1="18" x2="22" y1="16" y2="16" />
     </svg>
   );
 }
 
 function DatabaseIcon() {
   return (
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <svg
+      width="20"
+      height="20"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
       <ellipse cx="12" cy="5" rx="9" ry="3" />
       <path d="M3 5V19A9 3 0 0 0 21 19V5" />
       <path d="M3 12A9 3 0 0 0 21 12" />
@@ -166,9 +263,19 @@ function DatabaseIcon() {
 
 function InfoIcon() {
   return (
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <svg
+      width="20"
+      height="20"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
       <circle cx="12" cy="12" r="10" />
-      <path d="M12 16v-4" /><path d="M12 8h.01" />
+      <path d="M12 16v-4" />
+      <path d="M12 8h.01" />
     </svg>
   );
 }
@@ -184,7 +291,9 @@ function GeneralSection({ layout, onLayoutChange }: GeneralSectionProps) {
   return (
     <div className="settings-section-content">
       <div className="settings-section-title">
-        <span className="settings-section-title-icon"><SlidersIcon /></span>
+        <span className="settings-section-title-icon">
+          <SlidersIcon />
+        </span>
         <h2>General</h2>
       </div>
       <p className="settings-section-desc">Application preferences.</p>
@@ -194,9 +303,7 @@ function GeneralSection({ layout, onLayoutChange }: GeneralSectionProps) {
         <div className="settings-card-header">
           <h3>Default Layout</h3>
         </div>
-        <p className="api-hint">
-          Choose the default layout for the dashboard stash list.
-        </p>
+        <p className="api-hint">Choose the default layout for the dashboard stash list.</p>
         <div className="settings-option-group">
           <button
             className={`settings-option-btn ${layout === 'grid' ? 'active' : ''}`}
@@ -218,7 +325,6 @@ function GeneralSection({ layout, onLayoutChange }: GeneralSectionProps) {
           </button>
         </div>
       </div>
-
     </div>
   );
 }
@@ -238,10 +344,7 @@ function StorageSection() {
     let cancelled = false;
     async function load() {
       try {
-        const [statsData, tagsData] = await Promise.all([
-          api.getStats(),
-          api.getTags(),
-        ]);
+        const [statsData, tagsData] = await Promise.all([api.getStats(), api.getTags()]);
         if (!cancelled) {
           setStats(statsData);
           setTags(tagsData);
@@ -253,7 +356,9 @@ function StorageSection() {
       }
     }
     load();
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   const handleExport = async () => {
@@ -283,7 +388,9 @@ function StorageSection() {
   const sectionMountedRef = useRef(true);
   useEffect(() => {
     sectionMountedRef.current = true;
-    return () => { sectionMountedRef.current = false; };
+    return () => {
+      sectionMountedRef.current = false;
+    };
   }, []);
 
   const handleImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -299,7 +406,9 @@ function StorageSection() {
     try {
       const result = await api.importData(file);
       if (!sectionMountedRef.current) return;
-      setImportResult(`Import successful: ${result.imported.stashes} stashes, ${result.imported.files} files, ${result.imported.versions} versions imported.`);
+      setImportResult(
+        `Import successful: ${result.imported.stashes} stashes, ${result.imported.files} files, ${result.imported.versions} versions imported.`,
+      );
       // Reload stats
       const [statsData, tagsData] = await Promise.all([api.getStats(), api.getTags()]);
       if (!sectionMountedRef.current) return;
@@ -317,7 +426,9 @@ function StorageSection() {
   if (loading) {
     return (
       <div className="settings-section-content">
-        <div className="api-loading"><Spinner /> Loading storage info...</div>
+        <div className="api-loading">
+          <Spinner /> Loading storage info...
+        </div>
       </div>
     );
   }
@@ -325,7 +436,9 @@ function StorageSection() {
   return (
     <div className="settings-section-content">
       <div className="settings-section-title">
-        <span className="settings-section-title-icon"><DatabaseIcon /></span>
+        <span className="settings-section-title-icon">
+          <DatabaseIcon />
+        </span>
         <h2>Storage</h2>
       </div>
       <p className="settings-section-desc">Database statistics and storage overview.</p>
@@ -396,8 +509,8 @@ function StorageSection() {
           <h3>Data Export / Import</h3>
         </div>
         <p className="api-hint">
-          Export all stash data as a ZIP archive or import a previously exported ZIP to restore data.
-          Import will <strong>replace all existing data</strong>.
+          Export all stash data as a ZIP archive or import a previously exported ZIP to restore
+          data. Import will <strong>replace all existing data</strong>.
         </p>
 
         <div className="settings-export-import-actions">
@@ -406,7 +519,16 @@ function StorageSection() {
             onClick={handleExport}
             disabled={exporting || importing}
           >
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <svg
+              width="16"
+              height="16"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
               <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
               <polyline points="7 10 12 15 17 10" />
               <line x1="12" x2="12" y1="15" y2="3" />
@@ -418,7 +540,16 @@ function StorageSection() {
             className={`settings-option-btn${importing ? ' active' : ''}`}
             style={{ cursor: importing ? 'wait' : 'pointer' }}
           >
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <svg
+              width="16"
+              height="16"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
               <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
               <polyline points="17 8 12 3 7 8" />
               <line x1="12" x2="12" y1="3" y2="15" />
@@ -434,12 +565,8 @@ function StorageSection() {
           </label>
         </div>
 
-        {importResult && (
-          <div className="settings-import-success">{importResult}</div>
-        )}
-        {importError && (
-          <div className="settings-import-error">{importError}</div>
-        )}
+        {importResult && <div className="settings-import-success">{importResult}</div>}
+        {importError && <div className="settings-import-error">{importError}</div>}
       </div>
 
       {!stats && (
@@ -457,7 +584,9 @@ function AboutSection() {
   return (
     <div className="settings-section-content">
       <div className="settings-section-title">
-        <span className="settings-section-title-icon"><InfoIcon /></span>
+        <span className="settings-section-title-icon">
+          <InfoIcon />
+        </span>
         <h2>About</h2>
       </div>
       <p className="settings-section-desc">Application information.</p>
@@ -467,7 +596,9 @@ function AboutSection() {
           <span className="settings-about-logo">CS</span>
           <div>
             <h3>ClawStash</h3>
-            <p className="api-hint" style={{ marginBottom: 0 }}>AI-optimized Stash Storage System</p>
+            <p className="api-hint" style={{ marginBottom: 0 }}>
+              AI-optimized Stash Storage System
+            </p>
           </div>
         </div>
       </div>
@@ -533,27 +664,21 @@ interface Props {
   onSettingsSection: (section: SettingsSection) => void;
 }
 
-export default function Settings({ activeSection, layout, onLayoutChange, onSettingsSection }: Props) {
+export default function Settings({
+  activeSection,
+  layout,
+  onLayoutChange,
+  onSettingsSection,
+}: Props) {
   return (
     <div className="settings">
-      {activeSection === 'welcome' && (
-        <WelcomeSection onNavigate={onSettingsSection} />
-      )}
+      {activeSection === 'welcome' && <WelcomeSection onNavigate={onSettingsSection} />}
       {activeSection === 'general' && (
-        <GeneralSection
-          layout={layout}
-          onLayoutChange={onLayoutChange}
-        />
+        <GeneralSection layout={layout} onLayoutChange={onLayoutChange} />
       )}
-      {activeSection === 'api' && (
-        <ApiManager embedded />
-      )}
-      {activeSection === 'storage' && (
-        <StorageSection />
-      )}
-      {activeSection === 'about' && (
-        <AboutSection />
-      )}
+      {activeSection === 'api' && <ApiManager embedded />}
+      {activeSection === 'storage' && <StorageSection />}
+      {activeSection === 'about' && <AboutSection />}
     </div>
   );
 }

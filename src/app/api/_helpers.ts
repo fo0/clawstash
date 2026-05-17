@@ -9,9 +9,18 @@ export function checkScope(req: NextRequest, scope: TokenScope) {
   if (auth) return { ok: true as const };
   const token = extractToken(req);
   if (!token) {
-    return { ok: false as const, response: NextResponse.json({ error: 'Authentication required. Provide a Bearer token.' }, { status: 401 }) };
+    return {
+      ok: false as const,
+      response: NextResponse.json(
+        { error: 'Authentication required. Provide a Bearer token.' },
+        { status: 401 },
+      ),
+    };
   }
-  return { ok: false as const, response: NextResponse.json({ error: 'Insufficient permissions.' }, { status: 403 }) };
+  return {
+    ok: false as const,
+    response: NextResponse.json({ error: 'Insufficient permissions.' }, { status: 403 }),
+  };
 }
 
 export function checkAdmin(req: NextRequest) {
@@ -23,9 +32,18 @@ export function checkAdmin(req: NextRequest) {
   // surface 401 (Authentication required) rather than 403.
   const token = extractToken(req);
   if (!token) {
-    return { ok: false as const, response: NextResponse.json({ error: 'Authentication required. Provide a Bearer token.' }, { status: 401 }) };
+    return {
+      ok: false as const,
+      response: NextResponse.json(
+        { error: 'Authentication required. Provide a Bearer token.' },
+        { status: 401 },
+      ),
+    };
   }
-  return { ok: false as const, response: NextResponse.json({ error: 'Admin access required.' }, { status: 403 }) };
+  return {
+    ok: false as const,
+    response: NextResponse.json({ error: 'Admin access required.' }, { status: 403 }),
+  };
 }
 
 export function getAccessSource(req: NextRequest): 'ui' | 'api' {
@@ -41,9 +59,10 @@ export function getBaseUrl(req: NextRequest): string {
   // forwarded headers when `TRUST_PROXY=1` (or =true) is explicitly set.
   const trustProxy = process.env.TRUST_PROXY === '1' || process.env.TRUST_PROXY === 'true';
   const proto = (trustProxy && req.headers.get('x-forwarded-proto')) || 'http';
-  const host = (trustProxy && req.headers.get('x-forwarded-host'))
-    || req.headers.get('host')
-    || 'localhost:3000';
+  const host =
+    (trustProxy && req.headers.get('x-forwarded-host')) ||
+    req.headers.get('host') ||
+    'localhost:3000';
   return `${proto}://${host}`;
 }
 
@@ -60,7 +79,9 @@ export function parsePositiveInt(value: string | null): number | undefined {
 /**
  * Parse and return the JSON body from a request, or an error response.
  */
-export async function parseJsonBody(req: NextRequest): Promise<{ data: unknown } | { error: NextResponse }> {
+export async function parseJsonBody(
+  req: NextRequest,
+): Promise<{ data: unknown } | { error: NextResponse }> {
   try {
     return { data: await req.json() };
   } catch {
@@ -76,11 +97,13 @@ export async function parseJsonBody(req: NextRequest): Promise<{ data: unknown }
  * x-real-ip when XFF is absent (nginx, traefik) so proxies that only
  * forward one or the other still produce useful logs.
  */
-export function getRequestInfo(req: NextRequest): { ip: string | undefined; userAgent: string | undefined } {
+export function getRequestInfo(req: NextRequest): {
+  ip: string | undefined;
+  userAgent: string | undefined;
+} {
   const xff = req.headers.get('x-forwarded-for');
-  const ip = (xff ? xff.split(',')[0].trim() : '')
-    || req.headers.get('x-real-ip')?.trim()
-    || undefined;
+  const ip =
+    (xff ? xff.split(',')[0].trim() : '') || req.headers.get('x-real-ip')?.trim() || undefined;
   return {
     ip,
     userAgent: req.headers.get('user-agent') || undefined,

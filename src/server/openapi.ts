@@ -24,9 +24,7 @@ export function getOpenApiSpec(baseUrl: string): OpenApiSpec {
       description: CLAWSTASH_PURPOSE_PLAIN,
       version: '1.0.0',
     },
-    servers: [
-      { url: baseUrl, description: 'Current server' },
-    ],
+    servers: [{ url: baseUrl, description: 'Current server' }],
     components: {
       securitySchemes: {
         bearerAuth: {
@@ -55,8 +53,14 @@ export function getOpenApiSpec(baseUrl: string): OpenApiSpec {
             description: { type: 'string', description: 'Longer description for AI context' },
             tags: { type: 'array', items: { type: 'string' } },
             metadata: { type: 'object', additionalProperties: true },
-            version: { type: 'integer', description: 'Current version number (1-based, incremented on each update)' },
-            archived: { type: 'boolean', description: 'Whether the stash is archived (hidden from default listings)' },
+            version: {
+              type: 'integer',
+              description: 'Current version number (1-based, incremented on each update)',
+            },
+            archived: {
+              type: 'boolean',
+              description: 'Whether the stash is archived (hidden from default listings)',
+            },
             created_at: { type: 'string', format: 'date-time' },
             updated_at: { type: 'string', format: 'date-time' },
             files: { type: 'array', items: { $ref: '#/components/schemas/StashFile' } },
@@ -64,17 +68,24 @@ export function getOpenApiSpec(baseUrl: string): OpenApiSpec {
         },
         StashListItem: {
           type: 'object',
-          description: 'Summary of a stash (no metadata or file content). When returned from a search query, includes additional `relevance` and `snippets` fields.',
+          description:
+            'Summary of a stash (no metadata or file content). When returned from a search query, includes additional `relevance` and `snippets` fields.',
           properties: {
             id: { type: 'string', format: 'uuid' },
             name: { type: 'string' },
             description: { type: 'string' },
             tags: { type: 'array', items: { type: 'string' } },
-            version: { type: 'integer', description: 'Current version number (1-based, incremented on each update)' },
+            version: {
+              type: 'integer',
+              description: 'Current version number (1-based, incremented on each update)',
+            },
             archived: { type: 'boolean', description: 'Whether the stash is archived' },
             created_at: { type: 'string', format: 'date-time' },
             updated_at: { type: 'string', format: 'date-time' },
-            total_size: { type: 'integer', description: 'Total size of all file contents in bytes' },
+            total_size: {
+              type: 'integer',
+              description: 'Total size of all file contents in bytes',
+            },
             files: {
               type: 'array',
               items: {
@@ -86,10 +97,14 @@ export function getOpenApiSpec(baseUrl: string): OpenApiSpec {
                 },
               },
             },
-            relevance: { type: 'number', description: 'BM25 relevance score (only present in search results)' },
+            relevance: {
+              type: 'number',
+              description: 'BM25 relevance score (only present in search results)',
+            },
             snippets: {
               type: 'object',
-              description: 'Match snippets per-field (only present in search results). Keys: name, description, tags, filenames, file_content. Matched terms wrapped with `**…**`.',
+              description:
+                'Match snippets per-field (only present in search results). Keys: name, description, tags, filenames, file_content. Matched terms wrapped with `**…**`.',
               additionalProperties: { type: 'string' },
             },
           },
@@ -124,7 +139,10 @@ export function getOpenApiSpec(baseUrl: string): OpenApiSpec {
             description: { type: 'string' },
             tags: { type: 'array', items: { type: 'string' } },
             metadata: { type: 'object', additionalProperties: true },
-            archived: { type: 'boolean', description: 'Set to true to archive or false to unarchive' },
+            archived: {
+              type: 'boolean',
+              description: 'Set to true to archive or false to unarchive',
+            },
             files: {
               type: 'array',
               items: {
@@ -186,7 +204,8 @@ export function getOpenApiSpec(baseUrl: string): OpenApiSpec {
             stash_count: { type: 'integer', description: 'Total number of stashes analyzed' },
             filter: {
               type: 'object',
-              description: 'Present when tag filter was applied. Shows the focus tag and traversal depth used.',
+              description:
+                'Present when tag filter was applied. Shows the focus tag and traversal depth used.',
               properties: {
                 tag: { type: 'string', description: 'The focus tag that was filtered on' },
                 depth: { type: 'integer', description: 'The traversal depth used' },
@@ -214,9 +233,16 @@ export function getOpenApiSpec(baseUrl: string): OpenApiSpec {
               type: 'object',
               description: 'Currently running build',
               properties: {
-                version: { type: 'string', description: 'Date-based build version (e.g. "v20260215-1628")' },
+                version: {
+                  type: 'string',
+                  description: 'Date-based build version (e.g. "v20260215-1628")',
+                },
                 commit_sha: { type: 'string', description: 'Short commit hash of this build' },
-                build_date: { type: 'string', format: 'date-time', description: 'Build timestamp (ISO 8601)' },
+                build_date: {
+                  type: 'string',
+                  format: 'date-time',
+                  description: 'Build timestamp (ISO 8601)',
+                },
                 branch: { type: 'string', description: 'Git branch this was built from' },
               },
             },
@@ -225,14 +251,28 @@ export function getOpenApiSpec(baseUrl: string): OpenApiSpec {
               nullable: true,
               description: 'Latest commit on the GitHub main branch (null if check failed)',
               properties: {
-                commit_sha: { type: 'string', description: 'Short commit hash of the latest commit on main' },
-                commit_date: { type: 'string', format: 'date-time', description: 'Commit date (ISO 8601)' },
+                commit_sha: {
+                  type: 'string',
+                  description: 'Short commit hash of the latest commit on main',
+                },
+                commit_date: {
+                  type: 'string',
+                  format: 'date-time',
+                  description: 'Commit date (ISO 8601)',
+                },
                 commit_message: { type: 'string', description: 'First line of the commit message' },
               },
             },
-            update_available: { type: 'boolean', description: 'True if the latest commit SHA differs from the current build SHA' },
+            update_available: {
+              type: 'boolean',
+              description: 'True if the latest commit SHA differs from the current build SHA',
+            },
             github_url: { type: 'string', description: 'GitHub repository URL' },
-            checked_at: { type: 'string', format: 'date-time', description: 'Timestamp of the last GitHub check' },
+            checked_at: {
+              type: 'string',
+              format: 'date-time',
+              description: 'Timestamp of the last GitHub check',
+            },
           },
         },
         Error: {
@@ -250,23 +290,51 @@ export function getOpenApiSpec(baseUrl: string): OpenApiSpec {
           summary: 'List stashes',
           description: 'Retrieve a paginated list of stashes with optional search and tag filters.',
           parameters: [
-            { name: 'search', in: 'query', schema: { type: 'string' }, description: 'Search term (matches name, description, filenames, content)' },
+            {
+              name: 'search',
+              in: 'query',
+              schema: { type: 'string' },
+              description: 'Search term (matches name, description, filenames, content)',
+            },
             { name: 'tag', in: 'query', schema: { type: 'string' }, description: 'Filter by tag' },
-            { name: 'archived', in: 'query', schema: { type: 'string', enum: ['true', 'false'] }, description: 'Filter by archive status. true = only archived, false = only active. Omit to show all.' },
-            { name: 'page', in: 'query', schema: { type: 'integer', default: 1 }, description: 'Page number' },
-            { name: 'limit', in: 'query', schema: { type: 'integer', default: 50 }, description: 'Results per page' },
+            {
+              name: 'archived',
+              in: 'query',
+              schema: { type: 'string', enum: ['true', 'false'] },
+              description:
+                'Filter by archive status. true = only archived, false = only active. Omit to show all.',
+            },
+            {
+              name: 'page',
+              in: 'query',
+              schema: { type: 'integer', default: 1 },
+              description: 'Page number',
+            },
+            {
+              name: 'limit',
+              in: 'query',
+              schema: { type: 'integer', default: 50 },
+              description: 'Results per page',
+            },
           ],
           responses: {
             200: {
-              description: 'List of stashes. When `search` query is provided, returns FTS5-ranked results with additional `query`, `relevance`, and `snippets` fields on each stash item.',
+              description:
+                'List of stashes. When `search` query is provided, returns FTS5-ranked results with additional `query`, `relevance`, and `snippets` fields on each stash item.',
               content: {
                 'application/json': {
                   schema: {
                     type: 'object',
                     properties: {
-                      stashes: { type: 'array', items: { $ref: '#/components/schemas/StashListItem' } },
+                      stashes: {
+                        type: 'array',
+                        items: { $ref: '#/components/schemas/StashListItem' },
+                      },
                       total: { type: 'integer' },
-                      query: { type: 'string', description: 'Sanitized FTS5 query (only present when search is used)' },
+                      query: {
+                        type: 'string',
+                        description: 'Sanitized FTS5 query (only present when search is used)',
+                      },
                     },
                   },
                 },
@@ -343,7 +411,9 @@ export function getOpenApiSpec(baseUrl: string): OpenApiSpec {
           responses: {
             200: {
               description: 'Array of metadata key strings',
-              content: { 'application/json': { schema: { type: 'array', items: { type: 'string' } } } },
+              content: {
+                'application/json': { schema: { type: 'array', items: { type: 'string' } } },
+              },
             },
           },
         },
@@ -352,18 +422,47 @@ export function getOpenApiSpec(baseUrl: string): OpenApiSpec {
         get: {
           tags: ['Stashes'],
           summary: 'Get tag relationship graph',
-          description: 'Returns tags as graph nodes with usage counts, and co-occurrence edges between tags that appear together on the same stash. Supports filtering by focus tag with depth traversal for incremental exploration. Without filters, returns the full graph.',
+          description:
+            'Returns tags as graph nodes with usage counts, and co-occurrence edges between tags that appear together on the same stash. Supports filtering by focus tag with depth traversal for incremental exploration. Without filters, returns the full graph.',
           parameters: [
-            { name: 'tag', in: 'query', schema: { type: 'string' }, description: 'Focus tag: only return this tag and its neighbors within the specified depth' },
-            { name: 'depth', in: 'query', schema: { type: 'integer', default: 1, minimum: 1, maximum: 5 }, description: 'Traversal depth from the focus tag (only used with tag parameter)' },
-            { name: 'min_weight', in: 'query', schema: { type: 'integer', minimum: 1 }, description: 'Minimum edge weight (co-occurrence count) to include' },
-            { name: 'min_count', in: 'query', schema: { type: 'integer', minimum: 1 }, description: 'Minimum tag usage count to include nodes' },
-            { name: 'limit', in: 'query', schema: { type: 'integer', minimum: 1 }, description: 'Maximum number of tag nodes to return (sorted by count descending)' },
+            {
+              name: 'tag',
+              in: 'query',
+              schema: { type: 'string' },
+              description:
+                'Focus tag: only return this tag and its neighbors within the specified depth',
+            },
+            {
+              name: 'depth',
+              in: 'query',
+              schema: { type: 'integer', default: 1, minimum: 1, maximum: 5 },
+              description: 'Traversal depth from the focus tag (only used with tag parameter)',
+            },
+            {
+              name: 'min_weight',
+              in: 'query',
+              schema: { type: 'integer', minimum: 1 },
+              description: 'Minimum edge weight (co-occurrence count) to include',
+            },
+            {
+              name: 'min_count',
+              in: 'query',
+              schema: { type: 'integer', minimum: 1 },
+              description: 'Minimum tag usage count to include nodes',
+            },
+            {
+              name: 'limit',
+              in: 'query',
+              schema: { type: 'integer', minimum: 1 },
+              description: 'Maximum number of tag nodes to return (sorted by count descending)',
+            },
           ],
           responses: {
             200: {
               description: 'Tag graph with nodes and edges',
-              content: { 'application/json': { schema: { $ref: '#/components/schemas/TagGraph' } } },
+              content: {
+                'application/json': { schema: { $ref: '#/components/schemas/TagGraph' } },
+              },
             },
           },
         },
@@ -372,37 +471,48 @@ export function getOpenApiSpec(baseUrl: string): OpenApiSpec {
         get: {
           tags: ['Stashes'],
           summary: 'Get a single stash',
-          parameters: [
-            { name: 'id', in: 'path', required: true, schema: { type: 'string' } },
-          ],
+          parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }],
           responses: {
-            200: { description: 'Stash details', content: { 'application/json': { schema: { $ref: '#/components/schemas/Stash' } } } },
-            404: { description: 'Not found', content: { 'application/json': { schema: { $ref: '#/components/schemas/Error' } } } },
+            200: {
+              description: 'Stash details',
+              content: { 'application/json': { schema: { $ref: '#/components/schemas/Stash' } } },
+            },
+            404: {
+              description: 'Not found',
+              content: { 'application/json': { schema: { $ref: '#/components/schemas/Error' } } },
+            },
           },
         },
         patch: {
           tags: ['Stashes'],
           summary: 'Update a stash',
-          parameters: [
-            { name: 'id', in: 'path', required: true, schema: { type: 'string' } },
-          ],
+          parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }],
           requestBody: {
-            content: { 'application/json': { schema: { $ref: '#/components/schemas/UpdateStashInput' } } },
+            content: {
+              'application/json': { schema: { $ref: '#/components/schemas/UpdateStashInput' } },
+            },
           },
           responses: {
-            200: { description: 'Updated stash', content: { 'application/json': { schema: { $ref: '#/components/schemas/Stash' } } } },
-            404: { description: 'Not found', content: { 'application/json': { schema: { $ref: '#/components/schemas/Error' } } } },
+            200: {
+              description: 'Updated stash',
+              content: { 'application/json': { schema: { $ref: '#/components/schemas/Stash' } } },
+            },
+            404: {
+              description: 'Not found',
+              content: { 'application/json': { schema: { $ref: '#/components/schemas/Error' } } },
+            },
           },
         },
         delete: {
           tags: ['Stashes'],
           summary: 'Delete a stash',
-          parameters: [
-            { name: 'id', in: 'path', required: true, schema: { type: 'string' } },
-          ],
+          parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }],
           responses: {
             204: { description: 'Deleted' },
-            404: { description: 'Not found', content: { 'application/json': { schema: { $ref: '#/components/schemas/Error' } } } },
+            404: {
+              description: 'Not found',
+              content: { 'application/json': { schema: { $ref: '#/components/schemas/Error' } } },
+            },
           },
         },
       },
@@ -415,7 +525,10 @@ export function getOpenApiSpec(baseUrl: string): OpenApiSpec {
             { name: 'filename', in: 'path', required: true, schema: { type: 'string' } },
           ],
           responses: {
-            200: { description: 'Raw file content', content: { 'text/plain': { schema: { type: 'string' } } } },
+            200: {
+              description: 'Raw file content',
+              content: { 'text/plain': { schema: { type: 'string' } } },
+            },
             404: { description: 'Not found' },
           },
         },
@@ -426,7 +539,12 @@ export function getOpenApiSpec(baseUrl: string): OpenApiSpec {
           summary: 'Get access log for a stash',
           parameters: [
             { name: 'id', in: 'path', required: true, schema: { type: 'string' } },
-            { name: 'limit', in: 'query', schema: { type: 'integer', default: 100 }, description: 'Max entries to return' },
+            {
+              name: 'limit',
+              in: 'query',
+              schema: { type: 'integer', default: 100 },
+              description: 'Max entries to return',
+            },
           ],
           responses: {
             200: {
@@ -463,7 +581,10 @@ export function getOpenApiSpec(baseUrl: string): OpenApiSpec {
                             id: { type: 'string' },
                             label: { type: 'string' },
                             tokenPrefix: { type: 'string' },
-                            scopes: { type: 'array', items: { type: 'string', enum: ['read', 'write', 'admin', 'mcp'] } },
+                            scopes: {
+                              type: 'array',
+                              items: { type: 'string', enum: ['read', 'write', 'admin', 'mcp'] },
+                            },
                             createdAt: { type: 'string', format: 'date-time' },
                           },
                         },
@@ -488,7 +609,10 @@ export function getOpenApiSpec(baseUrl: string): OpenApiSpec {
                 schema: {
                   type: 'object',
                   properties: {
-                    label: { type: 'string', description: 'Token label (e.g. "Monitoring", "Claude Desktop")' },
+                    label: {
+                      type: 'string',
+                      description: 'Token label (e.g. "Monitoring", "Claude Desktop")',
+                    },
                     scopes: {
                       type: 'array',
                       items: { type: 'string', enum: ['read', 'write', 'admin', 'mcp'] },
@@ -508,7 +632,10 @@ export function getOpenApiSpec(baseUrl: string): OpenApiSpec {
                     type: 'object',
                     properties: {
                       id: { type: 'string' },
-                      token: { type: 'string', description: 'The full token value (shown only once)' },
+                      token: {
+                        type: 'string',
+                        description: 'The full token value (shown only once)',
+                      },
                       label: { type: 'string' },
                       scopes: { type: 'array', items: { type: 'string' } },
                     },
@@ -527,9 +654,7 @@ export function getOpenApiSpec(baseUrl: string): OpenApiSpec {
           tags: ['Tokens'],
           summary: 'Delete an API token',
           security: [{ bearerAuth: [] }],
-          parameters: [
-            { name: 'id', in: 'path', required: true, schema: { type: 'string' } },
-          ],
+          parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }],
           responses: {
             204: { description: 'Deleted' },
             404: { description: 'Not found' },
@@ -573,7 +698,8 @@ export function getOpenApiSpec(baseUrl: string): OpenApiSpec {
         get: {
           tags: ['System'],
           summary: 'Get MCP specification',
-          description: 'Returns a comprehensive MCP specification as markdown text, including tool definitions with JSON Schema, data types, and usage patterns.',
+          description:
+            'Returns a comprehensive MCP specification as markdown text, including tool definitions with JSON Schema, data types, and usage patterns.',
           responses: {
             200: { description: 'MCP specification as text/plain (markdown)' },
           },
@@ -583,7 +709,8 @@ export function getOpenApiSpec(baseUrl: string): OpenApiSpec {
         get: {
           tags: ['System'],
           summary: 'MCP onboarding guide for AI self-onboarding',
-          description: 'Returns the full MCP onboarding guide as markdown text. Includes quick start instructions, recommended workflows, and the complete MCP specification with all tool definitions, input schemas, return types, and data types. No authentication required — designed for AI agents to discover and onboard themselves. The equivalent MCP tool is `refresh_tools`.',
+          description:
+            'Returns the full MCP onboarding guide as markdown text. Includes quick start instructions, recommended workflows, and the complete MCP specification with all tool definitions, input schemas, return types, and data types. No authentication required — designed for AI agents to discover and onboard themselves. The equivalent MCP tool is `refresh_tools`.',
           responses: {
             200: { description: 'MCP onboarding guide as text/plain (markdown)' },
           },
@@ -593,7 +720,8 @@ export function getOpenApiSpec(baseUrl: string): OpenApiSpec {
         get: {
           tags: ['System'],
           summary: 'Check current version and available updates',
-          description: 'Returns the running ClawStash build version (date-based), commit SHA, and build date. Compares against the latest commit on the GitHub main branch to detect available updates. Cached for 1 hour. No authentication required.',
+          description:
+            'Returns the running ClawStash build version (date-based), commit SHA, and build date. Compares against the latest commit on the GitHub main branch to detect available updates. Cached for 1 hour. No authentication required.',
           responses: {
             200: {
               description: 'Version information',
@@ -610,7 +738,8 @@ export function getOpenApiSpec(baseUrl: string): OpenApiSpec {
         get: {
           tags: ['System'],
           summary: 'Health check',
-          description: 'Returns database connection status and basic stash/file counts. No authentication required.',
+          description:
+            'Returns database connection status and basic stash/file counts. No authentication required.',
           security: [],
           responses: {
             200: {
@@ -662,7 +791,8 @@ export function getOpenApiSpec(baseUrl: string): OpenApiSpec {
         get: {
           tags: ['System'],
           summary: 'List MCP tool summaries',
-          description: 'Returns a JSON array of all available MCP tools with name and short description. Derived from the same source as the MCP server tool definitions.',
+          description:
+            'Returns a JSON array of all available MCP tools with name and short description. Derived from the same source as the MCP server tool definitions.',
           responses: {
             200: {
               description: 'Tool summaries',
@@ -674,7 +804,10 @@ export function getOpenApiSpec(baseUrl: string): OpenApiSpec {
                       type: 'object',
                       properties: {
                         name: { type: 'string', description: 'Tool name' },
-                        description: { type: 'string', description: 'Short description (first line)' },
+                        description: {
+                          type: 'string',
+                          description: 'Short description (first line)',
+                        },
                       },
                     },
                   },

@@ -29,15 +29,16 @@ RUNS=$(gh run list --branch "$BRANCH" --limit 5 --json databaseId,status,conclus
 
 Decision matrix:
 
-| State                                                  | Action                              |
-|--------------------------------------------------------|--------------------------------------|
-| No runs found for branch                               | Phase A — report "no CI runs yet"   |
-| Latest run still `in_progress` / `queued`              | Phase B — show running status       |
-| Latest run `success`                                   | Phase C — green report              |
-| Latest run `failure` / `cancelled` / `timed_out`       | Phase D — fetch logs + propose fix  |
-| Latest run is for `headSha != HEAD_SHA` (stale)        | Phase E — note stale, run for prior SHA shown only on request |
+| State                                            | Action                                                        |
+| ------------------------------------------------ | ------------------------------------------------------------- |
+| No runs found for branch                         | Phase A — report "no CI runs yet"                             |
+| Latest run still `in_progress` / `queued`        | Phase B — show running status                                 |
+| Latest run `success`                             | Phase C — green report                                        |
+| Latest run `failure` / `cancelled` / `timed_out` | Phase D — fetch logs + propose fix                            |
+| Latest run is for `headSha != HEAD_SHA` (stale)  | Phase E — note stale, run for prior SHA shown only on request |
 
 Print detected phase before acting:
+
 ```
 Detected: latest CI run failed (run #123, workflow "build"). Fetching failed-job logs.
 ```
@@ -45,6 +46,7 @@ Detected: latest CI run failed (run #123, workflow "build"). Fetching failed-job
 ## Phase A — No runs
 
 Print:
+
 ```
 No CI runs found for branch <branch>. Possible reasons:
 - Branch not yet pushed -> git push -u origin <branch>
@@ -61,6 +63,7 @@ gh run view <run-id>
 ```
 
 Report compact:
+
 ```
 Run #<id> "<workflow>" in progress -- <N>/<M> jobs done.
 URL: <url>
@@ -73,6 +76,7 @@ gh run view <run-id> --json conclusion,createdAt,updatedAt,workflowName
 ```
 
 Report:
+
 ```
 Run #<id> "<workflow>" passed (<duration>).
 URL: <url>
@@ -105,6 +109,7 @@ URL: <url>
 5. **Verify fix locally** before any push — run the same commands locally per CLAUDE.md (lint/typecheck/test/build).
 
 Report:
+
 ```
 Run #<id> "<workflow>" failed.
 Failed job: <name>
@@ -118,19 +123,20 @@ URL: <url>
 ## Phase E — Stale run
 
 Runs exist but for a previous SHA. Print:
+
 ```
 Latest CI run was for <stale-sha> (now HEAD is <head-sha>). Push and wait for fresh run, or use /ci --include-stale to inspect old runs.
 ```
 
 ## Explicit Sub-Commands
 
-| Command                  | Behavior                                                  |
-|--------------------------|-----------------------------------------------------------|
-| `/ci` (default)          | Auto-route per matrix above                               |
-| `/ci status`             | Force Phase B/C report, no log fetching, no fix proposal  |
-| `/ci logs`               | Force Phase D log fetch even if green (rare debugging)    |
-| `/ci fix`                | Force Phase D fix workflow                                |
-| `/ci rerun`              | Confirm-then-`gh run rerun --failed` for the latest failed run |
+| Command         | Behavior                                                       |
+| --------------- | -------------------------------------------------------------- |
+| `/ci` (default) | Auto-route per matrix above                                    |
+| `/ci status`    | Force Phase B/C report, no log fetching, no fix proposal       |
+| `/ci logs`      | Force Phase D log fetch even if green (rare debugging)         |
+| `/ci fix`       | Force Phase D fix workflow                                     |
+| `/ci rerun`     | Confirm-then-`gh run rerun --failed` for the latest failed run |
 
 ## Hard Rules
 
@@ -143,12 +149,14 @@ Latest CI run was for <stale-sha> (now HEAD is <head-sha>). Push and wait for fr
 ## Other CI Providers (informational)
 
 This skill targets GitHub Actions via `gh`. For other providers, the user is expected to invoke their own tooling. The skill should print:
+
 ```
 Detected non-GitHub remote (<provider>). This skill targets GitHub Actions only.
 Local equivalent: run lint/typecheck/test/build per CLAUDE.md, then push and inspect the provider's UI.
 ```
 
 Common alternatives the user may run themselves:
+
 - GitLab CI: `glab ci view`, `glab ci trace`
 - CircleCI: `circleci local execute`, web UI logs
 - Jenkins: web UI, `curl <jenkins>/job/<name>/lastBuild/consoleText`

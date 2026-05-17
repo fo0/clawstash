@@ -55,12 +55,16 @@ export function getRestConfigText(baseUrl: string, openApiJson?: string): string
       const sections = new Map<string, string[]>();
 
       for (const [path, methods] of Object.entries(paths)) {
-        for (const [method, details] of Object.entries(methods as Record<string, { summary?: string; tags?: string[] }>)) {
+        for (const [method, details] of Object.entries(
+          methods as Record<string, { summary?: string; tags?: string[] }>,
+        )) {
           const tag = details.tags?.[0] || 'Other';
           if (!sections.has(tag)) sections.set(tag, []);
           const methodUpper = method.toUpperCase().padEnd(6);
           const fullPath = `${baseUrl}${path}`;
-          sections.get(tag)!.push(`${methodUpper} ${fullPath.padEnd(50)} - ${details.summary || ''}`);
+          sections
+            .get(tag)!
+            .push(`${methodUpper} ${fullPath.padEnd(50)} - ${details.summary || ''}`);
         }
       }
 

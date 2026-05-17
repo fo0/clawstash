@@ -22,7 +22,7 @@ describe('escapeHtml', () => {
 
   it('escapes nested patterns without double-escaping', () => {
     expect(escapeHtml('<script>alert("xss")</script>')).toBe(
-      '&lt;script&gt;alert(&quot;xss&quot;)&lt;/script&gt;'
+      '&lt;script&gt;alert(&quot;xss&quot;)&lt;/script&gt;',
     );
   });
 });

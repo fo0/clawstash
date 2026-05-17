@@ -41,9 +41,11 @@ export function diffAddedFile(filename: string, content: string): FileDiff {
   return {
     filename,
     status: 'added',
-    hunks: [{
-      lines: lines.map((line, i) => ({ type: 'add', content: line, newLineNo: i + 1 })),
-    }],
+    hunks: [
+      {
+        lines: lines.map((line, i) => ({ type: 'add', content: line, newLineNo: i + 1 })),
+      },
+    ],
   };
 }
 
@@ -52,13 +54,19 @@ export function diffRemovedFile(filename: string, content: string): FileDiff {
   return {
     filename,
     status: 'removed',
-    hunks: [{
-      lines: lines.map((line, i) => ({ type: 'remove', content: line, oldLineNo: i + 1 })),
-    }],
+    hunks: [
+      {
+        lines: lines.map((line, i) => ({ type: 'remove', content: line, oldLineNo: i + 1 })),
+      },
+    ],
   };
 }
 
-export function diffModifiedFile(filename: string, oldContent: string, newContent: string): FileDiff {
+export function diffModifiedFile(
+  filename: string,
+  oldContent: string,
+  newContent: string,
+): FileDiff {
   const changes = diffLines(oldContent, newContent);
   const lines: DiffLine[] = [];
   let oldLine = 1;
@@ -81,8 +89,8 @@ export function diffModifiedFile(filename: string, oldContent: string, newConten
 }
 
 export function computeFileDiffs(v1: StashVersion, v2: StashVersion): FileDiff[] {
-  const v1Files = new Map(v1.files.map(f => [f.filename, f.content]));
-  const v2Files = new Map(v2.files.map(f => [f.filename, f.content]));
+  const v1Files = new Map(v1.files.map((f) => [f.filename, f.content]));
+  const v2Files = new Map(v2.files.map((f) => [f.filename, f.content]));
   const allFilenames = new Set([...v1Files.keys(), ...v2Files.keys()]);
   const diffs: FileDiff[] = [];
 

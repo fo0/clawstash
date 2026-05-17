@@ -9,7 +9,9 @@ export default function SwaggerViewer() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    return () => { mountedRef.current = false; };
+    return () => {
+      mountedRef.current = false;
+    };
   }, []);
 
   useEffect(() => {
@@ -20,14 +22,18 @@ export default function SwaggerViewer() {
       const link = document.createElement('link');
       link.rel = 'stylesheet';
       link.href = 'https://unpkg.com/swagger-ui-dist@5/swagger-ui.css';
-      link.onerror = () => { if (mountedRef.current) setHasError(true); };
+      link.onerror = () => {
+        if (mountedRef.current) setHasError(true);
+      };
       document.head.appendChild(link);
     }
 
     // Shared init: find SwaggerUIBundle on window and initialize
     const initSwagger = () => {
       if (!mountedRef.current) return;
-      const SwaggerUIBundle = (window as unknown as Record<string, unknown>).SwaggerUIBundle as ((config: Record<string, unknown>) => void) & {
+      const SwaggerUIBundle = (window as unknown as Record<string, unknown>).SwaggerUIBundle as ((
+        config: Record<string, unknown>,
+      ) => void) & {
         presets?: { apis?: unknown };
       };
       if (SwaggerUIBundle && containerRef.current) {
@@ -60,7 +66,10 @@ export default function SwaggerViewer() {
     let attachedScript: Element | null = null;
     const onLoadListener = () => initSwagger();
     const onErrorListener = () => {
-      if (mountedRef.current) { setHasError(true); setLoading(false); }
+      if (mountedRef.current) {
+        setHasError(true);
+        setLoading(false);
+      }
     };
 
     if (existingScript) {
@@ -77,7 +86,10 @@ export default function SwaggerViewer() {
       script.src = 'https://unpkg.com/swagger-ui-dist@5/swagger-ui-bundle.js';
       script.onload = initSwagger;
       script.onerror = () => {
-        if (mountedRef.current) { setHasError(true); setLoading(false); }
+        if (mountedRef.current) {
+          setHasError(true);
+          setLoading(false);
+        }
       };
       document.head.appendChild(script);
     }
@@ -97,7 +109,8 @@ export default function SwaggerViewer() {
   if (hasError) {
     return (
       <div className="api-error-banner">
-        Swagger UI could not be loaded. Check your network connection or use the OpenAPI JSON section.
+        Swagger UI could not be loaded. Check your network connection or use the OpenAPI JSON
+        section.
       </div>
     );
   }
@@ -110,7 +123,11 @@ export default function SwaggerViewer() {
           <span>Loading Swagger UI...</span>
         </div>
       )}
-      <div ref={containerRef} className="swagger-ui-wrapper" style={{ display: loading ? 'none' : 'block' }} />
+      <div
+        ref={containerRef}
+        className="swagger-ui-wrapper"
+        style={{ display: loading ? 'none' : 'block' }}
+      />
     </div>
   );
 }

@@ -95,10 +95,10 @@ export default function SearchOverlay({ open, onClose, onSelectStash }: Props) {
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'ArrowDown') {
       e.preventDefault();
-      setActiveIndex(i => (i < results.length - 1 ? i + 1 : i));
+      setActiveIndex((i) => (i < results.length - 1 ? i + 1 : i));
     } else if (e.key === 'ArrowUp') {
       e.preventDefault();
-      setActiveIndex(i => (i > 0 ? i - 1 : 0));
+      setActiveIndex((i) => (i > 0 ? i - 1 : 0));
     } else if (e.key === 'Enter') {
       e.preventDefault();
       if (results[activeIndex]) {
@@ -114,9 +114,21 @@ export default function SearchOverlay({ open, onClose, onSelectStash }: Props) {
 
   return (
     <div className="search-overlay-backdrop" onMouseDown={onClose}>
-      <div className="search-overlay" role="dialog" aria-label="Quick search stashes" onMouseDown={e => e.stopPropagation()} onKeyDown={handleKeyDown}>
+      <div
+        className="search-overlay"
+        role="dialog"
+        aria-label="Quick search stashes"
+        onMouseDown={(e) => e.stopPropagation()}
+        onKeyDown={handleKeyDown}
+      >
         <div className="search-overlay-input-row">
-          <svg className="search-overlay-icon" width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+          <svg
+            className="search-overlay-icon"
+            width="16"
+            height="16"
+            viewBox="0 0 16 16"
+            fill="currentColor"
+          >
             <path d="M10.68 11.74a6 6 0 0 1-7.922-8.982 6 6 0 0 1 8.982 7.922l3.04 3.04a.749.749 0 0 1-.326 1.275.749.749 0 0 1-.734-.215ZM11.5 7a4.499 4.499 0 1 0-8.997 0A4.499 4.499 0 0 0 11.5 7Z" />
           </svg>
           <input
@@ -125,14 +137,12 @@ export default function SearchOverlay({ open, onClose, onSelectStash }: Props) {
             className="search-overlay-input"
             placeholder="Search stashes..."
             value={query}
-            onChange={e => handleInputChange(e.target.value)}
+            onChange={(e) => handleInputChange(e.target.value)}
           />
           <kbd className="search-overlay-kbd">Esc</kbd>
         </div>
 
-        {loading && query.trim() && (
-          <div className="search-overlay-status">Searching...</div>
-        )}
+        {loading && query.trim() && <div className="search-overlay-status">Searching...</div>}
 
         {!loading && query.trim() && results.length === 0 && (
           <div className="search-overlay-status">No stashes found</div>
@@ -167,8 +177,10 @@ export default function SearchOverlay({ open, onClose, onSelectStash }: Props) {
                 <div className="search-overlay-item-meta">
                   {stash.tags.length > 0 && (
                     <span className="search-overlay-item-tags">
-                      {stash.tags.slice(0, 3).map(tag => (
-                        <span key={tag} className="search-overlay-tag">{tag}</span>
+                      {stash.tags.slice(0, 3).map((tag) => (
+                        <span key={tag} className="search-overlay-tag">
+                          {tag}
+                        </span>
                       ))}
                       {stash.tags.length > 3 && (
                         <span className="search-overlay-tag-more">+{stash.tags.length - 3}</span>
@@ -192,7 +204,8 @@ export default function SearchOverlay({ open, onClose, onSelectStash }: Props) {
 
         <div className="search-overlay-footer">
           <span className="search-overlay-footer-item">
-            <kbd>&uarr;</kbd><kbd>&darr;</kbd> navigate
+            <kbd>&uarr;</kbd>
+            <kbd>&darr;</kbd> navigate
           </span>
           <span className="search-overlay-footer-item">
             <kbd>&crarr;</kbd> open

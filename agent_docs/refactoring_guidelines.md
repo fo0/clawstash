@@ -1,6 +1,7 @@
 # Refactoring Guidelines
 
 Refactoring does NOT happen automatically. Only when:
+
 - Explicit user request
 - Repeated code smells across multiple files in review
 - Feature implementation is significantly hindered by code structure

@@ -1,10 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import {
-  formatBuildVersion,
-  formatDate,
-  formatDateTime,
-  formatRelativeTime,
-} from '../format';
+import { formatBuildVersion, formatDate, formatDateTime, formatRelativeTime } from '../format';
 
 describe('formatBuildVersion', () => {
   it('formats a valid ISO date as vYYYYMMDD-HHMM in UTC', () => {

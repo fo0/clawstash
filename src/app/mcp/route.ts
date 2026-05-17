@@ -6,10 +6,7 @@ import { requireScopeAuth } from '@/server/auth';
 import { getBaseUrl } from '@/app/api/_helpers';
 
 function jsonRpcError(code: number, message: string, status: number) {
-  return NextResponse.json(
-    { jsonrpc: '2.0', error: { code, message }, id: null },
-    { status },
-  );
+  return NextResponse.json({ jsonrpc: '2.0', error: { code, message }, id: null }, { status });
 }
 
 // POST /mcp — Streamable HTTP MCP endpoint (stateless)
@@ -19,7 +16,11 @@ export async function POST(req: NextRequest) {
   // Auth check
   const auth = requireScopeAuth(db, req, 'mcp');
   if (!auth) {
-    return jsonRpcError(-32000, 'Authentication required. Provide a Bearer token with MCP scope.', 401);
+    return jsonRpcError(
+      -32000,
+      'Authentication required. Provide a Bearer token with MCP scope.',
+      401,
+    );
   }
 
   const baseUrl = getBaseUrl(req);

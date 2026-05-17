@@ -88,7 +88,11 @@ export function isAuthEnabled(): boolean {
  * Check if a token has a specific scope.
  * Returns true if no ADMIN_PASSWORD is set (open mode) or if token has the required scope.
  */
-export function requireScopeAuth(db: ClawStashDB, req: NextRequest, scope: TokenScope): AuthResult | null {
+export function requireScopeAuth(
+  db: ClawStashDB,
+  req: NextRequest,
+  scope: TokenScope,
+): AuthResult | null {
   if (!isAuthEnabled()) {
     return { authenticated: true, source: 'open', scopes: ['read', 'write', 'admin', 'mcp'] };
   }

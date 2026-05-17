@@ -23,12 +23,26 @@ const MAX_FILENAME_LENGTH = 255;
 const MAX_FILE_CONTENT_LENGTH = 10 * 1024 * 1024; // 10MB per file
 
 export const FileInputSchema = z.object({
-  filename: z.string().min(1).max(MAX_FILENAME_LENGTH)
-    .refine(f => !/[/\\]/.test(f) && !f.includes('..') && !f.includes('\0'), 'Filename contains invalid characters')
-    .describe('Filename with extension (e.g. "main.py", "config.json"). Extension is used for language detection.'),
-  content: z.string().max(MAX_FILE_CONTENT_LENGTH, 'File content exceeds 10MB limit')
+  filename: z
+    .string()
+    .min(1)
+    .max(MAX_FILENAME_LENGTH)
+    .refine(
+      (f) => !/[/\\]/.test(f) && !f.includes('..') && !f.includes('\0'),
+      'Filename contains invalid characters',
+    )
+    .describe(
+      'Filename with extension (e.g. "main.py", "config.json"). Extension is used for language detection.',
+    ),
+  content: z
+    .string()
+    .max(MAX_FILE_CONTENT_LENGTH, 'File content exceeds 10MB limit')
     .describe('The full file content as text'),
-  language: z.string().max(50).optional().describe('Programming language override (auto-detected from extension if omitted)'),
+  language: z
+    .string()
+    .max(50)
+    .optional()
+    .describe('Programming language override (auto-detected from extension if omitted)'),
 });
 
 // Reject empty-string tags so MCP callers cannot silently push blank pills
@@ -36,14 +50,14 @@ export const FileInputSchema = z.object({
 const McpTagsSchema = z.array(z.string().min(1).max(MAX_TAG_LENGTH)).max(MAX_TAGS);
 // Reject arrays explicitly — `z.record(z.unknown())` accepts them in Zod 3
 // (typeof [] === 'object') but `safeParseMetadata` discards arrays on read.
-const McpMetadataSchema = z.record(z.unknown())
+const McpMetadataSchema = z
+  .record(z.unknown())
   .refine((val) => !Array.isArray(val), {
     message: 'Metadata must be an object, not an array',
   })
-  .refine(
-    (val) => Object.keys(val).length <= MAX_METADATA_KEYS,
-    { message: `Metadata cannot have more than ${MAX_METADATA_KEYS} keys` },
-  );
+  .refine((val) => Object.keys(val).length <= MAX_METADATA_KEYS, {
+    message: `Metadata cannot have more than ${MAX_METADATA_KEYS} keys`,
+  });
 
 // ---------------------------------------------------------------------------
 // Tool definition type
@@ -74,19 +88,30 @@ Tips:
 - Use metadata for structured key-value data (e.g. {"model": "claude", "purpose": "backup"}).
 - Language is auto-detected from file extension if omitted.`,
     schema: z.object({
-      name: z.string().max(MAX_NAME_LENGTH).optional().describe('Short name/title for the stash (used in listings and search)'),
-      description: z.string().max(MAX_DESCRIPTION_LENGTH).optional().describe('Longer description explaining the stash content and purpose (searchable)'),
+      name: z
+        .string()
+        .max(MAX_NAME_LENGTH)
+        .optional()
+        .describe('Short name/title for the stash (used in listings and search)'),
+      description: z
+        .string()
+        .max(MAX_DESCRIPTION_LENGTH)
+        .optional()
+        .describe('Longer description explaining the stash content and purpose (searchable)'),
       files: z
         .array(FileInputSchema)
         .min(1)
         .max(MAX_FILES)
         .describe('One or more files to store. Each file needs a filename and content.'),
-      tags: McpTagsSchema.optional().describe('Tags for categorization and filtering. Use list_tags to see existing tags.'),
-      metadata: McpMetadataSchema
-        .optional()
-        .describe('Arbitrary key-value metadata (e.g. {"model": "claude", "agent_id": "abc", "purpose": "code review"})'),
+      tags: McpTagsSchema.optional().describe(
+        'Tags for categorization and filtering. Use list_tags to see existing tags.',
+      ),
+      metadata: McpMetadataSchema.optional().describe(
+        'Arbitrary key-value metadata (e.g. {"model": "claude", "agent_id": "abc", "purpose": "code review"})',
+      ),
     }),
-    returns: '{ id, name, description, tags, archived, metadata, total_size, files: [{ filename, language, size }], created_at }',
+    returns:
+      '{ id, name, description, tags, archived, metadata, total_size, files: [{ filename, language, size }], created_at }',
   },
   {
     name: 'read_stash',
@@ -102,9 +127,15 @@ To get file content:
 - For all files at once: set include_content=true (only recommended when total_size is small, e.g. < 10000 characters).`,
     schema: z.object({
       id: z.string().describe('The stash ID (UUID format)'),
-      include_content: z.boolean().optional().describe('If true, includes full file content in response. Default: false (returns file list with sizes only). Use read_stash_file for selective access.'),
+      include_content: z
+        .boolean()
+        .optional()
+        .describe(
+          'If true, includes full file content in response. Default: false (returns file list with sizes only). Use read_stash_file for selective access.',
+        ),
     }),
-    returns: '{ id, name, description, tags, archived, metadata, created_at, updated_at, total_size, files: [{ filename, language, size, content? }] }',
+    returns:
+      '{ id, name, description, tags, archived, metadata, created_at, updated_at, total_size, files: [{ filename, language, size, content? }] }',
   },
   {
     name: 'read_stash_file',
@@ -115,7 +146,11 @@ Use read_stash first (without include_content) to see the file list, then use th
 Returns the file content as text along with filename and language metadata.`,
     schema: z.object({
       id: z.string().describe('The stash ID (UUID format)'),
-      filename: z.string().describe('Exact filename to read (as shown in the file list from read_stash or list_stashes)'),
+      filename: z
+        .string()
+        .describe(
+          'Exact filename to read (as shown in the file list from read_stash or list_stashes)',
+        ),
     }),
     returns: '{ filename, language, size, content }',
   },
@@ -131,9 +166,22 @@ To search by text content, use search_stashes.
 
 File sizes (character counts) are included to help estimate content volume before reading.`,
     schema: z.object({
-      search: z.string().optional().describe('Filter by name, description, filename, or file content (case-insensitive partial match)'),
-      tag: z.string().optional().describe('Filter by tag (exact match). Use list_tags to see available tags.'),
-      archived: z.boolean().optional().describe('Filter by archive status. true = only archived, false = only active (non-archived). Omit to show all.'),
+      search: z
+        .string()
+        .optional()
+        .describe(
+          'Filter by name, description, filename, or file content (case-insensitive partial match)',
+        ),
+      tag: z
+        .string()
+        .optional()
+        .describe('Filter by tag (exact match). Use list_tags to see available tags.'),
+      archived: z
+        .boolean()
+        .optional()
+        .describe(
+          'Filter by archive status. true = only archived, false = only active (non-archived). Omit to show all.',
+        ),
       page: z.number().optional().describe('Page number for pagination (default: 1)'),
       limit: z.number().optional().describe('Results per page (default: 50, max recommended: 100)'),
     }),
@@ -159,11 +207,18 @@ Important:
         .array(FileInputSchema)
         .max(MAX_FILES)
         .optional()
-        .describe('Replacement files — replaces ALL existing files. Omit to keep current files unchanged.'),
-      tags: McpTagsSchema.optional().describe('New tags — replaces entire tag list. Omit to keep current tags.'),
-      metadata: McpMetadataSchema.optional().describe('New metadata — replaces entire metadata object. Omit to keep current metadata.'),
+        .describe(
+          'Replacement files — replaces ALL existing files. Omit to keep current files unchanged.',
+        ),
+      tags: McpTagsSchema.optional().describe(
+        'New tags — replaces entire tag list. Omit to keep current tags.',
+      ),
+      metadata: McpMetadataSchema.optional().describe(
+        'New metadata — replaces entire metadata object. Omit to keep current metadata.',
+      ),
     }),
-    returns: '{ id, name, description, tags, archived, metadata, total_size, files: [{ filename, language, size }], updated_at }',
+    returns:
+      '{ id, name, description, tags, archived, metadata, total_size, files: [{ filename, language, size }], updated_at }',
   },
   {
     name: 'delete_stash',
@@ -201,13 +256,28 @@ Search features:
 Each result includes a relevance score and match snippets (with **highlighted** terms) showing where and why the stash matched. Use these to decide which stashes to read in detail.
 Use read_stash to get full stash metadata, or read_stash_file to read specific file content.`,
     schema: z.object({
-      query: z.string().describe('Search text — multiple words are AND-combined. Supports stemming and prefix matching.'),
-      tag: z.string().optional().describe('Additionally filter results by tag (exact match). Combine with query for precise results.'),
-      archived: z.boolean().optional().describe('Filter by archive status. true = only archived, false = only active. Omit to search all.'),
+      query: z
+        .string()
+        .describe(
+          'Search text — multiple words are AND-combined. Supports stemming and prefix matching.',
+        ),
+      tag: z
+        .string()
+        .optional()
+        .describe(
+          'Additionally filter results by tag (exact match). Combine with query for precise results.',
+        ),
+      archived: z
+        .boolean()
+        .optional()
+        .describe(
+          'Filter by archive status. true = only archived, false = only active. Omit to search all.',
+        ),
       limit: z.number().optional().describe('Maximum number of results (default: 20)'),
       page: z.number().optional().describe('Page number for pagination (default: 1)'),
     }),
-    returns: '{ stashes: SearchStashItem[], total: number, query: string } — each stash includes relevance score and match snippets',
+    returns:
+      '{ stashes: SearchStashItem[], total: number, query: string } — each stash includes relevance score and match snippets',
   },
   {
     name: 'list_tags',
@@ -232,19 +302,44 @@ Incremental exploration strategy for large graphs:
 4. Use min_weight to filter out weak connections and focus on strong relationships.
 5. Use list_stashes(tag=...) to read actual stash content once you've identified relevant tags.`,
     schema: z.object({
-      tag: z.string().optional().describe('Focus tag: only return this tag and its neighbors within the specified depth. Omit for the full graph.'),
-      depth: z.number().optional().describe('Traversal depth from the focus tag (default: 1, max: 5). Depth 1 = direct neighbors, 2 = neighbors of neighbors, etc. Only used with tag parameter.'),
-      min_weight: z.number().optional().describe('Minimum edge weight (co-occurrence count) to include. Filters out weak connections.'),
-      min_count: z.number().optional().describe('Minimum tag usage count to include nodes. Filters out rarely-used tags.'),
-      limit: z.number().optional().describe('Maximum number of tag nodes to return (sorted by count descending). Useful for getting only the most-used tags.'),
+      tag: z
+        .string()
+        .optional()
+        .describe(
+          'Focus tag: only return this tag and its neighbors within the specified depth. Omit for the full graph.',
+        ),
+      depth: z
+        .number()
+        .optional()
+        .describe(
+          'Traversal depth from the focus tag (default: 1, max: 5). Depth 1 = direct neighbors, 2 = neighbors of neighbors, etc. Only used with tag parameter.',
+        ),
+      min_weight: z
+        .number()
+        .optional()
+        .describe(
+          'Minimum edge weight (co-occurrence count) to include. Filters out weak connections.',
+        ),
+      min_count: z
+        .number()
+        .optional()
+        .describe('Minimum tag usage count to include nodes. Filters out rarely-used tags.'),
+      limit: z
+        .number()
+        .optional()
+        .describe(
+          'Maximum number of tag nodes to return (sorted by count descending). Useful for getting only the most-used tags.',
+        ),
     }),
-    returns: '{ nodes: [{ tag, count }], edges: [{ source, target, weight }], stash_count, filter? }',
+    returns:
+      '{ nodes: [{ tag, count }], edges: [{ source, target, weight }], stash_count, filter? }',
   },
   {
     name: 'get_stats',
     description: `Get storage statistics: total stashes, total files, and top programming languages. Useful for getting an overview of what's stored.`,
     schema: z.object({}),
-    returns: '{ totalStashes: number, totalFiles: number, topLanguages: [{ language: string, count: number }] }',
+    returns:
+      '{ totalStashes: number, totalFiles: number, topLanguages: [{ language: string, count: number }] }',
   },
   {
     name: 'get_rest_api_spec',
@@ -287,7 +382,8 @@ Returns the running build version (date-based, e.g. "v20260215-1628"), commit SH
 
 Useful for automated upgrade checks and monitoring. The GitHub check is cached for 1 hour.`,
     schema: z.object({}),
-    returns: '{ current: { version, commit_sha, build_date, branch }, latest: { commit_sha, commit_date, commit_message } | null, update_available, github_url, checked_at }',
+    returns:
+      '{ current: { version, commit_sha, build_date, branch }, latest: { commit_sha, commit_date, commit_message } | null, update_available, github_url, checked_at }',
   },
 ] satisfies ToolDef[];
 
@@ -300,14 +396,14 @@ export type ToolName = (typeof TOOL_DEFS)[number]['name'];
 
 /** Get a specific tool definition by name. Throws if the name is not a valid tool. */
 export function getToolDef(name: ToolName): ToolDef {
-  const def = TOOL_DEFS.find(t => t.name === name);
+  const def = TOOL_DEFS.find((t) => t.name === name);
   if (!def) throw new Error(`Unknown tool: ${name}`);
   return def;
 }
 
 /** Get a summary list of all tools (name + first line of description) for the /api/mcp-tools endpoint. */
 export function getToolSummaries(): Array<{ name: string; description: string }> {
-  return TOOL_DEFS.map(t => ({
+  return TOOL_DEFS.map((t) => ({
     name: t.name,
     description: t.description.split('\n')[0],
   }));

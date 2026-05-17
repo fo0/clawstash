@@ -1,6 +1,6 @@
 ---
 name: gitnexus-review
-description: "Use when reviewing code changes, pull requests, or verifying the impact of modifications. Examples: \"Review this PR\", \"What did my changes affect?\", \"Check if this change is safe\", \"Verify no regressions\""
+description: 'Use when reviewing code changes, pull requests, or verifying the impact of modifications. Examples: "Review this PR", "What did my changes affect?", "Check if this change is safe", "Verify no regressions"'
 ---
 
 # Code Review with GitNexus
@@ -25,6 +25,7 @@ description: "Use when reviewing code changes, pull requests, or verifying the i
 ## Review Checklist
 
 ### Step 1: Scope Assessment
+
 ```
 gitnexus_detect_changes({scope: "all"})
 -> Changed: N files, M symbols
@@ -33,6 +34,7 @@ gitnexus_detect_changes({scope: "all"})
 ```
 
 ### Step 2: Impact Verification (for each high-risk change)
+
 ```
 gitnexus_impact({target: "changedFunction", direction: "upstream"})
 -> Verify all upstream callers handle the change correctly
@@ -40,6 +42,7 @@ gitnexus_impact({target: "changedFunction", direction: "upstream"})
 ```
 
 ### Step 3: Dependency Check
+
 ```
 gitnexus_context({name: "changedFunction"})
 -> Verify outgoing dependencies still valid
@@ -47,6 +50,7 @@ gitnexus_context({name: "changedFunction"})
 ```
 
 ### Step 4: Cross-cutting Concerns
+
 ```
 gitnexus_cypher({query: "MATCH (f:Function)-[:CodeRelation]->(changed:Function {name: 'X'}) WHERE f.filePath CONTAINS 'test' RETURN f"})
 -> Verify test coverage exists for affected code
@@ -54,8 +58,8 @@ gitnexus_cypher({query: "MATCH (f:Function)-[:CodeRelation]->(changed:Function {
 
 ## Risk Assessment
 
-| Risk Level | Criteria | Action |
-|------------|----------|--------|
-| LOW | <=3 files, 1 process affected | Standard review |
-| MEDIUM | 4-10 files, 2-3 processes | Review + run affected process tests |
-| HIGH | >10 files, >3 processes, or cross-area changes | Full review + all tests + manual verification |
+| Risk Level | Criteria                                       | Action                                        |
+| ---------- | ---------------------------------------------- | --------------------------------------------- |
+| LOW        | <=3 files, 1 process affected                  | Standard review                               |
+| MEDIUM     | 4-10 files, 2-3 processes                      | Review + run affected process tests           |
+| HIGH       | >10 files, >3 processes, or cross-area changes | Full review + all tests + manual verification |

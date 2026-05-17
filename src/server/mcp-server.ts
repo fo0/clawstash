@@ -30,7 +30,11 @@ ${TOKEN_EFFICIENT_GUIDE}`,
     async ({ name, description, files, tags, metadata }) => {
       const stash = db.createStash({ name, description, files, tags, metadata });
       db.logAccess(stash.id, 'mcp', 'create');
-      const fileInfos = stash.files.map(f => ({ filename: f.filename, language: f.language, size: f.content.length }));
+      const fileInfos = stash.files.map((f) => ({
+        filename: f.filename,
+        language: f.language,
+        size: f.content.length,
+      }));
       const summary = {
         id: stash.id,
         name: stash.name,
@@ -45,7 +49,7 @@ ${TOKEN_EFFICIENT_GUIDE}`,
       return {
         content: [{ type: 'text', text: JSON.stringify(summary, null, 2) }],
       };
-    }
+    },
   );
 
   // Read a stash by ID (metadata + file list by default, optionally with content)
@@ -71,7 +75,12 @@ ${TOKEN_EFFICIENT_GUIDE}`,
           created_at: stash.created_at,
           updated_at: stash.updated_at,
           total_size: stash.files.reduce((sum, f) => sum + f.content.length, 0),
-          files: stash.files.map(f => ({ filename: f.filename, language: f.language, size: f.content.length, content: f.content })),
+          files: stash.files.map((f) => ({
+            filename: f.filename,
+            language: f.language,
+            size: f.content.length,
+            content: f.content,
+          })),
         };
         return {
           content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
@@ -86,7 +95,7 @@ ${TOKEN_EFFICIENT_GUIDE}`,
       return {
         content: [{ type: 'text', text: JSON.stringify(meta, null, 2) }],
       };
-    }
+    },
   );
 
   // Read a single file from a stash
@@ -100,7 +109,21 @@ ${TOKEN_EFFICIENT_GUIDE}`,
       if (file) {
         db.logAccess(id, 'mcp', `read_file:${filename}`);
         return {
-          content: [{ type: 'text', text: JSON.stringify({ filename: file.filename, language: file.language, size: file.content.length, content: file.content }, null, 2) }],
+          content: [
+            {
+              type: 'text',
+              text: JSON.stringify(
+                {
+                  filename: file.filename,
+                  language: file.language,
+                  size: file.content.length,
+                  content: file.content,
+                },
+                null,
+                2,
+              ),
+            },
+          ],
         };
       }
       // File not found — check if stash exists to provide the right error
@@ -108,9 +131,16 @@ ${TOKEN_EFFICIENT_GUIDE}`,
       if (!stashMeta) {
         return { content: [{ type: 'text', text: `Error: Stash "${id}" not found.` }] };
       }
-      const available = stashMeta.files.map(f => f.filename).join(', ');
-      return { content: [{ type: 'text', text: `Error: File "${filename}" not found in stash "${id}". Available files: ${available}` }] };
-    }
+      const available = stashMeta.files.map((f) => f.filename).join(', ');
+      return {
+        content: [
+          {
+            type: 'text',
+            text: `Error: File "${filename}" not found in stash "${id}". Available files: ${available}`,
+          },
+        ],
+      };
+    },
   );
 
   // List stashes with optional filtering.
@@ -129,7 +159,7 @@ ${TOKEN_EFFICIENT_GUIDE}`,
       return {
         content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
       };
-    }
+    },
   );
 
   // Update a stash
@@ -144,7 +174,11 @@ ${TOKEN_EFFICIENT_GUIDE}`,
         return { content: [{ type: 'text', text: `Error: Stash "${id}" not found.` }] };
       }
       db.logAccess(stash.id, 'mcp', 'update');
-      const fileInfos = stash.files.map(f => ({ filename: f.filename, language: f.language, size: f.content.length }));
+      const fileInfos = stash.files.map((f) => ({
+        filename: f.filename,
+        language: f.language,
+        size: f.content.length,
+      }));
       const summary = {
         id: stash.id,
         name: stash.name,
@@ -159,24 +193,19 @@ ${TOKEN_EFFICIENT_GUIDE}`,
       return {
         content: [{ type: 'text', text: JSON.stringify(summary, null, 2) }],
       };
-    }
+    },
   );
 
   // Delete a stash
   // No logAccess: access_log has ON DELETE CASCADE, so entries are removed with the stash.
   const deleteDef = getToolDef('delete_stash');
-  server.tool(
-    deleteDef.name,
-    deleteDef.description,
-    deleteDef.schema.shape,
-    async ({ id }) => {
-      const deleted = db.deleteStash(id);
-      if (!deleted) {
-        return { content: [{ type: 'text', text: `Error: Stash "${id}" not found.` }] };
-      }
-      return { content: [{ type: 'text', text: `Stash "${id}" deleted successfully.` }] };
+  server.tool(deleteDef.name, deleteDef.description, deleteDef.schema.shape, async ({ id }) => {
+    const deleted = db.deleteStash(id);
+    if (!deleted) {
+      return { content: [{ type: 'text', text: `Error: Stash "${id}" not found.` }] };
     }
-  );
+    return { content: [{ type: 'text', text: `Stash "${id}" deleted successfully.` }] };
+  });
 
   // Archive / unarchive a stash
   const archiveDef = getToolDef('archive_stash');
@@ -199,7 +228,7 @@ ${TOKEN_EFFICIENT_GUIDE}`,
       return {
         content: [{ type: 'text', text: JSON.stringify(summary, null, 2) }],
       };
-    }
+    },
   );
 
   // Search stashes (FTS5 with BM25 ranking + snippets)
@@ -214,22 +243,17 @@ ${TOKEN_EFFICIENT_GUIDE}`,
       return {
         content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
       };
-    }
+    },
   );
 
   // List tags
   const tagsDef = getToolDef('list_tags');
-  server.tool(
-    tagsDef.name,
-    tagsDef.description,
-    tagsDef.schema.shape,
-    async () => {
-      const tags = db.getAllTags();
-      return {
-        content: [{ type: 'text', text: JSON.stringify(tags, null, 2) }],
-      };
-    }
-  );
+  server.tool(tagsDef.name, tagsDef.description, tagsDef.schema.shape, async () => {
+    const tags = db.getAllTags();
+    return {
+      content: [{ type: 'text', text: JSON.stringify(tags, null, 2) }],
+    };
+  });
 
   // Get tag graph
   const graphDef = getToolDef('get_tag_graph');
@@ -242,78 +266,53 @@ ${TOKEN_EFFICIENT_GUIDE}`,
       return {
         content: [{ type: 'text', text: JSON.stringify(graph, null, 2) }],
       };
-    }
+    },
   );
 
   // Get stats
   const statsDef = getToolDef('get_stats');
-  server.tool(
-    statsDef.name,
-    statsDef.description,
-    statsDef.schema.shape,
-    async () => {
-      const stats = db.getStats();
-      return {
-        content: [{ type: 'text', text: JSON.stringify(stats, null, 2) }],
-      };
-    }
-  );
+  server.tool(statsDef.name, statsDef.description, statsDef.schema.shape, async () => {
+    const stats = db.getStats();
+    return {
+      content: [{ type: 'text', text: JSON.stringify(stats, null, 2) }],
+    };
+  });
 
   // Get REST API spec (OpenAPI)
   const restSpecDef = getToolDef('get_rest_api_spec');
-  server.tool(
-    restSpecDef.name,
-    restSpecDef.description,
-    restSpecDef.schema.shape,
-    async () => {
-      const spec = getOpenApiSpec(fallbackBaseUrl);
-      return {
-        content: [{ type: 'text', text: JSON.stringify(spec, null, 2) }],
-      };
-    }
-  );
+  server.tool(restSpecDef.name, restSpecDef.description, restSpecDef.schema.shape, async () => {
+    const spec = getOpenApiSpec(fallbackBaseUrl);
+    return {
+      content: [{ type: 'text', text: JSON.stringify(spec, null, 2) }],
+    };
+  });
 
   // Get MCP spec
   const mcpSpecDef = getToolDef('get_mcp_spec');
-  server.tool(
-    mcpSpecDef.name,
-    mcpSpecDef.description,
-    mcpSpecDef.schema.shape,
-    async () => {
-      const spec = getMcpSpecText(fallbackBaseUrl);
-      return {
-        content: [{ type: 'text', text: spec }],
-      };
-    }
-  );
+  server.tool(mcpSpecDef.name, mcpSpecDef.description, mcpSpecDef.schema.shape, async () => {
+    const spec = getMcpSpecText(fallbackBaseUrl);
+    return {
+      content: [{ type: 'text', text: spec }],
+    };
+  });
 
   // Refresh tools — current spec for already-connected AI agents to stay up-to-date
   const refreshDef = getToolDef('refresh_tools');
-  server.tool(
-    refreshDef.name,
-    refreshDef.description,
-    refreshDef.schema.shape,
-    async () => {
-      const text = getMcpRefreshText(fallbackBaseUrl);
-      return {
-        content: [{ type: 'text', text }],
-      };
-    }
-  );
+  server.tool(refreshDef.name, refreshDef.description, refreshDef.schema.shape, async () => {
+    const text = getMcpRefreshText(fallbackBaseUrl);
+    return {
+      content: [{ type: 'text', text }],
+    };
+  });
 
   // Check version (current + latest from GitHub)
   const versionDef = getToolDef('check_version');
-  server.tool(
-    versionDef.name,
-    versionDef.description,
-    versionDef.schema.shape,
-    async () => {
-      const info = await checkVersion();
-      return {
-        content: [{ type: 'text', text: JSON.stringify(info, null, 2) }],
-      };
-    }
-  );
+  server.tool(versionDef.name, versionDef.description, versionDef.schema.shape, async () => {
+    const info = await checkVersion();
+    return {
+      content: [{ type: 'text', text: JSON.stringify(info, null, 2) }],
+    };
+  });
 
   return server;
 }

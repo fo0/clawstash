@@ -1,6 +1,6 @@
 ---
 name: gitnexus-impact
-description: "Use when the user needs to assess the impact or blast radius of a change before making it. Examples: \"What would break if I change X?\", \"Show me everything that depends on Y\", \"Impact analysis for removing Z\", \"Is it safe to modify this?\""
+description: 'Use when the user needs to assess the impact or blast radius of a change before making it. Examples: "What would break if I change X?", "Show me everything that depends on Y", "Impact analysis for removing Z", "Is it safe to modify this?"'
 ---
 
 # Impact Analysis with GitNexus
@@ -32,22 +32,24 @@ gitnexus_impact({target: "AuthService.validateToken", direction: "upstream"})
 ```
 
 **Interpretation:**
+
 - **d=1** -- Direct dependents. These MUST be checked/updated.
 - **d=2** -- Indirect dependents. Check if change propagates this far.
 - **Affected Processes** -- Business flows that need testing.
 
 ## Risk Matrix
 
-| Factor | Low Risk | Medium Risk | High Risk |
-|--------|----------|-------------|-----------|
-| Direct dependents (d=1) | 1-3 | 4-8 | >8 |
-| Affected processes | 1 | 2-3 | >3 |
-| Cross-area references | None | Same layer | Cross-layer |
-| Public/external API | No | Internal API | External API |
+| Factor                  | Low Risk | Medium Risk  | High Risk    |
+| ----------------------- | -------- | ------------ | ------------ |
+| Direct dependents (d=1) | 1-3      | 4-8          | >8           |
+| Affected processes      | 1        | 2-3          | >3           |
+| Cross-area references   | None     | Same layer   | Cross-layer  |
+| Public/external API     | No       | Internal API | External API |
 
 ## Common Patterns
 
 ### Before modifying a function signature
+
 ```
 gitnexus_impact({target: "functionName", direction: "upstream"})
 # -> All callers that need parameter updates
@@ -57,6 +59,7 @@ gitnexus_context({name: "functionName"})
 ```
 
 ### Before removing a module
+
 ```
 gitnexus_impact({target: "ModuleName", direction: "upstream"})
 # -> Everything that imports from this module
@@ -66,6 +69,7 @@ gitnexus_query({query: "ModuleName"})
 ```
 
 ### Before changing a type/interface
+
 ```
 gitnexus_impact({target: "TypeName", direction: "upstream"})
 # -> All implementations and usages

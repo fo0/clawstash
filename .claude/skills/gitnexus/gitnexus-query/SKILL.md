@@ -1,6 +1,6 @@
 ---
 name: gitnexus-query
-description: "Use when the user wants to run custom or advanced queries against the code graph. Examples: \"Find all unused exports\", \"Show circular dependencies\", \"List all functions longer than 100 lines\", \"Custom Cypher query\""
+description: 'Use when the user wants to run custom or advanced queries against the code graph. Examples: "Find all unused exports", "Show circular dependencies", "List all functions longer than 100 lines", "Custom Cypher query"'
 ---
 
 # Advanced Queries with GitNexus
@@ -16,6 +16,7 @@ description: "Use when the user wants to run custom or advanced queries against 
 ## Tools
 
 ### gitnexus_query -- Natural Language Search
+
 Best for: Finding code by description, not by exact name.
 
 ```
@@ -25,9 +26,11 @@ gitnexus_query({query: "error handling middleware"})
 ```
 
 ### gitnexus_cypher -- Raw Cypher Queries
+
 Best for: Complex relationship queries, metrics, pattern detection.
 
 **Find all callers of a function:**
+
 ```cypher
 MATCH (caller)-[:CodeRelation {type: 'CALLS'}]->(f:Function {name: "targetFunction"})
 RETURN caller.name, caller.filePath
@@ -35,12 +38,14 @@ ORDER BY caller.filePath
 ```
 
 **Find circular dependencies between modules:**
+
 ```cypher
 MATCH path=(a:Module)-[:CodeRelation {type: 'IMPORTS'}]->(b:Module)-[:CodeRelation {type: 'IMPORTS'}]->(a)
 RETURN a.name, b.name, length(path)
 ```
 
 **Find functions with many dependencies (potential god functions):**
+
 ```cypher
 MATCH (f:Function)-[r:CodeRelation {type: 'CALLS'}]->(target)
 WITH f, count(target) AS deps
@@ -50,6 +55,7 @@ ORDER BY deps DESC
 ```
 
 **Find unused exports:**
+
 ```cypher
 MATCH (e:Export)
 WHERE NOT EXISTS { MATCH ()-[:CodeRelation {type: 'IMPORTS'}]->(e) }
@@ -57,12 +63,14 @@ RETURN e.name, e.filePath
 ```
 
 **Find all implementations of an interface:**
+
 ```cypher
 MATCH (impl)-[:CodeRelation {type: 'IMPLEMENTS'}]->(iface {name: "InterfaceName"})
 RETURN impl.name, impl.filePath
 ```
 
 **Find cross-layer dependencies (e.g. controller -> repository directly):**
+
 ```cypher
 MATCH (c:Function)-[:CodeRelation {type: 'CALLS'}]->(r:Function)
 WHERE c.filePath CONTAINS 'controller' AND r.filePath CONTAINS 'repository'

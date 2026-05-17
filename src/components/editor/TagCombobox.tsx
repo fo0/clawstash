@@ -53,7 +53,10 @@ export default function TagCombobox({ tags, onChange, availableTags }: Props) {
           ref={inputRef}
           type="text"
           value={input}
-          onChange={(e) => { setInput(e.target.value); setShowDropdown(true); }}
+          onChange={(e) => {
+            setInput(e.target.value);
+            setShowDropdown(true);
+          }}
           onFocus={() => setShowDropdown(true)}
           onKeyDown={handleKeyDown}
           placeholder={tags.length === 0 ? 'Type to add tags...' : 'Add more...'}
@@ -72,7 +75,10 @@ export default function TagCombobox({ tags, onChange, availableTags }: Props) {
             </button>
           ))}
           {input.trim() && !availableTags.some((t) => t.tag === input.trim().toLowerCase()) && (
-            <button className="tag-combobox-option tag-combobox-create" onClick={() => addTag(input)}>
+            <button
+              className="tag-combobox-option tag-combobox-create"
+              onClick={() => addTag(input)}
+            >
               Create &quot;{input.trim()}&quot;
             </button>
           )}
@@ -90,7 +96,13 @@ export default function TagCombobox({ tags, onChange, availableTags }: Props) {
           {tags.map((tag) => (
             <span key={tag} className="tag-combobox-tag">
               {tag}
-              <button className="tag-combobox-tag-remove" onClick={() => removeTag(tag)} title="Remove tag">&times;</button>
+              <button
+                className="tag-combobox-tag-remove"
+                onClick={() => removeTag(tag)}
+                title="Remove tag"
+              >
+                &times;
+              </button>
             </span>
           ))}
         </div>

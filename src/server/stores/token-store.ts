@@ -17,7 +17,8 @@ function safeParseScopes(raw: unknown): TokenScope[] {
     const parsed = JSON.parse(raw);
     if (!Array.isArray(parsed)) return [];
     return parsed.filter(
-      (s): s is TokenScope => typeof s === 'string' && (VALID_SCOPES as readonly string[]).includes(s),
+      (s): s is TokenScope =>
+        typeof s === 'string' && (VALID_SCOPES as readonly string[]).includes(s),
     );
   } catch {
     return [];
@@ -41,24 +42,35 @@ function safeParseScopes(raw: unknown): TokenScope[] {
 export class TokenStore {
   constructor(private readonly db: Database.Database) {}
 
-  createApiToken(label: string, scopes: TokenScope[]): { id: string; token: string; label: string; scopes: TokenScope[] } {
+  createApiToken(
+    label: string,
+    scopes: TokenScope[],
+  ): { id: string; token: string; label: string; scopes: TokenScope[] } {
     const id = uuidv4();
     const now = new Date().toISOString();
     const rawToken = `cs_${crypto.randomBytes(24).toString('hex')}`;
     const tokenHash = hashToken(rawToken);
     const tokenPrefix = rawToken.substring(0, 7);
 
-    this.db.prepare(`
+    this.db
+      .prepare(
+        `
       INSERT INTO api_tokens (id, label, token_hash, token_prefix, scopes, created_at)
       VALUES (?, ?, ?, ?, ?, ?)
-    `).run(id, label || '', tokenHash, tokenPrefix, JSON.stringify(scopes), now);
+    `,
+      )
+      .run(id, label || '', tokenHash, tokenPrefix, JSON.stringify(scopes), now);
 
     return { id, token: rawToken, label: label || '', scopes };
   }
 
   listApiTokens(): ApiTokenListItem[] {
     const rows = this.db.prepare('SELECT * FROM api_tokens ORDER BY created_at DESC').all() as {
-      id: string; label: string; token_prefix: string; scopes: string; created_at: string;
+      id: string;
+      label: string;
+      token_prefix: string;
+      scopes: string;
+      created_at: string;
     }[];
     return rows.map((row) => ({
       id: row.id,
@@ -76,7 +88,9 @@ export class TokenStore {
 
   validateApiToken(token: string): { valid: boolean; scopes: TokenScope[]; tokenId?: string } {
     const tokenHash = hashToken(token);
-    const row = this.db.prepare('SELECT id, scopes FROM api_tokens WHERE token_hash = ?').get(tokenHash) as { id: string; scopes: string } | undefined;
+    const row = this.db
+      .prepare('SELECT id, scopes FROM api_tokens WHERE token_hash = ?')
+      .get(tokenHash) as { id: string; scopes: string } | undefined;
     if (!row) return { valid: false, scopes: [] };
     return { valid: true, scopes: safeParseScopes(row.scopes), tokenId: row.id };
   }

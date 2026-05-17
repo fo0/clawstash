@@ -31,8 +31,14 @@ export default function LoginScreen({ onLogin }: Props) {
           <span className="login-logo-text">ClawStash</span>
         </div>
         <p className="login-hint">Enter your password to continue.</p>
-        {error && <div className="login-error" role="alert">{error}</div>}
-        <label htmlFor="login-password" className="sr-only">Password</label>
+        {error && (
+          <div className="login-error" role="alert">
+            {error}
+          </div>
+        )}
+        <label htmlFor="login-password" className="sr-only">
+          Password
+        </label>
         <input
           id="login-password"
           type="password"
@@ -44,11 +50,7 @@ export default function LoginScreen({ onLogin }: Props) {
           autoFocus
           aria-describedby={error ? 'login-error-msg' : undefined}
         />
-        <button
-          type="submit"
-          className="btn btn-primary login-btn"
-          disabled={loading || !password}
-        >
+        <button type="submit" className="btn btn-primary login-btn" disabled={loading || !password}>
           {loading ? 'Signing in...' : 'Sign in'}
         </button>
       </form>

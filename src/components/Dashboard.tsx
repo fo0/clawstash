@@ -46,19 +46,39 @@ export default function Dashboard({
       <div className="dashboard-header">
         <div className="dashboard-title">
           <h1>Your Stashes</h1>
-          <span className="stash-count" title="Total number of stashes stored">{total} stashes</span>
+          <span className="stash-count" title="Total number of stashes stored">
+            {total} stashes
+          </span>
         </div>
         <div className="dashboard-actions">
           {filterTag && (
-            <span className="active-filter" title={`Showing only stashes tagged with "${filterTag}"`}>
+            <span
+              className="active-filter"
+              title={`Showing only stashes tagged with "${filterTag}"`}
+            >
               Tag: {filterTag}
-              <button className="filter-clear" onClick={() => onFilterTag(filterTag)} title="Clear tag filter">x</button>
+              <button
+                className="filter-clear"
+                onClick={() => onFilterTag(filterTag)}
+                title="Clear tag filter"
+              >
+                x
+              </button>
             </span>
           )}
           {showArchived && (
-            <span className="active-filter active-filter-archive" title="Showing all stashes including archived">
+            <span
+              className="active-filter active-filter-archive"
+              title="Showing all stashes including archived"
+            >
               Including archived
-              <button className="filter-clear" onClick={onToggleShowArchived} title="Hide archived stashes">x</button>
+              <button
+                className="filter-clear"
+                onClick={onToggleShowArchived}
+                title="Hide archived stashes"
+              >
+                x
+              </button>
             </span>
           )}
           <div className="layout-toggle">
@@ -86,7 +106,11 @@ export default function Dashboard({
               </svg>
             </button>
           </div>
-          <button className="btn btn-new-stash" onClick={onNewStash} title="Create a new stash to store files">
+          <button
+            className="btn btn-new-stash"
+            onClick={onNewStash}
+            title="Create a new stash to store files"
+          >
             <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
               <path d="M8 2a.75.75 0 0 1 .75.75v4.5h4.5a.75.75 0 0 1 0 1.5h-4.5v4.5a.75.75 0 0 1-1.5 0v-4.5h-4.5a.75.75 0 0 1 0-1.5h4.5v-4.5A.75.75 0 0 1 8 2Z" />
             </svg>

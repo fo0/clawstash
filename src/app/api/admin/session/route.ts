@@ -36,7 +36,11 @@ export async function GET(req: NextRequest) {
   const limit = checkAndRecordAuthAttempt('token-validate', ip);
   if (!limit.allowed) {
     return NextResponse.json(
-      { authenticated: false, authRequired: true, error: 'Too many token-validation attempts. Please try again later.' },
+      {
+        authenticated: false,
+        authRequired: true,
+        error: 'Too many token-validation attempts. Please try again later.',
+      },
       {
         status: 429,
         headers: { 'Retry-After': String(limit.retryAfter ?? RATE_LIMIT_WINDOW_SEC) },

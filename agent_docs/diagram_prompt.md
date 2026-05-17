@@ -1,11 +1,13 @@
 # Architecture Diagram Generation
 
 ## When to generate
+
 - On explicit user request ("generate architecture diagram", "update diagram")
 - After major structural changes (new modules, changed data flow, new external dependencies)
 - NOT on every code change — only when the high-level architecture shifts
 
 ## Output files
+
 - `docs/ARCHITECTURE.mmd` — Raw Mermaid code (no markdown fences)
 - `docs/ARCHITECTURE.svg` — Rendered SVG (validate with: `npx mmdc -i docs/ARCHITECTURE.mmd -o docs/ARCHITECTURE.svg`)
 
@@ -16,11 +18,13 @@ Analyze the repository and produce a single, valid Mermaid.js architecture diagr
 ### Phase 1 — Repository Analysis
 
 Gather context:
+
 1. Read the file tree. Exclude: `.git`, `node_modules`, `dist`, `build`, `.next`, `__pycache__`, `.venv`, `vendor`, `target`, `.idea`, `.vscode`, `.gitnexus`.
 2. Read README and key config files to identify the tech stack.
 3. If GitNexus is available: use `gitnexus_query("project architecture overview")` to supplement file-tree analysis.
 
 Determine:
+
 - **Project type**: full-stack app (Next.js App Router, single process)
 - **Main components**: React frontend, Next.js API routes, MCP server, SQLite database
 - **Relationships**: data flow, API calls, MCP tool invocations
@@ -29,6 +33,7 @@ Determine:
 ### Phase 2 — Component Mapping
 
 Map each identified component to its concrete file or directory:
+
 - Only map where a clear match exists
 - Prefer directories for modules, specific files for entry points
 - Use exact paths from the file tree
@@ -39,6 +44,7 @@ Map each identified component to its concrete file or directory:
 Use `flowchart TD` (top-down, vertical orientation).
 
 **Node shapes:**
+
 - `("Label")` — rounded rectangle for services/components
 - `[("Label")]` — cylinder for databases
 - `["Label"]` — rectangle for generic modules
@@ -46,6 +52,7 @@ Use `flowchart TD` (top-down, vertical orientation).
 - `(["Label"])` — stadium for queues/caches
 
 **Requirements:**
+
 - Group related components in `subgraph` blocks
 - Show data flow with labeled arrows: `A -->|"description"| B` (only label when meaningful)
 - Add `click NodeID "relative/path"` for every mapped component
@@ -53,6 +60,7 @@ Use `flowchart TD` (top-down, vertical orientation).
 - Aim for 15–35 nodes total
 
 **Suggested color palette:**
+
 ```
 classDef frontend fill:#42b883,stroke:#35495e,color:#fff
 classDef backend fill:#3178c6,stroke:#265a8f,color:#fff

@@ -36,7 +36,8 @@ export default function VersionHistory({ stashId, currentVersion, onRestore }: P
     let cancelled = false;
     setLoading(true);
     setError(null);
-    api.getVersions(stashId)
+    api
+      .getVersions(stashId)
       .then((v) => {
         if (cancelled) return;
         setVersions(v);
@@ -51,8 +52,12 @@ export default function VersionHistory({ stashId, currentVersion, onRestore }: P
         setVersions([]);
         setError('Failed to load version history');
       })
-      .finally(() => { if (!cancelled) setLoading(false); });
-    return () => { cancelled = true; };
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
   }, [stashId, currentVersion]);
 
   const handleViewVersion = async (version: number) => {
@@ -73,7 +78,11 @@ export default function VersionHistory({ stashId, currentVersion, onRestore }: P
     if (compareFrom === null || compareTo === null || compareFrom === compareTo) return;
     setDiffLoading(true);
     try {
-      const data = await api.getVersionDiff(stashId, Math.min(compareFrom, compareTo), Math.max(compareFrom, compareTo));
+      const data = await api.getVersionDiff(
+        stashId,
+        Math.min(compareFrom, compareTo),
+        Math.max(compareFrom, compareTo),
+      );
       setDiffData(data);
       setSubView('diff');
       setError(null);
@@ -95,7 +104,10 @@ export default function VersionHistory({ stashId, currentVersion, onRestore }: P
     if (confirmRestore !== version) {
       setConfirmRestore(version);
       if (confirmTimerRef.current) clearTimeout(confirmTimerRef.current);
-      confirmTimerRef.current = setTimeout(() => setConfirmRestore(null), DELETE_CONFIRM_TIMEOUT_MS);
+      confirmTimerRef.current = setTimeout(
+        () => setConfirmRestore(null),
+        DELETE_CONFIRM_TIMEOUT_MS,
+      );
       return;
     }
     setRestoring(true);
@@ -136,7 +148,12 @@ export default function VersionHistory({ stashId, currentVersion, onRestore }: P
     }
   };
 
-  if (loading) return <div className="loading"><Spinner /> Loading version history...</div>;
+  if (loading)
+    return (
+      <div className="loading">
+        <Spinner /> Loading version history...
+      </div>
+    );
 
   if (error && versions.length === 0) {
     return (
@@ -149,7 +166,13 @@ export default function VersionHistory({ stashId, currentVersion, onRestore }: P
   if (versions.length === 0) {
     return (
       <div className="version-empty">
-        <svg width="24" height="24" viewBox="0 0 16 16" fill="currentColor" style={{ marginBottom: 8 }}>
+        <svg
+          width="24"
+          height="24"
+          viewBox="0 0 16 16"
+          fill="currentColor"
+          style={{ marginBottom: 8 }}
+        >
           <path d="M1.5 8a6.5 6.5 0 1 0 13 0 6.5 6.5 0 0 0-13 0ZM8 0a8 8 0 1 1 0 16A8 8 0 0 1 8 0Zm.5 4.75a.75.75 0 0 0-1.5 0v3.5a.75.75 0 0 0 .37.65l2.5 1.5a.75.75 0 1 0 .77-1.29L8.5 7.94Z" />
         </svg>
         <p>No version history available.</p>
@@ -172,17 +195,33 @@ export default function VersionHistory({ stashId, currentVersion, onRestore }: P
             className={`btn btn-sm ${confirmRestore === selectedVersion.version ? 'btn-danger' : 'btn-secondary'}`}
             onClick={() => handleRestore(selectedVersion.version)}
             disabled={restoring || selectedVersion.version === currentVersion}
-            title={selectedVersion.version === currentVersion ? 'This is the current version' : 'Restore this version as the current state'}
+            title={
+              selectedVersion.version === currentVersion
+                ? 'This is the current version'
+                : 'Restore this version as the current state'
+            }
           >
-            {restoring ? 'Restoring...' : confirmRestore === selectedVersion.version ? 'Confirm Restore?' : 'Restore this version'}
+            {restoring
+              ? 'Restoring...'
+              : confirmRestore === selectedVersion.version
+                ? 'Confirm Restore?'
+                : 'Restore this version'}
           </button>
         </div>
         <div className="version-detail-meta">
-          <span><strong>Name:</strong> {selectedVersion.name || '(untitled)'}</span>
-          <span><strong>By:</strong> {selectedVersion.created_by || 'system'}</span>
-          <span><strong>Date:</strong> {new Date(selectedVersion.created_at).toLocaleString()}</span>
+          <span>
+            <strong>Name:</strong> {selectedVersion.name || '(untitled)'}
+          </span>
+          <span>
+            <strong>By:</strong> {selectedVersion.created_by || 'system'}
+          </span>
+          <span>
+            <strong>Date:</strong> {new Date(selectedVersion.created_at).toLocaleString()}
+          </span>
           {selectedVersion.tags.length > 0 && (
-            <span><strong>Tags:</strong> {selectedVersion.tags.join(', ')}</span>
+            <span>
+              <strong>Tags:</strong> {selectedVersion.tags.join(', ')}
+            </span>
           )}
         </div>
         {selectedVersion.description && (
@@ -197,7 +236,9 @@ export default function VersionHistory({ stashId, currentVersion, onRestore }: P
                   <span className="file-name">{file.filename}</span>
                   {file.language && <span className="lang-tag">{file.language}</span>}
                 </div>
-                <pre className="file-content"><code dangerouslySetInnerHTML={{ __html: highlightCode(file.content, lang) }} /></pre>
+                <pre className="file-content">
+                  <code dangerouslySetInnerHTML={{ __html: highlightCode(file.content, lang) }} />
+                </pre>
               </div>
             );
           })}
@@ -232,7 +273,17 @@ export default function VersionHistory({ stashId, currentVersion, onRestore }: P
   return (
     <div className="version-history">
       {error && (
-        <div className="version-error" style={{ color: 'var(--text-danger, #f85149)', padding: '8px 12px', marginBottom: 8, background: 'rgba(248, 81, 73, 0.1)', borderRadius: 6, fontSize: 13 }}>
+        <div
+          className="version-error"
+          style={{
+            color: 'var(--text-danger, #f85149)',
+            padding: '8px 12px',
+            marginBottom: 8,
+            background: 'rgba(248, 81, 73, 0.1)',
+            borderRadius: 6,
+            fontSize: 13,
+          }}
+        >
           {error}
         </div>
       )}
@@ -245,7 +296,9 @@ export default function VersionHistory({ stashId, currentVersion, onRestore }: P
             disabled={!canCompare || diffLoading}
           >
             {diffLoading ? (
-              <><Spinner size={12} /> Comparing...</>
+              <>
+                <Spinner size={12} /> Comparing...
+              </>
             ) : (
               <>
                 <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor">
@@ -258,7 +311,8 @@ export default function VersionHistory({ stashId, currentVersion, onRestore }: P
           <div className="version-compare-info">
             {canCompare ? (
               <span>
-                Comparing <strong>v{compareFrom}</strong> <span className="version-compare-arrow">&rarr;</span> <strong>v{compareTo}</strong>
+                Comparing <strong>v{compareFrom}</strong>{' '}
+                <span className="version-compare-arrow">&rarr;</span> <strong>v{compareTo}</strong>
               </span>
             ) : (
               <span className="version-compare-hint">Select two versions to compare</span>
@@ -273,8 +327,12 @@ export default function VersionHistory({ stashId, currentVersion, onRestore }: P
         {hasMultipleVersions && (
           <div className="version-item version-list-header">
             <div className="version-radios">
-              <span className="version-radio-label" title="Select the older version (From)">From</span>
-              <span className="version-radio-label" title="Select the newer version (To)">To</span>
+              <span className="version-radio-label" title="Select the older version (From)">
+                From
+              </span>
+              <span className="version-radio-label" title="Select the newer version (To)">
+                To
+              </span>
             </div>
             <div className="version-item-left">
               <span className="version-list-header-text">Version</span>
@@ -291,10 +349,7 @@ export default function VersionHistory({ stashId, currentVersion, onRestore }: P
           const isNewest = index === 0; // newest version (list is desc)
 
           return (
-            <div
-              key={v.id}
-              className={`version-item ${isCurrent ? 'version-current' : ''}`}
-            >
+            <div key={v.id} className={`version-item ${isCurrent ? 'version-current' : ''}`}>
               {/* Comparison radio buttons */}
               {hasMultipleVersions && (
                 <div className="version-radios">
@@ -329,7 +384,9 @@ export default function VersionHistory({ stashId, currentVersion, onRestore }: P
                     {isCurrent && <span className="version-current-tag">current</span>}
                   </span>
                   <span className="version-item-meta">
-                    {v.created_by === 'current' ? 'live' : v.created_by || 'system'} &middot; {formatRelativeTime(v.created_at)} &middot; {v.file_count} file{v.file_count !== 1 ? 's' : ''}
+                    {v.created_by === 'current' ? 'live' : v.created_by || 'system'} &middot;{' '}
+                    {formatRelativeTime(v.created_at)} &middot; {v.file_count} file
+                    {v.file_count !== 1 ? 's' : ''}
                   </span>
                 </div>
               </div>

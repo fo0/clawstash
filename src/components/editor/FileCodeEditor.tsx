@@ -12,11 +12,11 @@ interface Props {
 export default function FileCodeEditor({ file, index, updateFile }: Props) {
   const highlight = useMemo(
     () => (code: string) => highlightCode(code, resolvePrismLanguage(file.language, file.filename)),
-    [file.language, file.filename]
+    [file.language, file.filename],
   );
   const handleChange = useCallback(
     (code: string) => updateFile(index, 'content', code),
-    [index, updateFile]
+    [index, updateFile],
   );
   return (
     <Editor

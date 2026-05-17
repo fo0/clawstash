@@ -1,7 +1,13 @@
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import type { Stash, StashFile, AccessLogEntry } from '../types';
 import { api } from '../api';
-import { highlightCode, resolvePrismLanguage, detectLanguageFromContent, isRenderableLanguage, getLanguageDisplayName } from '../languages';
+import {
+  highlightCode,
+  resolvePrismLanguage,
+  detectLanguageFromContent,
+  isRenderableLanguage,
+  getLanguageDisplayName,
+} from '../languages';
 import { formatRelativeTime } from '../utils/format';
 import { useClipboard, useClipboardWithKey } from '../hooks/useClipboard';
 import { CopyIcon, CheckIcon, XIcon } from './shared/icons';
@@ -26,11 +32,19 @@ interface Props {
 function SourceBadge({ source }: { source: string }) {
   const labels: Record<string, { label: string; className: string; tooltip: string }> = {
     api: { label: 'API', className: 'source-badge source-api', tooltip: 'Accessed via REST API' },
-    mcp: { label: 'MCP', className: 'source-badge source-mcp', tooltip: 'Accessed via MCP (Model Context Protocol)' },
+    mcp: {
+      label: 'MCP',
+      className: 'source-badge source-mcp',
+      tooltip: 'Accessed via MCP (Model Context Protocol)',
+    },
     ui: { label: 'UI', className: 'source-badge source-ui', tooltip: 'Accessed via Web Dashboard' },
   };
   const info = labels[source] || { label: source, className: 'source-badge', tooltip: source };
-  return <span className={info.className} title={info.tooltip}>{info.label}</span>;
+  return (
+    <span className={info.className} title={info.tooltip}>
+      {info.label}
+    </span>
+  );
 }
 
 const RENDER_PREF_KEY = 'clawstash-render-preview';
@@ -47,7 +61,9 @@ function getRenderPreference(): boolean {
 function setRenderPreference(enabled: boolean): void {
   try {
     localStorage.setItem(RENDER_PREF_KEY, String(enabled));
-  } catch { /* ignore */ }
+  } catch {
+    /* ignore */
+  }
 }
 
 /**
@@ -89,9 +105,9 @@ function decodeMermaidSource(s: string): string {
 function slugify(text: string): string {
   return text
     .toLowerCase()
-    .replace(/[^\p{L}\p{M}\p{N}\p{Pc}\s-]/gu, '')  // keep letters, marks, numbers, connectors, spaces, hyphens
+    .replace(/[^\p{L}\p{M}\p{N}\p{Pc}\s-]/gu, '') // keep letters, marks, numbers, connectors, spaces, hyphens
     .trim()
-    .replace(/\s+/g, '-');                            // collapse spaces → single hyphen
+    .replace(/\s+/g, '-'); // collapse spaces → single hyphen
 }
 
 // Render-scoped state for heading ID generation — set before each renderMarkdown call
@@ -125,7 +141,10 @@ const mdParser = new Marked({
       const cleanHref = isUnsafeUrl(href) ? '#' : href;
       if (cleanHref.startsWith('#')) {
         // Prepend current heading prefix so anchors match prefixed heading IDs
-        const resolvedHref = headingIdPrefix && cleanHref !== '#' ? `#${headingIdPrefix}${cleanHref.slice(1)}` : cleanHref;
+        const resolvedHref =
+          headingIdPrefix && cleanHref !== '#'
+            ? `#${headingIdPrefix}${cleanHref.slice(1)}`
+            : cleanHref;
         return `<a href="${escapeHtml(resolvedHref)}"${titleAttr}>${text}</a>`;
       }
       const safeHref = escapeHtml(cleanHref);
@@ -155,11 +174,18 @@ const mdParser = new Marked({
  */
 function sanitizeHtml(html: string): string {
   const doc = new DOMParser().parseFromString(html, 'text/html');
-  doc.querySelectorAll('script,style,iframe,object,embed,form,link,base,meta,noscript').forEach(el => el.remove());
-  doc.querySelectorAll('*').forEach(el => {
+  doc
+    .querySelectorAll('script,style,iframe,object,embed,form,link,base,meta,noscript')
+    .forEach((el) => el.remove());
+  doc.querySelectorAll('*').forEach((el) => {
     for (const attr of [...el.attributes]) {
       const isEventHandler = attr.name.toLowerCase().startsWith('on');
-      const isUrlAttr = attr.name === 'href' || attr.name === 'src' || attr.name === 'xlink:href' || attr.name === 'action' || attr.name === 'formaction';
+      const isUrlAttr =
+        attr.name === 'href' ||
+        attr.name === 'src' ||
+        attr.name === 'xlink:href' ||
+        attr.name === 'action' ||
+        attr.name === 'formaction';
       if (isEventHandler || (isUrlAttr && isUnsafeUrl(attr.value))) {
         el.removeAttribute(attr.name);
       }
@@ -198,7 +224,7 @@ interface TocEntry {
 function extractHeadings(html: string): TocHeading[] {
   const doc = new DOMParser().parseFromString(html, 'text/html');
   const headings: TocHeading[] = [];
-  doc.querySelectorAll('h1, h2, h3').forEach(el => {
+  doc.querySelectorAll('h1, h2, h3').forEach((el) => {
     // Remove the anchor element so its "#" doesn't appear in the text
     const anchor = el.querySelector('.heading-anchor');
     if (anchor) anchor.remove();
@@ -222,7 +248,14 @@ function buildHtmlPreview(content: string): string {
 }
 
 /** Renders copy/check/error icon + label based on clipboard state. */
-function CopyButtonContent({ copied, failed, size = 12, labelCopy = 'Copy', labelCopied = 'Copied!', labelFailed = 'Failed' }: {
+function CopyButtonContent({
+  copied,
+  failed,
+  size = 12,
+  labelCopy = 'Copy',
+  labelCopied = 'Copied!',
+  labelFailed = 'Failed',
+}: {
   copied: boolean;
   failed: boolean;
   size?: number;
@@ -230,13 +263,37 @@ function CopyButtonContent({ copied, failed, size = 12, labelCopy = 'Copy', labe
   labelCopied?: string;
   labelFailed?: string;
 }) {
-  if (copied) return <><CheckIcon size={size} /> {labelCopied}</>;
-  if (failed) return <><XIcon size={size} /> {labelFailed}</>;
-  return <><CopyIcon size={size} /> {labelCopy}</>;
+  if (copied)
+    return (
+      <>
+        <CheckIcon size={size} /> {labelCopied}
+      </>
+    );
+  if (failed)
+    return (
+      <>
+        <XIcon size={size} /> {labelFailed}
+      </>
+    );
+  return (
+    <>
+      <CopyIcon size={size} /> {labelCopy}
+    </>
+  );
 }
 
-export default function StashViewer({ stash, onEdit, onDelete, onArchive, onBack, onAnalyzeStash, onStashUpdated }: Props) {
-  const [activeTab, setActiveTab] = useState<'content' | 'metadata' | 'access-log' | 'history'>('content');
+export default function StashViewer({
+  stash,
+  onEdit,
+  onDelete,
+  onArchive,
+  onBack,
+  onAnalyzeStash,
+  onStashUpdated,
+}: Props) {
+  const [activeTab, setActiveTab] = useState<'content' | 'metadata' | 'access-log' | 'history'>(
+    'content',
+  );
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [accessLog, setAccessLog] = useState<AccessLogEntry[]>([]);
   const [logLoading, setLogLoading] = useState(false);
@@ -250,8 +307,8 @@ export default function StashViewer({ stash, onEdit, onDelete, onArchive, onBack
 
   // Memoize resolved languages for all files
   const resolvedLanguages = useMemo(
-    () => new Map(stash.files.map(f => [f.id, resolveEffectiveLanguage(f)])),
-    [stash.files]
+    () => new Map(stash.files.map((f) => [f.id, resolveEffectiveLanguage(f)])),
+    [stash.files],
   );
 
   // Memoize rendered markdown/HTML output and TOC entries
@@ -286,7 +343,7 @@ export default function StashViewer({ stash, onEdit, onDelete, onArchive, onBack
   }, [stash.files, resolvedLanguages]);
 
   const toggleRenderPreview = useCallback(() => {
-    setRenderPreview(prev => {
+    setRenderPreview((prev) => {
       const next = !prev;
       setRenderPreference(next);
       return next;
@@ -303,11 +360,20 @@ export default function StashViewer({ stash, onEdit, onDelete, onArchive, onBack
     if (activeTab !== 'access-log') return;
     let cancelled = false;
     setLogLoading(true);
-    api.getAccessLog(stash.id, 100)
-      .then((log) => { if (!cancelled) setAccessLog(log); })
-      .catch(() => { if (!cancelled) setAccessLog([]); })
-      .finally(() => { if (!cancelled) setLogLoading(false); });
-    return () => { cancelled = true; };
+    api
+      .getAccessLog(stash.id, 100)
+      .then((log) => {
+        if (!cancelled) setAccessLog(log);
+      })
+      .catch(() => {
+        if (!cancelled) setAccessLog([]);
+      })
+      .finally(() => {
+        if (!cancelled) setLogLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
   }, [activeTab, stash.id]);
 
   // Cleanup delete confirmation timer on unmount
@@ -329,7 +395,7 @@ export default function StashViewer({ stash, onEdit, onDelete, onArchive, onBack
     // stuck (cancelled mid-render — e.g. React StrictMode double-effect in
     // dev, or tab switch before mermaid resolves).
     const placeholders = root.querySelectorAll<HTMLElement>(
-      '.mermaid-placeholder:not([data-rendered="true"])'
+      '.mermaid-placeholder:not([data-rendered="true"])',
     );
     if (placeholders.length === 0) return;
 
@@ -392,7 +458,10 @@ export default function StashViewer({ stash, onEdit, onDelete, onArchive, onBack
     } else {
       setShowDeleteConfirm(true);
       if (deleteTimerRef.current) clearTimeout(deleteTimerRef.current);
-      deleteTimerRef.current = setTimeout(() => setShowDeleteConfirm(false), DELETE_CONFIRM_TIMEOUT_MS);
+      deleteTimerRef.current = setTimeout(
+        () => setShowDeleteConfirm(false),
+        DELETE_CONFIRM_TIMEOUT_MS,
+      );
     }
   };
 
@@ -402,8 +471,8 @@ export default function StashViewer({ stash, onEdit, onDelete, onArchive, onBack
   // on every call, so cache by description content for consistency with
   // StashCard. (Stash content may render long markdown.)
   const descriptionHtml = useMemo(
-    () => stash.description ? renderDescriptionMarkdown(stash.description) : '',
-    [stash.description]
+    () => (stash.description ? renderDescriptionMarkdown(stash.description) : ''),
+    [stash.description],
   );
 
   return (
@@ -433,7 +502,13 @@ export default function StashViewer({ stash, onEdit, onDelete, onArchive, onBack
           <button
             className="btn btn-secondary"
             onClick={copyAllFiles}
-            title={copyAllClipboard.copied ? 'Copied!' : copyAllClipboard.status === 'failed' ? 'Copy failed' : 'Copy all file contents to clipboard'}
+            title={
+              copyAllClipboard.copied
+                ? 'Copied!'
+                : copyAllClipboard.status === 'failed'
+                  ? 'Copy failed'
+                  : 'Copy all file contents to clipboard'
+            }
           >
             <CopyButtonContent
               copied={copyAllClipboard.copied}
@@ -451,7 +526,11 @@ export default function StashViewer({ stash, onEdit, onDelete, onArchive, onBack
           <button
             className="btn btn-secondary"
             onClick={() => onArchive(stash.id, !stash.archived)}
-            title={stash.archived ? 'Unarchive this stash — restore to active stashes' : 'Archive this stash — hide from default listings'}
+            title={
+              stash.archived
+                ? 'Unarchive this stash — restore to active stashes'
+                : 'Archive this stash — hide from default listings'
+            }
           >
             <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
               <path d="M1.75 3h12.5a.75.75 0 0 1 .75.75v1.5a.75.75 0 0 1-.75.75H1.75A.75.75 0 0 1 1 5.25v-1.5A.75.75 0 0 1 1.75 3ZM2 7.5h12v5.75a.75.75 0 0 1-.75.75H2.75a.75.75 0 0 1-.75-.75Zm4.25 1.5a.75.75 0 0 0 0 1.5h3.5a.75.75 0 0 0 0-1.5Z" />
@@ -461,7 +540,11 @@ export default function StashViewer({ stash, onEdit, onDelete, onArchive, onBack
           <button
             className={`btn ${showDeleteConfirm ? 'btn-danger' : 'btn-ghost'}`}
             onClick={handleDelete}
-            title={showDeleteConfirm ? 'Click again to permanently delete this stash' : 'Delete this stash'}
+            title={
+              showDeleteConfirm
+                ? 'Click again to permanently delete this stash'
+                : 'Delete this stash'
+            }
           >
             <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
               <path d="M11 1.75V3h2.25a.75.75 0 0 1 0 1.5H2.75a.75.75 0 0 1 0-1.5H5V1.75C5 .784 5.784 0 6.75 0h2.5C10.216 0 11 .784 11 1.75ZM4.496 6.675l.66 6.6a.25.25 0 0 0 .249.225h5.19a.25.25 0 0 0 .249-.225l.66-6.6a.75.75 0 0 1 1.492.149l-.66 6.6A1.748 1.748 0 0 1 10.595 15h-5.19a1.75 1.75 0 0 1-1.741-1.575l-.66-6.6a.75.75 0 1 1 1.492-.15ZM6.5 1.75V3h3V1.75a.25.25 0 0 0-.25-.25h-2.5a.25.25 0 0 0-.25.25Z" />
@@ -472,17 +555,28 @@ export default function StashViewer({ stash, onEdit, onDelete, onArchive, onBack
       </div>
 
       {stash.description && (
-        <div className="viewer-description markdown-description" dangerouslySetInnerHTML={{ __html: descriptionHtml }} />
+        <div
+          className="viewer-description markdown-description"
+          dangerouslySetInnerHTML={{ __html: descriptionHtml }}
+        />
       )}
 
       {(stash.tags.length > 0 || Object.keys(stash.metadata).length > 0) && (
         <div className="viewer-meta-bar">
           {stash.tags.map((tag) => (
-            <span key={tag} className="stash-tag" title={`Tag: ${tag}`}>{tag}</span>
+            <span key={tag} className="stash-tag" title={`Tag: ${tag}`}>
+              {tag}
+            </span>
           ))}
           {Object.keys(stash.metadata).length > 0 && (
             <span className="meta-indicator" title="This stash has AI metadata attached">
-              <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor" style={{ marginRight: 4, verticalAlign: -1 }}>
+              <svg
+                width="12"
+                height="12"
+                viewBox="0 0 16 16"
+                fill="currentColor"
+                style={{ marginRight: 4, verticalAlign: -1 }}
+              >
                 <path d="M0 8a8 8 0 1 1 16 0A8 8 0 0 1 0 8Zm8-6.5a6.5 6.5 0 1 0 0 13 6.5 6.5 0 0 0 0-13ZM6.92 6.085h.001a.749.749 0 1 1-1.342-.67c.169-.339.516-.552.974-.552.97 0 1.447.67 1.447 1.181 0 .43-.245.756-.462.97l-.044.042c-.21.196-.383.375-.383.632v.22a.75.75 0 0 1-1.5 0v-.22c0-.67.406-1.05.634-1.26l.044-.043c.16-.147.228-.228.228-.356 0-.098-.06-.233-.447-.233-.218 0-.316.1-.361.183ZM8 10.5a1 1 0 1 1 0 2 1 1 0 0 1 0-2Z" />
               </svg>
               Has metadata
@@ -497,7 +591,13 @@ export default function StashViewer({ stash, onEdit, onDelete, onArchive, onBack
           onClick={() => setActiveTab('content')}
           title="View file contents"
         >
-          <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor" style={{ marginRight: 6, verticalAlign: -2 }}>
+          <svg
+            width="14"
+            height="14"
+            viewBox="0 0 16 16"
+            fill="currentColor"
+            style={{ marginRight: 6, verticalAlign: -2 }}
+          >
             <path d="M2 1.75C2 .784 2.784 0 3.75 0h6.586c.464 0 .909.184 1.237.513l2.914 2.914c.329.328.513.773.513 1.237v9.586A1.75 1.75 0 0 1 13.25 16h-9.5A1.75 1.75 0 0 1 2 14.25Zm1.75-.25a.25.25 0 0 0-.25.25v12.5c0 .138.112.25.25.25h9.5a.25.25 0 0 0 .25-.25V6h-2.75A1.75 1.75 0 0 1 9 4.25V1.5Zm6.75.062V4.25c0 .138.112.25.25.25h2.688l-.011-.013-2.914-2.914-.013-.011Z" />
           </svg>
           Content
@@ -507,7 +607,13 @@ export default function StashViewer({ stash, onEdit, onDelete, onArchive, onBack
           onClick={() => setActiveTab('metadata')}
           title="View stash details, metadata, and API endpoints"
         >
-          <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor" style={{ marginRight: 6, verticalAlign: -2 }}>
+          <svg
+            width="14"
+            height="14"
+            viewBox="0 0 16 16"
+            fill="currentColor"
+            style={{ marginRight: 6, verticalAlign: -2 }}
+          >
             <path d="M0 8a8 8 0 1 1 16 0A8 8 0 0 1 0 8Zm8-6.5a6.5 6.5 0 1 0 0 13 6.5 6.5 0 0 0 0-13ZM6.92 6.085h.001a.749.749 0 1 1-1.342-.67c.169-.339.516-.552.974-.552.97 0 1.447.67 1.447 1.181 0 .43-.245.756-.462.97l-.044.042c-.21.196-.383.375-.383.632v.22a.75.75 0 0 1-1.5 0v-.22c0-.67.406-1.05.634-1.26l.044-.043c.16-.147.228-.228.228-.356 0-.098-.06-.233-.447-.233-.218 0-.316.1-.361.183ZM8 10.5a1 1 0 1 1 0 2 1 1 0 0 1 0-2Z" />
           </svg>
           Details & API
@@ -517,7 +623,13 @@ export default function StashViewer({ stash, onEdit, onDelete, onArchive, onBack
           onClick={() => setActiveTab('access-log')}
           title="View when and how this stash was accessed (API, MCP, UI)"
         >
-          <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor" style={{ marginRight: 6, verticalAlign: -2 }}>
+          <svg
+            width="14"
+            height="14"
+            viewBox="0 0 16 16"
+            fill="currentColor"
+            style={{ marginRight: 6, verticalAlign: -2 }}
+          >
             <path d="M1.5 8a6.5 6.5 0 1 0 13 0 6.5 6.5 0 0 0-13 0ZM8 0a8 8 0 1 1 0 16A8 8 0 0 1 8 0Zm.5 4.75a.75.75 0 0 0-1.5 0v3.5a.75.75 0 0 0 .37.65l2.5 1.5a.75.75 0 1 0 .77-1.29L8.5 7.94Z" />
           </svg>
           Access Log
@@ -527,7 +639,13 @@ export default function StashViewer({ stash, onEdit, onDelete, onArchive, onBack
           onClick={() => setActiveTab('history')}
           title="View version history and compare changes"
         >
-          <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor" style={{ marginRight: 6, verticalAlign: -2 }}>
+          <svg
+            width="14"
+            height="14"
+            viewBox="0 0 16 16"
+            fill="currentColor"
+            style={{ marginRight: 6, verticalAlign: -2 }}
+          >
             <path d="M8 .25a.75.75 0 0 1 .673.418l1.882 3.815 4.21.612a.75.75 0 0 1 .416 1.279l-3.046 2.97.719 4.192a.751.751 0 0 1-1.088.791L8 12.347l-3.766 1.98a.75.75 0 0 1-1.088-.79l.72-4.194L.818 6.374a.75.75 0 0 1 .416-1.28l4.21-.611L7.327.668A.75.75 0 0 1 8 .25Z" />
           </svg>
           History
@@ -538,7 +656,13 @@ export default function StashViewer({ stash, onEdit, onDelete, onArchive, onBack
           onClick={() => onAnalyzeStash(stash.id)}
           title="Analyze connections in the stash graph"
         >
-          <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor" style={{ marginRight: 6, verticalAlign: -2 }}>
+          <svg
+            width="14"
+            height="14"
+            viewBox="0 0 16 16"
+            fill="currentColor"
+            style={{ marginRight: 6, verticalAlign: -2 }}
+          >
             <path d="M8 2a6 6 0 1 0 0 12A6 6 0 0 0 8 2Zm0 1.5a4.5 4.5 0 1 1 0 9 4.5 4.5 0 0 1 0-9Zm0 2a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5Z" />
           </svg>
           Analyze
@@ -552,7 +676,13 @@ export default function StashViewer({ stash, onEdit, onDelete, onArchive, onBack
               <path d="M2 4a1 1 0 1 0 0-2 1 1 0 0 0 0 2Zm3.75-1.5a.75.75 0 0 0 0 1.5h8.5a.75.75 0 0 0 0-1.5Zm0 5a.75.75 0 0 0 0 1.5h8.5a.75.75 0 0 0 0-1.5Zm0 5a.75.75 0 0 0 0 1.5h8.5a.75.75 0 0 0 0-1.5ZM3 8a1 1 0 1 1-2 0 1 1 0 0 1 2 0Zm-1 6a1 1 0 1 0 0-2 1 1 0 0 0 0 2Z" />
             </svg>
             Table of Contents
-            <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor" className={`toc-chevron ${tocExpanded ? 'expanded' : ''}`}>
+            <svg
+              width="12"
+              height="12"
+              viewBox="0 0 16 16"
+              fill="currentColor"
+              className={`toc-chevron ${tocExpanded ? 'expanded' : ''}`}
+            >
               <path d="M6.22 3.22a.75.75 0 0 1 1.06 0l4.25 4.25a.75.75 0 0 1 0 1.06l-4.25 4.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042L9.94 8 6.22 4.28a.75.75 0 0 1 0-1.06Z" />
             </svg>
           </button>
@@ -574,10 +704,7 @@ export default function StashViewer({ stash, onEdit, onDelete, onArchive, onBack
                     <ul className="toc-headings">
                       {entry.headings.map((h, hi) => (
                         <li key={hi} className={`toc-heading toc-h${h.depth}`}>
-                          <a
-                            href={`#${h.id}`}
-                            onClick={(e) => scrollToId(e, h.id)}
-                          >
+                          <a href={`#${h.id}`} onClick={(e) => scrollToId(e, h.id)}>
                             {h.text}
                           </a>
                         </li>
@@ -597,12 +724,15 @@ export default function StashViewer({ stash, onEdit, onDelete, onArchive, onBack
             const lang = resolvedLanguages.get(file.id) || 'text';
             const renderable = isRenderableLanguage(lang);
             const showRendered = renderable && renderPreview;
-            const langLabel = file.language || (lang !== 'text' ? `auto:${getLanguageDisplayName(lang)}` : '');
+            const langLabel =
+              file.language || (lang !== 'text' ? `auto:${getLanguageDisplayName(lang)}` : '');
 
             return (
               <div key={file.id} id={`stash-file-${fileIndex}`} className="viewer-file">
                 <div className="file-header">
-                  <span className="file-name" title={file.filename}>{file.filename}</span>
+                  <span className="file-name" title={file.filename}>
+                    {file.filename}
+                  </span>
                   <div className="file-actions">
                     {langLabel && (
                       <span className="lang-tag" title={`Language: ${langLabel}`}>
@@ -624,18 +754,33 @@ export default function StashViewer({ stash, onEdit, onDelete, onArchive, onBack
                     <button
                       className="btn btn-sm btn-ghost"
                       onClick={() => fileClipboard.copy(file.id, file.content)}
-                      title={fileClipboard.isCopied(file.id) ? 'Copied!' : fileClipboard.isFailed(file.id) ? 'Copy failed' : 'Copy file content to clipboard'}
+                      title={
+                        fileClipboard.isCopied(file.id)
+                          ? 'Copied!'
+                          : fileClipboard.isFailed(file.id)
+                            ? 'Copy failed'
+                            : 'Copy file content to clipboard'
+                      }
                     >
-                      <CopyButtonContent copied={fileClipboard.isCopied(file.id)} failed={fileClipboard.isFailed(file.id)} />
+                      <CopyButtonContent
+                        copied={fileClipboard.isCopied(file.id)}
+                        failed={fileClipboard.isFailed(file.id)}
+                      />
                     </button>
                   </div>
                 </div>
                 {showRendered && lang === 'mermaid' ? (
                   <div className="file-rendered file-mermaid">
-                    <MermaidDiagram code={file.content} storageKey={`${stash.id}:${file.filename}`} />
+                    <MermaidDiagram
+                      code={file.content}
+                      storageKey={`${stash.id}:${file.filename}`}
+                    />
                   </div>
                 ) : showRendered && lang === 'markdown' ? (
-                  <div className="file-rendered markdown-body" dangerouslySetInnerHTML={{ __html: renderedContent.get(file.id) || '' }} />
+                  <div
+                    className="file-rendered markdown-body"
+                    dangerouslySetInnerHTML={{ __html: renderedContent.get(file.id) || '' }}
+                  />
                 ) : showRendered && lang === 'markup' ? (
                   <iframe
                     className="file-rendered html-preview"
@@ -644,7 +789,9 @@ export default function StashViewer({ stash, onEdit, onDelete, onArchive, onBack
                     title={`Preview of ${file.filename}`}
                   />
                 ) : (
-                  <pre className="file-content"><code dangerouslySetInnerHTML={{ __html: highlightCode(file.content, lang) }} /></pre>
+                  <pre className="file-content">
+                    <code dangerouslySetInnerHTML={{ __html: highlightCode(file.content, lang) }} />
+                  </pre>
                 )}
               </div>
             );
@@ -658,12 +805,29 @@ export default function StashViewer({ stash, onEdit, onDelete, onArchive, onBack
             <h3>Details</h3>
             <table className="metadata-table">
               <tbody>
-                <tr><td>ID</td><td><code>{stash.id}</code></td></tr>
-                <tr><td>Files</td><td>{stash.files.length}</td></tr>
-                <tr><td>Created</td><td>{new Date(stash.created_at).toLocaleString()}</td></tr>
-                <tr><td>Updated</td><td>{new Date(stash.updated_at).toLocaleString()}</td></tr>
+                <tr>
+                  <td>ID</td>
+                  <td>
+                    <code>{stash.id}</code>
+                  </td>
+                </tr>
+                <tr>
+                  <td>Files</td>
+                  <td>{stash.files.length}</td>
+                </tr>
+                <tr>
+                  <td>Created</td>
+                  <td>{new Date(stash.created_at).toLocaleString()}</td>
+                </tr>
+                <tr>
+                  <td>Updated</td>
+                  <td>{new Date(stash.updated_at).toLocaleString()}</td>
+                </tr>
                 {stash.tags.length > 0 && (
-                  <tr><td>Tags</td><td>{stash.tags.join(', ')}</td></tr>
+                  <tr>
+                    <td>Tags</td>
+                    <td>{stash.tags.join(', ')}</td>
+                  </tr>
                 )}
               </tbody>
             </table>
@@ -672,7 +836,11 @@ export default function StashViewer({ stash, onEdit, onDelete, onArchive, onBack
           {stash.description && (
             <div className="metadata-section">
               <h3>Description</h3>
-              <div className="markdown-description" style={{ fontSize: '13px', color: 'var(--text-secondary)', lineHeight: 1.6 }} dangerouslySetInnerHTML={{ __html: descriptionHtml }} />
+              <div
+                className="markdown-description"
+                style={{ fontSize: '13px', color: 'var(--text-secondary)', lineHeight: 1.6 }}
+                dangerouslySetInnerHTML={{ __html: descriptionHtml }}
+              />
             </div>
           )}
 
@@ -684,7 +852,9 @@ export default function StashViewer({ stash, onEdit, onDelete, onArchive, onBack
                   {Object.entries(stash.metadata).map(([key, value]) => (
                     <tr key={key}>
                       <td>{key}</td>
-                      <td><code>{typeof value === 'string' ? value : JSON.stringify(value)}</code></td>
+                      <td>
+                        <code>{typeof value === 'string' ? value : JSON.stringify(value)}</code>
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -696,26 +866,55 @@ export default function StashViewer({ stash, onEdit, onDelete, onArchive, onBack
             <h3>API Access</h3>
             <div className="api-examples">
               <div className="api-example">
-                <span className="api-label" title="HTTP GET request to retrieve this stash">GET</span>
+                <span className="api-label" title="HTTP GET request to retrieve this stash">
+                  GET
+                </span>
                 <code>/api/stashes/{stash.id}</code>
                 <button
                   className="btn btn-sm btn-ghost"
                   onClick={() => apiClipboard.copy(`get-${stash.id}`, `/api/stashes/${stash.id}`)}
-                  title={apiClipboard.isCopied(`get-${stash.id}`) ? 'Copied!' : apiClipboard.isFailed(`get-${stash.id}`) ? 'Copy failed' : 'Copy API endpoint'}
+                  title={
+                    apiClipboard.isCopied(`get-${stash.id}`)
+                      ? 'Copied!'
+                      : apiClipboard.isFailed(`get-${stash.id}`)
+                        ? 'Copy failed'
+                        : 'Copy API endpoint'
+                  }
                 >
-                  <CopyButtonContent copied={apiClipboard.isCopied(`get-${stash.id}`)} failed={apiClipboard.isFailed(`get-${stash.id}`)} />
+                  <CopyButtonContent
+                    copied={apiClipboard.isCopied(`get-${stash.id}`)}
+                    failed={apiClipboard.isFailed(`get-${stash.id}`)}
+                  />
                 </button>
               </div>
               {stash.files.map((f) => (
                 <div key={f.id} className="api-example">
-                  <span className="api-label" title="HTTP GET request for raw file content">RAW</span>
-                  <code>/api/stashes/{stash.id}/files/{f.filename}/raw</code>
+                  <span className="api-label" title="HTTP GET request for raw file content">
+                    RAW
+                  </span>
+                  <code>
+                    /api/stashes/{stash.id}/files/{f.filename}/raw
+                  </code>
                   <button
                     className="btn btn-sm btn-ghost"
-                    onClick={() => apiClipboard.copy(`raw-${f.id}`, `/api/stashes/${stash.id}/files/${f.filename}/raw`)}
-                    title={apiClipboard.isCopied(`raw-${f.id}`) ? 'Copied!' : apiClipboard.isFailed(`raw-${f.id}`) ? 'Copy failed' : 'Copy raw file endpoint'}
+                    onClick={() =>
+                      apiClipboard.copy(
+                        `raw-${f.id}`,
+                        `/api/stashes/${stash.id}/files/${f.filename}/raw`,
+                      )
+                    }
+                    title={
+                      apiClipboard.isCopied(`raw-${f.id}`)
+                        ? 'Copied!'
+                        : apiClipboard.isFailed(`raw-${f.id}`)
+                          ? 'Copy failed'
+                          : 'Copy raw file endpoint'
+                    }
                   >
-                    <CopyButtonContent copied={apiClipboard.isCopied(`raw-${f.id}`)} failed={apiClipboard.isFailed(`raw-${f.id}`)} />
+                    <CopyButtonContent
+                      copied={apiClipboard.isCopied(`raw-${f.id}`)}
+                      failed={apiClipboard.isFailed(`raw-${f.id}`)}
+                    />
                   </button>
                 </div>
               ))}
@@ -728,12 +927,21 @@ export default function StashViewer({ stash, onEdit, onDelete, onArchive, onBack
         <div className="viewer-access-log">
           <div className="access-log-header">
             <h3>
-              <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" style={{ marginRight: 8, verticalAlign: -2 }}>
+              <svg
+                width="16"
+                height="16"
+                viewBox="0 0 16 16"
+                fill="currentColor"
+                style={{ marginRight: 8, verticalAlign: -2 }}
+              >
                 <path d="M1.5 8a6.5 6.5 0 1 0 13 0 6.5 6.5 0 0 0-13 0ZM8 0a8 8 0 1 1 0 16A8 8 0 0 1 8 0Zm.5 4.75a.75.75 0 0 0-1.5 0v3.5a.75.75 0 0 0 .37.65l2.5 1.5a.75.75 0 1 0 .77-1.29L8.5 7.94Z" />
               </svg>
               Access Log
             </h3>
-            <span className="access-log-hint" title="Tracks when this stash was accessed via API, MCP, or the web dashboard">
+            <span
+              className="access-log-hint"
+              title="Tracks when this stash was accessed via API, MCP, or the web dashboard"
+            >
               Shows recent access from all channels
             </span>
           </div>
@@ -741,11 +949,19 @@ export default function StashViewer({ stash, onEdit, onDelete, onArchive, onBack
             <div className="loading">Loading access log...</div>
           ) : accessLog.length === 0 ? (
             <div className="access-log-empty">
-              <svg width="24" height="24" viewBox="0 0 16 16" fill="currentColor" style={{ marginBottom: 8 }}>
+              <svg
+                width="24"
+                height="24"
+                viewBox="0 0 16 16"
+                fill="currentColor"
+                style={{ marginBottom: 8 }}
+              >
                 <path d="M1.5 8a6.5 6.5 0 1 0 13 0 6.5 6.5 0 0 0-13 0ZM8 0a8 8 0 1 1 0 16A8 8 0 0 1 8 0Zm.5 4.75a.75.75 0 0 0-1.5 0v3.5a.75.75 0 0 0 .37.65l2.5 1.5a.75.75 0 1 0 .77-1.29L8.5 7.94Z" />
               </svg>
               <p>No access recorded yet.</p>
-              <span className="access-log-hint">Access events are logged when this stash is read via API, MCP, or UI.</span>
+              <span className="access-log-hint">
+                Access events are logged when this stash is read via API, MCP, or UI.
+              </span>
             </div>
           ) : (
             <div className="access-log-list">
@@ -753,7 +969,10 @@ export default function StashViewer({ stash, onEdit, onDelete, onArchive, onBack
                 <div key={entry.id} className="access-log-entry">
                   <SourceBadge source={entry.source} />
                   <span className="access-log-action">{entry.action}</span>
-                  <span className="access-log-time" title={new Date(entry.timestamp).toLocaleString()}>
+                  <span
+                    className="access-log-time"
+                    title={new Date(entry.timestamp).toLocaleString()}
+                  >
                     {formatRelativeTime(entry.timestamp)}
                   </span>
                 </div>

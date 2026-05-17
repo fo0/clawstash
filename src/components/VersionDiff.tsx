@@ -41,11 +41,16 @@ export default function VersionDiff({ v1, v2 }: Props) {
       <div className="diff-summary">
         <span className="diff-stat-add">+{stats.additions}</span>
         <span className="diff-stat-remove">-{stats.deletions}</span>
-        <span className="diff-stat-files">{fileDiffs.filter(f => f.status !== 'unchanged').length} file{fileDiffs.filter(f => f.status !== 'unchanged').length !== 1 ? 's' : ''} changed</span>
+        <span className="diff-stat-files">
+          {fileDiffs.filter((f) => f.status !== 'unchanged').length} file
+          {fileDiffs.filter((f) => f.status !== 'unchanged').length !== 1 ? 's' : ''} changed
+        </span>
       </div>
 
       {/* Metadata changes */}
-      {(v1.name !== v2.name || v1.description !== v2.description || JSON.stringify(v1.tags) !== JSON.stringify(v2.tags)) && (
+      {(v1.name !== v2.name ||
+        v1.description !== v2.description ||
+        JSON.stringify(v1.tags) !== JSON.stringify(v2.tags)) && (
         <div className="diff-meta-section">
           <div className="diff-file-header">
             <span className="diff-file-status diff-status-modified">M</span>
@@ -60,36 +65,40 @@ export default function VersionDiff({ v1, v2 }: Props) {
       )}
 
       {/* File diffs */}
-      {fileDiffs.filter(f => f.status !== 'unchanged').map((fd) => (
-        <div key={fd.filename} className="diff-file">
-          <div className="diff-file-header">
-            <span className={`diff-file-status diff-status-${fd.status}`}>
-              {fd.status === 'added' ? 'A' : fd.status === 'removed' ? 'D' : 'M'}
-            </span>
-            <span>{fd.filename}</span>
+      {fileDiffs
+        .filter((f) => f.status !== 'unchanged')
+        .map((fd) => (
+          <div key={fd.filename} className="diff-file">
+            <div className="diff-file-header">
+              <span className={`diff-file-status diff-status-${fd.status}`}>
+                {fd.status === 'added' ? 'A' : fd.status === 'removed' ? 'D' : 'M'}
+              </span>
+              <span>{fd.filename}</span>
+            </div>
+            <div className="diff-table-wrapper">
+              <table className="diff-table">
+                <tbody>
+                  {fd.hunks.map((hunk, hi) =>
+                    hunk.lines.map((line, li) => (
+                      <tr key={`${hi}-${li}`} className={`diff-line diff-line-${line.type}`}>
+                        <td className="diff-line-num diff-line-num-old">{line.oldLineNo ?? ''}</td>
+                        <td className="diff-line-num diff-line-num-new">{line.newLineNo ?? ''}</td>
+                        <td className="diff-line-marker">
+                          {line.type === 'add' ? '+' : line.type === 'remove' ? '-' : ' '}
+                        </td>
+                        <td className="diff-line-content">
+                          <pre>{line.content}</pre>
+                        </td>
+                      </tr>
+                    )),
+                  )}
+                </tbody>
+              </table>
+            </div>
           </div>
-          <div className="diff-table-wrapper">
-            <table className="diff-table">
-              <tbody>
-                {fd.hunks.map((hunk, hi) => (
-                  hunk.lines.map((line, li) => (
-                    <tr key={`${hi}-${li}`} className={`diff-line diff-line-${line.type}`}>
-                      <td className="diff-line-num diff-line-num-old">{line.oldLineNo ?? ''}</td>
-                      <td className="diff-line-num diff-line-num-new">{line.newLineNo ?? ''}</td>
-                      <td className="diff-line-marker">
-                        {line.type === 'add' ? '+' : line.type === 'remove' ? '-' : ' '}
-                      </td>
-                      <td className="diff-line-content"><pre>{line.content}</pre></td>
-                    </tr>
-                  ))
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      ))}
+        ))}
 
-      {fileDiffs.every(f => f.status === 'unchanged') && (
+      {fileDiffs.every((f) => f.status === 'unchanged') && (
         <div className="diff-no-changes">No file content changes between these versions.</div>
       )}
     </div>

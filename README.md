@@ -84,33 +84,33 @@ Create API tokens in the web GUI under **Settings > API & Tokens** (scopes: `rea
 
 ## MCP Tools
 
-| Tool | What it does |
-|------|-------------|
-| `create_stash` | Store new content with files, tags, metadata |
-| `read_stash` | Get stash metadata + file list (content on demand) |
-| `read_stash_file` | Read a single file — most token-efficient |
-| `list_stashes` | Browse all stashes with summaries |
-| `search_stashes` | Full-text search with ranked results |
-| `update_stash` | Update existing stash content |
-| `delete_stash` | Remove a stash |
-| `archive_stash` | Archive/unarchive a stash without deleting |
-| `list_tags` | List all tags with usage counts |
-| `get_tag_graph` | Explore tag relationships |
-| `get_stats` | Storage statistics |
-| `get_rest_api_spec` | Fetch the OpenAPI 3.0 schema (JSON) |
-| `get_mcp_spec` | Fetch the full MCP specification (markdown) |
-| `refresh_tools` | Get latest tool specs (for connected agents) |
-| `check_version` | Check for updates |
+| Tool                | What it does                                       |
+| ------------------- | -------------------------------------------------- |
+| `create_stash`      | Store new content with files, tags, metadata       |
+| `read_stash`        | Get stash metadata + file list (content on demand) |
+| `read_stash_file`   | Read a single file — most token-efficient          |
+| `list_stashes`      | Browse all stashes with summaries                  |
+| `search_stashes`    | Full-text search with ranked results               |
+| `update_stash`      | Update existing stash content                      |
+| `delete_stash`      | Remove a stash                                     |
+| `archive_stash`     | Archive/unarchive a stash without deleting         |
+| `list_tags`         | List all tags with usage counts                    |
+| `get_tag_graph`     | Explore tag relationships                          |
+| `get_stats`         | Storage statistics                                 |
+| `get_rest_api_spec` | Fetch the OpenAPI 3.0 schema (JSON)                |
+| `get_mcp_spec`      | Fetch the full MCP specification (markdown)        |
+| `refresh_tools`     | Get latest tool specs (for connected agents)       |
+| `check_version`     | Check for updates                                  |
 
 ## Documentation
 
-| Doc | Content |
-|-----|---------|
-| [OpenClaw Onboarding](docs/openclaw-onboarding-prompt.md) | Copy-paste prompt for full agent-driven setup |
-| [API Reference](docs/api-reference.md) | REST endpoints, examples, query parameters |
-| [MCP Guide](docs/mcp.md) | MCP tools, token-efficient patterns, transport options |
-| [Authentication](docs/authentication.md) | Admin login, API tokens, scopes |
-| [Deployment](docs/deployment.md) | Docker, CI/CD, GHCR, production setup |
+| Doc                                                       | Content                                                |
+| --------------------------------------------------------- | ------------------------------------------------------ |
+| [OpenClaw Onboarding](docs/openclaw-onboarding-prompt.md) | Copy-paste prompt for full agent-driven setup          |
+| [API Reference](docs/api-reference.md)                    | REST endpoints, examples, query parameters             |
+| [MCP Guide](docs/mcp.md)                                  | MCP tools, token-efficient patterns, transport options |
+| [Authentication](docs/authentication.md)                  | Admin login, API tokens, scopes                        |
+| [Deployment](docs/deployment.md)                          | Docker, CI/CD, GHCR, production setup                  |
 
 ## License
 

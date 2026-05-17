@@ -23,10 +23,7 @@ export async function POST(req: NextRequest) {
     }
     const contentLength = parseInt(contentLengthHeader, 10);
     if (!Number.isFinite(contentLength) || contentLength < 0) {
-      return NextResponse.json(
-        { error: 'Invalid Content-Length header' },
-        { status: 400 },
-      );
+      return NextResponse.json({ error: 'Invalid Content-Length header' }, { status: 400 });
     }
     if (contentLength > MAX_IMPORT_SIZE) {
       return NextResponse.json({ error: 'Import file too large (max 100MB)' }, { status: 413 });
@@ -47,7 +44,7 @@ export async function POST(req: NextRequest) {
     const entries = zip.getEntries();
 
     const readJson = (name: string): Record<string, unknown>[] => {
-      const entry = entries.find(e => e.entryName === name);
+      const entry = entries.find((e) => e.entryName === name);
       if (!entry) return [];
       const parsed: unknown = JSON.parse(entry.getData().toString('utf8'));
       if (!Array.isArray(parsed)) {
@@ -68,14 +65,25 @@ export async function POST(req: NextRequest) {
     // Validate stash records have required fields
     for (const s of stashes) {
       if (typeof s.id !== 'string' || !s.id) {
-        return NextResponse.json({ error: 'Invalid stash data: each stash must have a string id' }, { status: 400 });
+        return NextResponse.json(
+          { error: 'Invalid stash data: each stash must have a string id' },
+          { status: 400 },
+        );
       }
     }
 
-    const result = getDb().importAllData({ stashes, stash_files, stash_versions, stash_version_files });
+    const result = getDb().importAllData({
+      stashes,
+      stash_files,
+      stash_versions,
+      stash_version_files,
+    });
     return NextResponse.json({ message: 'Import successful', imported: result });
   } catch (err) {
     console.error('Import error:', err);
-    return NextResponse.json({ error: 'Failed to import data. Make sure the ZIP file is a valid ClawStash export.' }, { status: 400 });
+    return NextResponse.json(
+      { error: 'Failed to import data. Make sure the ZIP file is a valid ClawStash export.' },
+      { status: 400 },
+    );
   }
 }

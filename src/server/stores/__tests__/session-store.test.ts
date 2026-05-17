@@ -44,7 +44,9 @@ describe('SessionStore', () => {
     const r = store.createAdminSession(0);
     expect(r.expiresAt).toBeNull();
     // Persisted as NULL, not the string "null"
-    const row = db.prepare('SELECT expires_at FROM admin_sessions').get() as { expires_at: string | null };
+    const row = db.prepare('SELECT expires_at FROM admin_sessions').get() as {
+      expires_at: string | null;
+    };
     expect(row.expires_at).toBeNull();
   });
 
@@ -97,8 +99,9 @@ describe('SessionStore', () => {
     const { token: b } = store.createAdminSession(0); // unlimited
 
     // Force a's expiry into the past, leave b alone (NULL)
-    db.prepare('UPDATE admin_sessions SET expires_at = ? WHERE expires_at IS NOT NULL')
-      .run('2020-01-01T00:00:00.000Z');
+    db.prepare('UPDATE admin_sessions SET expires_at = ? WHERE expires_at IS NOT NULL').run(
+      '2020-01-01T00:00:00.000Z',
+    );
 
     expect(store.cleanExpiredSessions()).toBe(1);
     expect(store.validateAdminSession(b).valid).toBe(true);

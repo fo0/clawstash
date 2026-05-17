@@ -41,7 +41,14 @@ export async function PATCH(req: NextRequest, { params }: Params) {
   const { ip, userAgent } = getRequestInfo(req);
 
   // Handle archive toggle separately (doesn't create a new version)
-  if (archived !== undefined && name === undefined && description === undefined && tags === undefined && metadata === undefined && files === undefined) {
+  if (
+    archived !== undefined &&
+    name === undefined &&
+    description === undefined &&
+    tags === undefined &&
+    metadata === undefined &&
+    files === undefined
+  ) {
     const stash = db.archiveStash(id, archived);
     if (!stash) {
       return NextResponse.json({ error: 'Stash not found' }, { status: 404 });
