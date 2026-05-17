@@ -8,6 +8,7 @@ import { applyPendingMigrations } from './db-migrations';
 import { TokenStore } from './stores/token-store';
 import { SessionStore } from './stores/session-store';
 import { VersionStore } from './stores/version-store';
+import { SearchStore } from './stores/search-store';
 import type {
   Stash,
   StashFile,
@@ -68,6 +69,7 @@ export class ClawStashDB {
   private tokens: TokenStore;
   private sessions: SessionStore;
   private versions: VersionStore;
+  private search: SearchStore;
 
   constructor(dbPath?: string) {
     const resolvedPath = dbPath || process.env.DATABASE_PATH || './data/clawstash.db';
@@ -87,6 +89,11 @@ export class ClawStashDB {
     this.versions = new VersionStore(this.db, (id, input, createdBy) =>
       this.updateStash(id, input, createdBy),
     );
+    // SearchStore takes a listStashes callback for the LIKE-fallback path
+    // on malformed FTS5 input. listStashes still lives on ClawStashDB —
+    // it touches stashes + stash_files with its own pagination / filter
+    // SQL that we don't duplicate.
+    this.search = new SearchStore(this.db, (options) => this.listStashes(options));
   }
 
   private init() {
@@ -341,109 +348,18 @@ export class ClawStashDB {
   }
 
   // === FTS5 Full-Text Search ===
+  // Delegated to SearchStore (src/server/stores/search-store.ts).
 
   private syncFtsIndex(stashId: string): void {
-    this.db.prepare('DELETE FROM stashes_fts WHERE stash_id = ?').run(stashId);
-
-    const stash = this.db
-      .prepare('SELECT name, description, tags FROM stashes WHERE id = ?')
-      .get(stashId) as
-      | {
-          name: string;
-          description: string;
-          tags: string;
-        }
-      | undefined;
-    if (!stash) return;
-
-    const files = this.db
-      .prepare('SELECT filename, content FROM stash_files WHERE stash_id = ? ORDER BY sort_order')
-      .all(stashId) as {
-      filename: string;
-      content: string;
-    }[];
-
-    const filenames = files.map((f) => f.filename).join(' ');
-    const fileContent = files.map((f) => f.content).join('\n');
-    const tags = this.safeParseTags(stash.tags).join(' ');
-
-    this.db
-      .prepare(
-        `
-      INSERT INTO stashes_fts (stash_id, name, description, tags, filenames, file_content)
-      VALUES (?, ?, ?, ?, ?, ?)
-    `,
-      )
-      .run(stashId, stash.name, stash.description, tags, filenames, fileContent);
+    this.search.syncIndex(stashId);
   }
 
   private removeFtsIndex(stashId: string): void {
-    this.db.prepare('DELETE FROM stashes_fts WHERE stash_id = ?').run(stashId);
+    this.search.removeIndex(stashId);
   }
 
   rebuildFtsIndex(): void {
-    const rebuild = this.db.transaction(() => {
-      this.db.prepare('DELETE FROM stashes_fts').run();
-
-      const stashes = this.db.prepare('SELECT id, name, description, tags FROM stashes').all() as {
-        id: string;
-        name: string;
-        description: string;
-        tags: string;
-      }[];
-
-      const insertFts = this.db.prepare(`
-        INSERT INTO stashes_fts (stash_id, name, description, tags, filenames, file_content)
-        VALUES (?, ?, ?, ?, ?, ?)
-      `);
-
-      for (const s of stashes) {
-        const files = this.db
-          .prepare(
-            'SELECT filename, content FROM stash_files WHERE stash_id = ? ORDER BY sort_order',
-          )
-          .all(s.id) as {
-          filename: string;
-          content: string;
-        }[];
-        const filenames = files.map((f) => f.filename).join(' ');
-        const fileContent = files.map((f) => f.content).join('\n');
-        const tags = this.safeParseTags(s.tags).join(' ');
-        insertFts.run(s.id, s.name, s.description, tags, filenames, fileContent);
-      }
-    });
-    rebuild();
-  }
-
-  private buildFtsQuery(input: string): string {
-    // Guard against excessively long queries
-    const trimmed = input.trim();
-    if (trimmed.length > 2000) return '';
-
-    const tokens = trimmed.split(/\s+/).filter(Boolean);
-    if (tokens.length === 0 || tokens.length > 50) return '';
-
-    return tokens
-      .map((t) => {
-        // Strip FTS5 special syntax characters (including +/- operators) to prevent
-        // query errors. Strip C0 controls (\x00-\x1F, \x7F), backtick, and the FTS
-        // snippet sentinels (U+E000 / U+E001) — defense-in-depth so a query
-        // containing the sentinel cannot survive into the prepared statement and
-        // confuse downstream snippet detection.
-        // eslint-disable-next-line no-control-regex
-        const cleaned = t.replace(
-          /['"()*{}[\]:^~!@#$%&\\<>+\-,;./|`\x00-\x1F\x7F\uE000\uE001]/g,
-          '',
-        );
-        if (!cleaned) return null;
-        // Prefix matching: "pyth" matches "python".
-        // Skip 1-char prefix scans — `a*` matches every word starting with `a` and
-        // can produce a very expensive scan with huge result sets on big DBs.
-        if (cleaned.length < 2) return cleaned;
-        return cleaned + '*';
-      })
-      .filter(Boolean)
-      .join(' ');
+    this.search.rebuildIndex();
   }
 
   // Clamp pagination params at the DB layer so callers that bypass the REST
@@ -461,166 +377,11 @@ export class ClawStashDB {
     return { page: safePage, limit: safeLimit, offset: (safePage - 1) * safeLimit };
   }
 
-  // FTS5 snippet markers — Unicode private-use characters that cannot
-  // appear in legitimate user content. Used internally so we can detect a real
-  // snippet hit without false positives from literal "**" the user typed
-  // (markdown bold, `**kwargs`, etc.). Replaced with the public "**…**"
-  // markers before snippets leave this method, preserving the API contract.
-  private readonly FTS_SNIPPET_OPEN = '\uE000';
-  private readonly FTS_SNIPPET_CLOSE = '\uE001';
-
-  private formatSnippet(raw: string): string {
-    return raw.split(this.FTS_SNIPPET_OPEN).join('**').split(this.FTS_SNIPPET_CLOSE).join('**');
-  }
-
   searchStashes(
     query: string,
     options: { tag?: string; archived?: boolean; limit?: number; page?: number } = {},
   ): SearchStashesResult {
-    const { tag, archived } = options;
-    // Clamp at the DB layer so MCP callers (which don't go through
-    // parsePositiveInt) cannot send page=0 → negative OFFSET → SQLite
-    // throw, or limit=0 → empty results despite non-zero `total`.
-    const { limit, offset } = this.clampPagination(options.page, options.limit, 20);
-    const ftsQuery = this.buildFtsQuery(query);
-
-    if (!ftsQuery) {
-      return { stashes: [], total: 0, query };
-    }
-
-    // Run FTS5 query — may throw on syntax errors despite sanitization
-    let countRow: { count: number };
-    let rows: {
-      stash_id: string;
-      rank: number;
-      name_snippet: string;
-      desc_snippet: string;
-      tags_snippet: string;
-      filenames_snippet: string;
-      content_snippet: string;
-    }[];
-
-    try {
-      let countSql = `
-        SELECT COUNT(*) as count
-        FROM stashes_fts f
-        JOIN stashes s ON s.id = f.stash_id
-        WHERE stashes_fts MATCH ?
-      `;
-      const countParams: unknown[] = [ftsQuery];
-
-      if (tag) {
-        countSql += ` AND s.tags LIKE ? ESCAPE '\\'`;
-        const escapedTag = tag.replace(/[\\%_]/g, '\\$&');
-        countParams.push(`%"${escapedTag}"%`);
-      }
-
-      if (archived !== undefined) {
-        countSql += ' AND s.archived = ?';
-        countParams.push(archived ? 1 : 0);
-      }
-
-      countRow = this.db.prepare(countSql).get(...countParams) as { count: number };
-
-      // Use private-use Unicode markers (U+E000 / U+E001) so we can detect
-      // a real FTS hit without confusing it with literal "**" the user wrote
-      // (markdown bold, `**kwargs`, etc.). Replaced with "**" before return.
-      const O = this.FTS_SNIPPET_OPEN;
-      const C = this.FTS_SNIPPET_CLOSE;
-      let sql = `
-        SELECT f.stash_id, f.rank,
-          snippet(stashes_fts, 1, '${O}', '${C}', '…', 32) as name_snippet,
-          snippet(stashes_fts, 2, '${O}', '${C}', '…', 64) as desc_snippet,
-          snippet(stashes_fts, 3, '${O}', '${C}', '…', 32) as tags_snippet,
-          snippet(stashes_fts, 4, '${O}', '${C}', '…', 32) as filenames_snippet,
-          snippet(stashes_fts, 5, '${O}', '${C}', '…', 64) as content_snippet
-        FROM stashes_fts f
-        JOIN stashes s ON s.id = f.stash_id
-        WHERE stashes_fts MATCH ?
-      `;
-      const params: unknown[] = [ftsQuery];
-
-      if (tag) {
-        sql += ` AND s.tags LIKE ? ESCAPE '\\'`;
-        const escapedTag = tag.replace(/[\\%_]/g, '\\$&');
-        params.push(`%"${escapedTag}"%`);
-      }
-
-      if (archived !== undefined) {
-        sql += ' AND s.archived = ?';
-        params.push(archived ? 1 : 0);
-      }
-
-      sql += ` ORDER BY f.rank LIMIT ? OFFSET ?`;
-      params.push(limit, offset);
-
-      rows = this.db.prepare(sql).all(...params) as typeof rows;
-    } catch (err) {
-      // Only fall back to LIKE search for FTS5-specific errors (syntax /
-      // malformed MATCH). Other errors (Zod, schema, I/O, etc.) must
-      // propagate so real bugs are not silently swallowed.
-      const msg = err instanceof Error ? err.message.toLowerCase() : String(err).toLowerCase();
-      const isFtsSyntaxError =
-        msg.includes('fts5') || msg.includes('syntax') || msg.includes('malformed');
-      if (!isFtsSyntaxError) throw err;
-      console.warn(
-        '[DB] FTS5 search failed, falling back to LIKE:',
-        err instanceof Error ? err.message : err,
-      );
-      // Forward the original raw page/limit; listStashes clamps them
-      // identically. Both call paths converge on the same defaults.
-      const fallback = this.listStashes({
-        search: query,
-        tag,
-        archived,
-        limit: options.limit,
-        page: options.page,
-      });
-      return {
-        stashes: fallback.stashes.map((s) => ({ ...s, relevance: 0 })),
-        total: fallback.total,
-        query,
-      };
-    }
-
-    // Build results with full stash list info (outside try/catch so real DB errors propagate)
-    const stashes: SearchStashItem[] = rows.map((row) => {
-      const stashRow = this.db
-        .prepare('SELECT * FROM stashes WHERE id = ?')
-        .get(row.stash_id) as Record<string, unknown>;
-      const item = this.rowToListItem(stashRow);
-      const files = this.db
-        .prepare(
-          'SELECT filename, language, LENGTH(content) as size FROM stash_files WHERE stash_id = ? ORDER BY sort_order',
-        )
-        .all(item.id) as StashFileInfo[];
-      const total_size = files.reduce((sum, f) => sum + f.size, 0);
-
-      // Only include snippets that contain highlighted matches. Detect via
-      // the private-use sentinel (cannot appear in user content), then format
-      // with the public "**…**" markers documented in the API contract.
-      const snippets: Record<string, string> = {};
-      if (row.name_snippet && row.name_snippet.includes(this.FTS_SNIPPET_OPEN))
-        snippets.name = this.formatSnippet(row.name_snippet);
-      if (row.desc_snippet && row.desc_snippet.includes(this.FTS_SNIPPET_OPEN))
-        snippets.description = this.formatSnippet(row.desc_snippet);
-      if (row.tags_snippet && row.tags_snippet.includes(this.FTS_SNIPPET_OPEN))
-        snippets.tags = this.formatSnippet(row.tags_snippet);
-      if (row.filenames_snippet && row.filenames_snippet.includes(this.FTS_SNIPPET_OPEN))
-        snippets.filenames = this.formatSnippet(row.filenames_snippet);
-      if (row.content_snippet && row.content_snippet.includes(this.FTS_SNIPPET_OPEN))
-        snippets.file_content = this.formatSnippet(row.content_snippet);
-
-      return {
-        ...item,
-        total_size,
-        files,
-        relevance: Math.abs(row.rank),
-        snippets: Object.keys(snippets).length > 0 ? snippets : undefined,
-      };
-    });
-
-    return { stashes, total: countRow.count, query };
+    return this.search.searchStashes(query, options);
   }
 
   updateStash(id: string, input: UpdateStashInput, createdBy = 'system'): Stash | null {
