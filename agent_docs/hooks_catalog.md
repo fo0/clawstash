@@ -100,7 +100,7 @@ Trigger: `Stop`
   ]
 }
 ```
-Trigger: `PreToolUse`. Project commands inserted from CLAUDE.md (no linter / test framework configured yet).
+Trigger: `PreToolUse`. Project commands inserted from CLAUDE.md (no linter configured yet; test framework is vitest -- `npm test`).
 
 ### Block force-push without confirmation
 
