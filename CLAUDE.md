@@ -75,17 +75,17 @@ When a session begins, read in this order. Stop early if a file is missing.
 
 | Component | Technology | Version |
 |-----------|-----------|---------|
-| Language | TypeScript (strict mode) | 5.7 |
+| Language | TypeScript (strict mode) | 6 |
 | Framework | Next.js (App Router) | 16 |
 | Frontend | React | 19 |
 | Database | SQLite (better-sqlite3) | 12 |
 | MCP Server | @modelcontextprotocol/sdk | 1.27 |
 | Validation | Zod | 3.24 |
 | Code Editor | react-simple-code-editor, PrismJS | 0.14, 1.30 |
-| Markdown Rendering | marked | 17 |
+| Markdown Rendering | marked | 18 |
 | Diagram Rendering | mermaid (lazy-loaded) | 11 |
-| Diagram Viewer (zoom/pan) | react-zoom-pan-pinch | 3.7 |
-| Text Diffing | diff (jsdiff) | 8 |
+| Diagram Viewer (zoom/pan) | react-zoom-pan-pinch | 4 |
+| Text Diffing | diff (jsdiff) | 9 |
 | Module System | ESM (`"type": "module"`) | -- |
 | Containerization | Docker (multi-stage, standalone output) | -- |
 | CI/CD | GitHub Actions -> GHCR | -- |
