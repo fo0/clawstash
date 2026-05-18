@@ -116,6 +116,39 @@ export default function App() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
 
+  // Global hotkeys: "n" → new stash, Escape → back to dashboard from view/edit/graph
+  // Skip when focus is inside an input, textarea, or contenteditable to avoid
+  // stealing keystrokes from the user while they are typing.
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const tag = (e.target as HTMLElement)?.tagName?.toLowerCase();
+      const isEditing =
+        tag === 'input' || tag === 'textarea' || (e.target as HTMLElement)?.isContentEditable;
+      if (isEditing || e.metaKey || e.ctrlKey || e.altKey) return;
+
+      if (e.key === 'n') {
+        e.preventDefault();
+        setSelectedStash(null);
+        setView('new');
+        pushUrl('/new');
+        setSidebarOpen(false);
+      } else if (e.key === 'Escape') {
+        setView((currentView) => {
+          if (currentView === 'view' || currentView === 'edit' || currentView === 'graph') {
+            setSelectedStash(null);
+            setAnalyzeStashId(null);
+            pushUrl('/');
+            setSidebarOpen(false);
+            return 'home';
+          }
+          return currentView;
+        });
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
+
   // Keep api module in sync with current token
   useEffect(() => {
     setAuthToken(adminToken);

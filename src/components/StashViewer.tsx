@@ -48,6 +48,10 @@ function SourceBadge({ source }: { source: string }) {
 }
 
 const RENDER_PREF_KEY = 'clawstash-render-preview';
+const ACTIVE_TAB_KEY = 'clawstash-viewer-tab';
+
+type ViewerTab = 'content' | 'metadata' | 'access-log' | 'history';
+const VALID_TABS: ViewerTab[] = ['content', 'metadata', 'access-log', 'history'];
 
 function getRenderPreference(): boolean {
   try {
@@ -61,6 +65,25 @@ function getRenderPreference(): boolean {
 function setRenderPreference(enabled: boolean): void {
   try {
     localStorage.setItem(RENDER_PREF_KEY, String(enabled));
+  } catch {
+    /* ignore */
+  }
+}
+
+/** Read the last-used viewer tab from localStorage. Defaults to 'content'. */
+function getTabPreference(): ViewerTab {
+  try {
+    const stored = localStorage.getItem(ACTIVE_TAB_KEY);
+    if (stored && (VALID_TABS as string[]).includes(stored)) return stored as ViewerTab;
+  } catch {
+    /* ignore */
+  }
+  return 'content';
+}
+
+function setTabPreference(tab: ViewerTab): void {
+  try {
+    localStorage.setItem(ACTIVE_TAB_KEY, tab);
   } catch {
     /* ignore */
   }
@@ -291,9 +314,7 @@ export default function StashViewer({
   onAnalyzeStash,
   onStashUpdated,
 }: Props) {
-  const [activeTab, setActiveTab] = useState<'content' | 'metadata' | 'access-log' | 'history'>(
-    'content',
-  );
+  const [activeTab, setActiveTab] = useState<ViewerTab>(getTabPreference);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [accessLog, setAccessLog] = useState<AccessLogEntry[]>([]);
   const [logLoading, setLogLoading] = useState(false);
@@ -348,6 +369,12 @@ export default function StashViewer({
       setRenderPreference(next);
       return next;
     });
+  }, []);
+
+  /** Switch tab and persist the choice so the next stash opens on the same tab. */
+  const switchTab = useCallback((tab: ViewerTab) => {
+    setActiveTab(tab);
+    setTabPreference(tab);
   }, []);
 
   const scrollToId = useCallback((e: React.MouseEvent<HTMLAnchorElement>, id: string) => {
@@ -588,7 +615,7 @@ export default function StashViewer({
       <div className="viewer-tabs">
         <button
           className={`tab ${activeTab === 'content' ? 'active' : ''}`}
-          onClick={() => setActiveTab('content')}
+          onClick={() => switchTab('content')}
           title="View file contents"
         >
           <svg
@@ -604,7 +631,7 @@ export default function StashViewer({
         </button>
         <button
           className={`tab ${activeTab === 'metadata' ? 'active' : ''}`}
-          onClick={() => setActiveTab('metadata')}
+          onClick={() => switchTab('metadata')}
           title="View stash details, metadata, and API endpoints"
         >
           <svg
@@ -620,7 +647,7 @@ export default function StashViewer({
         </button>
         <button
           className={`tab ${activeTab === 'access-log' ? 'active' : ''}`}
-          onClick={() => setActiveTab('access-log')}
+          onClick={() => switchTab('access-log')}
           title="View when and how this stash was accessed (API, MCP, UI)"
         >
           <svg
@@ -636,7 +663,7 @@ export default function StashViewer({
         </button>
         <button
           className={`tab ${activeTab === 'history' ? 'active' : ''}`}
-          onClick={() => setActiveTab('history')}
+          onClick={() => switchTab('history')}
           title="View version history and compare changes"
         >
           <svg
@@ -808,7 +835,26 @@ export default function StashViewer({
                 <tr>
                   <td>ID</td>
                   <td>
-                    <code>{stash.id}</code>
+                    <span className="stash-id-cell">
+                      <code>{stash.id}</code>
+                      <button
+                        className="btn btn-sm btn-ghost stash-id-copy-btn"
+                        onClick={() => apiClipboard.copy('stash-id', stash.id)}
+                        title={
+                          apiClipboard.isCopied('stash-id')
+                            ? 'Copied!'
+                            : apiClipboard.isFailed('stash-id')
+                              ? 'Copy failed'
+                              : 'Copy stash ID to clipboard'
+                        }
+                        aria-label="Copy stash ID to clipboard"
+                      >
+                        <CopyButtonContent
+                          copied={apiClipboard.isCopied('stash-id')}
+                          failed={apiClipboard.isFailed('stash-id')}
+                        />
+                      </button>
+                    </span>
                   </td>
                 </tr>
                 <tr>
