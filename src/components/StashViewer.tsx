@@ -808,7 +808,26 @@ export default function StashViewer({
                 <tr>
                   <td>ID</td>
                   <td>
-                    <code>{stash.id}</code>
+                    <span className="stash-id-cell">
+                      <code>{stash.id}</code>
+                      <button
+                        className="btn btn-sm btn-ghost stash-id-copy-btn"
+                        onClick={() => apiClipboard.copy('stash-id', stash.id)}
+                        title={
+                          apiClipboard.isCopied('stash-id')
+                            ? 'Copied!'
+                            : apiClipboard.isFailed('stash-id')
+                              ? 'Copy failed'
+                              : 'Copy stash ID to clipboard'
+                        }
+                        aria-label="Copy stash ID to clipboard"
+                      >
+                        <CopyButtonContent
+                          copied={apiClipboard.isCopied('stash-id')}
+                          failed={apiClipboard.isFailed('stash-id')}
+                        />
+                      </button>
+                    </span>
                   </td>
                 </tr>
                 <tr>

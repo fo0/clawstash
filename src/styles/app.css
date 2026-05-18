@@ -1791,6 +1791,18 @@ body {
   border-radius: 4px;
 }
 
+.stash-id-cell {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.stash-id-copy-btn {
+  flex-shrink: 0;
+  padding: 2px 6px;
+  font-size: 11px;
+}
+
 .api-examples {
   display: flex;
   flex-direction: column;
