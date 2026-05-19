@@ -7,30 +7,7 @@ import type {
   StashVersionListItem,
   UpdateStashInput,
 } from '../db-types';
-
-// Defensive parsers — duplicated from ClawStashDB (intentionally, to keep
-// this module self-contained). Both surfaces enforce the same contract:
-// corrupted JSON in tags / metadata columns must NOT throw out of the
-// version-history endpoint; it falls back to an empty value instead.
-function safeParseTags(raw: unknown): string[] {
-  if (typeof raw !== 'string') return [];
-  try {
-    const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) ? parsed.filter((t) => typeof t === 'string') : [];
-  } catch {
-    return [];
-  }
-}
-
-function safeParseMetadata(raw: unknown): Record<string, unknown> {
-  if (typeof raw !== 'string') return {};
-  try {
-    const parsed = JSON.parse(raw);
-    return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed : {};
-  } catch {
-    return {};
-  }
-}
+import { safeParseTags, safeParseMetadata } from './_parsers';
 
 /**
  * Stash version history and restore (refs #144).

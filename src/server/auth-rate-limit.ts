@@ -113,8 +113,19 @@ export function resetAuthAttempts(scope: Scope, ip: string): void {
  * a shared `'unknown'` bucket let one attacker exhaust the limit and
  * lock out every legitimate admin on a default Docker deploy.
  */
+/**
+ * `TRUST_PROXY=1` / `=true` opt-in for forwarded headers. Centralised so
+ * both `getClientIp` and `getBaseUrl` (api/_helpers) share one source of
+ * truth — drift between the two surfaces would mean rate-limit IP
+ * extraction and OpenAPI `servers[].url` could disagree about whether
+ * `x-forwarded-*` is trusted.
+ */
+export function isTrustedProxy(): boolean {
+  return process.env.TRUST_PROXY === '1' || process.env.TRUST_PROXY === 'true';
+}
+
 export function getClientIp(req: NextRequest): string {
-  const trustProxy = process.env.TRUST_PROXY === '1' || process.env.TRUST_PROXY === 'true';
+  const trustProxy = isTrustedProxy();
 
   if (trustProxy) {
     const xff = req.headers.get('x-forwarded-for')?.split(',')[0].trim();

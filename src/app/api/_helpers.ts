@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getDb } from '@/server/singleton';
 import { requireScopeAuth, requireAdminAuth, extractToken } from '@/server/auth';
+import { isTrustedProxy } from '@/server/auth-rate-limit';
 import type { TokenScope } from '@/server/db';
 
 export function checkScope(req: NextRequest, scope: TokenScope) {
@@ -55,9 +56,9 @@ export function getBaseUrl(req: NextRequest): string {
   // proxy boundary. Spoofed values flow into OpenAPI / MCP spec output (the
   // schema's `servers[].url` and example URLs) and are echoed back to clients
   // — useful for an attacker who wants to seed onboarding/spec text with a
-  // phishing host. Mirror `auth-rate-limit.ts:getClientIp`: only honour the
-  // forwarded headers when `TRUST_PROXY=1` (or =true) is explicitly set.
-  const trustProxy = process.env.TRUST_PROXY === '1' || process.env.TRUST_PROXY === 'true';
+  // phishing host. Share the `TRUST_PROXY` opt-in with `getClientIp` so the
+  // two surfaces cannot drift.
+  const trustProxy = isTrustedProxy();
   const proto = (trustProxy && req.headers.get('x-forwarded-proto')) || 'http';
   const host =
     (trustProxy && req.headers.get('x-forwarded-host')) ||
