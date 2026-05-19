@@ -6,19 +6,7 @@ import type {
   StashListItem,
   ListStashesOptions,
 } from '../db-types';
-
-// Defensive parser — duplicated from ClawStashDB so this store is
-// self-contained. Same contract: corrupted JSON in tags row must not
-// throw out of the search endpoint.
-function safeParseTags(raw: unknown): string[] {
-  if (typeof raw !== 'string') return [];
-  try {
-    const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) ? parsed.filter((t) => typeof t === 'string') : [];
-  } catch {
-    return [];
-  }
-}
+import { safeParseTags, clampPagination } from './_parsers';
 
 function rowToListItem(row: Record<string, unknown>): Omit<StashListItem, 'files' | 'total_size'> {
   return {
@@ -43,20 +31,6 @@ const FTS_SNIPPET_CLOSE = '';
 
 function formatSnippet(raw: string): string {
   return raw.split(FTS_SNIPPET_OPEN).join('**').split(FTS_SNIPPET_CLOSE).join('**');
-}
-
-// Clamp pagination params at the DB layer so callers that bypass the
-// REST route's parsePositiveInt cannot produce SQLite OFFSET errors or
-// empty `LIMIT 0` pages.
-function clampPagination(
-  page: unknown,
-  limit: unknown,
-  defaultLimit: number,
-): { page: number; limit: number; offset: number } {
-  const safePage = typeof page === 'number' && Number.isInteger(page) && page > 0 ? page : 1;
-  const safeLimit =
-    typeof limit === 'number' && Number.isInteger(limit) && limit > 0 ? limit : defaultLimit;
-  return { page: safePage, limit: safeLimit, offset: (safePage - 1) * safeLimit };
 }
 
 /**

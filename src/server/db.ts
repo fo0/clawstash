@@ -9,6 +9,7 @@ import { TokenStore } from './stores/token-store';
 import { SessionStore } from './stores/session-store';
 import { VersionStore } from './stores/version-store';
 import { SearchStore } from './stores/search-store';
+import { safeParseTags, safeParseMetadata, clampPagination } from './stores/_parsers';
 import type {
   Stash,
   StashFile,
@@ -101,33 +102,13 @@ export class ClawStashDB {
     applyPendingMigrations(this.db);
   }
 
-  private safeParseTags(raw: unknown): string[] {
-    if (typeof raw !== 'string') return [];
-    try {
-      const parsed = JSON.parse(raw);
-      return Array.isArray(parsed) ? parsed.filter((t) => typeof t === 'string') : [];
-    } catch {
-      return [];
-    }
-  }
-
-  private safeParseMetadata(raw: unknown): Record<string, unknown> {
-    if (typeof raw !== 'string') return {};
-    try {
-      const parsed = JSON.parse(raw);
-      return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed : {};
-    } catch {
-      return {};
-    }
-  }
-
   private rowToStash(row: Record<string, unknown>): Omit<Stash, 'files'> {
     return {
       id: row.id as string,
       name: (row.name as string) || '',
       description: (row.description as string) || '',
-      tags: this.safeParseTags(row.tags),
-      metadata: this.safeParseMetadata(row.metadata),
+      tags: safeParseTags(row.tags),
+      metadata: safeParseMetadata(row.metadata),
       version: (row.version as number) || 1,
       archived: (row.archived as number) === 1,
       created_at: row.created_at as string,
@@ -140,7 +121,7 @@ export class ClawStashDB {
       id: row.id as string,
       name: (row.name as string) || '',
       description: (row.description as string) || '',
-      tags: this.safeParseTags(row.tags),
+      tags: safeParseTags(row.tags),
       version: (row.version as number) || 1,
       archived: (row.archived as number) === 1,
       created_at: row.created_at as string,
@@ -299,7 +280,7 @@ export class ClawStashDB {
     // Clamp at the DB layer so callers that bypass parsePositiveInt (MCP,
     // direct DB) cannot send `page=0`/negative/non-int and produce a
     // SQLite "OFFSET should be non-negative" error or a `LIMIT 0` page.
-    const { limit, offset } = this.clampPagination(options.page, options.limit, 50);
+    const { limit, offset } = clampPagination(options.page, options.limit, 50);
     const conditions: string[] = [];
     const params: unknown[] = [];
 
@@ -360,21 +341,6 @@ export class ClawStashDB {
 
   rebuildFtsIndex(): void {
     this.search.rebuildIndex();
-  }
-
-  // Clamp pagination params at the DB layer so callers that bypass the REST
-  // route's parsePositiveInt (MCP tool layer, direct DB consumers, future
-  // callers) can never produce SQLite OFFSET errors or empty `LIMIT 0` pages.
-  // Returns sane positive integers with the documented defaults.
-  private clampPagination(
-    page: unknown,
-    limit: unknown,
-    defaultLimit: number,
-  ): { page: number; limit: number; offset: number } {
-    const safePage = typeof page === 'number' && Number.isInteger(page) && page > 0 ? page : 1;
-    const safeLimit =
-      typeof limit === 'number' && Number.isInteger(limit) && limit > 0 ? limit : defaultLimit;
-    return { page: safePage, limit: safeLimit, offset: (safePage - 1) * safeLimit };
   }
 
   searchStashes(
@@ -527,7 +493,7 @@ export class ClawStashDB {
     const rows = this.db.prepare('SELECT tags FROM stashes').all() as { tags: string }[];
     const tagMap = new Map<string, number>();
     for (const row of rows) {
-      const tags = this.safeParseTags(row.tags);
+      const tags = safeParseTags(row.tags);
       for (const tag of tags) {
         tagMap.set(tag, (tagMap.get(tag) || 0) + 1);
       }
@@ -543,7 +509,7 @@ export class ClawStashDB {
     }[];
     const keySet = new Set<string>();
     for (const row of rows) {
-      const meta = this.safeParseMetadata(row.metadata);
+      const meta = safeParseMetadata(row.metadata);
       for (const key of Object.keys(meta)) {
         keySet.add(key);
       }
@@ -561,7 +527,7 @@ export class ClawStashDB {
     const edgeMap = new Map<string, number>();
 
     for (const row of rows) {
-      const tags = this.safeParseTags(row.tags);
+      const tags = safeParseTags(row.tags);
       for (const t of tags) {
         tagCounts.set(t, (tagCounts.get(t) || 0) + 1);
       }
@@ -673,7 +639,7 @@ export class ClawStashDB {
     `);
 
     for (const row of rows) {
-      const otherTags = this.safeParseTags(row.tags);
+      const otherTags = safeParseTags(row.tags);
       const shared = otherTags.filter((t) => tagSet.has(t));
       if (shared.length > 0) {
         const [src, tgt] = [stashId, row.id].sort();
@@ -694,7 +660,7 @@ export class ClawStashDB {
         id: string;
         tags: string;
       }[];
-      const parsed = stashes.map((s) => ({ id: s.id, tags: this.safeParseTags(s.tags) }));
+      const parsed = stashes.map((s) => ({ id: s.id, tags: safeParseTags(s.tags) }));
 
       const insert = this.db.prepare(`
         INSERT INTO stash_relations (id, source_stash_id, target_stash_id, relation_type, weight, metadata)
@@ -784,7 +750,7 @@ export class ClawStashDB {
     const stashTagMap = new Map<string, string[]>();
 
     for (const row of stashRows) {
-      const stashTags = this.safeParseTags(row.tags);
+      const stashTags = safeParseTags(row.tags);
       stashTagMap.set(row.id, stashTags);
 
       nodes.push({
@@ -845,7 +811,7 @@ export class ClawStashDB {
 
     for (const rel of relations) {
       if (stashIds.has(rel.source_stash_id) && stashIds.has(rel.target_stash_id)) {
-        const meta = this.safeParseMetadata(rel.metadata);
+        const meta = safeParseMetadata(rel.metadata);
         const sharedTags = Array.isArray(meta.shared_tags)
           ? ((meta.shared_tags as unknown[]).filter((t) => typeof t === 'string') as string[])
           : [];
@@ -909,7 +875,7 @@ export class ClawStashDB {
             version_number: v.version,
             created_by: v.created_by,
             created_at: v.created_at,
-            change_summary: this.safeParseMetadata(v.change_summary),
+            change_summary: safeParseMetadata(v.change_summary),
           });
           edges.push({
             source: vNodeId,
