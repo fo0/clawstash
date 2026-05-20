@@ -769,6 +769,13 @@ body {
 }
 
 .search-overlay-item {
+  display: block;
+  width: 100%;
+  text-align: left;
+  background: transparent;
+  border: none;
+  color: inherit;
+  font: inherit;
   padding: 10px 16px;
   cursor: pointer;
   transition: background 0.08s;

@@ -117,6 +117,7 @@ export default function SearchOverlay({ open, onClose, onSelectStash }: Props) {
       <div
         className="search-overlay"
         role="dialog"
+        aria-modal="true"
         aria-label="Quick search stashes"
         onMouseDown={(e) => e.stopPropagation()}
         onKeyDown={handleKeyDown}
@@ -142,18 +143,27 @@ export default function SearchOverlay({ open, onClose, onSelectStash }: Props) {
           <kbd className="search-overlay-kbd">Esc</kbd>
         </div>
 
-        {loading && query.trim() && <div className="search-overlay-status">Searching...</div>}
+        {loading && query.trim() && (
+          <div className="search-overlay-status" role="status" aria-live="polite">
+            Searching...
+          </div>
+        )}
 
         {!loading && query.trim() && results.length === 0 && (
-          <div className="search-overlay-status">No stashes found</div>
+          <div className="search-overlay-status" role="status" aria-live="polite">
+            No stashes found
+          </div>
         )}
 
         {results.length > 0 && (
-          <div className="search-overlay-results" ref={listRef}>
+          <div className="search-overlay-results" ref={listRef} role="listbox">
             {results.map((stash, idx) => (
-              <div
+              <button
+                type="button"
                 key={stash.id}
                 className={`search-overlay-item ${idx === activeIndex ? 'active' : ''}`}
+                role="option"
+                aria-selected={idx === activeIndex}
                 onMouseEnter={() => setActiveIndex(idx)}
                 onClick={() => handleSelect(stash.id)}
               >
@@ -191,7 +201,7 @@ export default function SearchOverlay({ open, onClose, onSelectStash }: Props) {
                     {formatRelativeTime(stash.updated_at)}
                   </span>
                 </div>
-              </div>
+              </button>
             ))}
           </div>
         )}
