@@ -193,10 +193,16 @@ export default function Sidebar({
             </svg>
           </button>
         )}
-        <div className="sidebar-logo" onClick={onGoHome} title="Go to dashboard">
+        <button
+          type="button"
+          className="sidebar-logo"
+          onClick={onGoHome}
+          title="Go to dashboard"
+          aria-label="Go to dashboard"
+        >
           <span className="logo-icon">CS</span>
           <span className="logo-text">ClawStash</span>
-        </div>
+        </button>
         <button
           className="sidebar-graph-btn"
           onClick={onGraphView}

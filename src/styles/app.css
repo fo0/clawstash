@@ -104,6 +104,18 @@ body {
   align-items: center;
   gap: 10px;
   cursor: pointer;
+  background: transparent;
+  border: none;
+  color: inherit;
+  font: inherit;
+  padding: 0;
+  text-align: left;
+}
+
+.sidebar-logo:focus-visible {
+  outline: 2px solid var(--accent-blue);
+  outline-offset: 2px;
+  border-radius: var(--radius);
 }
 
 .sidebar-graph-btn {
