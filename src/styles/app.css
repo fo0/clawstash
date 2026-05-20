@@ -104,6 +104,18 @@ body {
   align-items: center;
   gap: 10px;
   cursor: pointer;
+  background: transparent;
+  border: none;
+  color: inherit;
+  font: inherit;
+  padding: 0;
+  text-align: left;
+}
+
+.sidebar-logo:focus-visible {
+  outline: 2px solid var(--accent-blue);
+  outline-offset: 2px;
+  border-radius: var(--radius);
 }
 
 .sidebar-graph-btn {
@@ -769,6 +781,13 @@ body {
 }
 
 .search-overlay-item {
+  display: block;
+  width: 100%;
+  text-align: left;
+  background: transparent;
+  border: none;
+  color: inherit;
+  font: inherit;
   padding: 10px 16px;
   cursor: pointer;
   transition: background 0.08s;
@@ -777,6 +796,11 @@ body {
 .search-overlay-item:hover,
 .search-overlay-item.active {
   background: var(--bg-tertiary);
+}
+
+.search-overlay-item:focus-visible {
+  outline: 2px solid var(--accent-blue);
+  outline-offset: -2px;
 }
 
 .search-overlay-item-main {
@@ -6029,5 +6053,19 @@ body {
   }
   .mermaid-fullscreen-backdrop {
     padding: 8px;
+  }
+}
+
+/* === Reduced Motion (WCAG 2.3.3 Animation from Interactions) === */
+/* Honor user OS-level "Reduce Motion" preference: collapse transitions and */
+/* animations to near-instant so vestibular-sensitive users aren't disoriented. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
   }
 }

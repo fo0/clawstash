@@ -188,7 +188,7 @@ print(f"Found {data['total']} stashes")`}</pre>
       </section>
 
       {copyNotice && (
-        <div className="api-copy-notice-toast">
+        <div className="api-copy-notice-toast" role="status" aria-live="polite">
           <CheckIcon /> {copyNotice}
         </div>
       )}
