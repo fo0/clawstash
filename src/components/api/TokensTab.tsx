@@ -318,7 +318,7 @@ export default function TokensTab({ baseUrl, openApiJson, mcpSpec }: Props) {
       </section>
 
       {copyNotice && (
-        <div className="api-copy-notice-toast">
+        <div className="api-copy-notice-toast" role="status" aria-live="polite">
           <CheckIcon /> {copyNotice}
         </div>
       )}
