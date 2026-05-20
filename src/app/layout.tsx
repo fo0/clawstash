@@ -1,11 +1,12 @@
 import type { Metadata, Viewport } from 'next';
 import '../styles/app.css';
 
+// Do NOT set `maximumScale` or `userScalable: false` — disabling pinch-zoom
+// fails WCAG 1.4.4 (Resize text) and harms low-vision users on mobile. The
+// layout is responsive, so the previous "lock" was cosmetic.
 export const viewport: Viewport = {
   width: 'device-width',
   initialScale: 1,
-  maximumScale: 1,
-  userScalable: false,
 };
 
 export const metadata: Metadata = {
