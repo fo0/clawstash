@@ -18,6 +18,7 @@ import { renderMermaid } from '../utils/mermaid';
 import { DELETE_CONFIRM_TIMEOUT_MS } from '../utils/constants';
 import { escapeHtml } from '../utils/html';
 import MermaidDiagram from './MermaidDiagram';
+import Spinner from './shared/Spinner';
 
 interface Props {
   stash: Stash;
@@ -992,7 +993,10 @@ export default function StashViewer({
             </span>
           </div>
           {logLoading ? (
-            <div className="loading">Loading access log...</div>
+            <div className="loading" role="status" aria-live="polite">
+              <Spinner size={16} />
+              <span style={{ marginLeft: 10 }}>Loading access log...</span>
+            </div>
           ) : accessLog.length === 0 ? (
             <div className="access-log-empty">
               <svg

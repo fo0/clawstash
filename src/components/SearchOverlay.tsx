@@ -3,6 +3,7 @@ import type { StashListItem } from '../types';
 import { api } from '../api';
 import { formatRelativeTime } from '../utils/format';
 import { SEARCH_DEBOUNCE_MS } from '../utils/constants';
+import Spinner from './shared/Spinner';
 
 interface Props {
   open: boolean;
@@ -145,7 +146,8 @@ export default function SearchOverlay({ open, onClose, onSelectStash }: Props) {
 
         {loading && query.trim() && (
           <div className="search-overlay-status" role="status" aria-live="polite">
-            Searching...
+            <Spinner size={14} />
+            <span style={{ marginLeft: 8 }}>Searching...</span>
           </div>
         )}
 

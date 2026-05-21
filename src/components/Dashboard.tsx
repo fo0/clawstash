@@ -2,6 +2,7 @@ import { useMemo } from 'react';
 import type { StashListItem, LayoutMode } from '../types';
 import { sortStashesWithFavorites } from '../utils/favorites';
 import StashCard from './StashCard';
+import Spinner from './shared/Spinner';
 
 interface Props {
   stashes: StashListItem[];
@@ -49,6 +50,17 @@ export default function Dashboard({
           <span className="stash-count" title="Total number of stashes stored">
             {total} stashes
           </span>
+          {loading && stashes.length > 0 && (
+            <span
+              className="dashboard-refresh-indicator"
+              role="status"
+              aria-live="polite"
+              title="Refreshing stash list"
+            >
+              <Spinner size={12} />
+              <span className="sr-only">Refreshing</span>
+            </span>
+          )}
         </div>
         <div className="dashboard-actions">
           {filterTag && (
@@ -119,16 +131,23 @@ export default function Dashboard({
         </div>
       </div>
 
-      {loading ? (
-        <div className="loading">Loading stashes...</div>
-      ) : stashes.length === 0 ? (
+      {loading && stashes.length === 0 ? (
+        <div className="loading" role="status" aria-live="polite">
+          <Spinner size={18} />
+          <span style={{ marginLeft: 10 }}>Loading stashes...</span>
+        </div>
+      ) : !loading && stashes.length === 0 ? (
         <div className="empty-state">
           <div className="empty-icon">
             <svg width="36" height="36" viewBox="0 0 16 16" fill="currentColor">
               <path d="M8 2a.75.75 0 0 1 .75.75v4.5h4.5a.75.75 0 0 1 0 1.5h-4.5v4.5a.75.75 0 0 1-1.5 0v-4.5h-4.5a.75.75 0 0 1 0-1.5h4.5v-4.5A.75.75 0 0 1 8 2Z" />
             </svg>
           </div>
-          <p>No stashes yet. Create your first one!</p>
+          <p>
+            {filterTag || showArchived
+              ? 'No stashes match the current filter.'
+              : 'No stashes yet. Create your first one!'}
+          </p>
           <button className="btn btn-new-stash" onClick={onNewStash}>
             <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
               <path d="M8 2a.75.75 0 0 1 .75.75v4.5h4.5a.75.75 0 0 1 0 1.5h-4.5v4.5a.75.75 0 0 1-1.5 0v-4.5h-4.5a.75.75 0 0 1 0-1.5h4.5v-4.5A.75.75 0 0 1 8 2Z" />
@@ -137,7 +156,14 @@ export default function Dashboard({
           </button>
         </div>
       ) : (
-        <div className={`stash-grid ${layout}`}>
+        // While `loading` is true but we still have a previous result set we
+        // keep the grid visible and overlay a subtle spinner. This avoids the
+        // "flash to empty" jank every time the user toggles a tag filter or
+        // types in the sidebar search field.
+        <div
+          className={`stash-grid ${layout}${loading ? ' stash-grid-refreshing' : ''}`}
+          aria-busy={loading || undefined}
+        >
           {/*
             Keyboard-accessible "new stash" card. Was a bare <div onClick>
             previously, so keyboard-only users (and most assistive tech)
