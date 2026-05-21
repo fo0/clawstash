@@ -242,12 +242,37 @@ export default function Sidebar({
                 placeholder="Search stashes..."
                 value={search}
                 onChange={(e) => onSearch(e.target.value)}
+                // Escape clears the field instead of bubbling up to the global
+                // Escape handler that navigates away — much faster way to reset
+                // search than reaching for the mouse.
+                onKeyDown={(e) => {
+                  if (e.key === 'Escape' && search) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    onSearch('');
+                  }
+                }}
                 className="search-input"
-                title="Search by name, filename, or content — Alt+K for quick search"
+                title="Search by name, filename, or content — Esc to clear, Alt+K for quick search"
+                aria-label="Search stashes"
               />
-              <kbd className="search-input-kbd" title="Alt+K for quick search overlay">
-                Alt+K
-              </kbd>
+              {search ? (
+                <button
+                  type="button"
+                  className="search-input-clear"
+                  onClick={() => onSearch('')}
+                  title="Clear search (Esc)"
+                  aria-label="Clear search"
+                >
+                  <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor">
+                    <path d="M3.72 3.72a.75.75 0 0 1 1.06 0L8 6.94l3.22-3.22a.749.749 0 0 1 1.275.326.749.749 0 0 1-.215.734L9.06 8l3.22 3.22a.749.749 0 0 1-.326 1.275.749.749 0 0 1-.734-.215L8 9.06l-3.22 3.22a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042L6.94 8 3.72 4.78a.75.75 0 0 1 0-1.06Z" />
+                  </svg>
+                </button>
+              ) : (
+                <kbd className="search-input-kbd" title="Alt+K for quick search overlay">
+                  Alt+K
+                </kbd>
+              )}
             </div>
           </div>
 

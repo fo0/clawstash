@@ -205,6 +205,39 @@ body {
   pointer-events: none;
 }
 
+/* Inline clear button that replaces the Alt+K hint when the field has a
+   value — saves users a sidebar-tag-toggle round-trip just to reset search. */
+.search-input-clear {
+  position: absolute;
+  right: 4px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition:
+    color 0.15s,
+    background 0.15s,
+    border-color 0.15s;
+}
+
+.search-input-clear:hover {
+  color: var(--text-primary);
+  background: var(--bg-tertiary);
+}
+
+.search-input-clear:focus-visible {
+  outline: none;
+  border-color: var(--accent-blue);
+  color: var(--text-primary);
+}
+
 /* Sidebar Tag Filter */
 .sidebar-tag-filter {
   position: relative;
@@ -768,8 +801,10 @@ body {
 }
 
 .search-overlay-status {
+  display: flex;
+  align-items: center;
+  justify-content: center;
   padding: 20px 16px;
-  text-align: center;
   color: var(--text-muted);
   font-size: 13px;
 }
@@ -1054,6 +1089,24 @@ body {
 .stash-count {
   font-size: 14px;
   color: var(--text-muted);
+}
+
+/* Inline refresh hint — appears next to the stash count while the list
+   reloads in the background so users get a signal without losing context
+   of the (stale) grid below. Kept subtle and non-blocking. */
+.dashboard-refresh-indicator {
+  display: inline-flex;
+  align-items: center;
+  color: var(--text-muted);
+  opacity: 0.85;
+}
+
+/* Soft dim while a refresh is in-flight so the stale rows hint that newer
+   data is on the way without yanking the grid out from under the cursor. */
+.stash-grid-refreshing {
+  opacity: 0.6;
+  transition: opacity 0.15s ease-out;
+  pointer-events: none;
 }
 
 .dashboard-actions {
