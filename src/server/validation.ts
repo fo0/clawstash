@@ -12,10 +12,40 @@ const MAX_DESCRIPTION_LENGTH = 50_000;
 const MAX_TAGS = 50;
 const MAX_TAG_LENGTH = 100;
 const MAX_METADATA_KEYS = 50;
+export const MAX_METADATA_DEPTH = 5;
 const MAX_FILES = 100;
 const MAX_FILENAME_LENGTH = 255;
 const MAX_FILE_CONTENT_LENGTH = 10 * 1024 * 1024; // 10MB per file
 export const MAX_IMPORT_SIZE = 100 * 1024 * 1024; // 100MB for ZIP import
+
+/**
+ * Compute the maximum nesting depth of a JSON-like value.
+ *
+ * Depth definitions:
+ * - primitives (string/number/boolean/null) and empty objects/arrays = 1
+ * - non-empty container with depth-N child = 1 + N
+ *
+ * Used by the metadata depth refinement to reject deeply nested payloads
+ * (defense-in-depth against accidental or malicious nesting that could
+ * inflate serialization cost / push downstream parsers into pathological
+ * paths). Iterative traversal so a hostile payload cannot blow the JS
+ * call stack inside validation itself.
+ */
+export function maxObjectDepth(value: unknown): number {
+  let maxDepth = 0;
+  const stack: { v: unknown; d: number }[] = [{ v: value, d: 1 }];
+  while (stack.length > 0) {
+    const { v, d } = stack.pop()!;
+    if (d > maxDepth) maxDepth = d;
+    if (v && typeof v === 'object') {
+      const entries = Array.isArray(v) ? v : Object.values(v as Record<string, unknown>);
+      for (const child of entries) {
+        if (child && typeof child === 'object') stack.push({ v: child, d: d + 1 });
+      }
+    }
+  }
+  return maxDepth || 1;
+}
 
 // --- Shared Sub-Schemas ---
 
@@ -59,6 +89,13 @@ const TagsSchema = z
 // Without the explicit Array.isArray refusal, an array submitted as
 // `metadata: [...]` would pass validation, then `safeParseMetadata` silently
 // drops it on read with no error to the caller. Reject up-front instead.
+//
+// The `maxObjectDepth` refinement caps nested depth at MAX_METADATA_DEPTH —
+// metadata is meant for flat key/value bookkeeping (model, agent_id, purpose,
+// …). Allowing arbitrary depth would let callers submit pathologically nested
+// payloads that bloat JSON-encoding cost and force downstream consumers
+// (frontend metadata editor, exports, version diffs) to walk arbitrarily
+// deep trees. Closes BACKLOG #27.
 const MetadataSchema = z
   .record(z.unknown())
   .refine((val) => !Array.isArray(val), {
@@ -66,6 +103,9 @@ const MetadataSchema = z
   })
   .refine((val) => Object.keys(val).length <= MAX_METADATA_KEYS, {
     message: `Metadata cannot have more than ${MAX_METADATA_KEYS} keys`,
+  })
+  .refine((val) => maxObjectDepth(val) <= MAX_METADATA_DEPTH, {
+    message: `Metadata nesting cannot exceed ${MAX_METADATA_DEPTH} levels`,
   });
 
 // --- Stash Schemas ---
