@@ -33,7 +33,16 @@ export { ADMIN_PASSWORD, ADMIN_SESSION_HOURS };
  * tokens never contain whitespace, but a stray space (e.g. from a copy-paste
  * or a misbehaving HTTP client) should not flip a valid token into a 401.
  * Empty strings after trimming are treated as "no token".
+ *
+ * NOTE: The `?token=` query-string form is supported for legacy / no-header
+ * clients (e.g. plain `<img>` loads of `/raw` resources). It is NOT
+ * recommended for production traffic — query strings appear in server
+ * access logs, browser history, and reverse-proxy logs. Prefer
+ * `Authorization: Bearer …` for any non-trivial integration. A one-time
+ * dev-only `console.warn` is emitted per process to surface accidental
+ * usage during development without spamming production logs.
  */
+let warnedAboutQueryTokenAuth = false;
 export function extractToken(req: NextRequest): string | null {
   const auth = req.headers.get('authorization');
   if (auth && auth.startsWith('Bearer ')) {
@@ -43,7 +52,19 @@ export function extractToken(req: NextRequest): string | null {
   const queryToken = req.nextUrl.searchParams.get('token');
   if (queryToken) {
     const token = queryToken.trim();
-    return token.length > 0 ? token : null;
+    if (token.length > 0) {
+      if (process.env.NODE_ENV !== 'production' && !warnedAboutQueryTokenAuth) {
+        warnedAboutQueryTokenAuth = true;
+        // eslint-disable-next-line no-console
+        console.warn(
+          '[auth] Token received via ?token= query parameter. Prefer ' +
+            '`Authorization: Bearer …` header — query strings leak into ' +
+            'access logs, browser history, and proxies.',
+        );
+      }
+      return token;
+    }
+    return null;
   }
   return null;
 }
