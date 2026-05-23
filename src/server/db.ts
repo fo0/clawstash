@@ -489,8 +489,16 @@ export class ClawStashDB {
     return this.getStash(id);
   }
 
-  getAllTags(): { tag: string; count: number }[] {
-    const rows = this.db.prepare('SELECT tags FROM stashes').all() as { tags: string }[];
+  getAllTags(options?: { includeArchived?: boolean }): { tag: string; count: number }[] {
+    // Default: exclude archived so the tag list matches the default stash list
+    // (listStashes excludes archived unless ?archived=true). Callers that need
+    // the legacy 'count everything' behaviour can opt in with
+    // { includeArchived: true }.
+    const includeArchived = options?.includeArchived ?? false;
+    const sql = includeArchived
+      ? 'SELECT tags FROM stashes'
+      : 'SELECT tags FROM stashes WHERE archived = 0';
+    const rows = this.db.prepare(sql).all() as { tags: string }[];
     const tagMap = new Map<string, number>();
     for (const row of rows) {
       const tags = safeParseTags(row.tags);
