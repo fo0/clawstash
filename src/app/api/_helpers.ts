@@ -106,19 +106,28 @@ export async function parseJsonBody(
 
 /**
  * Extract IP and user agent from request headers for access logging.
- * x-forwarded-for may contain a comma-separated chain; only the first
- * entry (the original client) is recorded to match middleware behavior
- * and avoid leaking spoofed downstream values into logs. Falls back to
- * x-real-ip when XFF is absent (nginx, traefik) so proxies that only
- * forward one or the other still produce useful logs.
+ *
+ * Honours the `TRUST_PROXY` opt-in to stay consistent with `getClientIp`
+ * (rate-limit keying) and `getBaseUrl` (OpenAPI/MCP spec). Without a
+ * trusted proxy boundary, `x-forwarded-for` is attacker-controlled and a
+ * spoofed value would poison the access log (every entry attributable to
+ * an attacker-chosen IP). When `TRUST_PROXY` is set, the first XFF entry
+ * (original client) is used; otherwise we read only `x-real-ip` and fall
+ * back to undefined rather than logging spoofed values.
  */
 export function getRequestInfo(req: NextRequest): {
   ip: string | undefined;
   userAgent: string | undefined;
 } {
-  const xff = req.headers.get('x-forwarded-for');
-  const ip =
-    (xff ? xff.split(',')[0].trim() : '') || req.headers.get('x-real-ip')?.trim() || undefined;
+  const trustProxy = isTrustedProxy();
+  let ip: string | undefined;
+  if (trustProxy) {
+    const xff = req.headers.get('x-forwarded-for');
+    ip = (xff ? xff.split(',')[0].trim() : '') || undefined;
+  }
+  if (!ip) {
+    ip = req.headers.get('x-real-ip')?.trim() || undefined;
+  }
   return {
     ip,
     userAgent: req.headers.get('user-agent') || undefined,
