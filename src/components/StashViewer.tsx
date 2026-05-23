@@ -134,64 +134,76 @@ function slugify(text: string): string {
     .replace(/\s+/g, '-'); // collapse spaces → single hyphen
 }
 
-// Render-scoped state for heading ID generation — set before each renderMarkdown call
-// and consumed by the Marked renderer callbacks. Module-level because Marked's renderer
-// is instantiated once and cannot accept per-call parameters.
-let slugCounts: Map<string, number> = new Map();
-let headingIdPrefix = '';
-
-// Dedicated Marked instance — no global mutation
-const mdParser = new Marked({
-  breaks: true,
-  gfm: true,
-  renderer: {
-    // GitHub-style heading anchors: each heading gets a slugified id + clickable anchor
-    heading({ text, depth, tokens }) {
-      let slug = slugify(text);
-      const count = slugCounts.get(slug) || 0;
-      slugCounts.set(slug, count + 1);
-      if (count > 0) slug = `${slug}-${count}`;
-      const finalSlug = headingIdPrefix + slug;
-      const rendered = this.parser.parseInline(tokens);
-      const safeSlug = escapeHtml(finalSlug);
-      return `<h${depth} id="${safeSlug}"><a class="heading-anchor" href="#${safeSlug}" aria-hidden="true">#</a>${rendered}</h${depth}>\n`;
+/**
+ * Build a fresh Marked instance whose renderer closes over per-call state.
+ *
+ * Previously the heading-anchor slug counter (`slugCounts`) and prefix
+ * (`headingIdPrefix`) lived as module-level mutable variables that were
+ * reset before each `renderMarkdown` call and consumed by a shared
+ * `Marked` instance's renderer callbacks. That works in today's
+ * synchronous, single-threaded usage but is a foot-gun under React 19
+ * concurrent rendering: two interleaved render passes could share a
+ * single `slugCounts` map and produce conflicting heading IDs.
+ *
+ * Building a fresh instance per call keeps the cost trivial (no parse
+ * cache to populate; the renderer is just a configured object) while
+ * making the state strictly local to one invocation. Closes BACKLOG
+ * #43 / #80.
+ */
+function createMdParser(headingIdPrefix: string): Marked {
+  const slugCounts = new Map<string, number>();
+  return new Marked({
+    breaks: true,
+    gfm: true,
+    renderer: {
+      // GitHub-style heading anchors: each heading gets a slugified id + clickable anchor
+      heading({ text, depth, tokens }) {
+        let slug = slugify(text);
+        const count = slugCounts.get(slug) || 0;
+        slugCounts.set(slug, count + 1);
+        if (count > 0) slug = `${slug}-${count}`;
+        const finalSlug = headingIdPrefix + slug;
+        const rendered = this.parser.parseInline(tokens);
+        const safeSlug = escapeHtml(finalSlug);
+        return `<h${depth} id="${safeSlug}"><a class="heading-anchor" href="#${safeSlug}" aria-hidden="true">#</a>${rendered}</h${depth}>\n`;
+      },
+      // Open external links in a new tab; keep anchor links in-page
+      link({ href, title, text }) {
+        const titleAttr = title ? ` title="${escapeHtml(title)}"` : '';
+        // Strip dangerous schemes (javascript:/vbscript:/data:text/html, with
+        // case + control-char obfuscation) before rendering — defence-in-depth
+        // alongside the post-render sanitiser.
+        const cleanHref = isUnsafeUrl(href) ? '#' : href;
+        if (cleanHref.startsWith('#')) {
+          // Prepend current heading prefix so anchors match prefixed heading IDs
+          const resolvedHref =
+            headingIdPrefix && cleanHref !== '#'
+              ? `#${headingIdPrefix}${cleanHref.slice(1)}`
+              : cleanHref;
+          return `<a href="${escapeHtml(resolvedHref)}"${titleAttr}>${text}</a>`;
+        }
+        const safeHref = escapeHtml(cleanHref);
+        return `<a href="${safeHref}"${titleAttr} target="_blank" rel="noopener noreferrer">${text}</a>`;
+      },
+      // Custom code renderer: emit a placeholder div for ```mermaid``` blocks
+      // (hydrated post-render in StashViewer) and otherwise mimic marked's
+      // default <pre><code class="language-X"> output.
+      code({ text, lang }) {
+        const language = (lang || '').trim().split(/\s+/)[0] || '';
+        const lower = language.toLowerCase();
+        if (lower === 'mermaid' || lower === 'mmd') {
+          const encoded = encodeMermaidSource(text);
+          return `<div class="mermaid-placeholder" data-mermaid-source="${encoded}"></div>\n`;
+        }
+        const body = escapeHtml(text.replace(/\n$/, '')) + '\n';
+        if (language) {
+          return `<pre><code class="language-${escapeHtml(language)}">${body}</code></pre>\n`;
+        }
+        return `<pre><code>${body}</code></pre>\n`;
+      },
     },
-    // Open external links in a new tab; keep anchor links in-page
-    link({ href, title, text }) {
-      const titleAttr = title ? ` title="${escapeHtml(title)}"` : '';
-      // Strip dangerous schemes (javascript:/vbscript:/data:text/html, with
-      // case + control-char obfuscation) before rendering — defence-in-depth
-      // alongside the post-render sanitiser.
-      const cleanHref = isUnsafeUrl(href) ? '#' : href;
-      if (cleanHref.startsWith('#')) {
-        // Prepend current heading prefix so anchors match prefixed heading IDs
-        const resolvedHref =
-          headingIdPrefix && cleanHref !== '#'
-            ? `#${headingIdPrefix}${cleanHref.slice(1)}`
-            : cleanHref;
-        return `<a href="${escapeHtml(resolvedHref)}"${titleAttr}>${text}</a>`;
-      }
-      const safeHref = escapeHtml(cleanHref);
-      return `<a href="${safeHref}"${titleAttr} target="_blank" rel="noopener noreferrer">${text}</a>`;
-    },
-    // Custom code renderer: emit a placeholder div for ```mermaid``` blocks
-    // (hydrated post-render in StashViewer) and otherwise mimic marked's
-    // default <pre><code class="language-X"> output.
-    code({ text, lang }) {
-      const language = (lang || '').trim().split(/\s+/)[0] || '';
-      const lower = language.toLowerCase();
-      if (lower === 'mermaid' || lower === 'mmd') {
-        const encoded = encodeMermaidSource(text);
-        return `<div class="mermaid-placeholder" data-mermaid-source="${encoded}"></div>\n`;
-      }
-      const body = escapeHtml(text.replace(/\n$/, '')) + '\n';
-      if (language) {
-        return `<pre><code class="language-${escapeHtml(language)}">${body}</code></pre>\n`;
-      }
-      return `<pre><code>${body}</code></pre>\n`;
-    },
-  },
-});
+  });
+}
 
 /**
  * Sanitize HTML output by stripping dangerous elements and attributes.
@@ -220,13 +232,14 @@ function sanitizeHtml(html: string): string {
 
 /**
  * Render markdown content to sanitized HTML.
- * Slug counter is reset per call so each file gets independent heading IDs.
- * Optional idPrefix disambiguates heading IDs across multiple files.
+ *
+ * Builds a fresh Marked instance per call whose renderer closes over a
+ * local slug counter — see `createMdParser` for the rationale. Optional
+ * `idPrefix` disambiguates heading IDs across multiple files.
  */
 function renderMarkdown(content: string, idPrefix = ''): string {
-  slugCounts = new Map();
-  headingIdPrefix = idPrefix;
-  const raw = mdParser.parse(content, { async: false }) as string;
+  const parser = createMdParser(idPrefix);
+  const raw = parser.parse(content, { async: false }) as string;
   return sanitizeHtml(raw);
 }
 
