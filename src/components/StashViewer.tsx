@@ -13,7 +13,7 @@ import { useClipboard, useClipboardWithKey } from '../hooks/useClipboard';
 import { CopyIcon, CheckIcon, XIcon } from './shared/icons';
 import VersionHistory from './VersionHistory';
 import { Marked } from 'marked';
-import { renderDescriptionMarkdown, isUnsafeUrl } from '../utils/markdown';
+import { renderDescriptionMarkdown, isUnsafeUrl, sanitizeHtml } from '../utils/markdown';
 import { renderMermaid } from '../utils/mermaid';
 import { DELETE_CONFIRM_TIMEOUT_MS } from '../utils/constants';
 import { escapeHtml } from '../utils/html';
@@ -206,48 +206,14 @@ function createMdParser(headingIdPrefix: string): Marked {
 }
 
 /**
- * Sanitize HTML output by stripping dangerous elements and attributes.
- */
-function sanitizeHtml(html: string): string {
-  const doc = new DOMParser().parseFromString(html, 'text/html');
-  doc
-    .querySelectorAll('script,style,iframe,object,embed,form,link,base,meta,noscript')
-    .forEach((el) => el.remove());
-  doc.querySelectorAll('*').forEach((el) => {
-    for (const attr of [...el.attributes]) {
-      // HTML attribute names are case-insensitive; DOMParser preserves the
-      // source casing. Match against a lowered name so `HREF="javascript:..."`
-      // or `xlink:HREF` cannot slip past the URL-scheme check. Mirrors the
-      // sibling sanitiser in utils/markdown.ts.
-      const lowerName = attr.name.toLowerCase();
-      const isEventHandler = lowerName.startsWith('on');
-      const isUrlAttr =
-        lowerName === 'href' ||
-        lowerName === 'src' ||
-        lowerName === 'xlink:href' ||
-        lowerName === 'action' ||
-        lowerName === 'formaction';
-      // Drop inline style entirely. Modern browsers no longer execute
-      // `javascript:` inside CSS url(), but `style` is still a vector for UI
-      // redress / data exfiltration via `background-image: url(...)`. The
-      // sibling sanitiser in utils/markdown.ts already drops it; the two
-      // surfaces must agree so file-Markdown is not more permissive than
-      // description-Markdown.
-      const isStyleAttr = lowerName === 'style';
-      if (isEventHandler || isStyleAttr || (isUrlAttr && isUnsafeUrl(attr.value))) {
-        el.removeAttribute(attr.name);
-      }
-    }
-  });
-  return doc.body.innerHTML;
-}
-
-/**
  * Render markdown content to sanitized HTML.
  *
  * Builds a fresh Marked instance per call whose renderer closes over a
  * local slug counter — see `createMdParser` for the rationale. Optional
- * `idPrefix` disambiguates heading IDs across multiple files.
+ * `idPrefix` disambiguates heading IDs across multiple files. HTML
+ * sanitisation is delegated to the shared `sanitizeHtml` helper so the
+ * file-Markdown surface cannot drift from the description-Markdown
+ * surface on the dangerous-attribute set.
  */
 function renderMarkdown(content: string, idPrefix = ''): string {
   const parser = createMdParser(idPrefix);
