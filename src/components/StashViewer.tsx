@@ -215,13 +215,18 @@ function sanitizeHtml(html: string): string {
     .forEach((el) => el.remove());
   doc.querySelectorAll('*').forEach((el) => {
     for (const attr of [...el.attributes]) {
-      const isEventHandler = attr.name.toLowerCase().startsWith('on');
+      // HTML attribute names are case-insensitive; DOMParser preserves the
+      // source casing. Match against a lowered name so `HREF="javascript:..."`
+      // or `xlink:HREF` cannot slip past the URL-scheme check. Mirrors the
+      // sibling sanitiser in utils/markdown.ts.
+      const lowerName = attr.name.toLowerCase();
+      const isEventHandler = lowerName.startsWith('on');
       const isUrlAttr =
-        attr.name === 'href' ||
-        attr.name === 'src' ||
-        attr.name === 'xlink:href' ||
-        attr.name === 'action' ||
-        attr.name === 'formaction';
+        lowerName === 'href' ||
+        lowerName === 'src' ||
+        lowerName === 'xlink:href' ||
+        lowerName === 'action' ||
+        lowerName === 'formaction';
       if (isEventHandler || (isUrlAttr && isUnsafeUrl(attr.value))) {
         el.removeAttribute(attr.name);
       }
@@ -267,7 +272,10 @@ function extractHeadings(html: string): TocHeading[] {
     if (anchor) anchor.remove();
     const text = el.textContent?.trim() || '';
     if (el.id && text) {
-      headings.push({ id: el.id, text, depth: parseInt(el.tagName[1]) });
+      // Explicit radix 10 — leading-zero strings are spec-compliantly base 10
+      // in modern JS, but the linter (when added) flags missing radix as a
+      // code-smell, and being explicit removes any historical ambiguity.
+      headings.push({ id: el.id, text, depth: parseInt(el.tagName[1], 10) });
     }
   });
   return headings;
