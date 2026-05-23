@@ -19,8 +19,12 @@ This starts the Next.js development server on port 3000 with both the frontend a
 
 1. Fork the repository and create a feature branch from `main`
 2. Make your changes
-3. Run the build to verify everything compiles: `npm run build`
-4. Commit with a clear, descriptive message
+3. Run the automated checks before pushing:
+   - `npm run format:check` — Prettier formatting
+   - `npx tsc --noEmit` — TypeScript type check
+   - `npm test` — vitest test suite
+   - `npm run build` — production build
+4. Commit with a clear, descriptive message (Conventional Commits)
 5. Open a pull request against `main`
 
 ## Project Structure
@@ -36,6 +40,7 @@ See `CLAUDE.md` for detailed architecture documentation.
 ## Code Style
 
 - TypeScript with strict mode
+- Formatting enforced by Prettier (`npm run format` to auto-fix, `npm run format:check` to verify)
 - 2-space indentation, single quotes
 - Functional React components with TypeScript interfaces for props
 - Global CSS with CSS custom properties (no CSS-in-JS)
