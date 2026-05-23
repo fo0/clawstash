@@ -6,7 +6,7 @@ flowchart TD
     end
 
     subgraph "Next.js App Router"
-        Middleware["Middleware (CORS, Rate Limit, Security Headers)"]
+        Middleware["Middleware (CORS, Security Headers)"]
 
         subgraph "Frontend"
             AppRoot("App.tsx (State Management)")
@@ -37,6 +37,7 @@ flowchart TD
 
     subgraph "Server Layer"
         Auth["Auth (Token + Session Validation)"]
+        AuthRateLimit["Auth Rate Limit (per-IP, login/token/logout)"]
         Validation["Validation (Zod Schemas)"]
         SharedText["Shared Text Constants"]
         OpenAPI["OpenAPI Schema Generator"]
@@ -76,6 +77,8 @@ flowchart TD
     StashRoutes --> Helpers
     TokenRoutes --> Helpers
     AdminRoutes --> Helpers
+    TokenRoutes --> AuthRateLimit
+    AdminRoutes --> AuthRateLimit
     Helpers --> Auth
     Helpers --> Validation
 
@@ -119,6 +122,7 @@ flowchart TD
     click ToolDefs "src/server/tool-defs.ts"
     click MCPStdio "src/server/mcp.ts"
     click Auth "src/server/auth.ts"
+    click AuthRateLimit "src/server/auth-rate-limit.ts"
     click Validation "src/server/validation.ts"
     click SharedText "src/server/shared-text.ts"
     click OpenAPI "src/server/openapi.ts"
@@ -137,7 +141,7 @@ flowchart TD
     class Browser,AppRoot,Sidebar,Dashboard,StashViewer,StashEditor,GraphViewer,Settings,SearchOverlay frontend
     class Helpers,StashRoutes,TokenRoutes,AdminRoutes,SpecRoutes backend
     class MCPRoute,MCPServer,ToolDefs,MCPStdio mcp
-    class Auth,Validation,SharedText,OpenAPI,MCPSpec,DBSingleton server
+    class Auth,AuthRateLimit,Validation,SharedText,OpenAPI,MCPSpec,DBSingleton server
     class DB database
     class GHCR,GitHub,AIAgent,APIClient external
     class Middleware middleware

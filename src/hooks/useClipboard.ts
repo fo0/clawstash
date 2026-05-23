@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef, useEffect } from 'react';
+import { useState, useCallback, useRef, useEffect, useMemo } from 'react';
 import { copyToClipboard } from '../utils/clipboard';
 import { COPY_TOAST_DURATION_MS } from '../utils/constants';
 
@@ -85,14 +85,20 @@ export function useClipboardWithKey(options: UseClipboardOptions = {}): UseClipb
     [trigger],
   );
 
-  const isCopied = (key: string) => state?.key === key && state.ok === true;
-  const isFailed = (key: string) => state?.key === key && state.ok === false;
-
-  return {
-    copiedKey: state?.ok ? state.key : null,
-    failedKey: state && !state.ok ? state.key : null,
-    copy,
-    isCopied,
-    isFailed,
-  };
+  // Memoize the returned shape so callers can safely pass `isCopied` /
+  // `isFailed` / the wrapper object into `useMemo` / `useCallback` dep
+  // lists without triggering a render on every parent re-render. Without
+  // memoization the predicates were fresh function references on every
+  // render (foot-gun if added to a `useMemo` dep array). Closes BACKLOG #81.
+  return useMemo<UseClipboardWithKeyReturn>(() => {
+    const copiedKey = state?.ok ? state.key : null;
+    const failedKey = state && !state.ok ? state.key : null;
+    return {
+      copiedKey,
+      failedKey,
+      copy,
+      isCopied: (key: string) => copiedKey === key,
+      isFailed: (key: string) => failedKey === key,
+    };
+  }, [state, copy]);
 }

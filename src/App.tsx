@@ -465,8 +465,16 @@ export default function App() {
     setSidebarOpen(false);
   };
 
+  // Mirror `filterTag` into a ref so deferred callers (graph viewer popup
+  // event handlers bound 1–2 renders ago) can read the freshest value
+  // without going through the closure-captured state. Closes BACKLOG #23.
+  const filterTagRef = useRef(filterTag);
+  useEffect(() => {
+    filterTagRef.current = filterTag;
+  }, [filterTag]);
+
   const handleFilterTag = (tag: string) => {
-    const newTag = tag === filterTag ? '' : tag;
+    const newTag = tag === filterTagRef.current ? '' : tag;
     setFilterTag(newTag);
     if (newTag) {
       setRecentTags((prev) => {

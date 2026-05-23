@@ -8,6 +8,7 @@
  * - /api/mcp-tools        → Frontend tool list endpoint
  */
 import { z } from 'zod';
+import { MAX_METADATA_DEPTH, maxObjectDepth } from './validation';
 
 // ---------------------------------------------------------------------------
 // Shared sub-schemas — limits match REST validation (src/server/validation.ts)
@@ -50,6 +51,10 @@ export const FileInputSchema = z.object({
 const McpTagsSchema = z.array(z.string().min(1).max(MAX_TAG_LENGTH)).max(MAX_TAGS);
 // Reject arrays explicitly — `z.record(z.unknown())` accepts them in Zod 3
 // (typeof [] === 'object') but `safeParseMetadata` discards arrays on read.
+// Depth cap mirrors the REST `MetadataSchema` (see validation.ts). Both
+// surfaces must agree, otherwise MCP and REST would diverge on payload
+// shape and clients could route deeply-nested metadata through whichever
+// boundary is more permissive. Closes BACKLOG #27.
 const McpMetadataSchema = z
   .record(z.unknown())
   .refine((val) => !Array.isArray(val), {
@@ -57,6 +62,9 @@ const McpMetadataSchema = z
   })
   .refine((val) => Object.keys(val).length <= MAX_METADATA_KEYS, {
     message: `Metadata cannot have more than ${MAX_METADATA_KEYS} keys`,
+  })
+  .refine((val) => maxObjectDepth(val) <= MAX_METADATA_DEPTH, {
+    message: `Metadata nesting cannot exceed ${MAX_METADATA_DEPTH} levels`,
   });
 
 // ---------------------------------------------------------------------------
