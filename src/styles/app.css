@@ -1438,6 +1438,34 @@ body {
   white-space: nowrap;
 }
 
+.viewer-title-copy-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  margin-left: 6px;
+  padding: 0;
+  border: none;
+  border-radius: var(--radius);
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  vertical-align: middle;
+  opacity: 0;
+  transition: opacity 0.15s, color 0.15s;
+  flex-shrink: 0;
+}
+
+.viewer-title:hover .viewer-title-copy-btn,
+.viewer-title-copy-btn:focus-visible {
+  opacity: 1;
+}
+
+.viewer-title-copy-btn:hover {
+  color: var(--text-secondary);
+}
+
 .viewer-archived-badge {
   display: inline-block;
   margin-left: 8px;
