@@ -19,7 +19,21 @@ export async function GET(req: NextRequest) {
   const search = searchParams.get('search') || undefined;
   const tag = searchParams.get('tag') || undefined;
   const archivedParam = searchParams.get('archived');
-  const archived = archivedParam === 'true' ? true : archivedParam === 'false' ? false : undefined;
+  let archived: boolean | undefined;
+  if (archivedParam === null) {
+    archived = undefined;
+  } else if (archivedParam === 'true') {
+    archived = true;
+  } else if (archivedParam === 'false') {
+    archived = false;
+  } else {
+    // Previously, unrecognized values (`?archived=1`, `?archived=yes`) silently
+    // collapsed to "list everything", which masked client bugs. Reject explicitly.
+    return NextResponse.json(
+      { error: "Invalid 'archived' value. Use 'true' or 'false'." },
+      { status: 400 },
+    );
+  }
   const page = parsePositiveInt(searchParams.get('page'));
   const limit = parsePositiveInt(searchParams.get('limit'));
 
