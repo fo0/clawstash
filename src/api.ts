@@ -237,9 +237,7 @@ export const api = {
   },
 
   // Data import (upload ZIP file)
-  async importData(
-    file: File,
-  ): Promise<{
+  async importData(file: File): Promise<{
     message: string;
     imported: { stashes: number; files: number; versions: number; versionFiles: number };
   }> {
