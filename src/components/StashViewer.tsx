@@ -227,7 +227,14 @@ function sanitizeHtml(html: string): string {
         lowerName === 'xlink:href' ||
         lowerName === 'action' ||
         lowerName === 'formaction';
-      if (isEventHandler || (isUrlAttr && isUnsafeUrl(attr.value))) {
+      // Drop inline style entirely. Modern browsers no longer execute
+      // `javascript:` inside CSS url(), but `style` is still a vector for UI
+      // redress / data exfiltration via `background-image: url(...)`. The
+      // sibling sanitiser in utils/markdown.ts already drops it; the two
+      // surfaces must agree so file-Markdown is not more permissive than
+      // description-Markdown.
+      const isStyleAttr = lowerName === 'style';
+      if (isEventHandler || isStyleAttr || (isUrlAttr && isUnsafeUrl(attr.value))) {
         el.removeAttribute(attr.name);
       }
     }
