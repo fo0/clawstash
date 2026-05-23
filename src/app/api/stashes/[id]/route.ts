@@ -40,15 +40,18 @@ export async function PATCH(req: NextRequest, { params }: Params) {
   const source = getAccessSource(req);
   const { ip, userAgent } = getRequestInfo(req);
 
+  // True when the PATCH carries any field other than `archived` — drives the
+  // "archive-only fast path" below (no new version, simpler logAccess).
+  // Closes BACKLOG #20.
+  const hasContentChanges =
+    name !== undefined ||
+    description !== undefined ||
+    tags !== undefined ||
+    metadata !== undefined ||
+    files !== undefined;
+
   // Handle archive toggle separately (doesn't create a new version)
-  if (
-    archived !== undefined &&
-    name === undefined &&
-    description === undefined &&
-    tags === undefined &&
-    metadata === undefined &&
-    files === undefined
-  ) {
+  if (archived !== undefined && !hasContentChanges) {
     const stash = db.archiveStash(id, archived);
     if (!stash) {
       return NextResponse.json({ error: 'Stash not found' }, { status: 404 });
