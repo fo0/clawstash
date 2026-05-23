@@ -4,24 +4,30 @@ import { requireScopeAuth, requireAdminAuth, extractToken } from '@/server/auth'
 import { isTrustedProxy } from '@/server/auth-rate-limit';
 import type { TokenScope } from '@/server/db';
 
+// Canonical auth error responses. Centralised so checkScope / checkAdmin
+// cannot drift in capitalisation/punctuation (Backlog #90). Use these
+// helpers instead of inlining the strings.
+const UNAUTHENTICATED_MESSAGE = 'Authentication required. Provide a Bearer token.';
+const FORBIDDEN_SCOPE_MESSAGE = 'Insufficient permissions.';
+const FORBIDDEN_ADMIN_MESSAGE = 'Admin access required.';
+
+function unauthenticatedResponse() {
+  return NextResponse.json({ error: UNAUTHENTICATED_MESSAGE }, { status: 401 });
+}
+
+function forbiddenResponse(message: string) {
+  return NextResponse.json({ error: message }, { status: 403 });
+}
+
 export function checkScope(req: NextRequest, scope: TokenScope) {
   const db = getDb();
   const auth = requireScopeAuth(db, req, scope);
   if (auth) return { ok: true as const };
   const token = extractToken(req);
   if (!token) {
-    return {
-      ok: false as const,
-      response: NextResponse.json(
-        { error: 'Authentication required. Provide a Bearer token.' },
-        { status: 401 },
-      ),
-    };
+    return { ok: false as const, response: unauthenticatedResponse() };
   }
-  return {
-    ok: false as const,
-    response: NextResponse.json({ error: 'Insufficient permissions.' }, { status: 403 }),
-  };
+  return { ok: false as const, response: forbiddenResponse(FORBIDDEN_SCOPE_MESSAGE) };
 }
 
 export function checkAdmin(req: NextRequest) {
@@ -33,18 +39,9 @@ export function checkAdmin(req: NextRequest) {
   // surface 401 (Authentication required) rather than 403.
   const token = extractToken(req);
   if (!token) {
-    return {
-      ok: false as const,
-      response: NextResponse.json(
-        { error: 'Authentication required. Provide a Bearer token.' },
-        { status: 401 },
-      ),
-    };
+    return { ok: false as const, response: unauthenticatedResponse() };
   }
-  return {
-    ok: false as const,
-    response: NextResponse.json({ error: 'Admin access required.' }, { status: 403 }),
-  };
+  return { ok: false as const, response: forbiddenResponse(FORBIDDEN_ADMIN_MESSAGE) };
 }
 
 export function getAccessSource(req: NextRequest): 'ui' | 'api' {

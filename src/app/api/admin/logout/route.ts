@@ -44,5 +44,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
   getDb().deleteAdminSession(token);
-  return NextResponse.json({ message: 'Logged out' });
+  // Standard admin POST response shape: { success: true, message }. `message`
+  // is preserved for backwards compatibility with existing callers that read it.
+  return NextResponse.json({ success: true, message: 'Logged out' });
 }
