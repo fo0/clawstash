@@ -272,7 +272,10 @@ function extractHeadings(html: string): TocHeading[] {
     if (anchor) anchor.remove();
     const text = el.textContent?.trim() || '';
     if (el.id && text) {
-      headings.push({ id: el.id, text, depth: parseInt(el.tagName[1]) });
+      // Explicit radix 10 — leading-zero strings are spec-compliantly base 10
+      // in modern JS, but the linter (when added) flags missing radix as a
+      // code-smell, and being explicit removes any historical ambiguity.
+      headings.push({ id: el.id, text, depth: parseInt(el.tagName[1], 10) });
     }
   });
   return headings;
