@@ -2,11 +2,27 @@ interface IconProps {
   size?: number;
 }
 
-/** Octicon-style copy icon (two overlapping rectangles). */
+/**
+ * Lucide-style copy icon (two overlapping rounded rectangles).
+ *
+ * Canonical copy icon for the whole app — `src/components/api/icons.tsx`
+ * re-exports this so REST/MCP tabs share the same glyph as the rest of
+ * the UI (was previously two divergent SVG paths).
+ */
 export function CopyIcon({ size = 12 }: IconProps) {
   return (
-    <svg width={size} height={size} viewBox="0 0 16 16" fill="currentColor">
-      <path d="M0 6.75C0 5.784.784 5 1.75 5h1.5a.75.75 0 0 1 0 1.5h-1.5a.25.25 0 0 0-.25.25v7.5c0 .138.112.25.25.25h7.5a.25.25 0 0 0 .25-.25v-1.5a.75.75 0 0 1 1.5 0v1.5A1.75 1.75 0 0 1 9.25 16h-7.5A1.75 1.75 0 0 1 0 14.25ZM5 1.75C5 .784 5.784 0 6.75 0h7.5C15.216 0 16 .784 16 1.75v7.5A1.75 1.75 0 0 1 14.25 11h-7.5A1.75 1.75 0 0 1 5 9.25Zm1.75-.25a.25.25 0 0 0-.25.25v7.5c0 .138.112.25.25.25h7.5a.25.25 0 0 0 .25-.25v-7.5a.25.25 0 0 0-.25-.25Z" />
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <rect width="14" height="14" x="8" y="8" rx="2" ry="2" />
+      <path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2" />
     </svg>
   );
 }

@@ -66,12 +66,29 @@ export function getBaseUrl(req: NextRequest): string {
 
 /**
  * Parse a positive integer from a query parameter string.
- * Returns undefined for null, empty, NaN, negative, or non-integer values.
+ * Returns undefined for null, empty, NaN, negative, zero, or non-integer values.
  */
 export function parsePositiveInt(value: string | null): number | undefined {
   if (!value) return undefined;
   const num = parseInt(value, 10);
   return Number.isInteger(num) && num > 0 ? num : undefined;
+}
+
+/**
+ * Parse a non-negative integer from a query parameter string.
+ *
+ * Differs from `parsePositiveInt` in accepting `0` — used for graph filter
+ * parameters (`min_weight`, `min_count`) where the DB layer treats `0` as
+ * "no filter". Without this, `?min_weight=0` would silently flip back to
+ * `undefined` and the REST and MCP layers would interpret the same value
+ * differently. Closes BACKLOG #85.
+ *
+ * Returns undefined for null, empty, NaN, negative, or non-integer values.
+ */
+export function parseNonNegativeInt(value: string | null): number | undefined {
+  if (value === null || value === '') return undefined;
+  const num = parseInt(value, 10);
+  return Number.isInteger(num) && num >= 0 ? num : undefined;
 }
 
 /**

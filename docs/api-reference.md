@@ -37,12 +37,23 @@ See [authentication.md](authentication.md) for token creation and scopes.
 
 ### Versions
 
-| Endpoint                                     | Method | Description                       |
-| -------------------------------------------- | ------ | --------------------------------- |
-| `/api/stashes/:id/versions`                  | GET    | List all versions (descending)    |
-| `/api/stashes/:id/versions/diff`             | GET    | Compare two versions (`?v1=&v2=`) |
-| `/api/stashes/:id/versions/:version`         | GET    | Get a specific version snapshot   |
-| `/api/stashes/:id/versions/:version/restore` | POST   | Restore an old version            |
+| Endpoint                                     | Method | Scope | Description                                                       |
+| -------------------------------------------- | ------ | ----- | ----------------------------------------------------------------- |
+| `/api/stashes/:id/versions`                  | GET    | read  | List all versions (descending)                                    |
+| `/api/stashes/:id/versions/diff`             | GET    | read  | Compare two versions (`?v1=&v2=`)                                 |
+| `/api/stashes/:id/versions/:version`         | GET    | read  | Get a specific version snapshot                                   |
+| `/api/stashes/:id/versions/:version/restore` | POST   | write | Restore an old version — creates a NEW version with prior content |
+
+> **Restore semantics**: restore is non-destructive. It writes a new version
+> at the head whose content matches the snapshot you passed in `:version`;
+> the older versions are kept. Therefore `?v=2` on a stash currently at v5
+> produces a new v6 whose content equals v2, and v5 is still listed in
+> history.
+
+> **Archive semantics**: PATCH `/api/stashes/:id` with body `{ "archived": true }` (or
+> `false`) flips the archive flag inside a single transaction without creating a new version.
+> Pass `archived` alongside content fields (name/description/tags/metadata/files) to change
+> both in one transaction.
 
 ### Tokens
 
@@ -62,6 +73,14 @@ See [authentication.md](authentication.md) for token creation and scopes.
 | `/api/admin/session` | GET    | Check session status   |
 | `/api/admin/export`  | GET    | Export all data as ZIP |
 | `/api/admin/import`  | POST   | Import data from ZIP   |
+
+> **`/api/admin/import` semantics.** Wipes all stash data (`stashes`,
+> `stash_files`, `stash_versions`, `stash_version_files`, `stash_relations`,
+> `access_log`, `stashes_fts`). **Preserves** `admin_sessions` and
+> `api_tokens` so the importing admin stays logged in and existing API
+> integrations keep working against the freshly imported data. Foreign
+> exports (a ZIP from a different server) therefore do NOT carry their
+> tokens across — re-issue tokens / re-login on the target server if needed.
 
 ### System
 
@@ -167,9 +186,28 @@ curl http://localhost:3000/api/stashes/STASH_ID/versions \
 curl "http://localhost:3000/api/stashes/STASH_ID/versions/diff?v1=1&v2=3" \
   -H "Authorization: Bearer cs_your_token"
 
-# Restore a version
+# Restore a version (writes a NEW version with the old content; v5 remains)
 curl -X POST http://localhost:3000/api/stashes/STASH_ID/versions/2/restore \
   -H "Authorization: Bearer cs_your_token"
+
+# Archive a stash (does NOT create a new version)
+curl -X PATCH http://localhost:3000/api/stashes/STASH_ID \
+  -H "Authorization: Bearer cs_your_token" \
+  -H "Content-Type: application/json" \
+  -d '{"archived": true}'
+
+# Unarchive
+curl -X PATCH http://localhost:3000/api/stashes/STASH_ID \
+  -H "Authorization: Bearer cs_your_token" \
+  -H "Content-Type: application/json" \
+  -d '{"archived": false}'
+
+# Archive + edit name in one transaction (creates a new version because
+# of the content change; archive flag flipped atomically)
+curl -X PATCH http://localhost:3000/api/stashes/STASH_ID \
+  -H "Authorization: Bearer cs_your_token" \
+  -H "Content-Type: application/json" \
+  -d '{"archived": true, "name": "Archived: My Stash"}'
 ```
 
 ## OpenAPI / Swagger

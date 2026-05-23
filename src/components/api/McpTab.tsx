@@ -121,7 +121,11 @@ export default function McpTab({ baseUrl, mcpSpec, mcpTools }: Props) {
         {/* Stdio fallback */}
         <div className="api-mcp-config">
           <div className="api-section-label">Stdio Transport (local alternative)</div>
-          <p className="api-hint">For local use, you can also run the MCP server via stdio:</p>
+          <p className="api-hint">
+            For local use, you can also run the MCP server via stdio. <strong>Replace</strong>{' '}
+            <code>&lt;ABSOLUTE_PATH_TO_CLAWSTASH_REPO&gt;</code> with the absolute path to your
+            cloned ClawStash checkout — the snippet will not work as-is.
+          </p>
           <div className="api-code-block-wrapper">
             <pre className="api-code-block">{stdioConfigJson}</pre>
             <button

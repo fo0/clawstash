@@ -1,6 +1,19 @@
 import { useState, useEffect, useRef } from 'react';
 import Spinner from '../shared/Spinner';
 
+type SwaggerUIBundleFn = ((config: Record<string, unknown>) => void) & {
+  presets?: { apis?: unknown };
+};
+
+/**
+ * Read `window.SwaggerUIBundle` without scattering double-casts through the
+ * component. Returns `null` when the global is missing or not callable.
+ */
+function getSwaggerUIBundle(): SwaggerUIBundleFn | null {
+  const fn = (window as unknown as { SwaggerUIBundle?: unknown }).SwaggerUIBundle;
+  return typeof fn === 'function' ? (fn as SwaggerUIBundleFn) : null;
+}
+
 export default function SwaggerViewer() {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const initializedRef = useRef(false);
@@ -31,11 +44,7 @@ export default function SwaggerViewer() {
     // Shared init: find SwaggerUIBundle on window and initialize
     const initSwagger = () => {
       if (!mountedRef.current) return;
-      const SwaggerUIBundle = (window as unknown as Record<string, unknown>).SwaggerUIBundle as ((
-        config: Record<string, unknown>,
-      ) => void) & {
-        presets?: { apis?: unknown };
-      };
+      const SwaggerUIBundle = getSwaggerUIBundle();
       if (SwaggerUIBundle && containerRef.current) {
         SwaggerUIBundle({
           url: '/api/openapi',
@@ -54,8 +63,7 @@ export default function SwaggerViewer() {
     };
 
     // Check if already loaded
-    const w = window as unknown as Record<string, unknown>;
-    if (typeof w.SwaggerUIBundle === 'function') {
+    if (getSwaggerUIBundle()) {
       initSwagger();
       return;
     }
@@ -74,7 +82,7 @@ export default function SwaggerViewer() {
 
     if (existingScript) {
       // Script tag exists — may have already loaded (race condition)
-      if (typeof w.SwaggerUIBundle === 'function') {
+      if (getSwaggerUIBundle()) {
         initSwagger();
         return;
       }
