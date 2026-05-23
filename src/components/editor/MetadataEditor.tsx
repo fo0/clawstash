@@ -43,6 +43,21 @@ export default function MetadataEditor({ entries, onChange, availableKeys }: Pro
   const keyInputRef = useRef<HTMLInputElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
+  // Stable per-row IDs so React reconciles edits to the correct input when
+  // rows are removed or reordered. Using `key={index}` made remove visually
+  // carry the next row's text into the removed row's slot (React would treat
+  // the row as reused). Pattern mirrors fileIds in StashEditor.tsx. Caller-
+  // driven entries replacement keeps IDs in sync via removeEntry/addEntry —
+  // a bare-length mismatch falls back to padding/truncating at the tail.
+  const idCounter = useRef(0);
+  const entryIds = useRef<number[]>([]);
+  while (entryIds.current.length < entries.length) {
+    entryIds.current.push(idCounter.current++);
+  }
+  if (entryIds.current.length > entries.length) {
+    entryIds.current.length = entries.length;
+  }
+
   const displayEntries = showAll ? entries : entries.slice(0, PREVIEW_COUNT);
   const hasMore = entries.length > PREVIEW_COUNT;
 
@@ -58,12 +73,14 @@ export default function MetadataEditor({ entries, onChange, availableKeys }: Pro
   };
 
   const removeEntry = (index: number) => {
+    entryIds.current.splice(index, 1);
     onChange(entries.filter((_, i) => i !== index));
   };
 
   const addEntry = (key: string) => {
     const trimmed = key.trim();
     if (trimmed && !entries.some((e) => e.key === trimmed)) {
+      entryIds.current.push(idCounter.current++);
       onChange([...entries, { key: trimmed, value: '' }]);
       setShowAll(true);
     }
@@ -88,7 +105,7 @@ export default function MetadataEditor({ entries, onChange, availableKeys }: Pro
       {entries.length > 0 && (
         <div className="metadata-entries">
           {displayEntries.map((entry, index) => (
-            <div key={index} className="metadata-entry-row">
+            <div key={entryIds.current[index]} className="metadata-entry-row">
               <input
                 type="text"
                 value={entry.key}
