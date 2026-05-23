@@ -100,6 +100,12 @@ interface LatestCache {
 
 let cache: LatestCache | null = null;
 let cacheExpiry = 0;
+// Track an in-flight fetch so concurrent /api/version callers share a single
+// GitHub round-trip. Without this, N parallel requests during a cache miss
+// each kick off their own `fetch` — wasteful and likely to trip the
+// GitHub unauthenticated-API rate limit (60/h/IP) under load. The promise is
+// cleared on settle so the next miss after the TTL window can retry.
+let inFlight: Promise<LatestCache> | null = null;
 
 async function fetchLatestCommit(): Promise<LatestCache> {
   const now = new Date().toISOString();
@@ -158,7 +164,15 @@ export async function checkVersion(): Promise<VersionInfo> {
   const now = Date.now();
 
   if (!cache || now > cacheExpiry) {
-    const fresh = await fetchLatestCommit();
+    // Coalesce concurrent misses onto a single fetch. `fetchLatestCommit`
+    // never throws (it returns a null-commit shape on error), so a finally
+    // is sufficient to clear the slot for the next miss.
+    if (!inFlight) {
+      inFlight = fetchLatestCommit().finally(() => {
+        inFlight = null;
+      });
+    }
+    const fresh = await inFlight;
     cache = fresh;
     // Only cache successful fetches for the full TTL; retry failures sooner.
     cacheExpiry = fresh.commit_sha !== null ? now + CACHE_TTL_MS : now + FAILED_FETCH_RETRY_MS;
