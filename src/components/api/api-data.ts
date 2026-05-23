@@ -29,13 +29,26 @@ export function buildMcpStreamableConfig(baseUrl: string) {
   };
 }
 
+/**
+ * stdio MCP-server config snippet shown in the API tab.
+ *
+ * `cwd` is intentionally a placeholder — the running clawstash process
+ * cannot reliably introspect the on-disk path the user is editing
+ * (Docker, packaged binaries, dev sandboxes all differ). The literal
+ * angle-bracket placeholder makes it obvious in the copied snippet
+ * that the user MUST replace it before the config will work.
+ *
+ * UI also surfaces a hint next to the snippet (BACKLOG #101).
+ */
+export const MCP_STDIO_CWD_PLACEHOLDER = '<ABSOLUTE_PATH_TO_CLAWSTASH_REPO>';
+
 export function buildMcpStdioConfig() {
   return {
     mcpServers: {
       clawstash: {
         command: 'npx',
         args: ['tsx', 'server/mcp.ts'],
-        cwd: '/path/to/clawstash',
+        cwd: MCP_STDIO_CWD_PLACEHOLDER,
       },
     },
   };
