@@ -4,6 +4,13 @@ import { getDb } from '@/server/singleton';
 import { checkAdmin } from '@/app/api/_helpers';
 import { formatExportTimestamp } from '@/utils/format';
 
+// archiver + Buffer.concat + better-sqlite3 are Node-only. Pin the runtime so
+// a future Next.js default change (or misconfigured edge override) cannot
+// silently route this handler to the Edge runtime, where `Buffer.concat` and
+// `archiver` would fail. Matches the import-route pin and the convention
+// already used by the rate-limit-bound auth routes.
+export const runtime = 'nodejs';
+
 export async function GET(req: NextRequest) {
   const admin = checkAdmin(req);
   if (!admin.ok) return admin.response;

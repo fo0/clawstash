@@ -45,7 +45,15 @@ const descriptionParser = new Marked({
   },
 });
 
-function sanitizeHtml(html: string): string {
+/**
+ * Strip dangerous elements + attributes from arbitrary HTML.
+ *
+ * Used by both this module (description-Markdown) and the file-Markdown
+ * sanitiser in StashViewer. Exported so the two surfaces cannot drift
+ * apart on the dangerous-attribute set — drift previously allowed `style`
+ * to slip past file-Markdown while description-Markdown blocked it.
+ */
+export function sanitizeHtml(html: string): string {
   const doc = new DOMParser().parseFromString(html, 'text/html');
   doc
     .querySelectorAll('script,style,iframe,object,embed,form,link,base,meta,noscript')
