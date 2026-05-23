@@ -1438,6 +1438,34 @@ body {
   white-space: nowrap;
 }
 
+.viewer-title-copy-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  margin-left: 6px;
+  padding: 0;
+  border: none;
+  border-radius: var(--radius);
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  vertical-align: middle;
+  opacity: 0;
+  transition: opacity 0.15s, color 0.15s;
+  flex-shrink: 0;
+}
+
+.viewer-title:hover .viewer-title-copy-btn,
+.viewer-title-copy-btn:focus-visible {
+  opacity: 1;
+}
+
+.viewer-title-copy-btn:hover {
+  color: var(--text-secondary);
+}
+
 .viewer-archived-badge {
   display: inline-block;
   margin-left: 8px;
@@ -6121,4 +6149,25 @@ body {
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
   }
+}
+
+/* === Global Error Toast === */
+.app-error-toast {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 18px;
+  background: var(--bg-card);
+  border: 1px solid rgba(218, 54, 51, 0.4);
+  border-radius: var(--radius);
+  color: #ff7b7b;
+  font-size: 13px;
+  font-weight: 500;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+  z-index: 2000;
+  cursor: pointer;
+  max-width: 360px;
 }

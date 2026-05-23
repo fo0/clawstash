@@ -103,6 +103,9 @@ export default function App() {
   // Favorite stash ids — persisted to localStorage (key `clawstash_favorite_stashes`).
   // Held as Set<string> for O(1) lookups during sort + per-card render.
   const [favoriteIds, setFavoriteIds] = useState<ReadonlySet<string>>(() => loadFavoriteIds());
+  // Global error toast for operation failures (archive, delete, select).
+  const [errorToast, setErrorToast] = useState<string | null>(null);
+  const errorToastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Global Alt+K shortcut for quick search
   useEffect(() => {
@@ -298,6 +301,13 @@ export default function App() {
     }
   }, []);
 
+  // Cleanup error toast timer on unmount
+  useEffect(() => {
+    return () => {
+      if (errorToastTimerRef.current) clearTimeout(errorToastTimerRef.current);
+    };
+  }, []);
+
   // Generation counter so an older in-flight listStashes() resolution
   // cannot overwrite results from a newer typed-search. Without this, a
   // fast typer's earlier (slower) request can win the race and the UI
@@ -364,6 +374,13 @@ export default function App() {
     });
   }, [tags]);
 
+  /** Show a transient error toast that auto-dismisses after 4 s. */
+  const showError = useCallback((message: string) => {
+    setErrorToast(message);
+    if (errorToastTimerRef.current) clearTimeout(errorToastTimerRef.current);
+    errorToastTimerRef.current = setTimeout(() => setErrorToast(null), 4000);
+  }, []);
+
   const handleSelectStash = async (id: string) => {
     try {
       const stash = await api.getStash(id);
@@ -373,6 +390,7 @@ export default function App() {
       setSidebarOpen(false);
     } catch (err) {
       console.error('Failed to load stash:', err);
+      showError('Failed to load stash. Please try again.');
     }
   };
 
@@ -397,6 +415,7 @@ export default function App() {
       loadStashes();
     } catch (err) {
       console.error('Failed to archive stash:', err);
+      showError(archived ? 'Failed to archive stash.' : 'Failed to unarchive stash.');
     }
   };
 
@@ -433,6 +452,7 @@ export default function App() {
       loadTags();
     } catch (err) {
       console.error('Failed to delete stash:', err);
+      showError('Failed to delete stash. Please try again.');
     }
   };
 
@@ -673,6 +693,20 @@ export default function App() {
         onClose={() => setSearchOpen(false)}
         onSelectStash={handleSelectStash}
       />
+      {errorToast && (
+        <div
+          className="app-error-toast"
+          role="alert"
+          aria-live="assertive"
+          onClick={() => setErrorToast(null)}
+          title="Click to dismiss"
+        >
+          <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
+            <path d="M6.457 1.047c.659-1.234 2.427-1.234 3.086 0l6.082 11.378A1.75 1.75 0 0 1 14.082 15H1.918a1.75 1.75 0 0 1-1.543-2.575Zm1.763.707a.25.25 0 0 0-.44 0L1.698 13.132a.25.25 0 0 0 .22.368h12.164a.25.25 0 0 0 .22-.368Zm.53 3.996v2.5a.75.75 0 0 1-1.5 0v-2.5a.75.75 0 0 1 1.5 0ZM9 11a1 1 0 1 1-2 0 1 1 0 0 1 2 0Z" />
+          </svg>
+          {errorToast}
+        </div>
+      )}
     </div>
   );
 }

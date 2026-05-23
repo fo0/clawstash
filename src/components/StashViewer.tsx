@@ -337,6 +337,7 @@ export default function StashViewer({
   const deleteTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const filesContainerRef = useRef<HTMLDivElement>(null);
   const copyAllClipboard = useClipboard();
+  const titleClipboard = useClipboard();
   const fileClipboard = useClipboardWithKey();
   const apiClipboard = useClipboardWithKey();
 
@@ -522,6 +523,8 @@ export default function StashViewer({
       <div className="sr-only" aria-live="polite">
         {copyAllClipboard.status === 'copied' && 'All files copied to clipboard'}
         {copyAllClipboard.status === 'failed' && 'Copy failed'}
+        {titleClipboard.status === 'copied' && 'Stash name copied to clipboard'}
+        {titleClipboard.status === 'failed' && 'Copy failed'}
         {fileClipboard.copiedKey && 'File copied to clipboard'}
         {fileClipboard.failedKey && 'Copy failed'}
         {apiClipboard.copiedKey && 'API endpoint copied to clipboard'}
@@ -538,6 +541,28 @@ export default function StashViewer({
         <h2 className="viewer-title">
           {title}
           {stash.archived && <span className="viewer-archived-badge">Archived</span>}
+          <button
+            type="button"
+            className="viewer-title-copy-btn"
+            onClick={() => titleClipboard.copy(title)}
+            title={
+              titleClipboard.copied
+                ? 'Copied!'
+                : titleClipboard.status === 'failed'
+                  ? 'Copy failed'
+                  : 'Copy stash name to clipboard'
+            }
+            aria-label="Copy stash name to clipboard"
+          >
+            <CopyButtonContent
+              copied={titleClipboard.copied}
+              failed={titleClipboard.status === 'failed'}
+              size={12}
+              labelCopy=""
+              labelCopied=""
+              labelFailed=""
+            />
+          </button>
         </h2>
         <div className="viewer-actions">
           <button
