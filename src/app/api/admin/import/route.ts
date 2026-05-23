@@ -4,6 +4,15 @@ import { getDb } from '@/server/singleton';
 import { checkAdmin } from '@/app/api/_helpers';
 import { MAX_IMPORT_SIZE } from '@/server/validation';
 
+// adm-zip + Buffer + better-sqlite3 are Node-only. Pin the runtime so a future
+// Next.js default change (or a misconfigured edge override) cannot silently
+// route this handler to the Edge runtime, where it would fail with cryptic
+// `Buffer is not defined` errors instead of a clear startup-time signal.
+// Matches the convention used by every other route that touches the DB
+// singleton from a non-idempotent path (admin/auth, admin/logout, admin/session,
+// tokens/validate).
+export const runtime = 'nodejs';
+
 /**
  * POST /api/admin/import — replaces stash data with the uploaded export ZIP.
  *
