@@ -1,14 +1,20 @@
 import { NextRequest, NextResponse } from 'next/server';
 import crypto from 'crypto';
+import { z } from 'zod';
 import { getDb } from '@/server/singleton';
 import { ADMIN_PASSWORD, ADMIN_SESSION_HOURS } from '@/server/auth';
 import { parseJsonBody } from '@/app/api/_helpers';
+import { formatZodError } from '@/server/validation';
 import {
   checkAndRecordAuthAttempt,
   resetAuthAttempts,
   getClientIp,
   RATE_LIMIT_WINDOW_SEC,
 } from '@/server/auth-rate-limit';
+
+const LoginBodySchema = z.object({
+  password: z.string().min(1, 'Password is required'),
+});
 
 // Rate-limit state lives in an in-memory Map; this route MUST run on the
 // Node runtime so the route handler can share state with itself across
@@ -32,13 +38,11 @@ export async function POST(req: NextRequest) {
   // users for 15 minutes without ever guessing a password.
   const body = await parseJsonBody(req);
   if ('error' in body) return body.error;
-  if (typeof body.data !== 'object' || body.data === null || Array.isArray(body.data)) {
-    return NextResponse.json({ error: 'Invalid body' }, { status: 400 });
+  const parsed = LoginBodySchema.safeParse(body.data);
+  if (!parsed.success) {
+    return NextResponse.json({ error: formatZodError(parsed.error) }, { status: 400 });
   }
-  const { password: inputPassword } = body.data as Record<string, unknown>;
-  if (!inputPassword || typeof inputPassword !== 'string') {
-    return NextResponse.json({ error: 'Password is required' }, { status: 400 });
-  }
+  const inputPassword = parsed.data.password;
 
   // Now we have a real password attempt — apply the per-IP throttle.
   const ip = getClientIp(req);
