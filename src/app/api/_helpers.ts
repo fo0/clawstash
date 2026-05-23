@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getDb } from '@/server/singleton';
 import { requireScopeAuth, requireAdminAuth, extractToken } from '@/server/auth';
-import { isTrustedProxy } from '@/server/auth-rate-limit';
+import { isTrustedProxy, extractClientIp } from '@/server/auth-rate-limit';
 import type { TokenScope } from '@/server/db';
 
 // Canonical auth error responses. Centralised so checkScope / checkAdmin
@@ -119,17 +119,8 @@ export function getRequestInfo(req: NextRequest): {
   ip: string | undefined;
   userAgent: string | undefined;
 } {
-  const trustProxy = isTrustedProxy();
-  let ip: string | undefined;
-  if (trustProxy) {
-    const xff = req.headers.get('x-forwarded-for');
-    ip = (xff ? xff.split(',')[0].trim() : '') || undefined;
-  }
-  if (!ip) {
-    ip = req.headers.get('x-real-ip')?.trim() || undefined;
-  }
   return {
-    ip,
+    ip: extractClientIp(req),
     userAgent: req.headers.get('user-agent') || undefined,
   };
 }

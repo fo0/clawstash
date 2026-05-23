@@ -1,6 +1,19 @@
 import { NextRequest } from 'next/server';
 import type { ClawStashDB, TokenScope } from './db';
 
+/**
+ * Full scope set granted to admin sessions and open-mode callers.
+ *
+ * Hoisted as a single source of truth so admin / open-mode auth paths
+ * cannot drift on which scopes are implicitly granted. A new scope
+ * (e.g. a future `metrics` scope) is added here once and propagates to
+ * both `validateAuth` (admin-session branch) and `requireScopeAuth`
+ * (open-mode branch). Returned as a fresh array each call so callers
+ * can mutate without poisoning the shared constant.
+ */
+const ALL_SCOPES: readonly TokenScope[] = ['read', 'write', 'admin', 'mcp'];
+const allScopes = (): TokenScope[] => [...ALL_SCOPES];
+
 export interface AuthResult {
   authenticated: boolean;
   source: 'admin_session' | 'api_token' | 'open';
@@ -81,7 +94,7 @@ export function validateAuth(db: ClawStashDB, token: string): AuthResult {
       return {
         authenticated: true,
         source: 'admin_session',
-        scopes: ['read', 'write', 'admin', 'mcp'],
+        scopes: allScopes(),
         expiresAt: session.expiresAt ?? null,
       };
     }
@@ -122,7 +135,7 @@ export function requireScopeAuth(
   scope: TokenScope,
 ): AuthResult | null {
   if (!isAuthEnabled()) {
-    return { authenticated: true, source: 'open', scopes: ['read', 'write', 'admin', 'mcp'] };
+    return { authenticated: true, source: 'open', scopes: allScopes() };
   }
 
   const token = extractToken(req);

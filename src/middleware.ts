@@ -26,10 +26,17 @@ const CORS_HEADERS: Record<string, string> = {
 // Security headers — safe defaults that don't break agent/LAN access
 // ---------------------------------------------------------------------------
 
+// `X-Frame-Options: DENY` blocks the admin UI from being rendered inside
+// a third-party `<iframe>`, defending against clickjacking against the
+// login form and any admin-scoped action surface. We use the legacy
+// header (rather than CSP `frame-ancestors`) because it is universally
+// honored by older browsers and is sufficient here — ClawStash never
+// needs to be embedded.
 const SECURITY_HEADERS: Record<string, string> = {
   'X-Content-Type-Options': 'nosniff',
   'Referrer-Policy': 'strict-origin-when-cross-origin',
   'X-DNS-Prefetch-Control': 'off',
+  'X-Frame-Options': 'DENY',
 };
 
 // ---------------------------------------------------------------------------
