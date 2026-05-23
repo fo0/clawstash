@@ -228,10 +228,13 @@ export default function VersionHistory({ stashId, currentVersion, onRestore }: P
           <p className="version-detail-desc">{selectedVersion.description}</p>
         )}
         <div className="version-detail-files">
-          {selectedVersion.files.map((file, i) => {
+          {selectedVersion.files.map((file) => {
             const lang = resolvePrismLanguage(file.language, file.filename);
             return (
-              <div key={i} className="viewer-file">
+              // Filename is unique per version (enforced by server validation),
+              // so it's a stable React key. The previous `key={i}` would
+              // confuse diffing if the version's file order ever changed.
+              <div key={file.filename} className="viewer-file">
                 <div className="file-header">
                   <span className="file-name">{file.filename}</span>
                   {file.language && <span className="lang-tag">{file.language}</span>}

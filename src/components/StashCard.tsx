@@ -99,8 +99,12 @@ export default function StashCard({
       )}
 
       <div className="stash-card-files">
-        {stash.files.map((file, i) => (
-          <div key={i} className="stash-card-file" title={file.filename}>
+        {stash.files.map((file) => (
+          // Filenames are validated to be unique per stash by the server
+          // (see validation.ts FileSchema / DB unique constraint), so they
+          // are a stable React key. Using the array index instead would
+          // break diffing when files are added / reordered in the editor.
+          <div key={file.filename} className="stash-card-file" title={file.filename}>
             <svg
               width="12"
               height="12"
