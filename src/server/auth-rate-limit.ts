@@ -124,16 +124,25 @@ export function isTrustedProxy(): boolean {
   return process.env.TRUST_PROXY === '1' || process.env.TRUST_PROXY === 'true';
 }
 
-export function getClientIp(req: NextRequest): string {
-  const trustProxy = isTrustedProxy();
-
-  if (trustProxy) {
+/**
+ * Resolve the trustworthy client IP from forwarded / direct headers, or
+ * `undefined` if none are present. Shared by `getClientIp` (rate-limit
+ * keying) and `getRequestInfo` (access-log keying) so the two surfaces
+ * cannot drift on which headers count as trustworthy under `TRUST_PROXY`.
+ */
+export function extractClientIp(req: NextRequest): string | undefined {
+  if (isTrustedProxy()) {
     const xff = req.headers.get('x-forwarded-for')?.split(',')[0].trim();
     if (xff) return xff;
   }
-
   const xRealIp = req.headers.get('x-real-ip')?.trim();
   if (xRealIp) return xRealIp;
+  return undefined;
+}
+
+export function getClientIp(req: NextRequest): string {
+  const ip = extractClientIp(req);
+  if (ip) return ip;
 
   // Per-request random bucket: effectively no rate-limit for THIS request,
   // but other requests still have their own keys. Better than one shared
