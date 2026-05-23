@@ -28,15 +28,22 @@ export { ADMIN_PASSWORD, ADMIN_SESSION_HOURS };
 
 /**
  * Extract Bearer token from request (header or query parameter).
+ *
+ * Tokens are trimmed defensively before being returned. `cs_` / `csa_`
+ * tokens never contain whitespace, but a stray space (e.g. from a copy-paste
+ * or a misbehaving HTTP client) should not flip a valid token into a 401.
+ * Empty strings after trimming are treated as "no token".
  */
 export function extractToken(req: NextRequest): string | null {
   const auth = req.headers.get('authorization');
   if (auth && auth.startsWith('Bearer ')) {
-    return auth.substring(7);
+    const token = auth.substring(7).trim();
+    return token.length > 0 ? token : null;
   }
   const queryToken = req.nextUrl.searchParams.get('token');
   if (queryToken) {
-    return queryToken;
+    const token = queryToken.trim();
+    return token.length > 0 ? token : null;
   }
   return null;
 }
