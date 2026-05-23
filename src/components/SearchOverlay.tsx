@@ -79,6 +79,22 @@ export default function SearchOverlay({ open, onClose, onSelectStash }: Props) {
     };
   }, []);
 
+  // Global Escape listener so closing works even when focus has moved off
+  // the dialog (e.g. user clicked into something else briefly). The inner
+  // dialog handler still catches Escape when the dialog itself has focus;
+  // this is the belt-and-braces fallback. Closes BACKLOG #100.
+  useEffect(() => {
+    if (!open) return;
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        onClose();
+      }
+    };
+    document.addEventListener('keydown', handler);
+    return () => document.removeEventListener('keydown', handler);
+  }, [open, onClose]);
+
   // Scroll active item into view
   useEffect(() => {
     if (!listRef.current) return;
@@ -114,7 +130,12 @@ export default function SearchOverlay({ open, onClose, onSelectStash }: Props) {
   if (!open) return null;
 
   return (
-    <div className="search-overlay-backdrop" onMouseDown={onClose}>
+    <div
+      className="search-overlay-backdrop"
+      role="presentation"
+      aria-hidden="true"
+      onMouseDown={onClose}
+    >
       <div
         className="search-overlay"
         role="dialog"

@@ -374,6 +374,8 @@ export default function MermaidDiagram({ code, className, storageKey }: Props) {
           <div
             ref={contentRef}
             className="mermaid-diagram"
+            role="img"
+            aria-label="Rendered Mermaid diagram"
             dangerouslySetInnerHTML={{ __html: state.svg || '' }}
           />
         </TransformComponent>
