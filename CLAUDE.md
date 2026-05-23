@@ -91,7 +91,7 @@ When a session begins, read in this order. Stop early if a file is missing.
 | Containerization          | Docker (multi-stage, standalone output) | --         |
 | CI/CD                     | GitHub Actions -> GHCR                  | --         |
 | Package Manager           | npm (`package-lock.json`)               | --         |
-| Linter/Formatter          | -- (not configured)                     | --         |
+| Formatter                 | Prettier                                | 3.8        |
 | Test Framework            | vitest                                  | 4.x        |
 
 ## Project Structure
@@ -108,6 +108,7 @@ npm install                # Install dependencies
 npm run dev                # Start Next.js dev server (frontend + API on port 3000)
 
 # Automated Checks (in this order)
+npm run format:check       # Prettier formatting check
 npx tsc --noEmit           # Type checking
 npm test                   # Tests (vitest)
 npm run build              # Production build (Next.js)
@@ -126,10 +127,10 @@ npx gitnexus status        # Check index freshness
 npx gitnexus analyze       # Rebuild index (after structural changes or stale index)
 ```
 
-> **Note:** No linter is configured yet. When added, extend automated checks:
+> **Note:** No linter (ESLint) is configured yet. Formatting is enforced via Prettier (`npm run format:check`). When ESLint is added, extend automated checks:
 >
 > ```bash
-> npm run lint             # Lint + Format (when configured)
+> npm run lint             # Lint (when configured)
 > ```
 
 ## Key Patterns
@@ -314,8 +315,7 @@ Refactoring does NOT happen automatically. Only upon explicit user request, when
 - **`src/components/StashViewer.tsx` (~780 lines)**: Largest frontend component. File display, TOC, access log tab, and metadata display sections could be extracted into sub-components.
 - **`src/components/Settings.tsx` (~560 lines)**: Could extract Welcome Dashboard and Storage Stats sections into dedicated sub-components within a `settings/` directory.
 - **`src/languages.ts` (~340 lines)**: Extension map and content-based detection heuristics are large but stable. Low priority.
-- **No linter**: Adding ESLint would significantly improve code quality assurance.
-- **No Prettier config**: Adding Prettier would enforce consistent formatting.
+- **No linter**: Adding ESLint would significantly improve code quality assurance. (Prettier is already configured for formatting — see `.prettierrc.json`.)
 
 ## Documentation Rules
 
