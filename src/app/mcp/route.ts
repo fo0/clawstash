@@ -40,6 +40,26 @@ export async function POST(req: NextRequest) {
     return response;
   } catch (err) {
     console.error('MCP error:', err);
+    // Map common SDK / transport error shapes to proper JSON-RPC codes
+    // instead of collapsing everything to -32603/500. Falls back to the
+    // generic internal-error code for anything we cannot classify.
+    // Reference: https://www.jsonrpc.org/specification#error_object
+    const message = err instanceof Error ? err.message.toLowerCase() : '';
+    if (
+      err instanceof SyntaxError ||
+      message.includes('parse error') ||
+      message.includes('json') ||
+      message.includes('unexpected token')
+    ) {
+      return jsonRpcError(-32700, 'Parse error', 400);
+    }
+    if (
+      message.includes('invalid request') ||
+      message.includes('invalid jsonrpc') ||
+      message.includes('missing method')
+    ) {
+      return jsonRpcError(-32600, 'Invalid Request', 400);
+    }
     return jsonRpcError(-32603, 'Internal MCP error', 500);
   } finally {
     // Always tear both halves down — previously, if `transport.close()` threw,
