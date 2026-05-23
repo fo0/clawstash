@@ -78,7 +78,8 @@ export async function POST(req: NextRequest) {
       stash_versions,
       stash_version_files,
     });
-    return NextResponse.json({ message: 'Import successful', imported: result });
+    // Standard admin POST response shape: { success: true, message, ... }.
+    return NextResponse.json({ success: true, message: 'Import successful', imported: result });
   } catch (err) {
     console.error('Import error:', err);
     return NextResponse.json(

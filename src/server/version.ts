@@ -75,7 +75,17 @@ function loadBuildInfo(): BuildInfo {
   return { branch, commitHash, buildDate };
 }
 
-const buildInfo = loadBuildInfo();
+// Lazy-load on first use so the module-import path does not block on
+// synchronous git execSync when build-info.json is missing (e.g. local dev
+// without prebuild, or production where build-info.json should exist but the
+// cold-start path should never block the event loop on a child process).
+let cachedBuildInfo: BuildInfo | null = null;
+function getBuildInfo(): BuildInfo {
+  if (!cachedBuildInfo) {
+    cachedBuildInfo = loadBuildInfo();
+  }
+  return cachedBuildInfo;
+}
 
 // ---------------------------------------------------------------------------
 // GitHub API — latest commit on main
@@ -93,7 +103,7 @@ let cacheExpiry = 0;
 
 async function fetchLatestCommit(): Promise<LatestCache> {
   const now = new Date().toISOString();
-  const userAgent = `ClawStash/${formatBuildVersion(buildInfo.buildDate) ?? UNKNOWN_VERSION}`;
+  const userAgent = `ClawStash/${formatBuildVersion(getBuildInfo().buildDate) ?? UNKNOWN_VERSION}`;
 
   try {
     const res = await fetch(
@@ -156,15 +166,15 @@ export async function checkVersion(): Promise<VersionInfo> {
 
   const updateAvailable =
     cache.commit_sha !== null &&
-    buildInfo.commitHash !== '' &&
-    cache.commit_sha !== buildInfo.commitHash;
+    getBuildInfo().commitHash !== '' &&
+    cache.commit_sha !== getBuildInfo().commitHash;
 
   return {
     current: {
-      version: formatBuildVersion(buildInfo.buildDate) ?? UNKNOWN_VERSION,
-      commit_sha: buildInfo.commitHash,
-      build_date: buildInfo.buildDate,
-      branch: buildInfo.branch,
+      version: formatBuildVersion(getBuildInfo().buildDate) ?? UNKNOWN_VERSION,
+      commit_sha: getBuildInfo().commitHash,
+      build_date: getBuildInfo().buildDate,
+      branch: getBuildInfo().branch,
     },
     latest: cache.commit_sha
       ? {

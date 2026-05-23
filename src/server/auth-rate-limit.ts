@@ -27,7 +27,7 @@ export const RATE_LIMIT_WINDOW_SEC = Math.floor(RATE_LIMIT_WINDOW_MS / 1000);
 const RATE_LIMIT_MAX = 10; // max attempts per window per (scope, ip)
 const RATE_LIMIT_CLEANUP_INTERVAL_MS = 5 * 60 * 1000; // 5 minutes — sweep stale buckets
 
-type Scope = 'login' | 'token-validate';
+type Scope = 'login' | 'token-validate' | 'logout';
 
 interface RateLimitState {
   attempts: Map<string, { count: number; resetAt: number }>;

@@ -46,16 +46,22 @@ export class SessionStore {
 
   validateAdminSession(token: string): { valid: boolean; expiresAt?: string | null } {
     const tokenHash = hashToken(token);
-    const row = this.db
-      .prepare('SELECT expires_at FROM admin_sessions WHERE token_hash = ?')
-      .get(tokenHash) as { expires_at: string | null } | undefined;
-    if (!row) return { valid: false };
-    if (row.expires_at && new Date(row.expires_at) < new Date()) {
-      // Expired - clean up
-      this.db.prepare('DELETE FROM admin_sessions WHERE token_hash = ?').run(tokenHash);
-      return { valid: false };
-    }
-    return { valid: true, expiresAt: row.expires_at };
+    // Wrap SELECT + lazy DELETE in a single transaction so two concurrent
+    // validations of an expired token cannot interleave (e.g. SELECT, SELECT,
+    // DELETE, DELETE — the second DELETE is harmless but the lack of a
+    // transaction means readers and the cleanup are not isolated).
+    return this.db.transaction((): { valid: boolean; expiresAt?: string | null } => {
+      const row = this.db
+        .prepare('SELECT expires_at FROM admin_sessions WHERE token_hash = ?')
+        .get(tokenHash) as { expires_at: string | null } | undefined;
+      if (!row) return { valid: false };
+      if (row.expires_at && new Date(row.expires_at) < new Date()) {
+        // Expired - clean up
+        this.db.prepare('DELETE FROM admin_sessions WHERE token_hash = ?').run(tokenHash);
+        return { valid: false };
+      }
+      return { valid: true, expiresAt: row.expires_at };
+    })();
   }
 
   deleteAdminSession(token: string): boolean {
