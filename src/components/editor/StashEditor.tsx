@@ -39,6 +39,9 @@ export default function StashEditor({ stash, onSave, onCancel }: Props) {
   const [availableTags, setAvailableTags] = useState<TagInfo[]>([]);
   const [availableMetaKeys, setAvailableMetaKeys] = useState<string[]>([]);
   const [firstFileManuallyEdited, setFirstFileManuallyEdited] = useState(!!stash);
+  // Keep a ref to handleSave so the Ctrl/Cmd+S listener always calls the
+  // latest version without being recreated on every render.
+  const handleSaveRef = useRef<() => void>(() => {});
 
   // useRef(initialValue) re-evaluates `initialValue` on every render but only
   // keeps the FIRST render's result. The naive `.map(() => counter++)` form
@@ -160,6 +163,23 @@ export default function StashEditor({ stash, onSave, onCancel }: Props) {
     }
   };
 
+  // Keep ref in sync so the keyboard listener below always invokes the
+  // latest handleSave closure (which closes over fresh `files`, `name`, etc.)
+  // without needing to re-register the listener on every render.
+  handleSaveRef.current = handleSave;
+
+  // Ctrl+S / Cmd+S — save the stash from anywhere inside the editor.
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+        e.preventDefault();
+        handleSaveRef.current();
+      }
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, []);
+
   return (
     <div className="stash-editor">
       <div className="editor-header">
@@ -175,7 +195,7 @@ export default function StashEditor({ stash, onSave, onCancel }: Props) {
             className="btn btn-primary"
             onClick={handleSave}
             disabled={saving}
-            title="Save this stash"
+            title="Save this stash (Ctrl+S / Cmd+S)"
           >
             <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
               <path d="M13.78 4.22a.75.75 0 0 1 0 1.06l-7.25 7.25a.75.75 0 0 1-1.06 0L2.22 9.28a.751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018L6 10.94l6.72-6.72a.75.75 0 0 1 1.06 0Z" />
