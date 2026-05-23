@@ -63,6 +63,14 @@ See [authentication.md](authentication.md) for token creation and scopes.
 | `/api/admin/export`  | GET    | Export all data as ZIP |
 | `/api/admin/import`  | POST   | Import data from ZIP   |
 
+> **`/api/admin/import` semantics.** Wipes all stash data (`stashes`,
+> `stash_files`, `stash_versions`, `stash_version_files`, `stash_relations`,
+> `access_log`, `stashes_fts`). **Preserves** `admin_sessions` and
+> `api_tokens` so the importing admin stays logged in and existing API
+> integrations keep working against the freshly imported data. Foreign
+> exports (a ZIP from a different server) therefore do NOT carry their
+> tokens across — re-issue tokens / re-login on the target server if needed.
+
 ### System
 
 | Endpoint              | Method | Description                                                                 |

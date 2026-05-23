@@ -1005,6 +1005,26 @@ export class ClawStashDB {
     return { stashes, stash_files, stash_versions, stash_version_files };
   }
 
+  /**
+   * Replace stash data with the contents of an export ZIP.
+   *
+   * Wipes (in order): `stash_version_files`, `stash_versions`, `access_log`,
+   * `stash_files`, `stashes`, `stash_relations` (if present),
+   * `stashes_fts` (if present). Reinserts the supplied records and rebuilds
+   * the FTS index and stash-relations table.
+   *
+   * **Auth tables are preserved on purpose**: `admin_sessions` and
+   * `api_tokens` are NOT cleared. This means:
+   *  - The admin executing the import is not logged out by their own action.
+   *  - Existing API tokens keep working against the freshly imported data,
+   *    so background agents survive the swap.
+   *  - However, foreign exports (a ZIP produced on a different server) do
+   *    NOT bring their tokens / sessions across — the operator must
+   *    re-issue tokens and re-login on the target server if needed.
+   *
+   * If you need a clean-slate import, manually clear `api_tokens` /
+   * `admin_sessions` before calling this method. Closes BACKLOG #83.
+   */
   importAllData(data: {
     stashes: Record<string, unknown>[];
     stash_files: Record<string, unknown>[];

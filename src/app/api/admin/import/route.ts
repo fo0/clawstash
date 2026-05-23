@@ -4,6 +4,16 @@ import { getDb } from '@/server/singleton';
 import { checkAdmin } from '@/app/api/_helpers';
 import { MAX_IMPORT_SIZE } from '@/server/validation';
 
+/**
+ * POST /api/admin/import — replaces stash data with the uploaded export ZIP.
+ *
+ * Wipes `stash_*` and `access_log`; preserves `admin_sessions` and
+ * `api_tokens` on purpose so the importing admin and any background agents
+ * survive the swap. Foreign exports (from a different server) do NOT
+ * carry their auth state across — operators must re-issue tokens / re-login
+ * on the target server if needed. See `ClawStashDB.importAllData` for the
+ * full reset order. Closes BACKLOG #83.
+ */
 export async function POST(req: NextRequest) {
   const admin = checkAdmin(req);
   if (!admin.ok) return admin.response;
