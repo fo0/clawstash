@@ -25,18 +25,26 @@ Classify:
 
 ### 2. Read CLAUDE.md closure requirements
 
-- **Commands section** -> identify lint / typecheck / test / build commands
+- **Commands section** -> identify format / lint / typecheck / test / build commands
 - **Git Conventions** -> commit format (Conventional Commits), branch rules, merge strategy
 - **Documentation Rules** -> verify affected docs (CLAUDE.md, README.md, MEMORY.md, SCRATCHPAD.md, BACKLOG.md) are up to date
 
-### 3. Run automated checks
+### 3. Auto-format (write mode)
+
+Run the project's format-write command from CLAUDE.md Commands block (`npm run format` -> `prettier --write .`). This MUST run before lint/typecheck/test/build -- formatting drift introduced during the session otherwise reaches CI and fails `format:check`.
+
+- If no format-write command is listed in CLAUDE.md, skip this step (project has no formatter configured).
+- If formatting changed files, **stage them with `git add -u` so they go into the upcoming commit (step 6)** -- do NOT split formatting into its own commit.
+- Re-run `git status --porcelain` after formatting to see what changed.
+
+### 4. Run automated checks
 
 Execute the project's lint/typecheck/test/build commands from CLAUDE.md. If any fail:
 
 - **Feature branch:** report failure, stop. Do not commit.
 - **Main branch:** hard stop. Never push to main on red.
 
-### 4. (If GitNexus available) Verify scope
+### 5. (If GitNexus available) Verify scope
 
 ```
 gitnexus_detect_changes({scope: "all"})
@@ -44,19 +52,19 @@ gitnexus_detect_changes({scope: "all"})
 
 Confirm the change scope matches expectations. Surface any unexpected affected processes.
 
-### 5. Commit uncommitted changes (if any)
+### 6. Commit uncommitted changes (if any)
 
 - Follow project's commit message convention (Conventional Commits if defined)
 - Reference GitHub issue number if applicable (e.g. `feat: add X (#42)`)
 - **Main branch:** if uncommitted diff is large/unfocused -> ask user before committing
 
-### 6. Push
+### 7. Push
 
 - **Feature branch:** `git push` (use `git push -u origin <branch>` on first push). **Project rule (clawstash): do NOT push unless the user explicitly asks.**
 - **Main branch:** `git push origin <branch>` only after all checks green AND explicit user request.
 - **Never force-push** unless user explicitly requests.
 
-### 7. Suggest PR + CI (feature branch only)
+### 8. Suggest PR + CI (feature branch only)
 
 After push on a feature branch, suggest follow-ups — do NOT run them automatically:
 
@@ -64,12 +72,12 @@ After push on a feature branch, suggest follow-ups — do NOT run them automatic
 - Print: `Run /ci to check the build (auto-detects: status / logs / fix).`
 - The PR skill (`.claude/skills/pr/SKILL.md`) and CI skill (`.claude/skills/ci/SKILL.md`) auto-route by state. Done-skill never invokes them directly.
 
-### 8. Close related GitHub issue (if applicable)
+### 9. Close related GitHub issue (if applicable)
 
 - Comment on the issue in **English** with a short summary of what was delivered
 - Close the issue
 
-### 9. Report
+### 10. Report
 
 Strict format, strict limits:
 
@@ -81,6 +89,7 @@ Strict format, strict limits:
 
 ## Rules
 
+- **Format-write always runs before lint** -- never commit unformatted files. CI's `format:check` is unforgiving.
 - **Never push to `main` with failing checks.** Hard stop.
 - **Never force-push** without explicit user request.
 - **Ambiguous state on main** (large uncommitted diff, unclear scope) -> ask first.
