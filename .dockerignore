@@ -5,5 +5,14 @@ data
 .git
 .github
 .env
+.env.*
 *.md
 .dockerignore
+.gitnexus
+.vscode
+.idea
+coverage
+*.log
+*.tsbuildinfo
+.claude
+agent_docs
