@@ -8,7 +8,7 @@ import {
   isRenderableLanguage,
   getLanguageDisplayName,
 } from '../languages';
-import { formatRelativeTime } from '../utils/format';
+import RelativeTime from './shared/RelativeTime';
 import { useClipboard, useClipboardWithKey } from '../hooks/useClipboard';
 import { CopyIcon, CheckIcon, XIcon } from './shared/icons';
 import VersionHistory from './VersionHistory';
@@ -1067,12 +1067,7 @@ export default function StashViewer({
                 <div key={entry.id} className="access-log-entry">
                   <SourceBadge source={entry.source} />
                   <span className="access-log-action">{entry.action}</span>
-                  <span
-                    className="access-log-time"
-                    title={new Date(entry.timestamp).toLocaleString()}
-                  >
-                    {formatRelativeTime(entry.timestamp)}
-                  </span>
+                  <RelativeTime dateStr={entry.timestamp} className="access-log-time" />
                 </div>
               ))}
             </div>

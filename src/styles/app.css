@@ -1379,6 +1379,18 @@ body {
   white-space: nowrap;
 }
 
+/* Clickable relative/absolute timestamp toggle */
+.relative-time {
+  cursor: pointer;
+  border-bottom: 1px dashed transparent;
+  transition: border-color 0.15s, color 0.15s;
+}
+
+.relative-time:hover {
+  color: var(--text-secondary);
+  border-bottom-color: var(--border-light);
+}
+
 /* === Loading & Empty === */
 .loading {
   display: flex;
