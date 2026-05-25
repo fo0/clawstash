@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
 import type { StashListItem, LayoutMode } from '../types';
-import { formatRelativeTime } from '../utils/format';
 import { renderDescriptionMarkdown } from '../utils/markdown';
+import RelativeTime from './shared/RelativeTime';
 
 interface Props {
   stash: StashListItem;
@@ -150,12 +150,7 @@ export default function StashCard({
             </span>
           ))}
         </div>
-        <span
-          className="stash-card-date"
-          title={`Last updated: ${new Date(stash.updated_at).toLocaleString()}`}
-        >
-          {formatRelativeTime(stash.updated_at)}
-        </span>
+        <RelativeTime dateStr={stash.updated_at} className="stash-card-date" />
       </div>
     </div>
   );

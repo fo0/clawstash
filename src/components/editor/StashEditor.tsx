@@ -235,6 +235,15 @@ export default function StashEditor({ stash, onSave, onCancel }: Props) {
             className="form-textarea description-textarea"
             rows={2}
           />
+          {description.length > 0 && (
+            <span
+              className={`description-char-count${description.length > 45000 ? ' description-char-count-warn' : ''}`}
+              aria-live="polite"
+              aria-label={`${description.length} of 50000 characters`}
+            >
+              {description.length.toLocaleString()} / 50,000
+            </span>
+          )}
         </div>
 
         <div className="form-group">
