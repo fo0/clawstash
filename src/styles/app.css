@@ -2094,6 +2094,20 @@ body {
   font-family: inherit;
 }
 
+/* Character count hint below description textarea */
+.description-char-count {
+  display: block;
+  margin-top: 4px;
+  font-size: 11px;
+  color: var(--text-muted);
+  text-align: right;
+}
+
+.description-char-count-warn {
+  color: var(--accent-orange);
+  font-weight: 500;
+}
+
 .metadata-input {
   font-size: 13px;
 }
