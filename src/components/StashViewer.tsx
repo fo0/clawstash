@@ -373,6 +373,31 @@ export default function StashViewer({
     setTabPreference(tab);
   }, []);
 
+  // Hotkeys 1-4 to switch viewer tabs. Skipped when focus is inside an
+  // editable element so the keys are not stolen from inline text inputs.
+  useEffect(() => {
+    const TAB_MAP: Record<string, ViewerTab> = {
+      '1': 'content',
+      '2': 'metadata',
+      '3': 'access-log',
+      '4': 'history',
+    };
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.metaKey || e.ctrlKey || e.altKey) return;
+      const tag = (e.target as HTMLElement)?.tagName?.toLowerCase();
+      const isEditing =
+        tag === 'input' || tag === 'textarea' || (e.target as HTMLElement)?.isContentEditable;
+      if (isEditing) return;
+      const tab = TAB_MAP[e.key];
+      if (tab) {
+        e.preventDefault();
+        switchTab(tab);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [switchTab]);
+
   const scrollToId = useCallback((e: React.MouseEvent<HTMLAnchorElement>, id: string) => {
     e.preventDefault();
     const el = document.getElementById(id);
@@ -636,7 +661,7 @@ export default function StashViewer({
         <button
           className={`tab ${activeTab === 'content' ? 'active' : ''}`}
           onClick={() => switchTab('content')}
-          title="View file contents"
+          title="View file contents (key: 1)"
         >
           <svg
             width="14"
@@ -648,11 +673,12 @@ export default function StashViewer({
             <path d="M2 1.75C2 .784 2.784 0 3.75 0h6.586c.464 0 .909.184 1.237.513l2.914 2.914c.329.328.513.773.513 1.237v9.586A1.75 1.75 0 0 1 13.25 16h-9.5A1.75 1.75 0 0 1 2 14.25Zm1.75-.25a.25.25 0 0 0-.25.25v12.5c0 .138.112.25.25.25h9.5a.25.25 0 0 0 .25-.25V6h-2.75A1.75 1.75 0 0 1 9 4.25V1.5Zm6.75.062V4.25c0 .138.112.25.25.25h2.688l-.011-.013-2.914-2.914-.013-.011Z" />
           </svg>
           Content
+          <kbd className="tab-kbd">1</kbd>
         </button>
         <button
           className={`tab ${activeTab === 'metadata' ? 'active' : ''}`}
           onClick={() => switchTab('metadata')}
-          title="View stash details, metadata, and API endpoints"
+          title="View stash details, metadata, and API endpoints (key: 2)"
         >
           <svg
             width="14"
@@ -664,11 +690,12 @@ export default function StashViewer({
             <path d="M0 8a8 8 0 1 1 16 0A8 8 0 0 1 0 8Zm8-6.5a6.5 6.5 0 1 0 0 13 6.5 6.5 0 0 0 0-13ZM6.92 6.085h.001a.749.749 0 1 1-1.342-.67c.169-.339.516-.552.974-.552.97 0 1.447.67 1.447 1.181 0 .43-.245.756-.462.97l-.044.042c-.21.196-.383.375-.383.632v.22a.75.75 0 0 1-1.5 0v-.22c0-.67.406-1.05.634-1.26l.044-.043c.16-.147.228-.228.228-.356 0-.098-.06-.233-.447-.233-.218 0-.316.1-.361.183ZM8 10.5a1 1 0 1 1 0 2 1 1 0 0 1 0-2Z" />
           </svg>
           Details & API
+          <kbd className="tab-kbd">2</kbd>
         </button>
         <button
           className={`tab ${activeTab === 'access-log' ? 'active' : ''}`}
           onClick={() => switchTab('access-log')}
-          title="View when and how this stash was accessed (API, MCP, UI)"
+          title="View when and how this stash was accessed (API, MCP, UI) (key: 3)"
         >
           <svg
             width="14"
@@ -680,11 +707,12 @@ export default function StashViewer({
             <path d="M1.5 8a6.5 6.5 0 1 0 13 0 6.5 6.5 0 0 0-13 0ZM8 0a8 8 0 1 1 0 16A8 8 0 0 1 8 0Zm.5 4.75a.75.75 0 0 0-1.5 0v3.5a.75.75 0 0 0 .37.65l2.5 1.5a.75.75 0 1 0 .77-1.29L8.5 7.94Z" />
           </svg>
           Access Log
+          <kbd className="tab-kbd">3</kbd>
         </button>
         <button
           className={`tab ${activeTab === 'history' ? 'active' : ''}`}
           onClick={() => switchTab('history')}
-          title="View version history and compare changes"
+          title="View version history and compare changes (key: 4)"
         >
           <svg
             width="14"
@@ -697,6 +725,7 @@ export default function StashViewer({
           </svg>
           History
           <span className="version-count-badge">v{stash.version}</span>
+          <kbd className="tab-kbd">4</kbd>
         </button>
         <button
           className="tab tab-analyze"

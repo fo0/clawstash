@@ -1535,6 +1535,29 @@ body {
   border-bottom-color: var(--accent-green);
 }
 
+/* Keyboard shortcut hint shown inside viewer tab buttons */
+.tab-kbd {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 0 4px;
+  border: 1px solid var(--border-color);
+  border-radius: 3px;
+  background: var(--bg-secondary);
+  color: var(--text-muted);
+  font-size: 10px;
+  font-family: inherit;
+  line-height: 1.5;
+  vertical-align: 1px;
+  pointer-events: none;
+  opacity: 0.8;
+}
+
+.tab.active .tab-kbd {
+  border-color: var(--accent-green);
+  color: var(--accent-green);
+  opacity: 1;
+}
+
 /* === Table of Contents (multi-markdown stashes) === */
 .viewer-toc {
   margin-bottom: 20px;
