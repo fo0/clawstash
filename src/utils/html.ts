@@ -1,6 +1,7 @@
 /**
  * Escape a string for safe inclusion in HTML body text or attribute values.
- * Escapes the four characters HTML treats as syntactically significant.
+ * Escapes all five characters OWASP recommends for HTML entity encoding:
+ * `& < > " '` (the "big five").
  *
  * The ampersand replacement runs first so subsequent entity insertions
  * (`&amp;`, `&lt;`, etc.) are not double-escaped.
@@ -13,5 +14,6 @@ export function escapeHtml(s: string): string {
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;');
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
 }

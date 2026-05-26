@@ -2,8 +2,8 @@ import { describe, it, expect } from 'vitest';
 import { escapeHtml } from '../html';
 
 describe('escapeHtml', () => {
-  it('escapes the four HTML-significant chars', () => {
-    expect(escapeHtml('a&b<c>d"e')).toBe('a&amp;b&lt;c&gt;d&quot;e');
+  it('escapes all five HTML-significant chars', () => {
+    expect(escapeHtml('a&b<c>d"e\'f')).toBe('a&amp;b&lt;c&gt;d&quot;e&#39;f');
   });
 
   it('escapes ampersand first so other entity prefixes are double-escaped', () => {
