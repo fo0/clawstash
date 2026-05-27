@@ -181,7 +181,12 @@ export default function SearchOverlay({ open, onClose, onSelectStash }: Props) {
         )}
 
         {results.length > 0 && (
-          <div className="search-overlay-results" ref={listRef} role="listbox" id="search-overlay-results">
+          <div
+            className="search-overlay-results"
+            ref={listRef}
+            role="listbox"
+            id="search-overlay-results"
+          >
             {results.map((stash, idx) => (
               <button
                 type="button"
