@@ -116,7 +116,7 @@ export default function SwaggerViewer() {
 
   if (hasError) {
     return (
-      <div className="api-error-banner">
+      <div className="api-error-banner" role="alert">
         Swagger UI could not be loaded. Check your network connection or use the OpenAPI JSON
         section.
       </div>

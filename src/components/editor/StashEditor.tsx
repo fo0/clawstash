@@ -205,7 +205,11 @@ export default function StashEditor({ stash, onSave, onCancel }: Props) {
         </div>
       </div>
 
-      {error && <div className="error-banner">{error}</div>}
+      {error && (
+        <div className="error-banner" role="alert">
+          {error}
+        </div>
+      )}
 
       <div className="editor-form">
         <div className="form-group">

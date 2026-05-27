@@ -99,7 +99,8 @@ export default function TagCombobox({ tags, onChange, availableTags }: Props) {
               <button
                 className="tag-combobox-tag-remove"
                 onClick={() => removeTag(tag)}
-                title="Remove tag"
+                title={`Remove tag "${tag}"`}
+                aria-label={`Remove tag "${tag}"`}
               >
                 &times;
               </button>

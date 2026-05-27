@@ -263,7 +263,11 @@ export default function TokensTab({ baseUrl, openApiJson, mcpSpec }: Props) {
         )}
 
         {/* Error */}
-        {tokensError && <div className="api-error-banner">{tokensError}</div>}
+        {tokensError && (
+          <div className="api-error-banner" role="alert">
+            {tokensError}
+          </div>
+        )}
 
         {/* Token List */}
         <div className="api-token-list">
