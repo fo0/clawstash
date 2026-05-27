@@ -161,6 +161,8 @@ export default function SearchOverlay({ open, onClose, onSelectStash }: Props) {
             placeholder="Search stashes..."
             value={query}
             onChange={(e) => handleInputChange(e.target.value)}
+            aria-label="Search stashes"
+            aria-controls="search-overlay-results"
           />
           <kbd className="search-overlay-kbd">Esc</kbd>
         </div>
@@ -179,7 +181,7 @@ export default function SearchOverlay({ open, onClose, onSelectStash }: Props) {
         )}
 
         {results.length > 0 && (
-          <div className="search-overlay-results" ref={listRef} role="listbox">
+          <div className="search-overlay-results" ref={listRef} role="listbox" id="search-overlay-results">
             {results.map((stash, idx) => (
               <button
                 type="button"
