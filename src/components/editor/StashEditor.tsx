@@ -42,6 +42,9 @@ export default function StashEditor({ stash, onSave, onCancel }: Props) {
   // Keep a ref to handleSave so the Ctrl/Cmd+S listener always calls the
   // latest version without being recreated on every render.
   const handleSaveRef = useRef<() => void>(() => {});
+  // Track whether the user has made any edits since the editor opened.
+  // Used by the beforeunload handler to warn about unsaved changes.
+  const dirtyRef = useRef(false);
 
   // useRef(initialValue) re-evaluates `initialValue` on every render but only
   // keeps the FIRST render's result. The naive `.map(() => counter++)` form
@@ -84,6 +87,7 @@ export default function StashEditor({ stash, onSave, onCancel }: Props) {
   // from the dep list also avoids recreating the callback on every keystroke.
   const handleNameChange = useCallback(
     (newName: string) => {
+      dirtyRef.current = true;
       setName(newName);
       if (firstFileManuallyEdited) return;
       setFiles((prev) => {
@@ -103,17 +107,20 @@ export default function StashEditor({ stash, onSave, onCancel }: Props) {
   );
 
   const addFile = () => {
+    dirtyRef.current = true;
     setFiles([...files, { filename: '', content: '', language: '' }]);
     fileIds.current.push(fileIdCounter.current++);
   };
 
   const removeFile = (index: number) => {
     if (files.length === 1) return;
+    dirtyRef.current = true;
     setFiles(files.filter((_, i) => i !== index));
     fileIds.current.splice(index, 1);
   };
 
   const updateFile = useCallback((index: number, field: keyof FileInput, value: string) => {
+    dirtyRef.current = true;
     setFiles((prev) => {
       const updated = [...prev];
       updated[index] = { ...updated[index], [field]: value };
@@ -151,9 +158,11 @@ export default function StashEditor({ stash, onSave, onCancel }: Props) {
 
       if (stash) {
         await api.updateStash(stash.id, payload);
+        dirtyRef.current = false;
         onSave(stash.id);
       } else {
         const created = await api.createStash(payload);
+        dirtyRef.current = false;
         onSave(created.id);
       }
     } catch (err) {
@@ -178,6 +187,17 @@ export default function StashEditor({ stash, onSave, onCancel }: Props) {
     };
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
+  }, []);
+
+  // Warn before navigating away (browser back, tab close) with unsaved edits.
+  useEffect(() => {
+    const handler = (e: BeforeUnloadEvent) => {
+      if (dirtyRef.current) {
+        e.preventDefault();
+      }
+    };
+    window.addEventListener('beforeunload', handler);
+    return () => window.removeEventListener('beforeunload', handler);
   }, []);
 
   return (
@@ -234,7 +254,10 @@ export default function StashEditor({ stash, onSave, onCancel }: Props) {
           </label>
           <textarea
             value={description}
-            onChange={(e) => setDescription(e.target.value)}
+            onChange={(e) => {
+              dirtyRef.current = true;
+              setDescription(e.target.value);
+            }}
             placeholder="Describe what this stash contains and what it's used for..."
             className="form-textarea description-textarea"
             rows={2}
@@ -255,7 +278,14 @@ export default function StashEditor({ stash, onSave, onCancel }: Props) {
             Tags
             <InfoIcon tooltip="Tags to categorize your stash. Type to search existing tags or create new ones. Press Enter or comma to add. Tags let you filter and find stashes quickly." />
           </label>
-          <TagCombobox tags={tags} onChange={setTags} availableTags={availableTags} />
+          <TagCombobox
+            tags={tags}
+            onChange={(t) => {
+              dirtyRef.current = true;
+              setTags(t);
+            }}
+            availableTags={availableTags}
+          />
         </div>
 
         <div className="form-group">
@@ -266,7 +296,10 @@ export default function StashEditor({ stash, onSave, onCancel }: Props) {
           </label>
           <MetadataEditor
             entries={metadataEntries}
-            onChange={setMetadataEntries}
+            onChange={(e) => {
+              dirtyRef.current = true;
+              setMetadataEntries(e);
+            }}
             availableKeys={availableMetaKeys}
           />
         </div>
