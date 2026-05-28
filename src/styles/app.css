@@ -540,6 +540,14 @@ body {
   color: var(--text-primary);
 }
 
+.sidebar-list-count {
+  padding: 4px 16px 2px;
+  font-size: 11px;
+  color: var(--text-muted);
+  font-weight: 500;
+  letter-spacing: 0.02em;
+}
+
 .sidebar-list {
   flex: 1;
   overflow-y: auto;
@@ -1383,7 +1391,9 @@ body {
 .relative-time {
   cursor: pointer;
   border-bottom: 1px dashed transparent;
-  transition: border-color 0.15s, color 0.15s;
+  transition:
+    border-color 0.15s,
+    color 0.15s;
 }
 
 .relative-time:hover {
@@ -6200,6 +6210,27 @@ body {
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
   }
+}
+
+/* === Global Success Toast === */
+.app-success-toast {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 18px;
+  background: var(--bg-card);
+  border: 1px solid rgba(63, 185, 80, 0.4);
+  border-radius: var(--radius);
+  color: #7ee787;
+  font-size: 13px;
+  font-weight: 500;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+  z-index: 2000;
+  cursor: pointer;
+  max-width: 360px;
 }
 
 /* === Global Error Toast === */

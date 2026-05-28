@@ -410,6 +410,13 @@ export default function Sidebar({
             {showArchived ? 'Showing archived' : 'Show archived'}
           </button>
 
+          {stashes.length > 0 && (
+            <div className="sidebar-list-count" aria-live="polite">
+              {stashes.length} stash{stashes.length !== 1 ? 'es' : ''}
+              {(search || filterTag) && ' matching'}
+            </div>
+          )}
+
           <div className="sidebar-list">
             {stashes.map((stash) => (
               <div

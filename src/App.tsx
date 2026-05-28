@@ -106,6 +106,9 @@ export default function App() {
   // Global error toast for operation failures (archive, delete, select).
   const [errorToast, setErrorToast] = useState<string | null>(null);
   const errorToastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Global success toast for positive feedback (save, archive, restore).
+  const [successToast, setSuccessToast] = useState<string | null>(null);
+  const successToastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Global Alt+K shortcut for quick search
   useEffect(() => {
@@ -301,10 +304,11 @@ export default function App() {
     }
   }, []);
 
-  // Cleanup error toast timer on unmount
+  // Cleanup toast timers on unmount
   useEffect(() => {
     return () => {
       if (errorToastTimerRef.current) clearTimeout(errorToastTimerRef.current);
+      if (successToastTimerRef.current) clearTimeout(successToastTimerRef.current);
     };
   }, []);
 
@@ -381,6 +385,13 @@ export default function App() {
     errorToastTimerRef.current = setTimeout(() => setErrorToast(null), 4000);
   }, []);
 
+  /** Show a transient success toast that auto-dismisses after 3 s. */
+  const showSuccess = useCallback((message: string) => {
+    setSuccessToast(message);
+    if (successToastTimerRef.current) clearTimeout(successToastTimerRef.current);
+    successToastTimerRef.current = setTimeout(() => setSuccessToast(null), 3000);
+  }, []);
+
   const handleSelectStash = async (id: string) => {
     try {
       const stash = await api.getStash(id);
@@ -413,6 +424,7 @@ export default function App() {
         setSelectedStash(updated);
       }
       loadStashes();
+      showSuccess(archived ? 'Stash archived.' : 'Stash unarchived.');
     } catch (err) {
       console.error('Failed to archive stash:', err);
       showError(archived ? 'Failed to archive stash.' : 'Failed to unarchive stash.');
@@ -450,6 +462,7 @@ export default function App() {
       pushUrl('/');
       loadStashes();
       loadTags();
+      showSuccess('Stash deleted.');
     } catch (err) {
       console.error('Failed to delete stash:', err);
       showError('Failed to delete stash. Please try again.');
@@ -459,6 +472,7 @@ export default function App() {
   const handleSaveStash = async (savedId?: string) => {
     try {
       const stashId = savedId || selectedStash?.id;
+      const isNew = !selectedStash;
       if (stashId) {
         const updated = await api.getStash(stashId);
         setSelectedStash(updated);
@@ -470,6 +484,7 @@ export default function App() {
       }
       loadStashes();
       loadTags();
+      showSuccess(isNew ? 'Stash created.' : 'Stash saved.');
     } catch (err) {
       console.error('Failed to reload stash after save:', err);
       setView('home');
@@ -693,6 +708,20 @@ export default function App() {
         onClose={() => setSearchOpen(false)}
         onSelectStash={handleSelectStash}
       />
+      {successToast && (
+        <div
+          className="app-success-toast"
+          role="status"
+          aria-live="polite"
+          onClick={() => setSuccessToast(null)}
+          title="Click to dismiss"
+        >
+          <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
+            <path d="M13.78 4.22a.75.75 0 0 1 0 1.06l-7.25 7.25a.75.75 0 0 1-1.06 0L2.22 9.28a.751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018L6 10.94l6.72-6.72a.75.75 0 0 1 1.06 0Z" />
+          </svg>
+          {successToast}
+        </div>
+      )}
       {errorToast && (
         <div
           className="app-error-toast"
