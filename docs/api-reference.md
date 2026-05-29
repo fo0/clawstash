@@ -31,7 +31,7 @@ See [authentication.md](authentication.md) for token creation and scopes.
 | `/api/stashes/graph`                   | GET    | Tag relationship graph (`?tag=&depth=&min_weight=&min_count=&limit=`) |
 | `/api/stashes/graph/stashes`           | GET    | Stash relationship graph                                              |
 
-> **`?archived=` query param**: only the literal strings `true` and `false` are honored — any other value (e.g. `?archived=1`, `?archived=yes`) is silently ignored and the route falls back to the default (active stashes only). See BACKLOG #84 for the planned 400-on-invalid behavior.
+> **`?archived=` query param**: only the literal strings `true` and `false` are honored. Any other value (e.g. `?archived=1`, `?archived=yes`) is rejected with `400 Bad Request` and `{ "error": "Invalid 'archived' value. Use 'true' or 'false'." }`. Omit the parameter entirely to use the default (active stashes only).
 
 > **Raw file route response header**: `/api/stashes/:id/files/:filename/raw` returns `Content-Disposition: inline; filename*=UTF-8''…` so non-ASCII filenames are preserved when downloaded.
 
