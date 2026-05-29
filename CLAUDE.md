@@ -311,10 +311,11 @@ npx gitnexus analyze
 
 Refactoring does NOT happen automatically. Only upon explicit user request, when repeated code smells emerge across multiple files in review, or when a feature implementation is significantly harder than expected due to code structure. See `agent_docs/refactoring_guidelines.md` for principles.
 
-- **`src/server/db.ts` (~1850 lines)**: Largest file by far. Strong candidate for splitting: token/session management -> `TokenStore`, version history -> `VersionStore`, FTS methods -> `SearchStore`.
-- **`src/server/openapi.ts` (~680 lines)**: Large schema definition. Could adopt `@asteasolutions/zod-to-openapi` to generate from Zod schemas in `tool-defs.ts`.
-- **`src/components/StashViewer.tsx` (~780 lines)**: Largest frontend component. File display, TOC, access log tab, and metadata display sections could be extracted into sub-components.
-- **`src/components/Settings.tsx` (~560 lines)**: Could extract Welcome Dashboard and Storage Stats sections into dedicated sub-components within a `settings/` directory.
+- **`src/server/db.ts` (~1150 lines)**: Largest server file. Token/session, version history, and FTS logic have already been split into `src/server/stores/` (`TokenStore`, `SessionStore`, `VersionStore`, `SearchStore`); `ClawStashDB` now delegates to them. Further extraction (e.g. tag-graph / relations) is optional and low priority.
+- **`src/server/openapi.ts` (~830 lines)**: Large schema definition (one big function). Could adopt `@asteasolutions/zod-to-openapi` to generate from Zod schemas in `tool-defs.ts` (BACKLOG #105).
+- **`src/components/StashViewer.tsx` (~1090 lines)**: Largest frontend component. File display, TOC, access log tab, and metadata display sections could be extracted into sub-components (BACKLOG #106).
+- **`src/components/Settings.tsx` (~680 lines)**: Could extract Welcome Dashboard and Storage Stats sections into dedicated sub-components within a `settings/` directory (BACKLOG #106).
+- **`src/components/GraphViewer.tsx` / `StashGraphCanvas.tsx` (~1600 lines each)**: Pure layout/draw/physics helpers mixed with the React components — extract-module candidates (BACKLOG #102 / #103).
 - **`src/languages.ts` (~340 lines)**: Extension map and content-based detection heuristics are large but stable. Low priority.
 - **No linter**: Adding ESLint would significantly improve code quality assurance. (Prettier is already configured for formatting — see `.prettierrc.json`.)
 
