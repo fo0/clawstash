@@ -72,6 +72,12 @@ const FileSchema = z.object({
     .min(1, 'Filename is required')
     .max(MAX_FILENAME_LENGTH)
     .refine(isValidFilename, 'Filename contains invalid characters'),
+  // No `.min(1)` here: empty-string content is intentionally allowed so
+  // placeholder / scaffold files can be stored. Such files survive
+  // createStash / updateStash and are FTS-indexed as empty rows (they match
+  // no search terms and contribute nothing to BM25 ranking). If empty files
+  // should ever be rejected, add `.min(1)` here AND in FileInputSchema
+  // (tool-defs.ts) so REST and MCP stay symmetric.
   content: z.string().max(MAX_FILE_CONTENT_LENGTH, 'File content exceeds 10MB limit'),
   language: z.string().max(50).optional(),
 });

@@ -15,6 +15,12 @@ async function loadMermaid(): Promise<typeof MermaidApi> {
     mermaidPromise = import('mermaid')
       .then((mod) => {
         const mermaid = mod.default;
+        // Initialized exactly once with the dark theme. Mermaid applies the
+        // theme at `initialize()` time, so a future light/auto theme toggle
+        // cannot just flip a CSS variable — it would need a re-`initialize()`
+        // plus a forced re-render (re-hydration) of every already-rendered
+        // diagram. No theme toggle exists today, so this is a known
+        // limitation, not a behavioral bug.
         mermaid.initialize({
           startOnLoad: false,
           theme: 'dark',
