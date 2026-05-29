@@ -66,6 +66,15 @@ function key(scope: Scope, ip: string): string {
  * to evaluate (e.g. after parsing the body / extracting the token).
  * Calling it before validation lets malformed requests burn the bucket
  * and lock out legitimate users (DoS).
+ *
+ * Concurrency note: the read-check-increment sequence is NOT atomic. Under
+ * a concurrent burst, two requests can both observe `count = MAX - 1`,
+ * both pass the check, and then bump to MAX + 1 — so a window may admit a
+ * couple of attempts beyond RATE_LIMIT_MAX. This is acceptable at
+ * brute-force scale (10 attempts / 15-min window): a handful of extra tries
+ * does not meaningfully weaken the throttle. Node's single-threaded event
+ * loop also means the gap only opens across `await` points in the caller,
+ * not inside this synchronous function.
  */
 export function checkAndRecordAuthAttempt(
   scope: Scope,
