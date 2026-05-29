@@ -22,6 +22,12 @@
 import crypto from 'crypto';
 import type { NextRequest } from 'next/server';
 
+// Window math relies on `Date.now()` (wall clock), which is non-monotonic:
+// an NTP step can stretch an in-flight window or expire entries early. On a
+// production server with disciplined (slewed) NTP this is negligible, and the
+// worst case is a slightly longer/shorter throttle window — never a bypass of
+// the per-attempt count. A monotonic clock (`performance.now()`) is not used
+// because it has no fixed epoch to share across the `globalThis` state.
 export const RATE_LIMIT_WINDOW_MS = 15 * 60 * 1000; // 15 minutes
 export const RATE_LIMIT_WINDOW_SEC = Math.floor(RATE_LIMIT_WINDOW_MS / 1000);
 const RATE_LIMIT_MAX = 10; // max attempts per window per (scope, ip)
