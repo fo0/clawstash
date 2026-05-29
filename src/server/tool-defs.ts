@@ -35,6 +35,9 @@ export const FileInputSchema = z.object({
     .describe(
       'Filename with extension (e.g. "main.py", "config.json"). Extension is used for language detection.',
     ),
+  // No `.min(1)`: empty content is intentionally allowed (placeholder /
+  // scaffold files). Mirror of FileSchema.content in validation.ts — keep
+  // both in sync if the empty-file policy ever changes.
   content: z
     .string()
     .max(MAX_FILE_CONTENT_LENGTH, 'File content exceeds 10MB limit')
