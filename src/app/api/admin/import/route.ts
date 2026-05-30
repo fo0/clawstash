@@ -40,7 +40,7 @@ export async function POST(req: NextRequest) {
         { status: 411 },
       );
     }
-    const contentLength = parseInt(contentLengthHeader, 10);
+    const contentLength = Number.parseInt(contentLengthHeader, 10);
     if (!Number.isFinite(contentLength) || contentLength < 0) {
       return NextResponse.json({ error: 'Invalid Content-Length header' }, { status: 400 });
     }
