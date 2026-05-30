@@ -56,12 +56,20 @@ const CONTENT_SECURITY_POLICY = [
   "form-action 'self'",
 ].join('; ');
 
+// `Permissions-Policy` restricts access to browser features the app never
+// needs. Disabling camera, microphone, geolocation, and payment prevents a
+// compromised dependency or injected script from silently accessing them.
+// The header has no effect on ClawStash's functionality.
+const PERMISSIONS_POLICY =
+  'camera=(), microphone=(), geolocation=(), payment=(), usb=(), interest-cohort=()';
+
 const SECURITY_HEADERS: Record<string, string> = {
   'X-Content-Type-Options': 'nosniff',
   'Referrer-Policy': 'strict-origin-when-cross-origin',
   'X-DNS-Prefetch-Control': 'off',
   'X-Frame-Options': 'DENY',
   'Content-Security-Policy': CONTENT_SECURITY_POLICY,
+  'Permissions-Policy': PERMISSIONS_POLICY,
 };
 
 // ---------------------------------------------------------------------------

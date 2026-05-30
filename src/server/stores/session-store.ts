@@ -55,7 +55,7 @@ export class SessionStore {
         .prepare('SELECT expires_at FROM admin_sessions WHERE token_hash = ?')
         .get(tokenHash) as { expires_at: string | null } | undefined;
       if (!row) return { valid: false };
-      if (row.expires_at && new Date(row.expires_at) < new Date()) {
+      if (row.expires_at && row.expires_at < new Date().toISOString()) {
         // Expired - clean up
         this.db.prepare('DELETE FROM admin_sessions WHERE token_hash = ?').run(tokenHash);
         return { valid: false };

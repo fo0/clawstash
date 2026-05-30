@@ -21,10 +21,14 @@ export function isUnsafeUrl(value: string): boolean {
     if (code > 0x20 && code !== 0x7f) cleaned += value[i];
   }
   cleaned = cleaned.toLowerCase();
+  // Block all data: URIs, not just data:text/html. data:image/svg+xml can
+  // carry embedded scripts that execute in some browser contexts, and no
+  // legitimate markdown link or image needs a data: source (user content is
+  // stored as file objects, not inline data URIs).
   return (
     cleaned.startsWith('javascript:') ||
     cleaned.startsWith('vbscript:') ||
-    cleaned.startsWith('data:text/html')
+    cleaned.startsWith('data:')
   );
 }
 
