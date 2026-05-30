@@ -15,12 +15,8 @@ export function isUnsafeUrl(value: string): boolean {
   // Strip ASCII control chars + whitespace (code points 0x00-0x20 and DEL=0x7F)
   // before scheme detection. Browsers ignore those when resolving URLs, so an
   // attacker could otherwise hide a `javascript:` scheme behind them.
-  let cleaned = '';
-  for (let i = 0; i < value.length; i++) {
-    const code = value.charCodeAt(i);
-    if (code > 0x20 && code !== 0x7f) cleaned += value[i];
-  }
-  cleaned = cleaned.toLowerCase();
+  // eslint-disable-next-line no-control-regex
+  const cleaned = value.replace(/[\x00-\x20\x7f]/g, '').toLowerCase();
   // Block all data: URIs, not just data:text/html. data:image/svg+xml can
   // carry embedded scripts that execute in some browser contexts, and no
   // legitimate markdown link or image needs a data: source (user content is
