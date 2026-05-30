@@ -30,7 +30,7 @@ const FTS_SNIPPET_OPEN = '';
 const FTS_SNIPPET_CLOSE = '';
 
 function formatSnippet(raw: string): string {
-  return raw.split(FTS_SNIPPET_OPEN).join('**').split(FTS_SNIPPET_CLOSE).join('**');
+  return raw.replaceAll(FTS_SNIPPET_OPEN, '**').replaceAll(FTS_SNIPPET_CLOSE, '**');
 }
 
 /**
@@ -183,6 +183,19 @@ export class SearchStore {
       return { stashes: [], total: 0, query };
     }
 
+    // Build the shared WHERE clauses (tag + archived) that are appended
+    // identically to both the COUNT and the row-fetch queries. Extracting
+    // them once prevents count/rows from diverging when filters are added.
+    const filterSuffix = { sql: '', params: [] as unknown[] };
+    if (tag) {
+      filterSuffix.sql += ` AND s.tags LIKE ? ESCAPE '\\'`;
+      filterSuffix.params.push(`%"${tag.replace(/[\\%_]/g, '\\$&')}"%`);
+    }
+    if (archived !== undefined) {
+      filterSuffix.sql += ' AND s.archived = ?';
+      filterSuffix.params.push(archived ? 1 : 0);
+    }
+
     // Run FTS5 query — may throw on syntax errors despite sanitization
     let countRow: { count: number };
     let rows: {
@@ -196,33 +209,22 @@ export class SearchStore {
     }[];
 
     try {
-      let countSql = `
+      const countSql = `
         SELECT COUNT(*) as count
         FROM stashes_fts f
         JOIN stashes s ON s.id = f.stash_id
-        WHERE stashes_fts MATCH ?
+        WHERE stashes_fts MATCH ?${filterSuffix.sql}
       `;
-      const countParams: unknown[] = [ftsQuery];
-
-      if (tag) {
-        countSql += ` AND s.tags LIKE ? ESCAPE '\\'`;
-        const escapedTag = tag.replace(/[\\%_]/g, '\\$&');
-        countParams.push(`%"${escapedTag}"%`);
-      }
-
-      if (archived !== undefined) {
-        countSql += ' AND s.archived = ?';
-        countParams.push(archived ? 1 : 0);
-      }
-
-      countRow = this.db.prepare(countSql).get(...countParams) as { count: number };
+      countRow = this.db
+        .prepare(countSql)
+        .get(ftsQuery, ...filterSuffix.params) as { count: number };
 
       // Use private-use Unicode markers (U+E000 / U+E001) so we can detect
       // a real FTS hit without confusing it with literal "**" the user wrote
       // (markdown bold, `**kwargs`, etc.). Replaced with "**" before return.
       const O = FTS_SNIPPET_OPEN;
       const C = FTS_SNIPPET_CLOSE;
-      let sql = `
+      const sql = `
         SELECT f.stash_id, f.rank,
           snippet(stashes_fts, 1, '${O}', '${C}', '…', 32) as name_snippet,
           snippet(stashes_fts, 2, '${O}', '${C}', '…', 64) as desc_snippet,
@@ -231,25 +233,12 @@ export class SearchStore {
           snippet(stashes_fts, 5, '${O}', '${C}', '…', 64) as content_snippet
         FROM stashes_fts f
         JOIN stashes s ON s.id = f.stash_id
-        WHERE stashes_fts MATCH ?
+        WHERE stashes_fts MATCH ?${filterSuffix.sql}
+        ORDER BY f.rank LIMIT ? OFFSET ?
       `;
-      const params: unknown[] = [ftsQuery];
-
-      if (tag) {
-        sql += ` AND s.tags LIKE ? ESCAPE '\\'`;
-        const escapedTag = tag.replace(/[\\%_]/g, '\\$&');
-        params.push(`%"${escapedTag}"%`);
-      }
-
-      if (archived !== undefined) {
-        sql += ' AND s.archived = ?';
-        params.push(archived ? 1 : 0);
-      }
-
-      sql += ` ORDER BY f.rank LIMIT ? OFFSET ?`;
-      params.push(limit, offset);
-
-      rows = this.db.prepare(sql).all(...params) as typeof rows;
+      rows = this.db
+        .prepare(sql)
+        .all(ftsQuery, ...filterSuffix.params, limit, offset) as typeof rows;
     } catch (err) {
       // Only fall back to LIKE search for FTS5-specific errors (syntax /
       // malformed MATCH). Other errors (Zod, schema, I/O, etc.) must

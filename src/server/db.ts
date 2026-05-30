@@ -656,12 +656,17 @@ export class ClawStashDB {
     }
   }
 
+  private tableExists(name: string): boolean {
+    const row = this.db
+      .prepare("SELECT 1 FROM sqlite_master WHERE type='table' AND name=?")
+      .get(name);
+    return !!row;
+  }
+
   private rebuildStashRelations(): void {
     const rebuild = this.db.transaction(() => {
-      try {
+      if (this.tableExists('stash_relations')) {
         this.db.exec("DELETE FROM stash_relations WHERE relation_type = 'shared_tags'");
-      } catch (_) {
-        /* table may not exist */
       }
 
       const stashes = this.db.prepare('SELECT id, tags FROM stashes').all() as {
@@ -1040,15 +1045,11 @@ export class ClawStashDB {
       this.db.exec('DELETE FROM stashes');
 
       // Also clear stash_relations and FTS index
-      try {
+      if (this.tableExists('stash_relations')) {
         this.db.exec('DELETE FROM stash_relations');
-      } catch (_) {
-        /* table may not exist */
       }
-      try {
+      if (this.tableExists('stashes_fts')) {
         this.db.exec('DELETE FROM stashes_fts');
-      } catch (_) {
-        /* table may not exist */
       }
 
       let stashCount = 0;
