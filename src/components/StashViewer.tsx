@@ -778,8 +778,8 @@ export default function StashViewer({
                   </a>
                   {entry.headings.length > 0 && (
                     <ul className="toc-headings">
-                      {entry.headings.map((h, hi) => (
-                        <li key={hi} className={`toc-heading toc-h${h.depth}`}>
+                      {entry.headings.map((h) => (
+                        <li key={h.id} className={`toc-heading toc-h${h.depth}`}>
                           <a href={`#${h.id}`} onClick={(e) => scrollToId(e, h.id)}>
                             {h.text}
                           </a>
