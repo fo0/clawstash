@@ -39,11 +39,12 @@ export async function POST(req: NextRequest) {
   // by guessing or replaying captured admin tokens — even if they are not
   // themselves authenticated. (API tokens reaching this path are also rejected,
   // so accidentally hitting /api/admin/logout with a `cs_…` token does nothing.)
-  const auth = validateAuth(getDb(), token);
+  const db = getDb();
+  const auth = validateAuth(db, token);
   if (!auth.authenticated || auth.source !== 'admin_session') {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
-  getDb().deleteAdminSession(token);
+  db.deleteAdminSession(token);
   // Standard admin POST response shape: { success: true, message }. `message`
   // is preserved for backwards compatibility with existing callers that read it.
   return NextResponse.json({ success: true, message: 'Logged out' });
