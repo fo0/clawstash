@@ -26,7 +26,7 @@ const ADMIN_PASSWORD = () => process.env.ADMIN_PASSWORD || '';
 const ADMIN_SESSION_HOURS = () => {
   const val = process.env.ADMIN_SESSION_HOURS;
   if (val === undefined || val === '') return 24;
-  const num = parseFloat(val);
+  const num = Number.parseFloat(val);
   // 0 means "unlimited" (documented). Treat NaN, negatives, and infinities as
   // misconfiguration and fall back to the safe 24h default rather than
   // silently granting a never-expiring session. Without this guard,
