@@ -28,7 +28,7 @@ export function formatDate(dateStr: string): string {
  */
 export function formatRelativeTime(dateStr: string): string {
   const d = new Date(dateStr);
-  if (isNaN(d.getTime())) return dateStr;
+  if (Number.isNaN(d.getTime())) return dateStr;
   const now = new Date();
   const diffMs = now.getTime() - d.getTime();
   if (diffMs < 0) return 'just now'; // future date (clock skew)
