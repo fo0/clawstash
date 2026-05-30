@@ -36,13 +36,14 @@ function getHeaders(): Record<string, string> {
   return h;
 }
 
-async function request<T>(url: string, init?: RequestInit): Promise<T> {
+async function request<T>(url: string, init?: RequestInit): Promise<T>;
+async function request(url: string, init?: RequestInit): Promise<unknown> {
   const res = await fetch(url, init);
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
     throw new Error(body.error || `HTTP ${res.status}`);
   }
-  if (res.status === 204) return undefined as unknown as T;
+  if (res.status === 204) return undefined;
   return res.json();
 }
 
