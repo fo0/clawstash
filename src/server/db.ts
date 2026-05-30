@@ -1162,5 +1162,3 @@ export class ClawStashDB {
     this.db.close();
   }
 }
-
-export default ClawStashDB;
