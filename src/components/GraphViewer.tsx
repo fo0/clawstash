@@ -68,9 +68,9 @@ const CLUSTER_COLORS = [
 function getClusterColor(cluster: number, alpha = 1): string {
   const hex = CLUSTER_COLORS[cluster % CLUSTER_COLORS.length];
   if (alpha === 1) return hex;
-  const r = parseInt(hex.slice(1, 3), 16);
-  const g = parseInt(hex.slice(3, 5), 16);
-  const b = parseInt(hex.slice(5, 7), 16);
+  const r = Number.parseInt(hex.slice(1, 3), 16);
+  const g = Number.parseInt(hex.slice(3, 5), 16);
+  const b = Number.parseInt(hex.slice(5, 7), 16);
   return `rgba(${r}, ${g}, ${b}, ${alpha})`;
 }
 
@@ -624,9 +624,9 @@ export default function GraphViewer({
           node.radius * 2.2,
         );
         const glowColor = isFocusNode ? '#58a6ff' : baseColor;
-        const gr = parseInt(glowColor.slice(1, 3), 16);
-        const gg = parseInt(glowColor.slice(3, 5), 16);
-        const gb = parseInt(glowColor.slice(5, 7), 16);
+        const gr = Number.parseInt(glowColor.slice(1, 3), 16);
+        const gg = Number.parseInt(glowColor.slice(3, 5), 16);
+        const gb = Number.parseInt(glowColor.slice(5, 7), 16);
         gradient.addColorStop(0, `rgba(${gr}, ${gg}, ${gb}, 0.3)`);
         gradient.addColorStop(1, `rgba(${gr}, ${gg}, ${gb}, 0)`);
         ctx.beginPath();
