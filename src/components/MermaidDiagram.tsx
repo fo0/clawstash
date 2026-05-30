@@ -35,7 +35,7 @@ function loadStoredScale(key: string | undefined): number | null {
   try {
     const raw = window.localStorage.getItem(STORAGE_PREFIX + key);
     if (!raw) return null;
-    const n = parseFloat(raw);
+    const n = Number.parseFloat(raw);
     return Number.isFinite(n) && n >= MIN_SCALE && n <= MAX_SCALE ? n : null;
   } catch {
     return null;
