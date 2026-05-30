@@ -3,6 +3,17 @@ import type { StashListItem, TagInfo, TagGraphResult } from '../types';
 import { api } from '../api';
 import StashGraphCanvas from './StashGraphCanvas';
 
+// --- Physics simulation constants (tag graph) --------------------------------
+const ALPHA_DECAY = 0.993; // simulation cool-down per frame
+const VELOCITY_DAMPING = 0.55; // fraction of velocity retained after each step
+const SPEED_CAP = 12; // max node speed per frame (px)
+const GRAVITY_BASE = 0.008; // center-gravity coefficient (degree-scaled)
+const CLUSTER_COHESION = 0.015; // pull toward cluster centroid
+const REPULSION_FORCE = 40; // ForceAtlas2-style degree-proportional repulsion
+const EDGE_IDEAL_DIST_BASE = 80; // base ideal edge length (px), shrinks with weight
+const EDGE_ATTRACTION = 0.008; // edge spring coefficient
+// -----------------------------------------------------------------------------
+
 interface Props {
   stashes: StashListItem[];
   tags: TagInfo[];
@@ -229,7 +240,7 @@ function simulate(nodes: GraphNode[], edges: GraphEdge[], alpha: number) {
 
   // 1. Center gravity — degree-proportional so hubs anchor the layout
   for (const node of nodes) {
-    const gravity = 0.008 * (1 + node.degree * 0.3) * alpha;
+    const gravity = GRAVITY_BASE * (1 + node.degree * 0.3) * alpha;
     node.vx -= node.x * gravity;
     node.vy -= node.y * gravity;
   }
@@ -251,8 +262,8 @@ function simulate(nodes: GraphNode[], edges: GraphEdge[], alpha: number) {
 
     for (const node of nodes) {
       const c = centroids.get(node.cluster)!;
-      node.vx += (c.x - node.x) * 0.015 * alpha;
-      node.vy += (c.y - node.y) * 0.015 * alpha;
+      node.vx += (c.x - node.x) * CLUSTER_COHESION * alpha;
+      node.vy += (c.y - node.y) * CLUSTER_COHESION * alpha;
     }
   }
 
@@ -270,7 +281,7 @@ function simulate(nodes: GraphNode[], edges: GraphEdge[], alpha: number) {
       const degFactor = (a.degree + 1) * (b.degree + 1);
       const clusterBoost = multiCluster && a.cluster !== b.cluster ? 2.0 : 1.0;
       // 1/dist (not 1/dist²) gives longer-range repulsion → better cluster separation
-      const force = (clusterBoost * degFactor * 40 * alpha) / dist;
+      const force = (clusterBoost * degFactor * REPULSION_FORCE * alpha) / dist;
       const fx = (dx / dist) * force;
       const fy = (dy / dist) * force;
       a.vx -= fx;
@@ -300,8 +311,8 @@ function simulate(nodes: GraphNode[], edges: GraphEdge[], alpha: number) {
     const dy = b.y - a.y;
     const dist = Math.sqrt(dx * dx + dy * dy) || 1;
 
-    const idealDist = (80 + a.radius + b.radius) / (1 + Math.log(edge.weight));
-    const force = (dist - idealDist) * 0.008 * alpha * Math.sqrt(edge.weight);
+    const idealDist = (EDGE_IDEAL_DIST_BASE + a.radius + b.radius) / (1 + Math.log(edge.weight));
+    const force = (dist - idealDist) * EDGE_ATTRACTION * alpha * Math.sqrt(edge.weight);
     const fx = (dx / dist) * force;
     const fy = (dy / dist) * force;
     a.vx += fx;
@@ -312,14 +323,14 @@ function simulate(nodes: GraphNode[], edges: GraphEdge[], alpha: number) {
 
   // 5. Velocity damping + speed cap + position update
   for (const node of nodes) {
-    node.vx *= 0.55;
-    node.vy *= 0.55;
+    node.vx *= VELOCITY_DAMPING;
+    node.vy *= VELOCITY_DAMPING;
 
     // Prevent overshooting
     const speed = Math.sqrt(node.vx * node.vx + node.vy * node.vy);
-    if (speed > 12) {
-      node.vx = (node.vx / speed) * 12;
-      node.vy = (node.vy / speed) * 12;
+    if (speed > SPEED_CAP) {
+      node.vx = (node.vx / speed) * SPEED_CAP;
+      node.vy = (node.vy / speed) * SPEED_CAP;
     }
 
     node.x += node.vx;
@@ -696,7 +707,7 @@ export default function GraphViewer({
 
       if (alphaRef.current > 0.001) {
         simulate(nodesRef.current, edgesRef.current, alphaRef.current);
-        alphaRef.current *= 0.993;
+        alphaRef.current *= ALPHA_DECAY;
         needsFrame = true;
 
         // Auto-fit once layout has partially settled (~0.85s at 60fps)

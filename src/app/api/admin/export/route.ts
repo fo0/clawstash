@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import archiver from 'archiver';
 import { getDb } from '@/server/singleton';
-import { checkAdmin } from '@/app/api/_helpers';
+import { checkAdmin, getRequestInfo } from '@/app/api/_helpers';
 import { formatExportTimestamp } from '@/utils/format';
 
 // archiver + Buffer.concat + better-sqlite3 are Node-only. Pin the runtime so
@@ -16,6 +16,7 @@ export async function GET(req: NextRequest) {
   if (!admin.ok) return admin.response;
 
   try {
+    const { ip, userAgent } = getRequestInfo(req);
     const db = getDb();
     const data = db.exportAllData();
     // Capture a single export timestamp so the filename suffix and the
@@ -24,6 +25,9 @@ export async function GET(req: NextRequest) {
     // a second / minute / day boundary).
     const exportedAt = new Date();
     const timestamp = formatExportTimestamp(exportedAt);
+    console.log(
+      `[audit] admin export: timestamp=${exportedAt.toISOString()} ip=${ip ?? 'unknown'} ua=${userAgent ?? 'unknown'} stashes=${data.stashes.length}`,
+    );
 
     // Build ZIP in memory using archiver
     const chunks: Buffer[] = [];
