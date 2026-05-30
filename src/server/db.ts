@@ -1142,8 +1142,19 @@ export class ClawStashDB {
     });
 
     const result = tx();
-    this.rebuildFtsIndex();
-    this.rebuildStashRelations();
+    // Both rebuild calls run after the transaction commits; isolate failures so
+    // a broken FTS/relations rebuild cannot roll back the successfully imported
+    // data. Closes BACKLOG #74.
+    try {
+      this.rebuildFtsIndex();
+    } catch (err) {
+      console.error('[clawstash] rebuildFtsIndex failed after import:', err);
+    }
+    try {
+      this.rebuildStashRelations();
+    } catch (err) {
+      console.error('[clawstash] rebuildStashRelations failed after import:', err);
+    }
     return result;
   }
 
