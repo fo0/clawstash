@@ -26,6 +26,14 @@ interface PopupState {
   connections: { id: string; label: string; type: string; weight: number }[];
 }
 
+// --- Physics simulation constants (stash graph) ------------------------------
+const ALPHA_DECAY = 0.993; // simulation cool-down per frame
+const VELOCITY_DAMPING = 0.55; // fraction of velocity retained after each step
+const SPEED_CAP = 12; // max node speed per frame (px)
+const GRAVITY_BASE = 0.006; // center-gravity coefficient (degree-scaled)
+const REPULSION_FORCE = 15; // degree-proportional node repulsion
+// -----------------------------------------------------------------------------
+
 const COLORS = {
   stash: '#58a6ff',
   tag: '#238636',
@@ -78,7 +86,7 @@ function simulate(nodes: RenderNode[], edges: StashGraphEdge[], alpha: number) {
 
   // Center gravity
   for (const node of nodes) {
-    const gravity = 0.006 * (1 + node.degree * 0.2) * alpha;
+    const gravity = GRAVITY_BASE * (1 + node.degree * 0.2) * alpha;
     node.vx -= node.x * gravity;
     node.vy -= node.y * gravity;
   }
@@ -93,7 +101,7 @@ function simulate(nodes: RenderNode[], edges: StashGraphEdge[], alpha: number) {
       const dist = Math.sqrt(dx * dx + dy * dy) || 1;
       const minDist = a.radius + b.radius + 8;
       const degFactor = (a.degree + 1) * (b.degree + 1);
-      const force = (degFactor * 15 * alpha) / dist;
+      const force = (degFactor * REPULSION_FORCE * alpha) / dist;
       const fx = (dx / dist) * force,
         fy = (dy / dist) * force;
       a.vx -= fx;
@@ -140,12 +148,12 @@ function simulate(nodes: RenderNode[], edges: StashGraphEdge[], alpha: number) {
 
   // Damping + update
   for (const node of nodes) {
-    node.vx *= 0.55;
-    node.vy *= 0.55;
+    node.vx *= VELOCITY_DAMPING;
+    node.vy *= VELOCITY_DAMPING;
     const speed = Math.sqrt(node.vx * node.vx + node.vy * node.vy);
-    if (speed > 12) {
-      node.vx = (node.vx / speed) * 12;
-      node.vy = (node.vy / speed) * 12;
+    if (speed > SPEED_CAP) {
+      node.vx = (node.vx / speed) * SPEED_CAP;
+      node.vy = (node.vy / speed) * SPEED_CAP;
     }
     node.x += node.vx;
     node.y += node.vy;
@@ -835,7 +843,7 @@ export default function StashGraphCanvas({
     const tick = () => {
       if (alphaRef.current > 0.001) {
         simulate(nodesRef.current, edgesRef.current, alphaRef.current);
-        alphaRef.current *= 0.993;
+        alphaRef.current *= ALPHA_DECAY;
         if (!autoFitDoneRef.current && alphaRef.current < 0.7) {
           autoFitDoneRef.current = true;
           autoFit();
