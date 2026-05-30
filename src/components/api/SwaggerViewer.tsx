@@ -30,11 +30,21 @@ export default function SwaggerViewer() {
   useEffect(() => {
     if (initializedRef.current || !containerRef.current) return;
 
+    // Pinned to 5.32.6 so SRI hashes remain stable. Bump both constants
+    // together and regenerate hashes when upgrading swagger-ui-dist.
+    const SWAGGER_BASE = 'https://unpkg.com/swagger-ui-dist@5.32.6';
+    const SWAGGER_CSS_SRI =
+      'sha384-VtRGWKd5DZlNwdyTFUVdweEFnkqOXqI0AJyGjrU6HMCsFe3ZpyT90bRXqtGBq67o';
+    const SWAGGER_JS_SRI =
+      'sha384-vbnE7TPM+ZTC5QAF6LmD1Rp4ULi7Sm2q3XDLjsjUhOtmwvCY8L9W6VM2wgqL+hYv';
+
     // Load CSS
     if (!document.querySelector('link[href*="swagger-ui.css"]')) {
       const link = document.createElement('link');
       link.rel = 'stylesheet';
-      link.href = 'https://unpkg.com/swagger-ui-dist@5/swagger-ui.css';
+      link.href = `${SWAGGER_BASE}/swagger-ui.css`;
+      link.integrity = SWAGGER_CSS_SRI;
+      link.crossOrigin = 'anonymous';
       link.onerror = () => {
         if (mountedRef.current) setHasError(true);
       };
@@ -91,7 +101,9 @@ export default function SwaggerViewer() {
       attachedScript = existingScript;
     } else {
       const script = document.createElement('script');
-      script.src = 'https://unpkg.com/swagger-ui-dist@5/swagger-ui-bundle.js';
+      script.src = `${SWAGGER_BASE}/swagger-ui-bundle.js`;
+      script.integrity = SWAGGER_JS_SRI;
+      script.crossOrigin = 'anonymous';
       script.onload = initSwagger;
       script.onerror = () => {
         if (mountedRef.current) {
