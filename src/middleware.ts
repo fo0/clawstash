@@ -32,11 +32,36 @@ const CORS_HEADERS: Record<string, string> = {
 // header (rather than CSP `frame-ancestors`) because it is universally
 // honored by older browsers and is sufficient here — ClawStash never
 // needs to be embedded.
+//
+// The Content-Security-Policy below is intentionally MINIMAL and ADDITIVE.
+// It omits `script-src` / `style-src` / `default-src` on purpose so the
+// Next.js inline runtime, React hydration, PrismJS highlighting, and the
+// inline-SVG/style Mermaid rendering keep working WITHOUT a per-request
+// nonce pipeline (a full script-restricting CSP needs nonces and is a
+// larger, separately-tracked hardening task). The directives set here are
+// pure defense-in-depth that cannot break current functionality:
+//   - `base-uri 'self'`        blocks `<base>` href hijacking (reinforces the
+//                              markdown sanitiser, which already strips <base>)
+//   - `object-src 'none'`      blocks legacy plugin / <object>/<embed> vectors
+//                              (the app never renders them)
+//   - `frame-ancestors 'none'` modern clickjacking defense, complementing the
+//                              legacy `X-Frame-Options: DENY` on browsers that
+//                              prefer CSP over the legacy header
+//   - `form-action 'self'`     stops an injected <form> from exfiltrating to a
+//                              third-party origin
+const CONTENT_SECURITY_POLICY = [
+  "base-uri 'self'",
+  "object-src 'none'",
+  "frame-ancestors 'none'",
+  "form-action 'self'",
+].join('; ');
+
 const SECURITY_HEADERS: Record<string, string> = {
   'X-Content-Type-Options': 'nosniff',
   'Referrer-Policy': 'strict-origin-when-cross-origin',
   'X-DNS-Prefetch-Control': 'off',
   'X-Frame-Options': 'DENY',
+  'Content-Security-Policy': CONTENT_SECURITY_POLICY,
 };
 
 // ---------------------------------------------------------------------------
