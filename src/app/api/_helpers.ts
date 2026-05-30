@@ -70,7 +70,7 @@ export function getBaseUrl(req: NextRequest): string {
  */
 export function parsePositiveInt(value: string | null): number | undefined {
   if (!value) return undefined;
-  const num = parseInt(value, 10);
+  const num = Number.parseInt(value, 10);
   return Number.isInteger(num) && num > 0 ? num : undefined;
 }
 
@@ -87,7 +87,7 @@ export function parsePositiveInt(value: string | null): number | undefined {
  */
 export function parseNonNegativeInt(value: string | null): number | undefined {
   if (value === null || value === '') return undefined;
-  const num = parseInt(value, 10);
+  const num = Number.parseInt(value, 10);
   return Number.isInteger(num) && num >= 0 ? num : undefined;
 }
 
