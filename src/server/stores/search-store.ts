@@ -30,7 +30,7 @@ const FTS_SNIPPET_OPEN = '';
 const FTS_SNIPPET_CLOSE = '';
 
 function formatSnippet(raw: string): string {
-  return raw.split(FTS_SNIPPET_OPEN).join('**').split(FTS_SNIPPET_CLOSE).join('**');
+  return raw.replaceAll(FTS_SNIPPET_OPEN, '**').replaceAll(FTS_SNIPPET_CLOSE, '**');
 }
 
 /**
