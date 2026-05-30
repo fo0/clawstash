@@ -14,6 +14,17 @@ function getSwaggerUIBundle(): SwaggerUIBundleFn | null {
   return typeof fn === 'function' ? (fn as SwaggerUIBundleFn) : null;
 }
 
+// Swagger UI assets load from the unpkg CDN. Pin to an exact version and add
+// Subresource Integrity (SRI) + crossOrigin so a poisoned or compromised CDN
+// response cannot inject arbitrary script/styles. The sha384 hashes are of the
+// pinned 5.32.6 assets — regenerate all three together when bumping the version.
+const SWAGGER_VERSION = '5.32.6';
+const SWAGGER_BASE = `https://unpkg.com/swagger-ui-dist@${SWAGGER_VERSION}`;
+const SWAGGER_CSS_INTEGRITY =
+  'sha384-9Q2fpS+xeS4ffJy6CagnwoUl+4ldAYhOs9pgZuEKxypVModhmZFzeMlvVsAjf7uT';
+const SWAGGER_JS_INTEGRITY =
+  'sha384-EYdOaiRwn44zNjrw+Tfs06qYz9BGQVo2f4/pLY5i7VorbjnZNhdplAbTBk8FXHUJ';
+
 export default function SwaggerViewer() {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const initializedRef = useRef(false);
@@ -34,7 +45,9 @@ export default function SwaggerViewer() {
     if (!document.querySelector('link[href*="swagger-ui.css"]')) {
       const link = document.createElement('link');
       link.rel = 'stylesheet';
-      link.href = 'https://unpkg.com/swagger-ui-dist@5/swagger-ui.css';
+      link.href = `${SWAGGER_BASE}/swagger-ui.css`;
+      link.integrity = SWAGGER_CSS_INTEGRITY;
+      link.crossOrigin = 'anonymous';
       link.onerror = () => {
         if (mountedRef.current) setHasError(true);
       };
@@ -91,7 +104,9 @@ export default function SwaggerViewer() {
       attachedScript = existingScript;
     } else {
       const script = document.createElement('script');
-      script.src = 'https://unpkg.com/swagger-ui-dist@5/swagger-ui-bundle.js';
+      script.src = `${SWAGGER_BASE}/swagger-ui-bundle.js`;
+      script.integrity = SWAGGER_JS_INTEGRITY;
+      script.crossOrigin = 'anonymous';
       script.onload = initSwagger;
       script.onerror = () => {
         if (mountedRef.current) {
