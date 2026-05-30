@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import AdmZip from 'adm-zip';
 import { getDb } from '@/server/singleton';
-import { checkAdmin } from '@/app/api/_helpers';
+import { checkAdmin, getRequestInfo } from '@/app/api/_helpers';
 import { MAX_IMPORT_SIZE } from '@/server/validation';
 
 // adm-zip + Buffer + better-sqlite3 are Node-only. Pin the runtime so a future
@@ -91,12 +91,16 @@ export async function POST(req: NextRequest) {
       }
     }
 
+    const { ip, userAgent } = getRequestInfo(req);
     const result = getDb().importAllData({
       stashes,
       stash_files,
       stash_versions,
       stash_version_files,
     });
+    console.log(
+      `[audit] admin import: timestamp=${new Date().toISOString()} ip=${ip ?? 'unknown'} ua=${userAgent ?? 'unknown'} stashes=${result.stashes} files=${result.files}`,
+    );
     // Standard admin POST response shape: { success: true, message, ... }.
     return NextResponse.json({ success: true, message: 'Import successful', imported: result });
   } catch (err) {
