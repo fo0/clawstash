@@ -17,13 +17,10 @@ interface Props {
 export default function RelativeTime({ dateStr, className }: Props) {
   const [showAbsolute, setShowAbsolute] = useState(false);
 
-  const toggle = useCallback(
-    (e: React.MouseEvent) => {
-      e.stopPropagation();
-      setShowAbsolute((prev) => !prev);
-    },
-    [],
-  );
+  const toggle = useCallback((e: React.MouseEvent) => {
+    e.stopPropagation();
+    setShowAbsolute((prev) => !prev);
+  }, []);
 
   const absoluteStr = new Date(dateStr).toLocaleString();
   const relativeStr = formatRelativeTime(dateStr);

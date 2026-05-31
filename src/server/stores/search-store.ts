@@ -215,9 +215,9 @@ export class SearchStore {
         JOIN stashes s ON s.id = f.stash_id
         WHERE stashes_fts MATCH ?${filterSuffix.sql}
       `;
-      countRow = this.db
-        .prepare(countSql)
-        .get(ftsQuery, ...filterSuffix.params) as { count: number };
+      countRow = this.db.prepare(countSql).get(ftsQuery, ...filterSuffix.params) as {
+        count: number;
+      };
 
       // Use private-use Unicode markers (U+E000 / U+E001) so we can detect
       // a real FTS hit without confusing it with literal "**" the user wrote
