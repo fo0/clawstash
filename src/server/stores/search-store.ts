@@ -118,15 +118,26 @@ export class SearchStore {
         VALUES (?, ?, ?, ?, ?, ?)
       `);
 
+      // Load every file once (grouped by stash, preserving sort_order) instead
+      // of one query per stash (former N+1 pattern). Closes BACKLOG #21.
+      const fileRows = this.db
+        .prepare(
+          'SELECT stash_id, filename, content FROM stash_files ORDER BY stash_id, sort_order',
+        )
+        .all() as { stash_id: string; filename: string; content: string }[];
+
+      const filesByStash = new Map<string, { filename: string; content: string }[]>();
+      for (const { stash_id, filename, content } of fileRows) {
+        let list = filesByStash.get(stash_id);
+        if (!list) {
+          list = [];
+          filesByStash.set(stash_id, list);
+        }
+        list.push({ filename, content });
+      }
+
       for (const s of stashes) {
-        const files = this.db
-          .prepare(
-            'SELECT filename, content FROM stash_files WHERE stash_id = ? ORDER BY sort_order',
-          )
-          .all(s.id) as {
-          filename: string;
-          content: string;
-        }[];
+        const files = filesByStash.get(s.id) ?? [];
         const filenames = files.map((f) => f.filename).join(' ');
         const fileContent = files.map((f) => f.content).join('\n');
         const tags = safeParseTags(s.tags).join(' ');
