@@ -278,17 +278,42 @@ export class SearchStore {
       };
     }
 
-    // Build results with full stash list info (outside try/catch so real DB errors propagate)
-    const stashes: SearchStashItem[] = rows.map((row) => {
-      const stashRow = this.db
-        .prepare('SELECT * FROM stashes WHERE id = ?')
-        .get(row.stash_id) as Record<string, unknown>;
-      const item = rowToListItem(stashRow);
-      const files = this.db
+    // Build results with full stash list info (outside try/catch so real DB errors propagate).
+    // Batch-load the stash rows and their files in two IN(...) queries instead
+    // of two queries per result row (former N+1 pattern). Bounded by the search
+    // limit (default 20). Closes BACKLOG #45.
+    const ids = rows.map((row) => row.stash_id);
+    const placeholders = ids.map(() => '?').join(', ');
+
+    const stashRowsById = new Map<string, Record<string, unknown>>();
+    const filesByStash = new Map<string, StashFileInfo[]>();
+    if (ids.length > 0) {
+      const stashRows = this.db
+        .prepare(`SELECT * FROM stashes WHERE id IN (${placeholders})`)
+        .all(...ids) as Record<string, unknown>[];
+      for (const stashRow of stashRows) {
+        stashRowsById.set(stashRow.id as string, stashRow);
+      }
+
+      const fileRows = this.db
         .prepare(
-          'SELECT filename, language, LENGTH(content) as size FROM stash_files WHERE stash_id = ? ORDER BY sort_order',
+          `SELECT stash_id, filename, language, LENGTH(content) as size FROM stash_files WHERE stash_id IN (${placeholders}) ORDER BY stash_id, sort_order`,
         )
-        .all(item.id) as StashFileInfo[];
+        .all(...ids) as (StashFileInfo & { stash_id: string })[];
+      for (const { stash_id, filename, language, size } of fileRows) {
+        let list = filesByStash.get(stash_id);
+        if (!list) {
+          list = [];
+          filesByStash.set(stash_id, list);
+        }
+        list.push({ filename, language, size });
+      }
+    }
+
+    const stashes: SearchStashItem[] = rows.map((row) => {
+      const stashRow = stashRowsById.get(row.stash_id) as Record<string, unknown>;
+      const item = rowToListItem(stashRow);
+      const files = filesByStash.get(item.id) ?? [];
       const total_size = files.reduce((sum, f) => sum + f.size, 0);
 
       // Only include snippets that contain highlighted matches. Detect via
