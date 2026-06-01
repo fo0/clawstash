@@ -122,6 +122,24 @@ function decodeMermaidSource(s: string): string {
 }
 
 /**
+ * Trigger a browser file download for the given text content.
+ * Uses a temporary object URL so it works without a server round-trip.
+ */
+function downloadFile(filename: string, content: string): void {
+  const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement('a');
+  anchor.href = url;
+  anchor.download = filename;
+  anchor.style.display = 'none';
+  document.body.appendChild(anchor);
+  anchor.click();
+  document.body.removeChild(anchor);
+  // Release the object URL after a short delay so the download initiates
+  setTimeout(() => URL.revokeObjectURL(url), 10000);
+}
+
+/**
  * Slugify a heading string following GitHub conventions:
  * lowercase, remove non-letter/number/space/hyphen chars, spaces → hyphens.
  * Uses Unicode-aware regex to preserve accented characters (ü, é, etc.).
@@ -842,6 +860,24 @@ export default function StashViewer({
                         copied={fileClipboard.isCopied(file.id)}
                         failed={fileClipboard.isFailed(file.id)}
                       />
+                    </button>
+                    <button
+                      className="btn btn-sm btn-ghost"
+                      onClick={() => downloadFile(file.filename, file.content)}
+                      title={`Download ${file.filename}`}
+                      aria-label={`Download ${file.filename}`}
+                    >
+                      <svg
+                        width="12"
+                        height="12"
+                        viewBox="0 0 16 16"
+                        fill="currentColor"
+                        aria-hidden="true"
+                      >
+                        <path d="M2.75 14A1.75 1.75 0 0 1 1 12.25v-2.5a.75.75 0 0 1 1.5 0v2.5c0 .138.112.25.25.25h10.5a.25.25 0 0 0 .25-.25v-2.5a.75.75 0 0 1 1.5 0v2.5A1.75 1.75 0 0 1 13.25 14Z" />
+                        <path d="M7.25 7.689V2a.75.75 0 0 1 1.5 0v5.689l1.97-1.97a.749.749 0 1 1 1.06 1.06L8.53 10.03a.749.749 0 0 1-1.06 0L4.22 6.78a.749.749 0 1 1 1.06-1.06Z" />
+                      </svg>
+                      Download
                     </button>
                   </div>
                 </div>
