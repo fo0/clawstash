@@ -19,6 +19,7 @@ import Settings from './components/Settings';
 import GraphViewer from './components/GraphViewer';
 import LoginScreen from './components/LoginScreen';
 import SearchOverlay from './components/SearchOverlay';
+import KeyboardShortcutsHelp from './components/KeyboardShortcutsHelp';
 import Footer from './components/Footer';
 
 function getStoredPreference<T extends string>(key: string, fallback: T): T {
@@ -97,6 +98,7 @@ export default function App() {
   const [adminToken, setAdminToken] = useState<string>(getStoredAdminToken);
   const [adminSession, setAdminSession] = useState<AdminSessionInfo | null>(null);
   const [searchOpen, setSearchOpen] = useState(false);
+  const [shortcutsHelpOpen, setShortcutsHelpOpen] = useState(false);
   const [analyzeStashId, setAnalyzeStashId] = useState<string | null>(null);
   const [showArchived, setShowArchived] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -132,7 +134,10 @@ export default function App() {
         tag === 'input' || tag === 'textarea' || (e.target as HTMLElement)?.isContentEditable;
       if (isEditing || e.metaKey || e.ctrlKey || e.altKey) return;
 
-      if (e.key === 'n') {
+      if (e.key === '?') {
+        e.preventDefault();
+        setShortcutsHelpOpen((prev) => !prev);
+      } else if (e.key === 'n') {
         e.preventDefault();
         setSelectedStash(null);
         setView('new');
@@ -707,6 +712,10 @@ export default function App() {
         open={searchOpen}
         onClose={() => setSearchOpen(false)}
         onSelectStash={handleSelectStash}
+      />
+      <KeyboardShortcutsHelp
+        open={shortcutsHelpOpen}
+        onClose={() => setShortcutsHelpOpen(false)}
       />
       {successToast && (
         <div
