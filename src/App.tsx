@@ -137,6 +137,20 @@ export default function App() {
       if (e.key === '?') {
         e.preventDefault();
         setShortcutsHelpOpen((prev) => !prev);
+      } else if (e.key === 'e') {
+        // Edit the currently viewed stash (only when in view mode with a stash open)
+        setView((currentView) => {
+          if (currentView === 'view') {
+            setSelectedStash((currentStash) => {
+              if (currentStash) {
+                pushUrl(`/stash/${currentStash.id}/edit`);
+              }
+              return currentStash;
+            });
+            return 'edit';
+          }
+          return currentView;
+        });
       } else if (e.key === 'n') {
         e.preventDefault();
         setSelectedStash(null);
