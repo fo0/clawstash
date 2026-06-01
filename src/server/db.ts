@@ -129,6 +129,33 @@ export class ClawStashDB {
     };
   }
 
+  /**
+   * Batch-load file metadata for the given stash IDs in a single query, grouped
+   * by stash_id (preserving sort_order). Replaces per-row N+1 lookups in list
+   * paths. Returns an empty map for an empty input.
+   */
+  private getFileInfoByStash(stashIds: string[]): Map<string, StashFileInfo[]> {
+    const byStash = new Map<string, StashFileInfo[]>();
+    if (stashIds.length === 0) return byStash;
+
+    const placeholders = stashIds.map(() => '?').join(', ');
+    const rows = this.db
+      .prepare(
+        `SELECT stash_id, filename, language, LENGTH(content) as size FROM stash_files WHERE stash_id IN (${placeholders}) ORDER BY stash_id, sort_order`,
+      )
+      .all(...stashIds) as (StashFileInfo & { stash_id: string })[];
+
+    for (const { stash_id, filename, language, size } of rows) {
+      let list = byStash.get(stash_id);
+      if (!list) {
+        list = [];
+        byStash.set(stash_id, list);
+      }
+      list.push({ filename, language, size });
+    }
+    return byStash;
+  }
+
   logAccess(
     stashId: string,
     source: 'api' | 'mcp' | 'ui',
@@ -314,13 +341,15 @@ export class ClawStashDB {
       .prepare(`SELECT g.* FROM stashes g ${where} ORDER BY g.updated_at DESC LIMIT ? OFFSET ?`)
       .all(...params, limit, offset) as Record<string, unknown>[];
 
-    const stashes: StashListItem[] = rows.map((row) => {
-      const item = this.rowToListItem(row);
-      const files = this.db
-        .prepare(
-          'SELECT filename, language, LENGTH(content) as size FROM stash_files WHERE stash_id = ? ORDER BY sort_order',
-        )
-        .all(item.id) as StashFileInfo[];
+    const items = rows.map((row) => this.rowToListItem(row));
+
+    // Batch-load files for all listed stashes in a single query instead of one
+    // query per row (former N+1 pattern). Bounded by the page limit. Closes
+    // BACKLOG #46.
+    const filesByStash = this.getFileInfoByStash(items.map((item) => item.id));
+
+    const stashes: StashListItem[] = items.map((item) => {
+      const files = filesByStash.get(item.id) ?? [];
       const total_size = files.reduce((sum, f) => sum + f.size, 0);
       return { ...item, total_size, files };
     });
