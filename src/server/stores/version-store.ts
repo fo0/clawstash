@@ -1,5 +1,5 @@
 import type Database from 'better-sqlite3';
-import { v4 as uuidv4 } from 'uuid';
+import crypto from 'crypto';
 import type {
   Stash,
   StashVersion,
@@ -171,7 +171,7 @@ export class VersionStore {
     changeSummaryJson: string;
     files: { filename: string; content: string; language: string; sort_order: number }[];
   }): string {
-    const versionId = uuidv4();
+    const versionId = crypto.randomUUID();
     this.db
       .prepare(
         `
@@ -198,7 +198,7 @@ export class VersionStore {
     `);
     for (const file of args.files) {
       insertVersionFile.run(
-        uuidv4(),
+        crypto.randomUUID(),
         versionId,
         file.filename,
         file.content,

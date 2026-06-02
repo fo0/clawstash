@@ -1,5 +1,5 @@
 import type Database from 'better-sqlite3';
-import { v4 as uuidv4 } from 'uuid';
+import crypto from 'crypto';
 
 // Versioned schema migrations for ClawStashDB. Extracted from db.ts
 // (Round 1/3 — refs #129) so each migration is independently
@@ -112,7 +112,13 @@ export const MIGRATIONS: Migration[] = [
           const shared = parsed[i].tags.filter((t) => parsed[j].tags.includes(t));
           if (shared.length > 0) {
             const [src, tgt] = [parsed[i].id, parsed[j].id].sort();
-            insert.run(uuidv4(), src, tgt, shared.length, JSON.stringify({ shared_tags: shared }));
+            insert.run(
+              crypto.randomUUID(),
+              src,
+              tgt,
+              shared.length,
+              JSON.stringify({ shared_tags: shared }),
+            );
           }
         }
       }
@@ -155,7 +161,7 @@ export const MIGRATIONS: Migration[] = [
       `);
 
       for (const s of stashes) {
-        const versionId = uuidv4();
+        const versionId = crypto.randomUUID();
         insertVersion.run(versionId, s.id, s.name, s.description, s.tags, s.metadata, s.created_at);
 
         const files = db
@@ -170,7 +176,7 @@ export const MIGRATIONS: Migration[] = [
         }[];
         for (const f of files) {
           insertVersionFile.run(
-            uuidv4(),
+            crypto.randomUUID(),
             versionId,
             f.filename,
             f.content,

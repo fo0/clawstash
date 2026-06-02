@@ -1,5 +1,4 @@
 import type Database from 'better-sqlite3';
-import { v4 as uuidv4 } from 'uuid';
 import crypto from 'crypto';
 import { hashToken } from './_token-hash';
 
@@ -23,7 +22,7 @@ export class SessionStore {
   constructor(private readonly db: Database.Database) {}
 
   createAdminSession(hours: number): { token: string; expiresAt: string | null } {
-    const id = uuidv4();
+    const id = crypto.randomUUID();
     const now = new Date();
     const rawToken = `csa_${crypto.randomBytes(24).toString('hex')}`;
     const tokenHash = hashToken(rawToken);
