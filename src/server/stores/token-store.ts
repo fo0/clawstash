@@ -1,5 +1,4 @@
 import type Database from 'better-sqlite3';
-import { v4 as uuidv4 } from 'uuid';
 import crypto from 'crypto';
 import type { TokenScope, ApiTokenListItem } from '../db-types';
 import { hashToken } from './_token-hash';
@@ -46,7 +45,7 @@ export class TokenStore {
     label: string,
     scopes: TokenScope[],
   ): { id: string; token: string; label: string; scopes: TokenScope[] } {
-    const id = uuidv4();
+    const id = crypto.randomUUID();
     const now = new Date().toISOString();
     const rawToken = `cs_${crypto.randomBytes(24).toString('hex')}`;
     const tokenHash = hashToken(rawToken);

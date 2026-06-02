@@ -1,5 +1,5 @@
 import Database from 'better-sqlite3';
-import { v4 as uuidv4 } from 'uuid';
+import crypto from 'crypto';
 import path from 'path';
 import fs from 'fs';
 import { detectLanguage } from './detect-language';
@@ -163,7 +163,7 @@ export class ClawStashDB {
     ip?: string,
     userAgent?: string,
   ): void {
-    const id = uuidv4();
+    const id = crypto.randomUUID();
     const now = new Date().toISOString();
     this.db
       .prepare(
@@ -182,7 +182,7 @@ export class ClawStashDB {
   }
 
   createStash(input: CreateStashInput): Stash {
-    const id = uuidv4();
+    const id = crypto.randomUUID();
     const now = new Date().toISOString();
 
     const insertStash = this.db.prepare(`
@@ -206,7 +206,7 @@ export class ClawStashDB {
       const files: StashFile[] = [];
       for (let i = 0; i < input.files.length; i++) {
         const file = input.files[i];
-        const fileId = uuidv4();
+        const fileId = crypto.randomUUID();
         const language = file.language || detectLanguage(file.filename);
         insertFile.run(fileId, id, file.filename, file.content, language, i);
         files.push({
@@ -469,7 +469,7 @@ export class ClawStashDB {
         for (let i = 0; i < input.files.length; i++) {
           const file = input.files[i];
           const language = file.language || detectLanguage(file.filename);
-          insertFile.run(uuidv4(), id, file.filename, file.content, language, i);
+          insertFile.run(crypto.randomUUID(), id, file.filename, file.content, language, i);
         }
       }
 
@@ -680,7 +680,13 @@ export class ClawStashDB {
       const shared = otherTags.filter((t) => tagSet.has(t));
       if (shared.length > 0) {
         const [src, tgt] = [stashId, row.id].sort();
-        insert.run(uuidv4(), src, tgt, shared.length, JSON.stringify({ shared_tags: shared }));
+        insert.run(
+          crypto.randomUUID(),
+          src,
+          tgt,
+          shared.length,
+          JSON.stringify({ shared_tags: shared }),
+        );
       }
     }
   }
@@ -714,7 +720,13 @@ export class ClawStashDB {
           const shared = parsed[i].tags.filter((t) => parsed[j].tags.includes(t));
           if (shared.length > 0) {
             const [src, tgt] = [parsed[i].id, parsed[j].id].sort();
-            insert.run(uuidv4(), src, tgt, shared.length, JSON.stringify({ shared_tags: shared }));
+            insert.run(
+              crypto.randomUUID(),
+              src,
+              tgt,
+              shared.length,
+              JSON.stringify({ shared_tags: shared }),
+            );
           }
         }
       }
