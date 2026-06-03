@@ -2,7 +2,14 @@ import { NextRequest, NextResponse } from 'next/server';
 import AdmZip from 'adm-zip';
 import { getDb } from '@/server/singleton';
 import { checkAdmin, getRequestInfo } from '@/app/api/_helpers';
-import { MAX_IMPORT_SIZE } from '@/server/validation';
+import {
+  MAX_IMPORT_SIZE,
+  ImportStashRowSchema,
+  ImportStashFileRowSchema,
+  ImportStashVersionRowSchema,
+  ImportStashVersionFileRowSchema,
+  formatZodError,
+} from '@/server/validation';
 
 // adm-zip + Buffer + better-sqlite3 are Node-only. Pin the runtime so a future
 // Next.js default change (or a misconfigured edge override) cannot silently
@@ -81,11 +88,45 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'No stash data found in ZIP file' }, { status: 400 });
     }
 
-    // Validate stash records have required fields
-    for (const s of stashes) {
-      if (typeof s.id !== 'string' || !s.id) {
+    // Validate row shapes before any DB writes. Closes BACKLOG #67.
+    // Each row is validated with a Zod schema so corrupted / malicious export
+    // ZIPs (empty id, non-JSON tags/metadata strings, out-of-range numbers,
+    // wrong types) are rejected up-front with a clear 400 rather than tripping
+    // the DB insert constraints or silently producing broken data.
+    for (let i = 0; i < stashes.length; i++) {
+      const parsed = ImportStashRowSchema.safeParse(stashes[i]);
+      if (!parsed.success) {
         return NextResponse.json(
-          { error: 'Invalid stash data: each stash must have a string id' },
+          { error: `Invalid stash row at index ${i}: ${formatZodError(parsed.error)}` },
+          { status: 400 },
+        );
+      }
+    }
+    for (let i = 0; i < stash_files.length; i++) {
+      const parsed = ImportStashFileRowSchema.safeParse(stash_files[i]);
+      if (!parsed.success) {
+        return NextResponse.json(
+          { error: `Invalid stash_files row at index ${i}: ${formatZodError(parsed.error)}` },
+          { status: 400 },
+        );
+      }
+    }
+    for (let i = 0; i < stash_versions.length; i++) {
+      const parsed = ImportStashVersionRowSchema.safeParse(stash_versions[i]);
+      if (!parsed.success) {
+        return NextResponse.json(
+          { error: `Invalid stash_versions row at index ${i}: ${formatZodError(parsed.error)}` },
+          { status: 400 },
+        );
+      }
+    }
+    for (let i = 0; i < stash_version_files.length; i++) {
+      const parsed = ImportStashVersionFileRowSchema.safeParse(stash_version_files[i]);
+      if (!parsed.success) {
+        return NextResponse.json(
+          {
+            error: `Invalid stash_version_files row at index ${i}: ${formatZodError(parsed.error)}`,
+          },
           { status: 400 },
         );
       }
