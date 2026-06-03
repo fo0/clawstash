@@ -207,6 +207,7 @@ export default function Sidebar({
           className="sidebar-graph-btn"
           onClick={onGraphView}
           title="Tag Graph — visualize tag connections"
+          aria-label="Tag Graph — visualize tag connections"
         >
           <svg
             width="16"
@@ -526,6 +527,7 @@ export default function Sidebar({
             className="sidebar-footer-settings-btn"
             onClick={onSettingsView}
             title="Settings, API tokens, and administration"
+            aria-label="Settings, API tokens, and administration"
           >
             <svg
               width="16"
@@ -543,7 +545,7 @@ export default function Sidebar({
             Settings
           </button>
           {onLogout && (
-            <button className="sidebar-footer-logout-btn" onClick={onLogout} title="Sign out">
+            <button className="sidebar-footer-logout-btn" onClick={onLogout} title="Sign out" aria-label="Sign out">
               <svg
                 width="16"
                 height="16"
