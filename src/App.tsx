@@ -631,7 +631,14 @@ export default function App() {
               <line x1="3" y1="18" x2="21" y2="18" />
             </svg>
           </button>
-          <span className="mobile-header-title" onClick={handleGoHome}>
+          <span
+            className="mobile-header-title"
+            onClick={handleGoHome}
+            role="button"
+            tabIndex={0}
+            onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && handleGoHome()}
+            aria-label="Go to dashboard"
+          >
             ClawStash
           </span>
           <button
