@@ -133,6 +133,62 @@ export const UpdateStashSchema = z.object({
   archived: z.boolean().optional(),
 });
 
+// --- Import Schemas ---
+// Validate rows from export ZIPs before they reach the DB insert statements.
+// These are permissive on optional/nullable fields (we accept what a ClawStash
+// export actually produces) while rejecting rows that would trip later code
+// paths: missing/empty id, non-string fields, non-JSON tags/metadata strings,
+// obviously invalid sort_order/version numbers. Closes BACKLOG #67.
+
+/** ISO-8601 datetime string or null — accepts the format written by ClawStash exports. */
+const IsoDateStringSchema = z.string().min(1).max(100);
+
+/** JSON string (tags/metadata stored as serialised JSON in the DB). */
+const JsonStringSchema = z.string().max(200_000);
+
+export const ImportStashRowSchema = z.object({
+  id: z.string().min(1).max(100),
+  name: z.string().max(MAX_NAME_LENGTH).nullable().optional(),
+  description: z.string().max(MAX_DESCRIPTION_LENGTH).nullable().optional(),
+  tags: JsonStringSchema.nullable().optional(),
+  metadata: JsonStringSchema.nullable().optional(),
+  version: z.number().int().min(0).nullable().optional(),
+  archived: z.union([z.boolean(), z.number().int(), z.null()]).optional(),
+  created_at: IsoDateStringSchema.nullable().optional(),
+  updated_at: IsoDateStringSchema.nullable().optional(),
+});
+
+export const ImportStashFileRowSchema = z.object({
+  id: z.string().min(1).max(100),
+  stash_id: z.string().min(1).max(100),
+  filename: z.string().min(1).max(MAX_FILENAME_LENGTH),
+  content: z.string().max(MAX_FILE_CONTENT_LENGTH).nullable().optional(),
+  language: z.string().max(50).nullable().optional(),
+  sort_order: z.number().int().min(0).nullable().optional(),
+});
+
+export const ImportStashVersionRowSchema = z.object({
+  id: z.string().min(1).max(100),
+  stash_id: z.string().min(1).max(100),
+  name: z.string().max(MAX_NAME_LENGTH).nullable().optional(),
+  description: z.string().max(MAX_DESCRIPTION_LENGTH).nullable().optional(),
+  tags: JsonStringSchema.nullable().optional(),
+  metadata: JsonStringSchema.nullable().optional(),
+  version: z.number().int().min(0).nullable().optional(),
+  created_by: z.string().max(50).nullable().optional(),
+  created_at: IsoDateStringSchema.nullable().optional(),
+  change_summary: JsonStringSchema.nullable().optional(),
+});
+
+export const ImportStashVersionFileRowSchema = z.object({
+  id: z.string().min(1).max(100),
+  version_id: z.string().min(1).max(100),
+  filename: z.string().min(1).max(MAX_FILENAME_LENGTH),
+  content: z.string().max(MAX_FILE_CONTENT_LENGTH).nullable().optional(),
+  language: z.string().max(50).nullable().optional(),
+  sort_order: z.number().int().min(0).nullable().optional(),
+});
+
 // --- Token Schema ---
 
 export const CreateTokenSchema = z.object({
