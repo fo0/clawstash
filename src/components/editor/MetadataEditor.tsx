@@ -166,6 +166,7 @@ export default function MetadataEditor({ entries, onChange, availableKeys }: Pro
           onKeyDown={handleKeyInputKeyDown}
           placeholder="Add key..."
           className="form-input metadata-add-input"
+          aria-label="Add metadata key"
           autoComplete="off"
         />
         <button
