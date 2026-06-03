@@ -1401,6 +1401,7 @@ export default function GraphViewer({
                 type="text"
                 className="graph-search-input"
                 placeholder="Search tags..."
+                aria-label="Search tags"
                 value={searchQuery}
                 onChange={(e) => {
                   setSearchQuery(e.target.value);
