@@ -628,7 +628,7 @@ export default function StashViewer({
             {stash.archived ? 'Unarchive' : 'Archive'}
           </button>
           <button
-            className={`btn ${showDeleteConfirm ? 'btn-danger' : 'btn-ghost'}`}
+            className={`btn ${showDeleteConfirm ? 'btn-danger btn-confirm-timeout' : 'btn-ghost'}`}
             onClick={handleDelete}
             title={
               showDeleteConfirm

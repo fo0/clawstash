@@ -186,7 +186,11 @@ export default function SearchOverlay({ open, onClose, onSelectStash }: Props) {
             ref={listRef}
             role="listbox"
             id="search-overlay-results"
+            aria-label={`${results.length} result${results.length !== 1 ? 's' : ''}`}
           >
+            <div className="search-overlay-results-count" aria-live="polite" role="status">
+              {results.length} result{results.length !== 1 ? 's' : ''}
+            </div>
             {results.map((stash, idx) => (
               <button
                 type="button"
