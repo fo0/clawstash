@@ -1121,6 +1121,23 @@ body {
   border-color: var(--accent-red);
 }
 
+/* Confirm-timeout ring: animated outline shrinks over DELETE_CONFIRM_TIMEOUT_MS (3s)
+   to visually signal the confirm window is expiring. */
+@keyframes confirm-timeout-ring {
+  from {
+    outline: 2px solid rgba(218, 54, 51, 0.8);
+    outline-offset: 2px;
+  }
+  to {
+    outline: 2px solid rgba(218, 54, 51, 0);
+    outline-offset: 6px;
+  }
+}
+
+.btn-confirm-timeout {
+  animation: confirm-timeout-ring 3s linear forwards;
+}
+
 .btn-warning {
   background: var(--accent-orange);
   color: #000;
