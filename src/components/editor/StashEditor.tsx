@@ -243,6 +243,7 @@ export default function StashEditor({ stash, onSave, onCancel }: Props) {
             onChange={(e) => handleNameChange(e.target.value)}
             placeholder="e.g. Docker Compose Setup, API Keys, Prompt Template..."
             className="form-input"
+            autoFocus={!stash}
           />
         </div>
 
