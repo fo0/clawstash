@@ -782,7 +782,15 @@ export class ClawStashDB {
         id: string;
         tags: string;
       }[];
-      const parsed = stashes.map((s) => ({ id: s.id, tags: safeParseTags(s.tags) }));
+
+      // Pre-build a Set per stash so the inner intersection check is O(m)
+      // instead of O(m²) — reduces worst-case from O(n²·m²) to O(n²·m)
+      // (Backlog #22). The n² pair loop is still needed to find all pairs;
+      // a tag-inverted-index approach would reduce that too but is deferred.
+      const parsed = stashes.map((s) => {
+        const tags = safeParseTags(s.tags);
+        return { id: s.id, tags, tagSet: new Set(tags) };
+      });
 
       const insert = this.db.prepare(`
         INSERT INTO stash_relations (id, source_stash_id, target_stash_id, relation_type, weight, metadata)
@@ -791,7 +799,15 @@ export class ClawStashDB {
 
       for (let i = 0; i < parsed.length; i++) {
         for (let j = i + 1; j < parsed.length; j++) {
-          const shared = parsed[i].tags.filter((t) => parsed[j].tags.includes(t));
+          // Intersect using the smaller set to iterate fewer items
+          const [smaller, larger] =
+            parsed[i].tagSet.size <= parsed[j].tagSet.size
+              ? [parsed[i], parsed[j]]
+              : [parsed[j], parsed[i]];
+          const shared: string[] = [];
+          for (const t of smaller.tagSet) {
+            if (larger.tagSet.has(t)) shared.push(t);
+          }
           if (shared.length > 0) {
             const [src, tgt] = [parsed[i].id, parsed[j].id].sort();
             insert.run(
