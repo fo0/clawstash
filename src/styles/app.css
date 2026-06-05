@@ -233,8 +233,8 @@ body {
 }
 
 .search-input-clear:focus-visible {
-  outline: none;
-  border-color: var(--accent-blue);
+  outline: 2px solid var(--accent-blue);
+  outline-offset: 1px;
   color: var(--text-primary);
 }
 
