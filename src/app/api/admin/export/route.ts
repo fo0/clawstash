@@ -29,29 +29,35 @@ export async function GET(req: NextRequest) {
       `[audit] admin export: timestamp=${exportedAt.toISOString()} ip=${ip ?? 'unknown'} ua=${userAgent ?? 'unknown'} stashes=${data.stashes.length}`,
     );
 
-    // Build ZIP in memory using archiver
-    const chunks: Buffer[] = [];
+    // Stream ZIP output via archiver -> ReadableStream so the response does
+    // not accumulate the entire ZIP in memory before the first byte is sent.
+    // Note: exportAllData() above still loads all DB rows into JS objects,
+    // so total heap usage scales with the DB size — streaming the archiver
+    // output avoids a second full-ZIP copy in the `chunks` buffer.
     const archive = archiver('zip', { zlib: { level: 9 } });
 
-    await new Promise<void>((resolve, reject) => {
-      archive.on('data', (chunk: Buffer) => chunks.push(chunk));
-      archive.on('end', resolve);
-      archive.on('error', reject);
+    const stream = new ReadableStream({
+      start(controller) {
+        archive.on('data', (chunk: Buffer) => controller.enqueue(chunk));
+        archive.on('end', () => controller.close());
+        archive.on('error', (err: Error) => controller.error(err));
 
-      archive.append(JSON.stringify(data.stashes, null, 2), { name: 'stashes.json' });
-      archive.append(JSON.stringify(data.stash_files, null, 2), { name: 'stash_files.json' });
-      archive.append(JSON.stringify(data.stash_versions, null, 2), { name: 'stash_versions.json' });
-      archive.append(JSON.stringify(data.stash_version_files, null, 2), {
-        name: 'stash_version_files.json',
-      });
-      archive.append(JSON.stringify({ exportedAt: exportedAt.toISOString(), version: '1.0' }), {
-        name: 'manifest.json',
-      });
-      archive.finalize();
+        archive.append(JSON.stringify(data.stashes, null, 2), { name: 'stashes.json' });
+        archive.append(JSON.stringify(data.stash_files, null, 2), { name: 'stash_files.json' });
+        archive.append(JSON.stringify(data.stash_versions, null, 2), {
+          name: 'stash_versions.json',
+        });
+        archive.append(JSON.stringify(data.stash_version_files, null, 2), {
+          name: 'stash_version_files.json',
+        });
+        archive.append(JSON.stringify({ exportedAt: exportedAt.toISOString(), version: '1.0' }), {
+          name: 'manifest.json',
+        });
+        archive.finalize();
+      },
     });
 
-    const buffer = Buffer.concat(chunks);
-    return new NextResponse(buffer, {
+    return new NextResponse(stream, {
       headers: {
         'Content-Type': 'application/zip',
         'Content-Disposition': `attachment; filename="clawstash-export-${timestamp}.zip"`,
