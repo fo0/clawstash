@@ -1685,6 +1685,11 @@ body {
   color: var(--text-primary);
 }
 
+.tab:focus-visible {
+  outline: 2px solid var(--accent-blue);
+  outline-offset: -2px;
+}
+
 .tab.active {
   color: var(--text-primary);
   border-bottom-color: var(--accent-green);
@@ -1738,6 +1743,11 @@ body {
 
 .viewer-toc-toggle:hover {
   background: var(--bg-tertiary);
+}
+
+.viewer-toc-toggle:focus-visible {
+  outline: 2px solid var(--accent-blue);
+  outline-offset: -2px;
 }
 
 .toc-chevron {
