@@ -778,8 +778,13 @@ export default function StashViewer({
 
       {activeTab === 'content' && tocEntries.length > 0 && renderPreview && (
         <div className="viewer-toc">
-          <button className="viewer-toc-toggle" onClick={() => setTocExpanded(!tocExpanded)}>
-            <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
+          <button
+            className="viewer-toc-toggle"
+            onClick={() => setTocExpanded(!tocExpanded)}
+            aria-expanded={tocExpanded}
+            aria-controls="viewer-toc-nav"
+          >
+            <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
               <path d="M2 4a1 1 0 1 0 0-2 1 1 0 0 0 0 2Zm3.75-1.5a.75.75 0 0 0 0 1.5h8.5a.75.75 0 0 0 0-1.5Zm0 5a.75.75 0 0 0 0 1.5h8.5a.75.75 0 0 0 0-1.5Zm0 5a.75.75 0 0 0 0 1.5h8.5a.75.75 0 0 0 0-1.5ZM3 8a1 1 0 1 1-2 0 1 1 0 0 1 2 0Zm-1 6a1 1 0 1 0 0-2 1 1 0 0 0 0 2Z" />
             </svg>
             Table of Contents
@@ -794,7 +799,7 @@ export default function StashViewer({
             </svg>
           </button>
           {tocExpanded && (
-            <nav className="viewer-toc-nav" aria-label="Table of contents">
+            <nav id="viewer-toc-nav" className="viewer-toc-nav" aria-label="Table of contents">
               {tocEntries.map((entry) => (
                 <div key={entry.fileIndex} className="toc-file-group">
                   <a
