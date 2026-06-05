@@ -545,7 +545,12 @@ export default function Sidebar({
             Settings
           </button>
           {onLogout && (
-            <button className="sidebar-footer-logout-btn" onClick={onLogout} title="Sign out" aria-label="Sign out">
+            <button
+              className="sidebar-footer-logout-btn"
+              onClick={onLogout}
+              title="Sign out"
+              aria-label="Sign out"
+            >
               <svg
                 width="16"
                 height="16"

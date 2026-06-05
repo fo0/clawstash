@@ -559,7 +559,28 @@ export class ClawStashDB {
     const safeDepth = Number.isFinite(depth) ? depth! : 1;
     const clampedDepth = Math.max(1, Math.min(safeDepth, 5));
 
-    const rows = this.db.prepare('SELECT tags FROM stashes').all() as { tags: string }[];
+    const totalCount = (this.db.prepare('SELECT COUNT(*) as c FROM stashes').get() as { c: number })
+      .c;
+
+    // When a focus tag is requested, only fetch rows that contain at least
+    // one of the tags discovered during the BFS expansion — avoiding a full
+    // table scan.  The unfiltered path (no `tag`) still scans all rows to
+    // build the complete graph.
+    let rows: { tags: string }[];
+    if (tag) {
+      rows = this.getTagGraphFocusRows(tag, clampedDepth);
+      if (rows.length === 0) {
+        return {
+          nodes: [],
+          edges: [],
+          stash_count: totalCount,
+          filter: { tag, depth: clampedDepth },
+        };
+      }
+    } else {
+      rows = this.db.prepare('SELECT tags FROM stashes').all() as { tags: string }[];
+    }
+
     const tagCounts = new Map<string, number>();
     const edgeMap = new Map<string, number>();
 
@@ -583,20 +604,11 @@ export class ClawStashDB {
       allEdges.push({ source, target, weight });
     }
 
-    // Build adjacency for BFS traversal
+    // Build adjacency for BFS traversal (focus-tag path only)
     let includedTags: Set<string> | null = null;
 
     if (tag) {
-      if (!tagCounts.has(tag)) {
-        return {
-          nodes: [],
-          edges: [],
-          stash_count: rows.length,
-          filter: { tag, depth: clampedDepth },
-        };
-      }
-
-      // BFS from focus tag up to clampedDepth hops
+      // BFS from focus tag up to clampedDepth hops using the reduced edge set
       includedTags = new Set<string>();
       let frontier = new Set<string>([tag]);
       for (let d = 0; d <= clampedDepth; d++) {
@@ -645,10 +657,68 @@ export class ClawStashDB {
     }
     edges.sort((a, b) => b.weight - a.weight);
 
-    const result: TagGraphResult = { nodes, edges, stash_count: rows.length };
+    const result: TagGraphResult = { nodes, edges, stash_count: totalCount };
     if (tag) {
       result.filter = { tag, depth: clampedDepth };
     }
+    return result;
+  }
+
+  /**
+   * Fetch only the stash rows needed for a focus-tag BFS traversal.
+   *
+   * Iteratively expands from the seed tag by fetching rows that contain any
+   * of the currently-known tags (via JSON-array LIKE match), collecting new
+   * co-occurring tags at each hop, and stopping once the BFS frontier is
+   * empty or `maxDepth` hops are exhausted.  Rows are deduplicated by stash
+   * id so a stash that co-occurs with multiple frontier tags is only
+   * returned once.
+   *
+   * This avoids scanning the full `stashes` table for every tag-graph
+   * request that specifies a focus tag (Backlog #3).
+   */
+  private getTagGraphFocusRows(seedTag: string, maxDepth: number): { tags: string }[] {
+    const seenIds = new Set<string>();
+    const result: { tags: string }[] = [];
+    // Known tags at each BFS depth; start with the seed
+    let frontier = new Set<string>([seedTag]);
+    const visitedTags = new Set<string>([seedTag]);
+
+    for (let d = 0; d <= maxDepth; d++) {
+      if (frontier.size === 0) break;
+
+      // Build a LIKE pattern for each frontier tag to match JSON arrays.
+      // Tags are stored as JSON arrays, e.g. '["foo","bar"]'. We match
+      // '"<tag>"' anywhere in the JSON string — a cheap and correct check
+      // since tag values are validated to contain no double-quotes.
+      const placeholders = Array.from(frontier)
+        .map(() => `tags LIKE ?`)
+        .join(' OR ');
+      const params: string[] = Array.from(frontier).map((t) => `%"${t}"%`);
+
+      const rows = this.db
+        .prepare(`SELECT id, tags FROM stashes WHERE ${placeholders}`)
+        .all(...params) as { id: string; tags: string }[];
+
+      const newFrontier = new Set<string>();
+      for (const row of rows) {
+        if (!seenIds.has(row.id)) {
+          seenIds.add(row.id);
+          result.push({ tags: row.tags });
+        }
+        if (d < maxDepth) {
+          const tags = safeParseTags(row.tags);
+          for (const t of tags) {
+            if (!visitedTags.has(t)) {
+              visitedTags.add(t);
+              newFrontier.add(t);
+            }
+          }
+        }
+      }
+      frontier = newFrontier;
+    }
+
     return result;
   }
 
@@ -708,7 +778,15 @@ export class ClawStashDB {
         id: string;
         tags: string;
       }[];
-      const parsed = stashes.map((s) => ({ id: s.id, tags: safeParseTags(s.tags) }));
+
+      // Pre-build a Set per stash so the inner intersection check is O(m)
+      // instead of O(m²) — reduces worst-case from O(n²·m²) to O(n²·m)
+      // (Backlog #22). The n² pair loop is still needed to find all pairs;
+      // a tag-inverted-index approach would reduce that too but is deferred.
+      const parsed = stashes.map((s) => {
+        const tags = safeParseTags(s.tags);
+        return { id: s.id, tags, tagSet: new Set(tags) };
+      });
 
       const insert = this.db.prepare(`
         INSERT INTO stash_relations (id, source_stash_id, target_stash_id, relation_type, weight, metadata)
@@ -717,7 +795,15 @@ export class ClawStashDB {
 
       for (let i = 0; i < parsed.length; i++) {
         for (let j = i + 1; j < parsed.length; j++) {
-          const shared = parsed[i].tags.filter((t) => parsed[j].tags.includes(t));
+          // Intersect using the smaller set to iterate fewer items
+          const [smaller, larger] =
+            parsed[i].tagSet.size <= parsed[j].tagSet.size
+              ? [parsed[i], parsed[j]]
+              : [parsed[j], parsed[i]];
+          const shared: string[] = [];
+          for (const t of smaller.tagSet) {
+            if (larger.tagSet.has(t)) shared.push(t);
+          }
           if (shared.length > 0) {
             const [src, tgt] = [parsed[i].id, parsed[j].id].sort();
             insert.run(

@@ -94,9 +94,7 @@ export default function KeyboardShortcutsHelp({ open, onClose }: Props) {
                         {s.keys.map((k, i) => (
                           <span key={k}>
                             <kbd className="shortcuts-kbd">{k}</kbd>
-                            {i < s.keys.length - 1 && (
-                              <span className="shortcuts-plus">+</span>
-                            )}
+                            {i < s.keys.length - 1 && <span className="shortcuts-plus">+</span>}
                           </span>
                         ))}
                       </td>
