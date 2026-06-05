@@ -734,10 +734,7 @@ export default function App() {
         onClose={() => setSearchOpen(false)}
         onSelectStash={handleSelectStash}
       />
-      <KeyboardShortcutsHelp
-        open={shortcutsHelpOpen}
-        onClose={() => setShortcutsHelpOpen(false)}
-      />
+      <KeyboardShortcutsHelp open={shortcutsHelpOpen} onClose={() => setShortcutsHelpOpen(false)} />
       {successToast && (
         <div
           className="app-success-toast"

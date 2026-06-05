@@ -559,9 +559,8 @@ export class ClawStashDB {
     const safeDepth = Number.isFinite(depth) ? depth! : 1;
     const clampedDepth = Math.max(1, Math.min(safeDepth, 5));
 
-    const totalCount = (
-      this.db.prepare('SELECT COUNT(*) as c FROM stashes').get() as { c: number }
-    ).c;
+    const totalCount = (this.db.prepare('SELECT COUNT(*) as c FROM stashes').get() as { c: number })
+      .c;
 
     // When a focus tag is requested, only fetch rows that contain at least
     // one of the tags discovered during the BFS expansion — avoiding a full
@@ -678,10 +677,7 @@ export class ClawStashDB {
    * This avoids scanning the full `stashes` table for every tag-graph
    * request that specifies a focus tag (Backlog #3).
    */
-  private getTagGraphFocusRows(
-    seedTag: string,
-    maxDepth: number,
-  ): { tags: string }[] {
+  private getTagGraphFocusRows(seedTag: string, maxDepth: number): { tags: string }[] {
     const seenIds = new Set<string>();
     const result: { tags: string }[] = [];
     // Known tags at each BFS depth; start with the seed
