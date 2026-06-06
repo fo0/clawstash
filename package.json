@@ -49,7 +49,7 @@
     "@types/adm-zip": "^0.5.8",
     "@types/archiver": "^7.0.0",
     "@types/better-sqlite3": "^7.6.12",
-    "@types/node": "^25.9.1",
+    "@types/node": "^25.9.2",
     "@types/prismjs": "^1.26.6",
     "@types/react": "^19.2.15",
     "@types/react-dom": "^19.0.0",
