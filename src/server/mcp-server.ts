@@ -23,10 +23,9 @@ ${TOKEN_EFFICIENT_GUIDE}`,
 
   // Create a new stash
   const createDef = getToolDef('create_stash');
-  server.tool(
+  server.registerTool(
     createDef.name,
-    createDef.description,
-    createDef.schema.shape,
+    { description: createDef.description, inputSchema: createDef.schema.shape },
     async ({ name, description, files, tags, metadata }) => {
       const stash = db.createStash({ name, description, files, tags, metadata });
       db.logAccess(stash.id, 'mcp', 'create');
@@ -54,10 +53,9 @@ ${TOKEN_EFFICIENT_GUIDE}`,
 
   // Read a stash by ID (metadata + file list by default, optionally with content)
   const readDef = getToolDef('read_stash');
-  server.tool(
+  server.registerTool(
     readDef.name,
-    readDef.description,
-    readDef.schema.shape,
+    { description: readDef.description, inputSchema: readDef.schema.shape },
     async ({ id, include_content }) => {
       if (include_content) {
         const stash = db.getStash(id);
@@ -100,10 +98,9 @@ ${TOKEN_EFFICIENT_GUIDE}`,
 
   // Read a single file from a stash
   const readFileDef = getToolDef('read_stash_file');
-  server.tool(
+  server.registerTool(
     readFileDef.name,
-    readFileDef.description,
-    readFileDef.schema.shape,
+    { description: readFileDef.description, inputSchema: readFileDef.schema.shape },
     async ({ id, filename }) => {
       const file = db.getStashFile(id, filename);
       if (file) {
@@ -148,10 +145,9 @@ ${TOKEN_EFFICIENT_GUIDE}`,
   // /api/stashes behavior — otherwise MCP clients silently get a slower,
   // unranked LIKE scan with different result ordering than the REST endpoint.
   const listDef = getToolDef('list_stashes');
-  server.tool(
+  server.registerTool(
     listDef.name,
-    listDef.description,
-    listDef.schema.shape,
+    { description: listDef.description, inputSchema: listDef.schema.shape },
     async ({ search, tag, archived, page, limit }) => {
       const result = search
         ? db.searchStashes(search, { tag, archived, page, limit })
@@ -164,10 +160,9 @@ ${TOKEN_EFFICIENT_GUIDE}`,
 
   // Update a stash
   const updateDef = getToolDef('update_stash');
-  server.tool(
+  server.registerTool(
     updateDef.name,
-    updateDef.description,
-    updateDef.schema.shape,
+    { description: updateDef.description, inputSchema: updateDef.schema.shape },
     async ({ id, name, description, files, tags, metadata }) => {
       const stash = db.updateStash(id, { name, description, files, tags, metadata }, 'mcp');
       if (!stash) {
@@ -199,20 +194,23 @@ ${TOKEN_EFFICIENT_GUIDE}`,
   // Delete a stash
   // No logAccess: access_log has ON DELETE CASCADE, so entries are removed with the stash.
   const deleteDef = getToolDef('delete_stash');
-  server.tool(deleteDef.name, deleteDef.description, deleteDef.schema.shape, async ({ id }) => {
-    const deleted = db.deleteStash(id);
-    if (!deleted) {
-      return { content: [{ type: 'text', text: `Error: Stash "${id}" not found.` }] };
-    }
-    return { content: [{ type: 'text', text: `Stash "${id}" deleted successfully.` }] };
-  });
+  server.registerTool(
+    deleteDef.name,
+    { description: deleteDef.description, inputSchema: deleteDef.schema.shape },
+    async ({ id }) => {
+      const deleted = db.deleteStash(id);
+      if (!deleted) {
+        return { content: [{ type: 'text', text: `Error: Stash "${id}" not found.` }] };
+      }
+      return { content: [{ type: 'text', text: `Stash "${id}" deleted successfully.` }] };
+    },
+  );
 
   // Archive / unarchive a stash
   const archiveDef = getToolDef('archive_stash');
-  server.tool(
+  server.registerTool(
     archiveDef.name,
-    archiveDef.description,
-    archiveDef.schema.shape,
+    { description: archiveDef.description, inputSchema: archiveDef.schema.shape },
     async ({ id, archived }) => {
       const stash = db.archiveStash(id, archived);
       if (!stash) {
@@ -233,10 +231,9 @@ ${TOKEN_EFFICIENT_GUIDE}`,
 
   // Search stashes (FTS5 with BM25 ranking + snippets)
   const searchDef = getToolDef('search_stashes');
-  server.tool(
+  server.registerTool(
     searchDef.name,
-    searchDef.description,
-    searchDef.schema.shape,
+    { description: searchDef.description, inputSchema: searchDef.schema.shape },
     async ({ query, tag, archived, limit, page }) => {
       // clampPagination() inside searchStashes already defaults limit to 20.
       const result = db.searchStashes(query, { tag, archived, limit, page });
@@ -248,19 +245,22 @@ ${TOKEN_EFFICIENT_GUIDE}`,
 
   // List tags
   const tagsDef = getToolDef('list_tags');
-  server.tool(tagsDef.name, tagsDef.description, tagsDef.schema.shape, async () => {
-    const tags = db.getAllTags();
-    return {
-      content: [{ type: 'text', text: JSON.stringify(tags, null, 2) }],
-    };
-  });
+  server.registerTool(
+    tagsDef.name,
+    { description: tagsDef.description, inputSchema: tagsDef.schema.shape },
+    async () => {
+      const tags = db.getAllTags();
+      return {
+        content: [{ type: 'text', text: JSON.stringify(tags, null, 2) }],
+      };
+    },
+  );
 
   // Get tag graph
   const graphDef = getToolDef('get_tag_graph');
-  server.tool(
+  server.registerTool(
     graphDef.name,
-    graphDef.description,
-    graphDef.schema.shape,
+    { description: graphDef.description, inputSchema: graphDef.schema.shape },
     async ({ tag, depth, min_weight, min_count, limit }) => {
       const graph = db.getTagGraph({ tag, depth, min_weight, min_count, limit });
       return {
@@ -271,48 +271,68 @@ ${TOKEN_EFFICIENT_GUIDE}`,
 
   // Get stats
   const statsDef = getToolDef('get_stats');
-  server.tool(statsDef.name, statsDef.description, statsDef.schema.shape, async () => {
-    const stats = db.getStats();
-    return {
-      content: [{ type: 'text', text: JSON.stringify(stats, null, 2) }],
-    };
-  });
+  server.registerTool(
+    statsDef.name,
+    { description: statsDef.description, inputSchema: statsDef.schema.shape },
+    async () => {
+      const stats = db.getStats();
+      return {
+        content: [{ type: 'text', text: JSON.stringify(stats, null, 2) }],
+      };
+    },
+  );
 
   // Get REST API spec (OpenAPI)
   const restSpecDef = getToolDef('get_rest_api_spec');
-  server.tool(restSpecDef.name, restSpecDef.description, restSpecDef.schema.shape, async () => {
-    const spec = getOpenApiSpec(fallbackBaseUrl);
-    return {
-      content: [{ type: 'text', text: JSON.stringify(spec, null, 2) }],
-    };
-  });
+  server.registerTool(
+    restSpecDef.name,
+    { description: restSpecDef.description, inputSchema: restSpecDef.schema.shape },
+    async () => {
+      const spec = getOpenApiSpec(fallbackBaseUrl);
+      return {
+        content: [{ type: 'text', text: JSON.stringify(spec, null, 2) }],
+      };
+    },
+  );
 
   // Get MCP spec
   const mcpSpecDef = getToolDef('get_mcp_spec');
-  server.tool(mcpSpecDef.name, mcpSpecDef.description, mcpSpecDef.schema.shape, async () => {
-    const spec = getMcpSpecText(fallbackBaseUrl);
-    return {
-      content: [{ type: 'text', text: spec }],
-    };
-  });
+  server.registerTool(
+    mcpSpecDef.name,
+    { description: mcpSpecDef.description, inputSchema: mcpSpecDef.schema.shape },
+    async () => {
+      const spec = getMcpSpecText(fallbackBaseUrl);
+      return {
+        content: [{ type: 'text', text: spec }],
+      };
+    },
+  );
 
   // Refresh tools — current spec for already-connected AI agents to stay up-to-date
   const refreshDef = getToolDef('refresh_tools');
-  server.tool(refreshDef.name, refreshDef.description, refreshDef.schema.shape, async () => {
-    const text = getMcpRefreshText(fallbackBaseUrl);
-    return {
-      content: [{ type: 'text', text }],
-    };
-  });
+  server.registerTool(
+    refreshDef.name,
+    { description: refreshDef.description, inputSchema: refreshDef.schema.shape },
+    async () => {
+      const text = getMcpRefreshText(fallbackBaseUrl);
+      return {
+        content: [{ type: 'text', text }],
+      };
+    },
+  );
 
   // Check version (current + latest from GitHub)
   const versionDef = getToolDef('check_version');
-  server.tool(versionDef.name, versionDef.description, versionDef.schema.shape, async () => {
-    const info = await checkVersion();
-    return {
-      content: [{ type: 'text', text: JSON.stringify(info, null, 2) }],
-    };
-  });
+  server.registerTool(
+    versionDef.name,
+    { description: versionDef.description, inputSchema: versionDef.schema.shape },
+    async () => {
+      const info = await checkVersion();
+      return {
+        content: [{ type: 'text', text: JSON.stringify(info, null, 2) }],
+      };
+    },
+  );
 
   return server;
 }
