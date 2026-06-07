@@ -41,7 +41,6 @@
     "react-simple-code-editor": "^0.14.1",
     "react-zoom-pan-pinch": "^4.0.3",
     "tsx": "^4.22.3",
-    "uuid": "^14.0.0",
     "zod": "^3.24.0",
     "zod-to-json-schema": "^3.25.2"
   },
