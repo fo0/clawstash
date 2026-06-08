@@ -140,6 +140,19 @@ export default function App() {
       if (e.key === '?') {
         e.preventDefault();
         setShortcutsHelpOpen((prev) => !prev);
+      } else if (e.key === '/') {
+        // Focus the sidebar stash-search field. On mobile the sidebar is a
+        // collapsible drawer, so open it first, then focus on the next frame
+        // once it has mounted/animated into view.
+        e.preventDefault();
+        setSidebarOpen(true);
+        requestAnimationFrame(() => {
+          const input = document.getElementById('sidebar-stash-search');
+          if (input instanceof HTMLInputElement) {
+            input.focus();
+            input.select();
+          }
+        });
       } else if (e.key === 'e') {
         // Edit the currently viewed stash (only when in view mode with a stash open)
         setView((currentView) => {
