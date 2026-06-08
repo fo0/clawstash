@@ -4,12 +4,14 @@ import type {
   StashListItem,
   ViewMode,
   LayoutMode,
+  SortMode,
   SettingsSection,
   AdminSessionInfo,
   TagInfo,
 } from './types';
 import { api, setAuthToken } from './api';
 import { loadFavoriteIds, saveFavoriteIds, toggleFavorite } from './utils/favorites';
+import { loadSortMode, saveSortMode } from './utils/sort';
 import { SEARCH_DEBOUNCE_MS } from './utils/constants';
 import Sidebar from './components/Sidebar';
 import Dashboard from './components/Dashboard';
@@ -88,6 +90,7 @@ export default function App() {
   const [layout, setLayout] = useState<LayoutMode>(() =>
     getStoredPreference('clawstash_layout', 'grid'),
   );
+  const [sortMode, setSortMode] = useState<SortMode>(loadSortMode);
   const [selectedStash, setSelectedStash] = useState<Stash | null>(null);
   const [search, setSearch] = useState('');
   const [filterTag, setFilterTag] = useState('');
@@ -573,6 +576,11 @@ export default function App() {
     localStorage.setItem('clawstash_layout', mode);
   };
 
+  const handleSortChange = (mode: SortMode) => {
+    setSortMode(mode);
+    saveSortMode(mode);
+  };
+
   // Show login screen if auth is required and user is not authenticated
   if (adminSession === null) {
     // Still loading session info
@@ -667,6 +675,7 @@ export default function App() {
               stashes={stashes}
               total={total}
               layout={layout}
+              sortMode={sortMode}
               loading={loading}
               filterTag={filterTag}
               showArchived={showArchived}
@@ -674,6 +683,7 @@ export default function App() {
               onToggleFavorite={handleToggleFavorite}
               onToggleShowArchived={() => setShowArchived((prev) => !prev)}
               onLayoutChange={handleLayoutChange}
+              onSortChange={handleSortChange}
               onSelectStash={handleSelectStash}
               onNewStash={handleNewStash}
               onFilterTag={handleFilterTag}

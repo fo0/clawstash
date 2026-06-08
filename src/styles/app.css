@@ -1287,6 +1287,42 @@ body {
   color: var(--accent-orange);
 }
 
+.sort-control {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 6px 0 10px;
+  height: 32px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius);
+  color: var(--text-muted);
+}
+
+.sort-control:focus-within {
+  border-color: var(--accent-blue);
+}
+
+.sort-control-icon {
+  flex-shrink: 0;
+}
+
+.sort-select {
+  background: transparent;
+  border: none;
+  color: var(--text-primary);
+  font-size: 13px;
+  font-family: inherit;
+  cursor: pointer;
+  padding: 0 2px;
+  outline: none;
+}
+
+.sort-select option {
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+}
+
 .layout-toggle {
   display: flex;
   border: 1px solid var(--border-color);
