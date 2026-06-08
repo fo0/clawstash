@@ -1,6 +1,7 @@
 import { useMemo } from 'react';
-import type { StashListItem, LayoutMode } from '../types';
+import type { StashListItem, LayoutMode, SortMode } from '../types';
 import { sortStashesWithFavorites } from '../utils/favorites';
+import { sortStashes, SORT_OPTIONS } from '../utils/sort';
 import StashCard from './StashCard';
 import Spinner from './shared/Spinner';
 
@@ -8,12 +9,14 @@ interface Props {
   stashes: StashListItem[];
   total: number;
   layout: LayoutMode;
+  sortMode: SortMode;
   loading: boolean;
   filterTag: string;
   showArchived: boolean;
   favoriteIds: ReadonlySet<string>;
   onToggleShowArchived: () => void;
   onLayoutChange: (mode: LayoutMode) => void;
+  onSortChange: (mode: SortMode) => void;
   onSelectStash: (id: string) => void;
   onNewStash: () => void;
   onFilterTag: (tag: string) => void;
@@ -24,22 +27,24 @@ export default function Dashboard({
   stashes,
   total,
   layout,
+  sortMode,
   loading,
   filterTag,
   showArchived,
   favoriteIds,
   onToggleShowArchived,
   onLayoutChange,
+  onSortChange,
   onSelectStash,
   onNewStash,
   onFilterTag,
   onToggleFavorite,
 }: Props) {
-  // Favorites pinned to the top, while preserving the server-provided order
-  // (updated_at DESC) within each group.
+  // First apply the user-chosen sort order, then pin favorites to the top
+  // (favorites preserve the sorted order within each group).
   const orderedStashes = useMemo(
-    () => sortStashesWithFavorites(stashes, favoriteIds),
-    [stashes, favoriteIds],
+    () => sortStashesWithFavorites(sortStashes(stashes, sortMode), favoriteIds),
+    [stashes, sortMode, favoriteIds],
   );
 
   return (
@@ -93,6 +98,31 @@ export default function Dashboard({
               </button>
             </span>
           )}
+          <label className="sort-control" title="Change how stashes are ordered">
+            <span className="sr-only">Sort stashes by</span>
+            <svg
+              className="sort-control-icon"
+              width="14"
+              height="14"
+              viewBox="0 0 16 16"
+              fill="currentColor"
+              aria-hidden="true"
+            >
+              <path d="M11.5 15a.75.75 0 0 1-.53-.22l-2.75-2.75a.75.75 0 1 1 1.06-1.06l1.47 1.47V2.75a.75.75 0 0 1 1.5 0v9.69l1.47-1.47a.75.75 0 1 1 1.06 1.06l-2.75 2.75a.75.75 0 0 1-.53.22ZM1.75 4a.75.75 0 0 1 0-1.5h4.5a.75.75 0 0 1 0 1.5h-4.5Zm0 4a.75.75 0 0 1 0-1.5h3a.75.75 0 0 1 0 1.5h-3Zm0 4a.75.75 0 0 1 0-1.5h1.5a.75.75 0 0 1 0 1.5h-1.5Z" />
+            </svg>
+            <select
+              className="sort-select"
+              value={sortMode}
+              onChange={(e) => onSortChange(e.target.value as SortMode)}
+              aria-label="Sort stashes by"
+            >
+              {SORT_OPTIONS.map((opt) => (
+                <option key={opt.value} value={opt.value}>
+                  {opt.label}
+                </option>
+              ))}
+            </select>
+          </label>
           <div className="layout-toggle">
             <button
               className={`layout-btn ${layout === 'grid' ? 'active' : ''}`}

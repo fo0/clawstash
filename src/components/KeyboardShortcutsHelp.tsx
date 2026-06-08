@@ -22,7 +22,10 @@ const SHORTCUT_GROUPS: ShortcutGroup[] = [
   },
   {
     label: 'Search',
-    shortcuts: [{ keys: ['Alt', 'K'], description: 'Open quick search' }],
+    shortcuts: [
+      { keys: ['Alt', 'K'], description: 'Open quick search' },
+      { keys: ['/'], description: 'Focus sidebar search' },
+    ],
   },
   {
     label: 'Stash Viewer tabs',

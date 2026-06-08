@@ -239,6 +239,7 @@ export default function Sidebar({
           <div className="sidebar-search">
             <div className="search-input-wrapper">
               <input
+                id="sidebar-stash-search"
                 type="text"
                 placeholder="Search stashes..."
                 value={search}
@@ -254,7 +255,7 @@ export default function Sidebar({
                   }
                 }}
                 className="search-input"
-                title="Search by name, filename, or content — Esc to clear, Alt+K for quick search"
+                title="Search by name, filename, or content — / to focus, Esc to clear, Alt+K for quick search"
                 aria-label="Search stashes"
               />
               {search ? (

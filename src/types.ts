@@ -83,6 +83,7 @@ export interface FileInput {
 
 export type ViewMode = 'home' | 'view' | 'edit' | 'new' | 'settings' | 'graph';
 export type LayoutMode = 'grid' | 'list';
+export type SortMode = 'updated' | 'created' | 'name' | 'size';
 export type SettingsSection = 'welcome' | 'general' | 'api' | 'storage' | 'about';
 export type ApiTab = 'tokens' | 'rest' | 'mcp';
 export type TokenScope = 'read' | 'write' | 'admin' | 'mcp';
