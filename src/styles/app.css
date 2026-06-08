@@ -1550,6 +1550,19 @@ body {
   align-items: center;
 }
 
+.stash-card-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.stash-card-stat {
+  font-size: 12px;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
 .stash-card-date {
   font-size: 12px;
   color: var(--text-muted);

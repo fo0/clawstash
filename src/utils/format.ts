@@ -1,4 +1,25 @@
 /**
+ * Format a byte count as a compact human-readable size ("0 B", "512 B",
+ * "1.5 KB", "3.2 MB", ...). Uses 1024-based units. Bytes show no decimals;
+ * larger units show one decimal unless the value is a whole number. Negative
+ * or NaN inputs are clamped to "0 B".
+ */
+export function formatBytes(bytes: number): string {
+  if (!Number.isFinite(bytes) || bytes <= 0) return '0 B';
+  const units = ['B', 'KB', 'MB', 'GB', 'TB'];
+  let value = bytes;
+  let unit = 0;
+  while (value >= 1024 && unit < units.length - 1) {
+    value /= 1024;
+    unit++;
+  }
+  // Bytes are always whole; higher units get one decimal unless already whole.
+  const rounded = unit === 0 ? Math.round(value) : Math.round(value * 10) / 10;
+  const text = Number.isInteger(rounded) ? String(rounded) : rounded.toFixed(1);
+  return `${text} ${units[unit]}`;
+}
+
+/**
  * Format a date string as "MM/DD/YYYY, HH:MM" (used in token lists, etc.)
  */
 export function formatDateTime(dateStr: string): string {

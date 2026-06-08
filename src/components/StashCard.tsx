@@ -1,6 +1,7 @@
 import { useMemo } from 'react';
 import type { StashListItem, LayoutMode } from '../types';
 import { renderDescriptionMarkdown } from '../utils/markdown';
+import { formatBytes } from '../utils/format';
 import RelativeTime from './shared/RelativeTime';
 
 interface Props {
@@ -30,6 +31,8 @@ export default function StashCard({
 }: Props) {
   const languages = getUniqueLanguages(stash);
   const title = stash.name || stash.files[0]?.filename || 'Untitled';
+  const fileCount = stash.files.length;
+  const sizeLabel = formatBytes(stash.total_size);
   // Memoize the rendered markdown — `renderDescriptionMarkdown` runs a DOMParser
   // sanitization pass on every call, which adds up across a 50-card dashboard.
   const descriptionHtml = useMemo(
@@ -150,7 +153,15 @@ export default function StashCard({
             </span>
           ))}
         </div>
-        <RelativeTime dateStr={stash.updated_at} className="stash-card-date" />
+        <div className="stash-card-meta">
+          <span
+            className="stash-card-stat"
+            title={`${fileCount} file${fileCount === 1 ? '' : 's'}, ${sizeLabel} total`}
+          >
+            {fileCount} {fileCount === 1 ? 'file' : 'files'} · {sizeLabel}
+          </span>
+          <RelativeTime dateStr={stash.updated_at} className="stash-card-date" />
+        </div>
       </div>
     </div>
   );
