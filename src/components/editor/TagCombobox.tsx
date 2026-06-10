@@ -6,9 +6,10 @@ interface Props {
   tags: string[];
   onChange: (tags: string[]) => void;
   availableTags: TagInfo[];
+  inputLabelledBy?: string;
 }
 
-export default function TagCombobox({ tags, onChange, availableTags }: Props) {
+export default function TagCombobox({ tags, onChange, availableTags, inputLabelledBy }: Props) {
   const [input, setInput] = useState('');
   const [showDropdown, setShowDropdown] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -64,12 +65,22 @@ export default function TagCombobox({ tags, onChange, availableTags }: Props) {
           autoComplete="off"
           role="combobox"
           aria-expanded={showDropdown && (filtered.length > 0 || !!input.trim())}
+          aria-haspopup="listbox"
+          aria-autocomplete="list"
+          aria-controls="tag-combobox-listbox"
+          aria-labelledby={inputLabelledBy}
         />
       </div>
       {showDropdown && filtered.length > 0 && (
-        <div className="tag-combobox-dropdown">
+        <div id="tag-combobox-listbox" className="tag-combobox-dropdown" role="listbox">
           {filtered.slice(0, 10).map((t) => (
-            <button key={t.tag} className="tag-combobox-option" onClick={() => addTag(t.tag)}>
+            <button
+              key={t.tag}
+              className="tag-combobox-option"
+              onClick={() => addTag(t.tag)}
+              role="option"
+              aria-selected={false}
+            >
               <span>{t.tag}</span>
               <span className="tag-combobox-count">{t.count}</span>
             </button>
@@ -78,6 +89,8 @@ export default function TagCombobox({ tags, onChange, availableTags }: Props) {
             <button
               className="tag-combobox-option tag-combobox-create"
               onClick={() => addTag(input)}
+              role="option"
+              aria-selected={false}
             >
               Create &quot;{input.trim()}&quot;
             </button>
@@ -85,8 +98,13 @@ export default function TagCombobox({ tags, onChange, availableTags }: Props) {
         </div>
       )}
       {showDropdown && filtered.length === 0 && input.trim() && (
-        <div className="tag-combobox-dropdown">
-          <button className="tag-combobox-option tag-combobox-create" onClick={() => addTag(input)}>
+        <div id="tag-combobox-listbox" className="tag-combobox-dropdown" role="listbox">
+          <button
+            className="tag-combobox-option tag-combobox-create"
+            onClick={() => addTag(input)}
+            role="option"
+            aria-selected={false}
+          >
             Create &quot;{input.trim()}&quot;
           </button>
         </div>
