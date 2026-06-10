@@ -78,8 +78,9 @@ export default function Dashboard({
                 className="filter-clear"
                 onClick={() => onFilterTag(filterTag)}
                 title="Clear tag filter"
+                aria-label={`Clear tag filter: ${filterTag}`}
               >
-                x
+                <span aria-hidden="true">x</span>
               </button>
             </span>
           )}
@@ -93,8 +94,9 @@ export default function Dashboard({
                 className="filter-clear"
                 onClick={onToggleShowArchived}
                 title="Hide archived stashes"
+                aria-label="Hide archived stashes"
               >
-                x
+                <span aria-hidden="true">x</span>
               </button>
             </span>
           )}
