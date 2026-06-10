@@ -233,11 +233,12 @@ export default function StashEditor({ stash, onSave, onCancel }: Props) {
 
       <div className="editor-form">
         <div className="form-group">
-          <label>
+          <label htmlFor="stash-name">
             Name
             <InfoIcon tooltip="A short, descriptive name for this stash. Displayed in the sidebar and dashboard. If left empty, the first filename is used." />
           </label>
           <input
+            id="stash-name"
             type="text"
             value={name}
             onChange={(e) => handleNameChange(e.target.value)}
@@ -248,12 +249,13 @@ export default function StashEditor({ stash, onSave, onCancel }: Props) {
         </div>
 
         <div className="form-group">
-          <label>
+          <label htmlFor="stash-description">
             Description
             <InfoIcon tooltip="A longer description that helps identify the stash content and purpose. Useful for AI agents to understand what this stash contains without reading all files." />
             <span className="label-hint"> - helps AI identify the stash</span>
           </label>
           <textarea
+            id="stash-description"
             value={description}
             onChange={(e) => {
               dirtyRef.current = true;
@@ -275,7 +277,7 @@ export default function StashEditor({ stash, onSave, onCancel }: Props) {
         </div>
 
         <div className="form-group">
-          <label>
+          <label id="stash-tags-label">
             Tags
             <InfoIcon tooltip="Tags to categorize your stash. Type to search existing tags or create new ones. Press Enter or comma to add. Tags let you filter and find stashes quickly." />
           </label>
@@ -286,11 +288,12 @@ export default function StashEditor({ stash, onSave, onCancel }: Props) {
               setTags(t);
             }}
             availableTags={availableTags}
+            inputLabelledBy="stash-tags-label"
           />
         </div>
 
         <div className="form-group">
-          <label>
+          <label id="stash-metadata-label">
             Metadata
             <InfoIcon tooltip="Key-value pairs for storing structured data like model name, agent ID, or purpose. Searchable via API/MCP. Choose from existing keys or create new ones." />
             <span className="label-hint"> - optional</span>

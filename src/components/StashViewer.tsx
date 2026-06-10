@@ -1082,6 +1082,7 @@ export default function StashViewer({
                 viewBox="0 0 16 16"
                 fill="currentColor"
                 style={{ marginRight: 8, verticalAlign: -2 }}
+                aria-hidden="true"
               >
                 <path d="M1.5 8a6.5 6.5 0 1 0 13 0 6.5 6.5 0 0 0-13 0ZM8 0a8 8 0 1 1 0 16A8 8 0 0 1 8 0Zm.5 4.75a.75.75 0 0 0-1.5 0v3.5a.75.75 0 0 0 .37.65l2.5 1.5a.75.75 0 1 0 .77-1.29L8.5 7.94Z" />
               </svg>
@@ -1107,6 +1108,7 @@ export default function StashViewer({
                 viewBox="0 0 16 16"
                 fill="currentColor"
                 style={{ marginBottom: 8 }}
+                aria-hidden="true"
               >
                 <path d="M1.5 8a6.5 6.5 0 1 0 13 0 6.5 6.5 0 0 0-13 0ZM8 0a8 8 0 1 1 0 16A8 8 0 0 1 8 0Zm.5 4.75a.75.75 0 0 0-1.5 0v3.5a.75.75 0 0 0 .37.65l2.5 1.5a.75.75 0 1 0 .77-1.29L8.5 7.94Z" />
               </svg>

@@ -1278,6 +1278,12 @@ body {
   padding: 0 2px;
 }
 
+.filter-clear:focus-visible {
+  outline: 2px solid var(--accent-blue);
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+
 .active-filter-archive {
   background: rgba(210, 153, 34, 0.1);
   color: var(--accent-orange);
@@ -1316,6 +1322,12 @@ body {
   cursor: pointer;
   padding: 0 2px;
   outline: none;
+}
+
+.sort-select:focus-visible {
+  outline: 2px solid var(--accent-blue);
+  outline-offset: 2px;
+  border-radius: 2px;
 }
 
 .sort-select option {
