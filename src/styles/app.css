@@ -2153,6 +2153,23 @@ body {
   gap: 6px;
 }
 
+.metadata-value-cell {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.copy-btn-inline {
+  flex-shrink: 0;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+
+.metadata-table tr:hover .copy-btn-inline,
+.copy-btn-inline:focus-visible {
+  opacity: 1;
+}
+
 .stash-id-copy-btn {
   flex-shrink: 0;
   padding: 2px 6px;
