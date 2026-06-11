@@ -39,7 +39,7 @@ See [authentication.md](authentication.md) for token creation and scopes.
 
 | Endpoint                                     | Method | Scope | Description                                                       |
 | -------------------------------------------- | ------ | ----- | ----------------------------------------------------------------- |
-| `/api/stashes/:id/versions`                  | GET    | read  | List all versions (descending)                                    |
+| `/api/stashes/:id/versions`                  | GET    | read  | List versions (descending). Optional `?limit=&offset=` paginate   |
 | `/api/stashes/:id/versions/diff`             | GET    | read  | Compare two versions (`?v1=&v2=`)                                 |
 | `/api/stashes/:id/versions/:version`         | GET    | read  | Get a specific version snapshot                                   |
 | `/api/stashes/:id/versions/:version/restore` | POST   | write | Restore an old version — creates a NEW version with prior content |
@@ -178,8 +178,8 @@ curl http://localhost:3000/api/stashes/STASH_ID/files/docker-compose.yml/raw \
 ### Version History
 
 ```bash
-# List versions
-curl http://localhost:3000/api/stashes/STASH_ID/versions \
+# List versions (optionally paginate: ?limit=20&offset=0)
+curl "http://localhost:3000/api/stashes/STASH_ID/versions?limit=20&offset=0" \
   -H "Authorization: Bearer cs_your_token"
 
 # Diff two versions
