@@ -2216,6 +2216,15 @@ body {
 .editor-header-actions {
   display: flex;
   gap: 8px;
+  align-items: center;
+}
+
+.cancel-confirm-inline {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: var(--text-secondary, #8b949e);
 }
 
 .error-banner {
