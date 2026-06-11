@@ -999,8 +999,7 @@ export default function StashViewer({
               <table className="metadata-table">
                 <tbody>
                   {Object.entries(stash.metadata).map(([key, value]) => {
-                    const display =
-                      typeof value === 'string' ? value : JSON.stringify(value);
+                    const display = typeof value === 'string' ? value : JSON.stringify(value);
                     const copyKey = `meta-${key}`;
                     return (
                       <tr key={key}>
