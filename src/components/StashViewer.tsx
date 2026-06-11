@@ -998,14 +998,29 @@ export default function StashViewer({
               <h3>AI Metadata</h3>
               <table className="metadata-table">
                 <tbody>
-                  {Object.entries(stash.metadata).map(([key, value]) => (
-                    <tr key={key}>
-                      <td>{key}</td>
-                      <td>
-                        <code>{typeof value === 'string' ? value : JSON.stringify(value)}</code>
-                      </td>
-                    </tr>
-                  ))}
+                  {Object.entries(stash.metadata).map(([key, value]) => {
+                    const display = typeof value === 'string' ? value : JSON.stringify(value);
+                    const copyKey = `meta-${key}`;
+                    return (
+                      <tr key={key}>
+                        <td>{key}</td>
+                        <td className="metadata-value-cell">
+                          <code>{display}</code>
+                          <button
+                            className="btn btn-sm btn-ghost copy-btn-inline"
+                            onClick={() => apiClipboard.copy(copyKey, display)}
+                            title={`Copy value of "${key}"`}
+                            aria-label={`Copy value of "${key}"`}
+                          >
+                            <CopyButtonContent
+                              copied={apiClipboard.isCopied(copyKey)}
+                              failed={apiClipboard.isFailed(copyKey)}
+                            />
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
