@@ -5374,7 +5374,8 @@ body {
   text-align: left;
 }
 
-.tag-combobox-option:hover {
+.tag-combobox-option:hover,
+.tag-combobox-option.active {
   background: var(--bg-hover, #1c2128);
 }
 
