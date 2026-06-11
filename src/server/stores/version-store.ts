@@ -34,19 +34,69 @@ export class VersionStore {
     private readonly update: StashUpdater,
   ) {}
 
-  getStashVersions(stashId: string): StashVersionListItem[] {
-    const rows = this.db
-      .prepare(
-        `
+  /**
+   * List a stash's versions, newest first.
+   *
+   * The optional `limit` / `offset` enable pagination for stashes with a very
+   * large version history (BACKLOG #8). When neither is supplied the full list
+   * is returned (backward compatible — SQLite reads `LIMIT -1` as "no limit").
+   *
+   * The synthetic "current" (live) row — prepended when the live stash is
+   * newer than the latest stored snapshot — only belongs at the very top, so
+   * it is added on the first page (offset 0) only. To keep paging consistent,
+   * that synthetic row occupies one logical slot: on the first page it consumes
+   * one slot of the requested `limit`, and on any later page the SQL `OFFSET`
+   * is shifted back by one to account for it. `LIMIT`/`OFFSET` are pushed into
+   * SQL so the `GROUP BY` aggregation stays bounded by the page size on later
+   * pages instead of scanning the whole version history.
+   */
+  getStashVersions(
+    stashId: string,
+    options?: { limit?: number; offset?: number },
+  ): StashVersionListItem[] {
+    const offset = options?.offset !== undefined && options.offset > 0 ? options.offset : 0;
+    const limit = options?.limit !== undefined && options.limit > 0 ? options.limit : undefined;
+
+    // Determine whether a synthetic "current" row belongs at the top. It does
+    // when the live stash is newer than the latest stored snapshot. Computed
+    // up front so the SQL window can reserve its slot.
+    const stashRow = this.db
+      .prepare('SELECT id, name, description, version, updated_at FROM stashes WHERE id = ?')
+      .get(stashId) as
+      | { id: string; name: string; description: string; version: number; updated_at: string }
+      | undefined;
+
+    const latestStored = this.db
+      .prepare('SELECT MAX(version) as v FROM stash_versions WHERE stash_id = ?')
+      .get(stashId) as { v: number | null };
+
+    const hasCurrentRow = !!stashRow && stashRow.version > (latestStored.v ?? 0);
+
+    // The synthetic row sits in one logical slot at the very top. On the first
+    // page (offset 0) it consumes one slot of the limit; on later pages the SQL
+    // offset must be shifted back by one to keep the page boundaries aligned.
+    const sqlOffset = hasCurrentRow && offset > 0 ? offset - 1 : offset;
+    let sqlLimit = limit;
+    if (hasCurrentRow && limit !== undefined && offset === 0) {
+      sqlLimit = limit - 1;
+    }
+
+    const rows =
+      sqlLimit === 0
+        ? []
+        : (this.db
+            .prepare(
+              `
       SELECT sv.*, COUNT(svf.id) as file_count, COALESCE(SUM(LENGTH(svf.content)), 0) as total_size
       FROM stash_versions sv
       LEFT JOIN stash_version_files svf ON svf.version_id = sv.id
       WHERE sv.stash_id = ?
       GROUP BY sv.id
       ORDER BY sv.version DESC
+      LIMIT ? OFFSET ?
     `,
-      )
-      .all(stashId) as Record<string, unknown>[];
+            )
+            .all(stashId, sqlLimit ?? -1, sqlOffset) as Record<string, unknown>[]);
 
     const versions = rows.map((row) => ({
       id: row.id as string,
@@ -60,34 +110,25 @@ export class VersionStore {
       total_size: row.total_size as number,
     }));
 
-    // Include the current (live) version at the top if it's newer than the latest stored version
-    const stashRow = this.db
-      .prepare('SELECT id, name, description, version, updated_at FROM stashes WHERE id = ?')
-      .get(stashId) as
-      | { id: string; name: string; description: string; version: number; updated_at: string }
-      | undefined;
+    // Prepend the live row on the first page only.
+    if (hasCurrentRow && stashRow && offset === 0) {
+      const fileStats = this.db
+        .prepare(
+          'SELECT COUNT(*) as file_count, COALESCE(SUM(LENGTH(content)), 0) as total_size FROM stash_files WHERE stash_id = ?',
+        )
+        .get(stashId) as { file_count: number; total_size: number };
 
-    if (stashRow) {
-      const latestStoredVersion = versions.length > 0 ? versions[0].version : 0;
-      if (stashRow.version > latestStoredVersion) {
-        const fileStats = this.db
-          .prepare(
-            'SELECT COUNT(*) as file_count, COALESCE(SUM(LENGTH(content)), 0) as total_size FROM stash_files WHERE stash_id = ?',
-          )
-          .get(stashId) as { file_count: number; total_size: number };
-
-        versions.unshift({
-          id: `current-${stashId}`,
-          stash_id: stashId,
-          name: stashRow.name || '',
-          description: stashRow.description || '',
-          version: stashRow.version,
-          created_by: 'current',
-          created_at: stashRow.updated_at,
-          file_count: fileStats.file_count,
-          total_size: fileStats.total_size,
-        });
-      }
+      versions.unshift({
+        id: `current-${stashId}`,
+        stash_id: stashId,
+        name: stashRow.name || '',
+        description: stashRow.description || '',
+        version: stashRow.version,
+        created_by: 'current',
+        created_at: stashRow.updated_at,
+        file_count: fileStats.file_count,
+        total_size: fileStats.total_size,
+      });
     }
 
     return versions;

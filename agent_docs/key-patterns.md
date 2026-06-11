@@ -28,7 +28,7 @@ Detailed pattern descriptions for clawstash internals. CLAUDE.md keeps a short i
 - `createStash()` sets `version=1` AND creates a v1 record in `stash_versions` (initial state stored for comparison)
 - `updateStash()` snapshots the current state into `stash_versions` before applying changes (skips if version record already exists, e.g. v1 from creation)
 - Auto-migration: existing stashes get `version=1` column added; stashes without version records get v1 backfilled
-- `getStashVersions(id)` returns version list (descending) with file counts and sizes, includes current live version at top when newer than latest stored
+- `getStashVersions(id, { limit?, offset? })` returns version list (descending) with file counts and sizes, includes current live version at top when newer than latest stored. Optional `limit`/`offset` paginate large histories (LIMIT/OFFSET pushed into SQL); the synthetic current-\* row occupies one slot on the first page only. No options = full list (backward compatible). REST: `?limit=&offset=` on `GET /api/stashes/:id/versions`.
 - `getStashVersion(id, version)` returns full version snapshot with file content; falls back to current live stash data if version matches current version
 - `restoreStashVersion(id, version)` restores an old version as a new update (creates new version)
 

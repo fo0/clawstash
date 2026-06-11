@@ -1059,8 +1059,11 @@ export class ClawStashDB {
   // === Version History ===
   // Delegated to VersionStore (src/server/stores/version-store.ts).
 
-  getStashVersions(stashId: string): StashVersionListItem[] {
-    return this.versions.getStashVersions(stashId);
+  getStashVersions(
+    stashId: string,
+    options?: { limit?: number; offset?: number },
+  ): StashVersionListItem[] {
+    return this.versions.getStashVersions(stashId, options);
   }
 
   getStashVersion(stashId: string, version: number): StashVersion | null {

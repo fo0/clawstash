@@ -87,6 +87,66 @@ describe('ClawStashDB version history', () => {
     });
   });
 
+  // Pagination for large version histories (BACKLOG #8). The synthetic
+  // "current-*" row only appears on the first page and occupies one logical
+  // slot, so the limit/offset bookkeeping is the part worth pinning.
+  describe('getStashVersions pagination', () => {
+    // Build a stash whose latest content IS snapshotted (so there is no
+    // synthetic current-* row) by restoring the head version after the last
+    // update. This isolates the pure offset/limit math from the live-row slot.
+    function makeSnapshottedHistory(): { id: string; total: number } {
+      const s = db.createStash({ name: 'n1', files: [{ filename: 'f.txt', content: 'c1' }] });
+      for (let i = 2; i <= 5; i++) {
+        db.updateStash(s.id, { name: `n${i}` });
+      }
+      // Snapshot the current head so the live version is stored (no current-*).
+      db.restoreStashVersion(s.id, db.getStash(s.id)!.version);
+      const total = db.getStashVersions(s.id).filter((v) => !v.id.startsWith('current-')).length;
+      return { id: s.id, total };
+    }
+
+    it('returns the full list (descending) when no options are passed', () => {
+      const { id } = makeSnapshottedHistory();
+      const all = db.getStashVersions(id);
+      const numbers = all.map((v) => v.version);
+      for (let i = 1; i < numbers.length; i++) {
+        expect(numbers[i - 1]).toBeGreaterThan(numbers[i]);
+      }
+    });
+
+    it('honours limit and offset and matches a manual slice of the full list', () => {
+      const { id } = makeSnapshottedHistory();
+      const all = db.getStashVersions(id);
+      expect(all.length).toBeGreaterThanOrEqual(5);
+
+      const page1 = db.getStashVersions(id, { limit: 2, offset: 0 });
+      expect(page1.map((v) => v.version)).toEqual(all.slice(0, 2).map((v) => v.version));
+
+      const page2 = db.getStashVersions(id, { limit: 2, offset: 2 });
+      expect(page2.map((v) => v.version)).toEqual(all.slice(2, 4).map((v) => v.version));
+    });
+
+    it('keeps the synthetic current-* row only on the first page', () => {
+      // A plain update leaves the live version unsnapshotted -> current-* row.
+      const s = db.createStash({ name: 'a', files: [{ filename: 'f.txt', content: 'x' }] });
+      for (let i = 0; i < 4; i++) db.updateStash(s.id, { name: `a${i}` });
+
+      const full = db.getStashVersions(s.id);
+      expect(full[0].id.startsWith('current-')).toBe(true);
+
+      const firstPage = db.getStashVersions(s.id, { limit: 2, offset: 0 });
+      expect(firstPage[0].id.startsWith('current-')).toBe(true);
+      // First page never exceeds the requested limit even with the live slot.
+      expect(firstPage.length).toBeLessThanOrEqual(2);
+
+      const secondPage = db.getStashVersions(s.id, { limit: 2, offset: 2 });
+      expect(secondPage.some((v) => v.id.startsWith('current-'))).toBe(false);
+      // Concatenated pages reproduce the head of the full descending list.
+      const paged = [...firstPage, ...secondPage].map((v) => v.version);
+      expect(paged).toEqual(full.slice(0, paged.length).map((v) => v.version));
+    });
+  });
+
   describe('getStashVersion', () => {
     it('fetches a stored snapshot by version number', () => {
       const s = db.createStash({
