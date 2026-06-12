@@ -25,6 +25,26 @@ const DEVICE_POLL_MIN_INTERVAL_SEC = 5;
 const DEVICE_POLL_MAX_CONSECUTIVE_FAILURES = 3;
 
 /**
+ * Pre-filled GitHub creation forms. GitHub ignores unknown query params, so
+ * if the pre-fill contract ever drifts these degrade to the empty form
+ * instead of breaking.
+ */
+const OAUTH_APP_CREATE_URL = `https://github.com/settings/applications/new?${new URLSearchParams({
+  'oauth_application[name]': 'ClawStash Backup',
+  'oauth_application[url]': 'https://github.com/fo0/clawstash',
+  // Required by the form but never called by the device flow.
+  'oauth_application[callback_url]': 'http://localhost',
+})}`;
+
+const PAT_CREATE_URL = `https://github.com/settings/personal-access-tokens/new?${new URLSearchParams(
+  {
+    name: 'ClawStash Backup',
+    description: 'Mirrors ClawStash stashes into the backup repository.',
+    contents: 'write',
+  },
+)}`;
+
+/**
  * GitHub connection card: "Sign in with GitHub" via OAuth device flow
  * (user code + github.com/login/device) with a PAT field as the headless
  * fallback. The token never reaches this component — the server stores it
@@ -183,9 +203,12 @@ export default function BackupConnectCard({ response, onUpdated }: Props) {
       ) : (
         <>
           <p className="api-hint">
-            Sign in with GitHub (recommended): create a GitHub OAuth app once (Settings → Developer
-            settings → OAuth Apps, enable <em>Device Flow</em>) and paste its client ID here — no
-            client secret, no callback URL needed.
+            Sign in with GitHub (recommended):{' '}
+            <a href={OAUTH_APP_CREATE_URL} target="_blank" rel="noopener noreferrer">
+              create a GitHub OAuth app
+            </a>{' '}
+            once — the form opens pre-filled, just tick <em>Enable Device Flow</em> — and paste its
+            client ID here. No client secret needed; the callback URL is an unused placeholder.
           </p>
           <div className="backup-form-row">
             <input
@@ -208,7 +231,11 @@ export default function BackupConnectCard({ response, onUpdated }: Props) {
             <button className="backup-link-btn" onClick={() => setShowPat((v) => !v)}>
               connect with a personal access token
             </button>{' '}
-            (fine-grained, “Contents: Read and write” on the target repository).
+            (fine-grained, “Contents: Read and write” on the target repository —{' '}
+            <a href={PAT_CREATE_URL} target="_blank" rel="noopener noreferrer">
+              create one on GitHub
+            </a>
+            ).
           </p>
           {showPat && (
             <div className="backup-form-row">
