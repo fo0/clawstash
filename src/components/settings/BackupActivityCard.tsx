@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import type { BackupLogEntry, BackupStatusResponse, BackupSyncState } from '../../types';
+import type { BackupStatusResponse, BackupSyncState } from '../../types';
 import { api } from '../../api';
 import { formatDateTime } from '../../utils/format';
 import Spinner from '../shared/Spinner';
@@ -12,13 +12,17 @@ const STATE_LABELS: Record<BackupSyncState, string> = {
   error: 'Error',
 };
 
+interface Props {
+  /** Called after a manual run so sibling tabs (sync log) can refetch. */
+  onSyncRan?: () => void;
+}
+
 /**
- * Sync activity: health summary, "Back up all now", per-stash states and
- * the recent sync log. Self-refreshing after manual runs.
+ * Sync activity: health summary, "Back up all now" and per-stash states.
+ * Self-refreshing after manual runs.
  */
-export default function BackupActivityCard() {
+export default function BackupActivityCard({ onSyncRan }: Props) {
   const [status, setStatus] = useState<BackupStatusResponse | null>(null);
-  const [log, setLog] = useState<BackupLogEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadFailed, setLoadFailed] = useState(false);
   const [syncing, setSyncing] = useState(false);
@@ -26,12 +30,8 @@ export default function BackupActivityCard() {
 
   const refresh = useCallback(async () => {
     try {
-      const [statusData, logData] = await Promise.all([
-        api.getBackupStatus(),
-        api.getBackupLog({ limit: 50 }),
-      ]);
+      const statusData = await api.getBackupStatus();
       setStatus(statusData);
-      setLog(logData.entries);
       setLoadFailed(false);
     } catch (err) {
       console.error('Failed to load backup status:', err);
@@ -59,6 +59,8 @@ export default function BackupActivityCard() {
     } finally {
       setSyncing(false);
       refresh();
+      // Both success and failure produce log entries.
+      onSyncRan?.();
     }
   };
 
@@ -170,44 +172,6 @@ export default function BackupActivityCard() {
             </tbody>
           </table>
         </div>
-      )}
-
-      {log.length > 0 && (
-        <>
-          <div className="settings-card-header backup-log-header">
-            <h3>Recent Sync Log</h3>
-          </div>
-          <div className="backup-table-wrap">
-            <table className="backup-table">
-              <thead>
-                <tr>
-                  <th>Time</th>
-                  <th>Trigger</th>
-                  <th>Status</th>
-                  <th>Details</th>
-                </tr>
-              </thead>
-              <tbody>
-                {log.map((entry) => (
-                  <tr key={entry.id}>
-                    <td>{formatDateTime(entry.started_at)}</td>
-                    <td>{entry.trigger}</td>
-                    <td>
-                      <span className={`backup-state-badge backup-log-${entry.status}`}>
-                        {entry.status}
-                      </span>
-                    </td>
-                    <td>
-                      {entry.stash_name ? `${entry.action ?? 'sync'} ${entry.stash_name} ` : ''}
-                      {entry.message}{' '}
-                      <CommitLink repoFullName={status.repoFullName} sha={entry.commit_sha} />
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </>
       )}
     </div>
   );

@@ -6527,6 +6527,23 @@ body {
 
 /* === GitHub Backup (refs #108) === */
 
+/* Section tabs reuse the api-tab look; the settings section's flex gap
+   already provides the spacing below the tab bar. */
+.api-tabs.backup-tabs {
+  margin-bottom: 0;
+}
+
+/* Unhealthy indicator on the Activity tab. */
+.backup-tab-alert {
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  margin-left: 6px;
+  border-radius: 50%;
+  background: var(--accent-red);
+  vertical-align: 1px;
+}
+
 .backup-form-row {
   display: flex;
   gap: 8px;
@@ -6663,10 +6680,6 @@ body {
 
 .backup-table code {
   font-size: 12px;
-}
-
-.backup-log-header {
-  margin-top: 20px;
 }
 
 /* Per-stash backup bar in the viewer */
