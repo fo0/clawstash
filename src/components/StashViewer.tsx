@@ -252,6 +252,21 @@ interface TocEntry {
 }
 
 /**
+ * Heading ids inside rendered markdown carry a per-file prefix whenever the
+ * TOC is shown so anchors stay unique across files. Builder and parser live
+ * together so the format cannot drift apart.
+ */
+function fileHeadingIdPrefix(fileIndex: number): string {
+  return `f${fileIndex}-`;
+}
+
+/** Inverse of `fileHeadingIdPrefix` — returns the file index, or null. */
+function parseFileHeadingId(id: string): number | null {
+  const match = /^f(\d+)-/.exec(id);
+  return match ? Number(match[1]) : null;
+}
+
+/**
  * Extract h1–h3 headings from rendered markdown HTML for TOC generation.
  */
 function extractHeadings(html: string): TocHeading[] {
@@ -362,7 +377,7 @@ export default function StashViewer({
       const file = stash.files[i];
       const lang = resolvedLanguages.get(file.id);
       if (lang === 'markdown') {
-        const prefix = needsToc ? `f${i}-` : '';
+        const prefix = needsToc ? fileHeadingIdPrefix(i) : '';
         const html = renderMarkdown(file.content, prefix);
         contentMap.set(file.id, html);
         if (needsToc) {
@@ -378,6 +393,20 @@ export default function StashViewer({
     }
     return { renderedContent: contentMap, tocEntries: entries };
   }, [stash.files, resolvedLanguages]);
+
+  // Memoize Prism-highlighted HTML per file. Without this, every state-driven
+  // re-render (collapse toggles, clipboard feedback, …) would re-run
+  // highlightCode over all expanded files — noticeable on large stashes.
+  const highlightedContent = useMemo(
+    () =>
+      new Map(
+        stash.files.map((f) => [
+          f.id,
+          highlightCode(f.content, resolvedLanguages.get(f.id) || 'text'),
+        ]),
+      ),
+    [stash.files, resolvedLanguages],
+  );
 
   const toggleRenderPreview = useCallback(() => {
     setRenderPreview((prev) => {
@@ -458,11 +487,10 @@ export default function StashViewer({
         return;
       }
       // Heading targets live inside file content, so they are missing from
-      // the DOM while their file is collapsed. TOC heading ids are prefixed
-      // `f{fileIndex}-` whenever the TOC is shown — expand the owning file
-      // and finish the scroll after the re-render (effect below).
-      const prefixMatch = /^f(\d+)-/.exec(id);
-      const file = prefixMatch ? stash.files[Number(prefixMatch[1])] : undefined;
+      // the DOM while their file is collapsed. Expand the owning file and
+      // finish the scroll after the re-render (effect below).
+      const fileIndex = parseFileHeadingId(id);
+      const file = fileIndex !== null ? stash.files[fileIndex] : undefined;
       if (!file) return;
       pendingScrollIdRef.current = id;
       setCollapsedFiles((prev) => {
@@ -1018,7 +1046,7 @@ export default function StashViewer({
                   ) : (
                     <pre className="file-content">
                       <code
-                        dangerouslySetInnerHTML={{ __html: highlightCode(file.content, lang) }}
+                        dangerouslySetInnerHTML={{ __html: highlightedContent.get(file.id) || '' }}
                       />
                     </pre>
                   ))}
