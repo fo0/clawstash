@@ -19,3 +19,6 @@ data
 *.tsbuildinfo
 build-info.json
 .gitnexus
+# Tool-managed Claude Code config/skills (GitNexus rewrites skill files
+# non-Prettier-formatted on analyze, breaking format:check in CI)
+.claude

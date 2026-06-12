@@ -158,7 +158,7 @@ Try/catch in async route handlers; UI components keep error state in React. Vali
 
 - **Language**: All UI text and documentation in English
 - **Module System**: ESM (`"type": "module"` in package.json)
-- **Formatting**: 2-space indentation, single quotes in TS
+- **Formatting**: 2-space indentation, single quotes in TS. `.claude/` is excluded via `.prettierignore` (tool-managed files; GitNexus rewrites its skill files non-Prettier-formatted) -- keep that exclusion.
 - **Imports**: Named imports, `@/*` path aliases for server-side imports in route handlers
 - **Components**: Functional React components with TypeScript interfaces for props
 - **Component Organization**: Complex features split into sub-directories (`api/`, `editor/`) with focused, single-responsibility files. Shared components in `shared/`, utilities in `utils/`.
