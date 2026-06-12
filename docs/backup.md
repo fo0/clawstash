@@ -6,10 +6,12 @@ ClawStash can mirror all stashes into a GitHub repository — on a schedule, sho
 
 ## Quick start
 
+The settings page is split into four tabs — **Connection**, **Target & Schedule**, **Activity**, and **Sync Log** — and opens on the first step that still needs attention.
+
 1. Open **Settings → GitHub Backup** (admin login required when `ADMIN_PASSWORD` is set).
-2. Connect a GitHub account — pick one of the two paths below.
-3. Choose the target repository and branch, set a sync interval, click **Save settings**.
-4. Click **Back up all now** for the first full mirror.
+2. **Connection** tab: connect a GitHub account — pick one of the two paths below.
+3. **Target & Schedule** tab: choose the target repository and branch, set a sync interval, click **Save settings**.
+4. **Activity** tab: click **Back up all now** for the first full mirror.
 
 ### Path A — Sign in with GitHub (recommended)
 
@@ -73,9 +75,9 @@ Change detection is a SHA-256 content hash per stash — a sync with no changes 
 
 ## Observability
 
-- Per-stash status (idle / pending / syncing / error, last sync time, last commit SHA) in **Settings → GitHub Backup** and as a status bar in the stash viewer.
-- A bounded sync log (last 500 entries) records every run — including skipped no-change runs — with trigger, result, and commit SHA: `GET /api/backup/log`.
-- A health indicator marks the backup unhealthy after 3 consecutive failed runs.
+- Per-stash status (idle / pending / syncing / error, last sync time, last commit SHA) in the **Activity** tab of **Settings → GitHub Backup** and as a status bar in the stash viewer.
+- A bounded sync log (last 500 entries) records every run — including skipped no-change runs — with trigger, result, and commit SHA: the **Sync Log** tab, or `GET /api/backup/log`.
+- A health indicator marks the backup unhealthy after 3 consecutive failed runs and as a red dot on the **Activity** tab.
 
 ## Security
 

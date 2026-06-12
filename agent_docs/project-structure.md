@@ -136,7 +136,14 @@ clawstash/
 │   │   ├── Settings.tsx        # Settings/admin area (general, API, storage, about)
 │   │   ├── shared/
 │   │   │   ├── icons.tsx       # Shared Octicon-style icons
+│   │   │   ├── CommitLink.tsx  # Short-SHA link to a backup commit on GitHub
 │   │   │   └── Spinner.tsx     # Loading spinner animation
+│   │   ├── settings/           # Settings sub-components (GitHub backup)
+│   │   │   ├── BackupSection.tsx # Settings → GitHub Backup: tab container (Connection / Target & Schedule / Activity / Sync Log)
+│   │   │   ├── BackupConnectCard.tsx # GitHub connection (OAuth device flow + PAT fallback)
+│   │   │   ├── BackupTargetCard.tsx # Target repo/branch, schedule, delete mode, commit author form
+│   │   │   ├── BackupActivityCard.tsx # Health summary, "Back up all now", per-stash sync states
+│   │   │   └── BackupLogCard.tsx # Recent sync log table
 │   │   ├── api/                # API management sub-components
 │   │   │   ├── ApiManager.tsx  # Tab container: Tokens/REST/MCP tabs
 │   │   │   ├── TokensTab.tsx   # Token CRUD + Quick Access spec copy
