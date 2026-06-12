@@ -43,8 +43,8 @@ Detailed pattern descriptions for clawstash internals. CLAUDE.md keeps a short i
 
 - **CORS**: Permissive `Access-Control-Allow-Origin: *` on all `/api/*` and `/mcp` routes -- required for AI agent access from any origin (localhost, LAN, remote)
 - **Preflight**: OPTIONS requests return 204 with CORS headers
-- **Security headers**: `X-Content-Type-Options: nosniff`, `Referrer-Policy: strict-origin-when-cross-origin`, `X-DNS-Prefetch-Control: off` on all routes
-- **No restrictive headers** (X-Frame-Options, HSTS, CSP) -- intentionally omitted to not break agent/LAN/localhost access
+- **Security headers** on all routes: `X-Content-Type-Options: nosniff`, `Referrer-Policy: strict-origin-when-cross-origin`, `X-DNS-Prefetch-Control: off`, `X-Frame-Options: DENY`, `Permissions-Policy` (camera/mic/geo/payment off), and a minimal **additive CSP** (`base-uri 'self'; object-src 'none'; frame-ancestors 'none'; form-action 'self'`) that deliberately omits `script-src`/`style-src`/`default-src` (a full nonce-based CSP is tracked in BACKLOG #118)
+- **HSTS is conditional**: `Strict-Transport-Security: max-age=31536000` is emitted only when the request is genuinely HTTPS -- direct TLS or `TRUST_PROXY=1` + `x-forwarded-proto: https`. Plain-HTTP/LAN deployments (the documented default) never receive it, so browsers are not pinned away from `http://host:3000`
 - **Rate limiting** lives in `src/server/auth-rate-limit.ts` (NOT in middleware) so the success path can clear the per-IP counter. Invoked from:
   - `/api/admin/auth` (POST): 10 attempts / 15 min per IP, recorded only on real attempts; cleared on successful login
   - `/api/tokens/validate` (POST): 10 attempts / 15 min per IP (separate scope), neutralizes the brute-force oracle

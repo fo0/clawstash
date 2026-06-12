@@ -110,14 +110,14 @@ Both serve on port 3000 (configurable via `PORT` env variable).
 
 ## Environment Variables
 
-| Variable                   | Description                                                                                   | Default               |
-| -------------------------- | --------------------------------------------------------------------------------------------- | --------------------- |
-| `PORT`                     | Server port                                                                                   | `3000`                |
-| `DATABASE_PATH`            | SQLite database path                                                                          | `./data/clawstash.db` |
-| `ADMIN_PASSWORD`           | Admin password (unset = open access)                                                          | —                     |
-| `ADMIN_SESSION_HOURS`      | Session duration in hours (0 = unlimited)                                                     | `24`                  |
-| `TRUST_PROXY`              | Trust `X-Forwarded-*` headers (set behind nginx/Traefik/Cloudflare)                           | off                   |
-| `CLAWSTASH_ENCRYPTION_KEY` | Key for secrets at rest (64 hex chars); unset = auto-generated key file `data/.clawstash-key` | auto-generated        |
+| Variable                   | Description                                                                                                                            | Default               |
+| -------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- | --------------------- |
+| `PORT`                     | Server port                                                                                                                            | `3000`                |
+| `DATABASE_PATH`            | SQLite database path                                                                                                                   | `./data/clawstash.db` |
+| `ADMIN_PASSWORD`           | Admin password (unset = open access)                                                                                                   | —                     |
+| `ADMIN_SESSION_HOURS`      | Session duration in hours (0 = unlimited)                                                                                              | `24`                  |
+| `TRUST_PROXY`              | Trust `X-Forwarded-*` headers (set behind nginx/Traefik/Cloudflare); also enables HSTS for HTTPS requests (`x-forwarded-proto: https`) | off                   |
+| `CLAWSTASH_ENCRYPTION_KEY` | Key for secrets at rest (64 hex chars); unset = auto-generated key file `data/.clawstash-key`                                          | auto-generated        |
 
 Copy `.env.example` and adjust as needed:
 

@@ -141,7 +141,7 @@ Full pattern descriptions live in `agent_docs/key-patterns.md`. CLAUDE.md keeps 
 
 - **Database Layer** (`src/server/db.ts`) -- `ClawStashDB` class, SQLite + WAL, FTS5 search, version history, access log.
 - **DB Singleton** (`src/server/singleton.ts`) -- `globalThis`-backed `getDb()` survives Next.js HMR.
-- **Middleware + Rate Limiter** (`src/middleware.ts`, `src/server/auth-rate-limit.ts`) -- permissive CORS for agents, per-IP rate limiting on auth endpoints, `TRUST_PROXY` gate for forwarded headers.
+- **Middleware + Rate Limiter** (`src/middleware.ts`, `src/server/auth-rate-limit.ts`) -- permissive CORS for agents, security headers incl. HTTPS-gated HSTS, per-IP rate limiting on auth endpoints, `TRUST_PROXY` gate for forwarded headers.
 - **Input Validation** (`src/server/validation.ts`) -- Zod schemas with size limits, path-traversal-safe filenames.
 - **Authentication** (`src/server/auth.ts`) -- admin sessions (`csa_`) + API tokens (`cs_`), scope hierarchy admin > write > read.
 - **API Route Handlers** (`src/app/api/`) -- Next.js Route Handlers with shared `checkScope` / `checkAdmin` helpers.
