@@ -382,6 +382,17 @@ describe('runBackupSync', () => {
     expect(fake.headPaths('main').has(`stashes/${h.id}/files/h.txt`)).toBe(true);
   });
 
+  it('escapes markdown metacharacters in INDEX.md stash names (backslash first)', async () => {
+    configureBackup();
+    db.createStash({ name: 'A|B\\', files: [{ filename: 'x.txt', content: 'x' }] });
+    await runBackupSync(db, 'manual');
+    const index = fake.headPaths('main').get('stashes/INDEX.md')!;
+    // `A|B\` → backslash doubled, pipe escaped: `A\|B\\` — the cell cannot
+    // break the table or re-arm the delimiter pipe.
+    expect(index).toContain('| A\\|B\\\\ |');
+    expect(index).not.toContain('| A|B');
+  });
+
   it('uses the configured path prefix and commit author', async () => {
     configureBackup({ pathPrefix: 'mirror/clawstash', commitAuthorName: 'Backup Bot' });
     db.createStash({ name: 'P', files: [{ filename: 'p.txt', content: 'p' }] });
