@@ -113,21 +113,26 @@ export default function BackupSection() {
       {!loadError && response && (
         <>
           <div className="api-tabs backup-tabs" role="tablist" aria-label="GitHub backup sections">
-            {TABS.map((tab) => (
-              <button
-                key={tab.id}
-                id={`backup-tab-${tab.id}`}
-                role="tab"
-                aria-selected={activeTab === tab.id}
-                className={`api-tab ${activeTab === tab.id ? 'active' : ''}`}
-                onClick={() => setActiveTab(tab.id)}
-              >
-                {tab.label}
-                {tab.id === 'activity' && response.unhealthy && (
-                  <span className="backup-tab-alert" title="The backup has sync failures" />
-                )}
-              </button>
-            ))}
+            {TABS.map((tab) => {
+              const showAlert = tab.id === 'activity' && response.unhealthy;
+              return (
+                <button
+                  key={tab.id}
+                  id={`backup-tab-${tab.id}`}
+                  role="tab"
+                  aria-selected={activeTab === tab.id}
+                  // The alert dot is visual-only — mirror it for screen readers.
+                  aria-label={showAlert ? `${tab.label} — has sync failures` : undefined}
+                  className={`api-tab ${activeTab === tab.id ? 'active' : ''}`}
+                  onClick={() => setActiveTab(tab.id)}
+                >
+                  {tab.label}
+                  {showAlert && (
+                    <span className="backup-tab-alert" title="The backup has sync failures" />
+                  )}
+                </button>
+              );
+            })}
           </div>
 
           {/* Panels are hidden, not unmounted: a pending device-flow login

@@ -4,7 +4,7 @@ Temporary working context. **Clean up aggressively -- delete when resolved.**
 
 ## Current Work
 
-- Sweep-issue triage (2026-06-12): #213 closed (SRI fix already on main via PR #221). Remaining actionables from #209/#242 shipped on `claude/peaceful-albattani-5rmwla`: conditional HSTS (middleware) + control-char stripping in admin import/export audit logs; nonce-CSP and next-bundled-postcss CVE moved to BACKLOG #118/#119. PR closes #209 + #242 on merge.
+- Backup settings UI tabs (2026-06-12): Settings → GitHub Backup split into 4 tabs (Connection / Target & Schedule / Activity / Sync Log) on `claude/awesome-davinci-o46cv8`, PR #272. Panels stay mounted (hidden) so device-flow polling + unsaved form edits survive tab switches; review done (a11y fix for the unhealthy tab dot).
 
 ## Open Questions
 
