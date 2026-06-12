@@ -8,7 +8,7 @@ Session-spanning project knowledge. **Read at session start, update during work.
 
 ## Gotchas & Pitfalls
 
-_(No entries yet)_
+- **GitNexus skill files vs. Prettier (2026-06-12)** — GitNexus (re)writes `.claude/skills/gitnexus/*/SKILL.md` with its own Markdown table layout that fails `prettier --check`, causing recurring `format:check` failures in CI (a PostToolUse hook re-runs `analyze` after commits, so `--write` fixes never stick). Fix: `.claude/` is excluded in `.prettierignore` — do not remove that entry or re-format those files.
 
 ## Working Context
 
