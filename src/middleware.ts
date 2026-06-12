@@ -91,7 +91,9 @@ function isHttpsRequest(req: NextRequest): boolean {
   // runtime — keep the condition in sync with isTrustedProxy().
   const trustProxy = process.env.TRUST_PROXY === '1' || process.env.TRUST_PROXY === 'true';
   if (!trustProxy) return false;
-  return req.headers.get('x-forwarded-proto')?.split(',')[0].trim() === 'https';
+  // First (client-most) value wins in multi-hop chains; case-insensitive
+  // because header values are proxy-controlled ('https' vs 'HTTPS').
+  return req.headers.get('x-forwarded-proto')?.split(',')[0].trim().toLowerCase() === 'https';
 }
 
 // ---------------------------------------------------------------------------

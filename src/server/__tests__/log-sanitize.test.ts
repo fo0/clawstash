@@ -18,6 +18,10 @@ describe('sanitizeLogValue', () => {
     expect(sanitizeLogValue('a\x00b\x1bc\x7fd')).toBe('abcd');
   });
 
+  it('strips C1 controls and Unicode line separators', () => {
+    expect(sanitizeLogValue('a\x9bb\u2028c\u2029d')).toBe('abcd');
+  });
+
   it("falls back to 'unknown' for undefined and empty input", () => {
     expect(sanitizeLogValue(undefined)).toBe('unknown');
     expect(sanitizeLogValue('')).toBe('unknown');
