@@ -1913,6 +1913,46 @@ body {
   gap: 8px;
 }
 
+/* Collapsible file headers (stash viewer only — VersionHistory reuses
+   .file-header without collapse behavior). The empty header surface is a
+   click target; the filename stays selectable and the actions area neutral. */
+.file-header-collapsible {
+  cursor: pointer;
+  user-select: none;
+}
+
+.file-header-collapsible .file-name {
+  cursor: text;
+  user-select: text;
+}
+
+.file-header-collapsible .file-actions {
+  cursor: default;
+}
+
+.file-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.file-collapse-toggle {
+  padding: 3px;
+}
+
+.file-collapse-chevron {
+  transition: transform 0.2s;
+}
+
+.file-collapse-chevron.expanded {
+  transform: rotate(90deg);
+}
+
+.viewer-file-collapsed .file-header {
+  border-bottom: none;
+}
+
 .file-content {
   padding: 16px;
   background: var(--bg-primary);
