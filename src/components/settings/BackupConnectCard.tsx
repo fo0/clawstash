@@ -12,8 +12,17 @@ interface PendingLogin {
   sessionId: string;
   userCode: string;
   verificationUri: string;
-  interval: number;
 }
+
+/** GitHub's documented minimum device-flow poll interval. */
+const DEVICE_POLL_MIN_INTERVAL_SEC = 5;
+/**
+ * Transient browser→server poll failures tolerated before aborting the
+ * login. The device code stays valid on GitHub's side, and the server
+ * likewise treats upstream hiccups as 'pending' — a single network blip
+ * must not force the user to restart with a fresh code.
+ */
+const DEVICE_POLL_MAX_CONSECUTIVE_FAILURES = 3;
 
 /**
  * GitHub connection card: "Sign in with GitHub" via OAuth device flow
@@ -41,7 +50,7 @@ export default function BackupConnectCard({ response, onUpdated }: Props) {
 
   useEffect(() => stopPolling, []);
 
-  const poll = (sessionId: string, intervalSec: number) => {
+  const poll = (sessionId: string, intervalSec: number, failures = 0) => {
     pollTimer.current = setTimeout(async () => {
       if (cancelledRef.current) return;
       try {
@@ -50,7 +59,13 @@ export default function BackupConnectCard({ response, onUpdated }: Props) {
         if (result.status === 'connected') {
           setPending(null);
           setError(null);
-          onUpdated(await api.getBackupSettings());
+          try {
+            onUpdated(await api.getBackupSettings());
+          } catch {
+            // The connection itself succeeded; a failed settings reload
+            // must not surface as a login error — reopening the section
+            // shows the connected state.
+          }
           return;
         }
         if (result.status === 'error') {
@@ -61,6 +76,10 @@ export default function BackupConnectCard({ response, onUpdated }: Props) {
         poll(sessionId, intervalSec);
       } catch (err) {
         if (cancelledRef.current) return;
+        if (failures + 1 < DEVICE_POLL_MAX_CONSECUTIVE_FAILURES) {
+          poll(sessionId, intervalSec, failures + 1);
+          return;
+        }
         setPending(null);
         setError(err instanceof Error ? err.message : 'GitHub login failed.');
       }
@@ -70,18 +89,23 @@ export default function BackupConnectCard({ response, onUpdated }: Props) {
   const handleDeviceLogin = async () => {
     setBusy(true);
     setError(null);
+    // Reset BEFORE the await: if the card unmounts mid-request, the cleanup
+    // sets the flag and the resolved handler below must not re-arm polling
+    // against an unmounted component.
+    cancelledRef.current = false;
     try {
       const start = await api.startBackupDeviceFlow(clientId.trim() || undefined);
-      cancelledRef.current = false;
+      if (cancelledRef.current) return;
       setPending({
         sessionId: start.sessionId,
         userCode: start.userCode,
         verificationUri: start.verificationUri,
-        interval: start.interval,
       });
-      poll(start.sessionId, Math.max(start.interval, 5));
+      poll(start.sessionId, Math.max(start.interval, DEVICE_POLL_MIN_INTERVAL_SEC));
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Could not start GitHub login.');
+      if (!cancelledRef.current) {
+        setError(err instanceof Error ? err.message : 'Could not start GitHub login.');
+      }
     } finally {
       setBusy(false);
     }
@@ -167,6 +191,7 @@ export default function BackupConnectCard({ response, onUpdated }: Props) {
             <input
               className="form-input"
               placeholder="OAuth app client ID (e.g. Ov23li…)"
+              aria-label="OAuth app client ID"
               value={clientId}
               onChange={(e) => setClientId(e.target.value)}
             />
@@ -191,6 +216,7 @@ export default function BackupConnectCard({ response, onUpdated }: Props) {
                 className="form-input"
                 type="password"
                 placeholder="github_pat_… or ghp_…"
+                aria-label="Personal access token"
                 value={pat}
                 onChange={(e) => setPat(e.target.value)}
                 autoComplete="off"

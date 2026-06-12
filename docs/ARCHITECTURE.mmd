@@ -108,6 +108,7 @@ flowchart TD
     DBSingleton --> DB
 
     BackupRoutes --> Helpers
+    BackupRoutes --> DBSingleton
     BackupRoutes --> BackupScheduler
     BackupScheduler -->|"mutation listener + runs"| BackupService
     BackupService --> BackupCrypto

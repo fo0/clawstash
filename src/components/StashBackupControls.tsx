@@ -1,14 +1,15 @@
-import { useCallback, useEffect, useState } from 'react';
-import type { BackupStatusResponse, Stash } from '../types';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import type { BackupStatusResponse, BackupSyncState, Stash } from '../types';
 import { api } from '../api';
 import RelativeTime from './shared/RelativeTime';
+import CommitLink from './shared/CommitLink';
 
 interface Props {
   stash: Stash;
   onStashUpdated?: (stash: Stash) => void;
 }
 
-const STATE_LABELS: Record<string, string> = {
+const STATE_LABELS: Record<BackupSyncState, string> = {
   idle: 'Backed up',
   pending: 'Backup pending',
   syncing: 'Backing up…',
@@ -25,12 +26,17 @@ export default function StashBackupControls({ stash, onStashUpdated }: Props) {
   const [status, setStatus] = useState<BackupStatusResponse | null>(null);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<{ ok: boolean; text: string } | null>(null);
+  // Last-request-wins: a slow response for a previously shown stash must
+  // not clobber the status of the stash the viewer switched to.
+  const requestGen = useRef(0);
 
   const refresh = useCallback(async () => {
+    const gen = ++requestGen.current;
     try {
-      setStatus(await api.getBackupStatus(stash.id));
+      const data = await api.getBackupStatus(stash.id);
+      if (gen === requestGen.current) setStatus(data);
     } catch {
-      setStatus(null); // e.g. no read access — hide the bar
+      if (gen === requestGen.current) setStatus(null); // e.g. no read access — hide the bar
     }
   }, [stash.id]);
 
@@ -99,14 +105,7 @@ export default function StashBackupControls({ stash, onStashUpdated }: Props) {
           {state.last_commit_sha && status.repoFullName && (
             <>
               {' · '}
-              <a
-                href={`https://github.com/${status.repoFullName}/commit/${state.last_commit_sha}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                title="Open the last backup commit on GitHub"
-              >
-                <code>{state.last_commit_sha.slice(0, 7)}</code>
-              </a>
+              <CommitLink repoFullName={status.repoFullName} sha={state.last_commit_sha} />
             </>
           )}
         </span>

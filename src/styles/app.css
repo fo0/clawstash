@@ -6616,6 +6616,9 @@ body {
   padding: 6px 10px;
   border-bottom: 1px solid var(--border-color);
   vertical-align: top;
+  /* Long unbroken error/log messages must wrap instead of widening the
+     Details column past the card (the wrapper only scrolls as fallback). */
+  overflow-wrap: anywhere;
 }
 
 .backup-table code {

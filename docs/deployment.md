@@ -110,12 +110,14 @@ Both serve on port 3000 (configurable via `PORT` env variable).
 
 ## Environment Variables
 
-| Variable              | Description                               | Default               |
-| --------------------- | ----------------------------------------- | --------------------- |
-| `PORT`                | Server port                               | `3000`                |
-| `DATABASE_PATH`       | SQLite database path                      | `./data/clawstash.db` |
-| `ADMIN_PASSWORD`      | Admin password (unset = open access)      | —                     |
-| `ADMIN_SESSION_HOURS` | Session duration in hours (0 = unlimited) | `24`                  |
+| Variable                   | Description                                                                                   | Default               |
+| -------------------------- | --------------------------------------------------------------------------------------------- | --------------------- |
+| `PORT`                     | Server port                                                                                   | `3000`                |
+| `DATABASE_PATH`            | SQLite database path                                                                          | `./data/clawstash.db` |
+| `ADMIN_PASSWORD`           | Admin password (unset = open access)                                                          | —                     |
+| `ADMIN_SESSION_HOURS`      | Session duration in hours (0 = unlimited)                                                     | `24`                  |
+| `TRUST_PROXY`              | Trust `X-Forwarded-*` headers (set behind nginx/Traefik/Cloudflare)                           | off                   |
+| `CLAWSTASH_ENCRYPTION_KEY` | Key for secrets at rest (64 hex chars); unset = auto-generated key file `data/.clawstash-key` | auto-generated        |
 
 Copy `.env.example` and adjust as needed:
 
@@ -128,7 +130,9 @@ cp .env.example .env
 - Database: single SQLite file at `DATABASE_PATH` (default `./data/clawstash.db`)
 - The `data/` directory is gitignored
 - For backup: copy the database file, or use the built-in **Export** feature in the web GUI (**Settings > General > Export**) to download a ZIP of all data
+- **Also copy `data/.clawstash-key`** (or set `CLAWSTASH_ENCRYPTION_KEY`): secrets at rest — e.g. the stored GitHub backup token — are encrypted with this key. A restored database without the matching key cannot decrypt them; the GitHub connection then has to be re-established (no stash data is lost).
 - For restore: use **Import** in the web GUI or replace the database file
+- Continuous off-site mirroring: see the [GitHub backup](backup.md) feature
 
 ## CI/CD (GitHub Actions)
 

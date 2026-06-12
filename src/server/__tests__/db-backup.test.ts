@@ -175,18 +175,27 @@ describe('backup state store', () => {
       message: '',
       commit_sha: null,
     };
+    // Monotonic timestamps so "oldest" is well-defined: i → minute/second.
     for (let i = 0; i < 510; i++) {
+      const mm = String(Math.floor(i / 60)).padStart(2, '0');
+      const ss = String(i % 60).padStart(2, '0');
       db.insertBackupLogEntries([
         {
           ...base,
-          started_at: `2026-01-01T00:00:${String(i % 60).padStart(2, '0')}.${String(i).padStart(3, '0')}Z`,
-          finished_at: '2026-01-01T00:10:00.000Z',
+          started_at: `2026-01-01T00:${mm}:${ss}.000Z`,
+          finished_at: `2026-01-01T00:${mm}:${ss}.500Z`,
           message: `entry-${i}`,
         },
       ]);
     }
     const count = rawDb().prepare('SELECT COUNT(*) AS c FROM backup_log').get() as { c: number };
     expect(count.c).toBe(500);
+    // The newest row survives, the 10 oldest are pruned.
+    const messages = db.getBackupLog({ limit: 500 }).map((e) => e.message);
+    expect(messages[0]).toBe('entry-509');
+    expect(messages).not.toContain('entry-0');
+    expect(messages).not.toContain('entry-9');
+    expect(messages).toContain('entry-10');
   });
 
   it('getBackupLog filters by stash and honours the limit', () => {

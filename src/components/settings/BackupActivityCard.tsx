@@ -1,30 +1,16 @@
 import { useCallback, useEffect, useState } from 'react';
-import type { BackupLogEntry, BackupStatusResponse } from '../../types';
+import type { BackupLogEntry, BackupStatusResponse, BackupSyncState } from '../../types';
 import { api } from '../../api';
 import { formatDateTime } from '../../utils/format';
 import Spinner from '../shared/Spinner';
+import CommitLink from '../shared/CommitLink';
 
-const STATE_LABELS: Record<string, string> = {
+const STATE_LABELS: Record<BackupSyncState, string> = {
   idle: 'Synced',
   pending: 'Pending',
   syncing: 'Syncing',
   error: 'Error',
 };
-
-function commitLink(repoFullName: string | null, sha: string | null) {
-  if (!sha) return null;
-  const short = sha.slice(0, 7);
-  if (!repoFullName) return <code>{short}</code>;
-  return (
-    <a
-      href={`https://github.com/${repoFullName}/commit/${sha}`}
-      target="_blank"
-      rel="noopener noreferrer"
-    >
-      <code>{short}</code>
-    </a>
-  );
-}
 
 /**
  * Sync activity: health summary, "Back up all now", per-stash states and
@@ -34,6 +20,7 @@ export default function BackupActivityCard() {
   const [status, setStatus] = useState<BackupStatusResponse | null>(null);
   const [log, setLog] = useState<BackupLogEntry[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadFailed, setLoadFailed] = useState(false);
   const [syncing, setSyncing] = useState(false);
   const [result, setResult] = useState<{ ok: boolean; message: string } | null>(null);
 
@@ -45,8 +32,10 @@ export default function BackupActivityCard() {
       ]);
       setStatus(statusData);
       setLog(logData.entries);
+      setLoadFailed(false);
     } catch (err) {
       console.error('Failed to load backup status:', err);
+      setLoadFailed(true);
     } finally {
       setLoading(false);
     }
@@ -80,7 +69,24 @@ export default function BackupActivityCard() {
       </div>
     );
   }
-  if (!status) return null;
+  if (!status) {
+    // Never loaded successfully — show the failure instead of silently
+    // dropping the whole card.
+    if (!loadFailed) return null;
+    return (
+      <div className="settings-card">
+        <div className="settings-card-header">
+          <h3>Sync Activity</h3>
+        </div>
+        <div className="settings-import-error">Could not load the backup status.</div>
+        <div className="settings-option-group">
+          <button className="btn btn-secondary btn-sm" onClick={refresh}>
+            Retry
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   const { health } = status;
 
@@ -89,6 +95,12 @@ export default function BackupActivityCard() {
       <div className="settings-card-header">
         <h3>Sync Activity</h3>
       </div>
+
+      {loadFailed && (
+        <div className="settings-import-error">
+          Could not refresh the backup status — the data below may be stale.
+        </div>
+      )}
 
       {status.unhealthy && (
         <div className="settings-import-error">
@@ -146,7 +158,13 @@ export default function BackupActivityCard() {
                     {s.error && <div className="backup-error-text">{s.error}</div>}
                   </td>
                   <td>{s.last_synced_at ? formatDateTime(s.last_synced_at) : '—'}</td>
-                  <td>{commitLink(status.repoFullName, s.last_commit_sha) || '—'}</td>
+                  <td>
+                    {s.last_commit_sha ? (
+                      <CommitLink repoFullName={status.repoFullName} sha={s.last_commit_sha} />
+                    ) : (
+                      '—'
+                    )}
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -181,7 +199,8 @@ export default function BackupActivityCard() {
                     </td>
                     <td>
                       {entry.stash_name ? `${entry.action ?? 'sync'} ${entry.stash_name} ` : ''}
-                      {entry.message} {commitLink(status.repoFullName, entry.commit_sha)}
+                      {entry.message}{' '}
+                      <CommitLink repoFullName={status.repoFullName} sha={entry.commit_sha} />
                     </td>
                   </tr>
                 ))}

@@ -31,7 +31,7 @@ Best minimal-scope option and ideal for headless setups:
 
 1. On GitHub: **Settings → Developer settings → Fine-grained tokens → Generate new token**.
 2. Repository access: **Only select repositories** → your backup repo.
-3. Permissions: **Contents → Read and write**. Nothing else.
+3. Permissions: **Contents → Read and write**. Nothing else (GitHub automatically adds the mandatory **Metadata → Read**).
 4. Paste the token into **connect with a personal access token** in ClawStash.
 
 Classic PATs (`ghp_…`, scope `repo`) also work.

@@ -1,5 +1,8 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import crypto from 'crypto';
+import fs from 'fs';
+import os from 'os';
+import path from 'path';
 import {
   decryptSecret,
   encryptSecret,
@@ -60,6 +63,46 @@ describe('getEncryptionKey (env source)', () => {
   it('rejects malformed env keys', () => {
     vi.stubEnv('CLAWSTASH_ENCRYPTION_KEY', 'not-hex');
     expect(() => getEncryptionKey()).toThrow(/64 hex/);
+  });
+});
+
+describe('getEncryptionKey (key file source — the zero-config path)', () => {
+  let dir: string;
+
+  beforeEach(() => {
+    resetEncryptionKeyCache();
+    dir = fs.mkdtempSync(path.join(os.tmpdir(), 'clawstash-key-'));
+    // Empty env value is falsy → falls through to the key file next to the DB.
+    vi.stubEnv('CLAWSTASH_ENCRYPTION_KEY', '');
+    vi.stubEnv('DATABASE_PATH', path.join(dir, 'clawstash.db'));
+  });
+
+  afterEach(() => {
+    vi.unstubAllEnvs();
+    resetEncryptionKeyCache();
+    fs.rmSync(dir, { recursive: true, force: true });
+  });
+
+  it('generates a key file with owner-only permissions on first use', () => {
+    const key = getEncryptionKey();
+    const file = path.join(dir, '.clawstash-key');
+    expect(fs.readFileSync(file, 'utf8').trim()).toBe(key.toString('hex'));
+    if (process.platform !== 'win32') {
+      expect(fs.statSync(file).mode & 0o777).toBe(0o600);
+    }
+  });
+
+  it('reuses a persisted key across cache resets and trims whitespace', () => {
+    const hex = 'ef'.repeat(32);
+    fs.writeFileSync(path.join(dir, '.clawstash-key'), `  ${hex}\n`);
+    expect(getEncryptionKey().toString('hex')).toBe(hex);
+    resetEncryptionKeyCache();
+    expect(getEncryptionKey().toString('hex')).toBe(hex); // stable — not regenerated
+  });
+
+  it('fails loudly on a corrupt key file instead of silently rotating', () => {
+    fs.writeFileSync(path.join(dir, '.clawstash-key'), 'garbage');
+    expect(() => getEncryptionKey()).toThrow(/corrupt/i);
   });
 });
 

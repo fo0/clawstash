@@ -1,9 +1,16 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { BackupRepoInfo, BackupSettings, BackupSettingsResponse } from '../../types';
 import { api } from '../../api';
 import Spinner from '../shared/Spinner';
 import BackupConnectCard from './BackupConnectCard';
 import BackupActivityCard from './BackupActivityCard';
+
+/** Display form of the saved repo target ("owner/name", or a lone owner). */
+function formatRepoTarget(settings: { repoOwner: string; repoName: string }): string {
+  return settings.repoOwner && settings.repoName
+    ? `${settings.repoOwner}/${settings.repoName}`
+    : settings.repoOwner;
+}
 
 const INTERVAL_OPTIONS: { value: number; label: string }[] = [
   { value: 0, label: 'Off (manual / on change only)' },
@@ -44,8 +51,15 @@ export default function BackupSection() {
   const [response, setResponse] = useState<BackupSettingsResponse | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [form, setForm] = useState<BackupSettings | null>(null);
+  // Raw text of the repository input. Kept separately from the derived
+  // repoOwner/repoName so a trailing "/" survives while typing — deriving
+  // the input value from the parsed halves would swallow the slash and make
+  // manual "owner/repo" entry impossible.
+  const [repoInput, setRepoInput] = useState('');
   const [repos, setRepos] = useState<BackupRepoInfo[]>([]);
   const [branches, setBranches] = useState<string[]>([]);
+  // Drops out-of-order branch responses (rapid repo switches).
+  const branchRequestGen = useRef(0);
   const [saving, setSaving] = useState(false);
   const [saveResult, setSaveResult] = useState<{ ok: boolean; message: string } | null>(null);
 
@@ -78,11 +92,13 @@ export default function BackupSection() {
         if (cancelled) return;
         setResponse(data);
         setForm(data.settings);
+        setRepoInput(formatRepoTarget(data.settings));
       })
       .catch((err) => {
         if (cancelled) return;
+        // 401 (not logged in) and 403 (no admin) both mean "log in first".
         setLoadError(
-          err instanceof Error && /admin/i.test(err.message)
+          err instanceof Error && /admin|authentication required/i.test(err.message)
             ? 'Login as admin to manage the GitHub backup.'
             : err instanceof Error
               ? err.message
@@ -117,21 +133,26 @@ export default function BackupSection() {
 
   const loadBranches = async (owner: string, repo: string) => {
     if (!owner || !repo) return;
+    const gen = ++branchRequestGen.current;
     try {
       const data = await api.listBackupBranches(owner, repo);
+      if (gen !== branchRequestGen.current) return;
       setBranches(data.branches);
       setForm((prev) => (prev && !prev.branch ? { ...prev, branch: data.defaultBranch } : prev));
     } catch {
-      setBranches([]);
+      if (gen === branchRequestGen.current) setBranches([]);
     }
   };
 
   const handleRepoInput = (value: string) => {
+    setRepoInput(value);
+    // Any change invalidates the previously loaded branch list.
+    branchRequestGen.current++;
+    setBranches([]);
     const [owner = '', name = ''] = value.split('/', 2);
     setForm((prev) => (prev ? { ...prev, repoOwner: owner.trim(), repoName: name.trim() } : prev));
     const match = repos.find((r) => r.fullName === value);
     if (match) {
-      setBranches([]);
       setForm((prev) => (prev ? { ...prev, branch: match.defaultBranch } : prev));
       loadBranches(owner.trim(), name.trim());
     }
@@ -151,6 +172,7 @@ export default function BackupSection() {
       });
       setResponse(saved);
       setForm(saved.settings);
+      setRepoInput(formatRepoTarget(saved.settings));
       setSaveResult({
         ok: true,
         message:
@@ -208,13 +230,11 @@ export default function BackupSection() {
                 className="form-input"
                 placeholder="owner/repository"
                 list="backup-repo-list"
-                value={
-                  form.repoOwner && form.repoName
-                    ? `${form.repoOwner}/${form.repoName}`
-                    : form.repoOwner
-                }
+                value={repoInput}
                 onChange={(e) => handleRepoInput(e.target.value)}
-                disabled={!tokenSet && repos.length === 0 && !form.repoOwner}
+                // Locked until a connection exists or a target was saved —
+                // without a token the repo cannot be listed or synced anyway.
+                disabled={!tokenSet && repos.length === 0 && !form.repoOwner && !repoInput}
               />
               <datalist id="backup-repo-list">
                 {repos.map((r) => (
@@ -296,17 +316,22 @@ export default function BackupSection() {
               </select>
             </div>
 
-            <label className="backup-field-label">Commit author</label>
+            <label className="backup-field-label" htmlFor="backup-author-name">
+              Commit author
+            </label>
             <div className="backup-form-row">
               <input
+                id="backup-author-name"
                 className="form-input"
                 placeholder="Name"
+                aria-label="Commit author name"
                 value={form.commitAuthorName}
                 onChange={(e) => setForm({ ...form, commitAuthorName: e.target.value })}
               />
               <input
                 className="form-input"
                 placeholder="email@example.com"
+                aria-label="Commit author email"
                 value={form.commitAuthorEmail}
                 onChange={(e) => setForm({ ...form, commitAuthorEmail: e.target.value })}
               />

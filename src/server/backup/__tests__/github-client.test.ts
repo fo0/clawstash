@@ -55,13 +55,19 @@ describe('device flow', () => {
     );
   });
 
-  it('pollDeviceFlow maps pending / slow_down / denied / success', async () => {
+  it('pollDeviceFlow maps pending / slow_down / expired / denied / success', async () => {
     const client = new GitHubClient(null);
     stubFetch(() => jsonResponse(200, { error: 'authorization_pending' }));
     expect(await client.pollDeviceFlow('c', 'd')).toEqual({ status: 'pending', interval: 0 });
 
     stubFetch(() => jsonResponse(200, { error: 'slow_down', interval: 10 }));
     expect(await client.pollDeviceFlow('c', 'd')).toEqual({ status: 'pending', interval: 10 });
+
+    stubFetch(() => jsonResponse(200, { error: 'expired_token' }));
+    expect(await client.pollDeviceFlow('c', 'd')).toEqual({
+      status: 'error',
+      error: expect.stringMatching(/expired/i),
+    });
 
     stubFetch(() => jsonResponse(200, { error: 'access_denied' }));
     expect((await client.pollDeviceFlow('c', 'd')).status).toBe('error');

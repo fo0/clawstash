@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { ClawStashDB } from '../../db';
 import {
+  BACKUP_UNHEALTHY_THRESHOLD,
   DEFAULT_BACKUP_SETTINGS,
   computeStashContentHash,
   readBackupHealth,
@@ -26,7 +27,15 @@ function jsonResponse(status: number, body: unknown) {
  */
 class FakeGitHub {
   refs = new Map<string, string>();
-  commits = new Map<string, { treeSha: string; message: string; parents: string[] }>();
+  commits = new Map<
+    string,
+    {
+      treeSha: string;
+      message: string;
+      parents: string[];
+      author: { name: string; email: string } | null;
+    }
+  >();
   trees = new Map<string, Map<string, string>>();
   blobs = new Map<string, string>();
   totalCalls = 0;
@@ -125,6 +134,7 @@ class FakeGitHub {
         treeSha: String(body.tree),
         message: String(body.message),
         parents: (body.parents as string[]) ?? [],
+        author: (body.author as { name: string; email: string } | undefined) ?? null,
       });
       return jsonResponse(201, { sha });
     }
@@ -325,6 +335,30 @@ describe('runBackupSync', () => {
     expect(fake.headPaths('main').get(`stashes/${stash.id}/files/r.txt`)).toBe('2');
   });
 
+  it('gives up after exhausting the ref-update retries', async () => {
+    configureBackup();
+    const stash = db.createStash({ name: 'Lost', files: [{ filename: 'l.txt', content: '1' }] });
+    await runBackupSync(db, 'manual'); // first run creates the branch + state row
+
+    db.updateStash(stash.id, { files: [{ filename: 'l.txt', content: '2' }] });
+    fake.failNextRefUpdates = 3; // MAX_REF_UPDATE_ATTEMPTS
+    const result = await runBackupSync(db, 'manual');
+    expect(result.status).toBe('error');
+    expect(fake.refUpdateCalls).toBe(3);
+    expect(db.getBackupState(stash.id)!.state).toBe('error');
+    expect(readBackupHealth(db).consecutiveFailures).toBe(1);
+  });
+
+  it('reports unhealthy after three consecutive failed runs', async () => {
+    configureBackup();
+    db.createStash({ name: 'Sick', files: [{ filename: 's.txt', content: 's' }] });
+    fake.failure = { match: /POST .*\/git\/trees$/, status: 500, message: 'down' };
+    for (let i = 0; i < BACKUP_UNHEALTHY_THRESHOLD; i++) {
+      expect((await runBackupSync(db, 'scheduled')).status).toBe('error');
+    }
+    expect(readBackupHealth(db).consecutiveFailures).toBe(BACKUP_UNHEALTHY_THRESHOLD);
+  });
+
   it('records redacted errors and recovers on the next successful run', async () => {
     configureBackup();
     const stash = db.createStash({ name: 'Boom', files: [{ filename: 'b.txt', content: 'b' }] });
@@ -400,5 +434,11 @@ describe('runBackupSync', () => {
     const paths = fake.headPaths('main');
     expect([...paths.keys()].every((p) => p.startsWith('mirror/clawstash/'))).toBe(true);
     expect(paths.has('mirror/clawstash/INDEX.md')).toBe(true);
+    // toMatchObject: the client adds a `date` field to the author payload.
+    const head = fake.commits.get(fake.refs.get('main')!)!;
+    expect(head.author).toMatchObject({
+      name: 'Backup Bot',
+      email: DEFAULT_BACKUP_SETTINGS.commitAuthorEmail,
+    });
   });
 });
