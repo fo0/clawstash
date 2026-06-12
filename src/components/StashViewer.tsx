@@ -333,8 +333,10 @@ export default function StashViewer({
   const [logLoading, setLogLoading] = useState(false);
   const [renderPreview, setRenderPreview] = useState(getRenderPreference);
   const [tocExpanded, setTocExpanded] = useState(true);
+  const [collapsedFiles, setCollapsedFiles] = useState<Set<string>>(new Set());
   const deleteTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const filesContainerRef = useRef<HTMLDivElement>(null);
+  const pendingScrollIdRef = useRef<string | null>(null);
   const copyAllClipboard = useClipboard();
   const titleClipboard = useClipboard();
   const fileClipboard = useClipboardWithKey();
@@ -416,11 +418,69 @@ export default function StashViewer({
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [switchTab]);
 
-  const scrollToId = useCallback((e: React.MouseEvent<HTMLAnchorElement>, id: string) => {
-    e.preventDefault();
-    const el = document.getElementById(id);
-    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  /** Toggle a file's collapsed state in the content tab. */
+  const toggleFileCollapsed = useCallback((fileId: string) => {
+    setCollapsedFiles((prev) => {
+      const next = new Set(prev);
+      if (next.has(fileId)) next.delete(fileId);
+      else next.add(fileId);
+      return next;
+    });
   }, []);
+
+  /**
+   * Clicking the header bar surface toggles collapse. Clicks on the filename
+   * (kept selectable), the action buttons, or the actions area keep their own
+   * behavior — only the "empty" header surface acts as the toggle target.
+   * The chevron is a real <button> (keyboard accessible) whose own onClick
+   * toggles; its bubbled click is skipped here via the `button` selector.
+   */
+  const handleFileHeaderClick = useCallback(
+    (e: React.MouseEvent<HTMLDivElement>, fileId: string) => {
+      if ((e.target as Element).closest('button, .file-name, .file-actions')) return;
+      toggleFileCollapsed(fileId);
+    },
+    [toggleFileCollapsed],
+  );
+
+  // Collapse state is per stash; the component instance is reused across
+  // stash switches (no remount), so reset explicitly.
+  useEffect(() => {
+    setCollapsedFiles(new Set());
+  }, [stash.id]);
+
+  const scrollToId = useCallback(
+    (e: React.MouseEvent<HTMLAnchorElement>, id: string) => {
+      e.preventDefault();
+      const el = document.getElementById(id);
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        return;
+      }
+      // Heading targets live inside file content, so they are missing from
+      // the DOM while their file is collapsed. TOC heading ids are prefixed
+      // `f{fileIndex}-` whenever the TOC is shown — expand the owning file
+      // and finish the scroll after the re-render (effect below).
+      const prefixMatch = /^f(\d+)-/.exec(id);
+      const file = prefixMatch ? stash.files[Number(prefixMatch[1])] : undefined;
+      if (!file) return;
+      pendingScrollIdRef.current = id;
+      setCollapsedFiles((prev) => {
+        const next = new Set(prev);
+        next.delete(file.id);
+        return next;
+      });
+    },
+    [stash.files],
+  );
+
+  // Finish a TOC heading jump that required expanding a collapsed file first.
+  useEffect(() => {
+    if (!pendingScrollIdRef.current) return;
+    const el = document.getElementById(pendingScrollIdRef.current);
+    pendingScrollIdRef.current = null;
+    el?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }, [collapsedFiles]);
 
   useEffect(() => {
     if (activeTab !== 'access-log') return;
@@ -509,7 +569,9 @@ export default function StashViewer({
       // placeholders are still picked up by the next hydration pass and the
       // attribute is overwritten there — no orphan state remains.
     };
-  }, [renderedContent, renderPreview, activeTab]);
+    // `collapsedFiles` is a dep because re-expanding a collapsed markdown
+    // file remounts pristine placeholders that need a fresh hydration pass.
+  }, [renderedContent, renderPreview, activeTab, collapsedFiles]);
 
   const copyAllFiles = () => {
     const allContent = stash.files
@@ -839,12 +901,43 @@ export default function StashViewer({
             const langLabel =
               file.language || (lang !== 'text' ? `auto:${getLanguageDisplayName(lang)}` : '');
 
+            const collapsed = collapsedFiles.has(file.id);
+
             return (
-              <div key={file.id} id={`stash-file-${fileIndex}`} className="viewer-file">
-                <div className="file-header">
-                  <span className="file-name" title={file.filename}>
-                    {file.filename}
-                  </span>
+              <div
+                key={file.id}
+                id={`stash-file-${fileIndex}`}
+                className={`viewer-file ${collapsed ? 'viewer-file-collapsed' : ''}`}
+              >
+                <div
+                  className="file-header file-header-collapsible"
+                  onClick={(e) => handleFileHeaderClick(e, file.id)}
+                >
+                  <div className="file-title">
+                    <button
+                      className="btn btn-sm btn-ghost file-collapse-toggle"
+                      onClick={() => toggleFileCollapsed(file.id)}
+                      aria-expanded={!collapsed}
+                      title={collapsed ? `Expand ${file.filename}` : `Collapse ${file.filename}`}
+                      aria-label={
+                        collapsed ? `Expand ${file.filename}` : `Collapse ${file.filename}`
+                      }
+                    >
+                      <svg
+                        width="12"
+                        height="12"
+                        viewBox="0 0 16 16"
+                        fill="currentColor"
+                        className={`file-collapse-chevron ${collapsed ? '' : 'expanded'}`}
+                        aria-hidden="true"
+                      >
+                        <path d="M6.22 3.22a.75.75 0 0 1 1.06 0l4.25 4.25a.75.75 0 0 1 0 1.06l-4.25 4.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042L9.94 8 6.22 4.28a.75.75 0 0 1 0-1.06Z" />
+                      </svg>
+                    </button>
+                    <span className="file-name" title={file.filename}>
+                      {file.filename}
+                    </span>
+                  </div>
                   <div className="file-actions">
                     {langLabel && (
                       <span className="lang-tag" title={`Language: ${langLabel}`}>
@@ -899,30 +992,36 @@ export default function StashViewer({
                     </button>
                   </div>
                 </div>
-                {showRendered && lang === 'mermaid' ? (
-                  <div className="file-rendered file-mermaid">
-                    <MermaidDiagram
-                      code={file.content}
-                      storageKey={`${stash.id}:${file.filename}`}
+                {/* Collapsed files skip content rendering entirely — that is
+                    the point: large files drop out of the DOM so the page
+                    stays fast to scroll. */}
+                {!collapsed &&
+                  (showRendered && lang === 'mermaid' ? (
+                    <div className="file-rendered file-mermaid">
+                      <MermaidDiagram
+                        code={file.content}
+                        storageKey={`${stash.id}:${file.filename}`}
+                      />
+                    </div>
+                  ) : showRendered && lang === 'markdown' ? (
+                    <div
+                      className="file-rendered markdown-body"
+                      dangerouslySetInnerHTML={{ __html: renderedContent.get(file.id) || '' }}
                     />
-                  </div>
-                ) : showRendered && lang === 'markdown' ? (
-                  <div
-                    className="file-rendered markdown-body"
-                    dangerouslySetInnerHTML={{ __html: renderedContent.get(file.id) || '' }}
-                  />
-                ) : showRendered && lang === 'markup' ? (
-                  <iframe
-                    className="file-rendered html-preview"
-                    sandbox=""
-                    srcDoc={renderedContent.get(file.id) || ''}
-                    title={`Preview of ${file.filename}`}
-                  />
-                ) : (
-                  <pre className="file-content">
-                    <code dangerouslySetInnerHTML={{ __html: highlightCode(file.content, lang) }} />
-                  </pre>
-                )}
+                  ) : showRendered && lang === 'markup' ? (
+                    <iframe
+                      className="file-rendered html-preview"
+                      sandbox=""
+                      srcDoc={renderedContent.get(file.id) || ''}
+                      title={`Preview of ${file.filename}`}
+                    />
+                  ) : (
+                    <pre className="file-content">
+                      <code
+                        dangerouslySetInnerHTML={{ __html: highlightCode(file.content, lang) }}
+                      />
+                    </pre>
+                  ))}
               </div>
             );
           })}
