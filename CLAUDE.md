@@ -306,6 +306,7 @@ npx gitnexus analyze --skip-agents-md
 - MCP is available as Streamable HTTP at `/mcp` (Next.js route handler) and as stdio via `npm run mcp`
 - Docker uses multi-stage build with Node 26-slim; requires python3/make/g++ for better-sqlite3 native addon compilation
 - Docker volume maps to `/app/data` for database persistence
+- Docker entrypoint (`docker-entrypoint.sh`) starts as root, chowns the data dir (fixes root-owned bind mounts), then drops to `node` (uid 1000) via `setpriv` — no `USER` directive in the Dockerfile; `ClawStashDB` additionally fail-fasts on unwritable DB paths (`db-access-check.ts`)
 - CI/CD pipeline: type-check -> (optional lint) -> (optional test) -> build -> Docker push to GHCR
 
 ## Refactoring Notes

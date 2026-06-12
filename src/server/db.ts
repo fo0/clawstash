@@ -3,6 +3,7 @@ import crypto from 'crypto';
 import path from 'path';
 import fs from 'fs';
 import { detectLanguage } from './detect-language';
+import { assertDatabaseWritable } from './db-access-check';
 import { INITIAL_SCHEMA_SQL } from './db-schema';
 import { applyPendingMigrations } from './db-migrations';
 import { TokenStore } from './stores/token-store';
@@ -77,6 +78,11 @@ export class ClawStashDB {
     const dir = path.dirname(resolvedPath);
     if (!fs.existsSync(dir)) {
       fs.mkdirSync(dir, { recursive: true });
+    }
+    if (resolvedPath !== ':memory:') {
+      // SQLite silently falls back to read-only on write-protected files;
+      // fail fast with an actionable error instead (Docker bind mounts).
+      assertDatabaseWritable(dir, resolvedPath);
     }
     this.db = new Database(resolvedPath);
     this.db.pragma('journal_mode = WAL');

@@ -8,6 +8,7 @@ Session-spanning project knowledge. **Read at session start, update during work.
 
 ## Gotchas & Pitfalls
 
+- **Docker bind mounts vs. non-root image (2026-06-12)** — since #200 the image runs the server as `node` (uid 1000). Linux Docker auto-creates bind-mount sources (`./data`) root-owned, and DBs created by pre-#200 root images stay root-owned → SQLite opens them read-only (documented READWRITE fallback, no error at open) and the first write fails with `SQLITE_READONLY` — symptom: server looks healthy but admin login breaks. Fixed via root entrypoint (`docker-entrypoint.sh`: chown data dir, then `setpriv` drop to `node`) + fail-fast writability check in `ClawStashDB` (`db-access-check.ts`). Don't reintroduce a `USER node` directive in the Dockerfile — it would bypass the entrypoint's chown.
 - **GitNexus skill files vs. Prettier (2026-06-12)** — GitNexus (re)writes `.claude/skills/gitnexus/*/SKILL.md` with its own Markdown table layout that fails `prettier --check`, causing recurring `format:check` failures in CI (a PostToolUse hook re-runs `analyze` after commits, so `--write` fixes never stick). Fix: `.claude/` is excluded in `.prettierignore` — do not remove that entry or re-format those files.
 
 ## Working Context
