@@ -989,6 +989,9 @@ export function getOpenApiSpec(baseUrl: string): OpenApiSpec {
             'Requires admin access. Returns a user code + verification URI; the device code stays server-side.',
           security: [{ bearerAuth: [] }],
           requestBody: {
+            // A JSON body is always required — send `{}` when the client ID
+            // is already stored in the settings.
+            required: true,
             content: {
               'application/json': {
                 schema: {

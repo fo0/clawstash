@@ -33,8 +33,6 @@ export const BACKUP_UNHEALTHY_THRESHOLD = 3;
 
 const MAX_REF_UPDATE_ATTEMPTS = 3;
 
-export const BACKUP_INTERVAL_PRESETS = [0, 5, 15, 60, 360, 1440] as const;
-
 export interface BackupSettings {
   enabled: boolean;
   repoOwner: string;
@@ -469,10 +467,10 @@ export async function runBackupSync(
         const tree = await client.getTreePaths(owner, repo, baseTreeSha);
         existingPaths = tree.paths;
         if (tree.truncated) {
-          // Without the full path list we cannot compute stale-file
-          // deletions safely; additions/updates still work.
+          // Without the full path list we cannot compute stale-file or
+          // stash-removal deletions safely; additions/updates still work.
           console.warn(
-            '[backup] repo tree listing truncated — stale file cleanup skipped this run',
+            '[backup] repo tree listing truncated — stale file cleanup and stash removals may be incomplete this run',
           );
         }
       }
