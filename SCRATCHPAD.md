@@ -4,7 +4,7 @@ Temporary working context. **Clean up aggressively -- delete when resolved.**
 
 ## Current Work
 
-_(None — #108 GitHub backup implemented and reviewed on `claude/lucid-johnson-2t7pwi`, see PR #269. Review fixed 2 frontend logic bugs (repo input slash handling, device-flow unmount race) + test/doc gaps; deferred findings: BACKLOG #111–#117.)_
+- Sweep-issue triage (2026-06-12): #213 closed (SRI fix already on main via PR #221). Remaining actionables from #209/#242 shipped on `claude/peaceful-albattani-5rmwla`: conditional HSTS (middleware) + control-char stripping in admin import/export audit logs; nonce-CSP and next-bundled-postcss CVE moved to BACKLOG #118/#119. PR closes #209 + #242 on merge.
 
 ## Open Questions
 

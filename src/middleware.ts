@@ -72,6 +72,30 @@ const SECURITY_HEADERS: Record<string, string> = {
   'Permissions-Policy': PERMISSIONS_POLICY,
 };
 
+// `Strict-Transport-Security` pins the host to HTTPS in every browser that
+// has seen the header once. ClawStash is documented/designed for plain-HTTP
+// LAN deployments (Docker serves http://host:3000), so emitting HSTS
+// unconditionally would lock those browsers out of legitimate plain-HTTP
+// access for `max-age`. It is therefore sent ONLY when the request
+// demonstrably arrived over HTTPS — either terminated by this server
+// directly, or behind a trusted TLS-terminating reverse proxy
+// (`TRUST_PROXY=1` + `x-forwarded-proto: https`). Browsers ignore HSTS
+// received over plain HTTP anyway, so the gate costs nothing.
+const STRICT_TRANSPORT_SECURITY = 'max-age=31536000'; // 1 year
+
+function isHttpsRequest(req: NextRequest): boolean {
+  if (req.nextUrl.protocol === 'https:') return true;
+  // Mirrors isTrustedProxy() in src/server/auth-rate-limit.ts. That module
+  // is Node-runtime-only (module-scope cleanup timer + node:crypto), so the
+  // two-value check is inlined here instead of imported into the Edge
+  // runtime — keep the condition in sync with isTrustedProxy().
+  const trustProxy = process.env.TRUST_PROXY === '1' || process.env.TRUST_PROXY === 'true';
+  if (!trustProxy) return false;
+  // First (client-most) value wins in multi-hop chains; case-insensitive
+  // because header values are proxy-controlled ('https' vs 'HTTPS').
+  return req.headers.get('x-forwarded-proto')?.split(',')[0].trim().toLowerCase() === 'https';
+}
+
 // ---------------------------------------------------------------------------
 // Middleware
 // ---------------------------------------------------------------------------
@@ -79,13 +103,13 @@ const SECURITY_HEADERS: Record<string, string> = {
 export function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
   const isApiRoute = pathname.startsWith('/api/') || pathname === '/mcp';
+  const isHttps = isHttpsRequest(req);
 
   // Handle CORS preflight for API/MCP routes
   if (isApiRoute && req.method === 'OPTIONS') {
-    return new NextResponse(null, {
-      status: 204,
-      headers: { ...CORS_HEADERS, ...SECURITY_HEADERS },
-    });
+    const headers: Record<string, string> = { ...CORS_HEADERS, ...SECURITY_HEADERS };
+    if (isHttps) headers['Strict-Transport-Security'] = STRICT_TRANSPORT_SECURITY;
+    return new NextResponse(null, { status: 204, headers });
   }
 
   // Build response with headers
@@ -101,6 +125,11 @@ export function middleware(req: NextRequest) {
   // Security headers on all routes
   for (const [key, value] of Object.entries(SECURITY_HEADERS)) {
     response.headers.set(key, value);
+  }
+
+  // HSTS only over genuine HTTPS (see STRICT_TRANSPORT_SECURITY above)
+  if (isHttps) {
+    response.headers.set('Strict-Transport-Security', STRICT_TRANSPORT_SECURITY);
   }
 
   return response;
