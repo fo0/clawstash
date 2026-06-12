@@ -30,7 +30,19 @@ const FTS_SNIPPET_OPEN = '';
 const FTS_SNIPPET_CLOSE = '';
 
 function formatSnippet(raw: string): string {
-  return raw.replaceAll(FTS_SNIPPET_OPEN, '**').replaceAll(FTS_SNIPPET_CLOSE, '**');
+  // The snippet text may contain literal "**" that the user typed into their
+  // content (markdown bold, `**kwargs`, …). When such literal markers sit
+  // directly next to a highlighted match, naively converting the sentinels
+  // produces ambiguous output like "****kwargs**" (#75). Strip the user's
+  // literal "**" first so the only "**" left are the genuine highlight markers,
+  // then apply the public markers. Single match-marker chars the user typed are
+  // harmless and left untouched. The sentinels themselves cannot appear in user
+  // content (private-use Unicode + stripped from queries), so this only ever
+  // removes user-authored "**".
+  return raw
+    .replaceAll('**', '')
+    .replaceAll(FTS_SNIPPET_OPEN, '**')
+    .replaceAll(FTS_SNIPPET_CLOSE, '**');
 }
 
 /**
