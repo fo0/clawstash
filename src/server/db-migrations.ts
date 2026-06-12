@@ -256,6 +256,55 @@ export const MIGRATIONS: Migration[] = [
       }
     },
   },
+  {
+    version: 10,
+    name: 'add_github_backup_tables',
+    up: (db) => {
+      db.exec(`
+        CREATE TABLE IF NOT EXISTS app_settings (
+          key TEXT PRIMARY KEY,
+          value TEXT NOT NULL,
+          updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+        );
+
+        CREATE TABLE IF NOT EXISTS backup_state (
+          stash_id TEXT PRIMARY KEY,
+          stash_name TEXT NOT NULL DEFAULT '',
+          content_hash TEXT NOT NULL DEFAULT '',
+          state TEXT NOT NULL DEFAULT 'idle' CHECK(state IN ('idle', 'pending', 'syncing', 'error')),
+          pending_delete INTEGER NOT NULL DEFAULT 0,
+          last_synced_at TEXT,
+          last_commit_sha TEXT,
+          error TEXT,
+          updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+        );
+
+        CREATE TABLE IF NOT EXISTS backup_log (
+          id TEXT PRIMARY KEY,
+          run_id TEXT NOT NULL,
+          stash_id TEXT,
+          stash_name TEXT,
+          trigger_type TEXT NOT NULL CHECK(trigger_type IN ('scheduled', 'mutation', 'manual')),
+          status TEXT NOT NULL CHECK(status IN ('success', 'error', 'skipped')),
+          action TEXT,
+          message TEXT NOT NULL DEFAULT '',
+          commit_sha TEXT,
+          started_at TEXT NOT NULL,
+          finished_at TEXT NOT NULL
+        );
+
+        CREATE INDEX IF NOT EXISTS idx_backup_log_stash_id ON backup_log(stash_id);
+        CREATE INDEX IF NOT EXISTS idx_backup_log_started_at ON backup_log(started_at);
+      `);
+      // backup_state has NO foreign key to stashes on purpose: rows for
+      // deleted stashes must survive until the deletion has been mirrored
+      // to the backup repository (pending_delete = 1).
+      const columns = db.prepare('PRAGMA table_info(stashes)').all() as { name: string }[];
+      if (!columns.some((c) => c.name === 'backup_enabled')) {
+        db.exec('ALTER TABLE stashes ADD COLUMN backup_enabled INTEGER NOT NULL DEFAULT 1');
+      }
+    },
+  },
 ];
 
 /**

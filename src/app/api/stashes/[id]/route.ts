@@ -36,13 +36,13 @@ export async function PATCH(req: NextRequest, { params }: Params) {
     return NextResponse.json({ error: formatZodError(parsed.error) }, { status: 400 });
   }
 
-  const { name, description, tags, metadata, files, archived } = parsed.data;
+  const { name, description, tags, metadata, files, archived, backup_enabled } = parsed.data;
   const source = getAccessSource(req);
   const { ip, userAgent } = getRequestInfo(req);
 
-  // True when the PATCH carries any field other than `archived` — drives the
-  // "archive-only fast path" below (no new version, simpler logAccess).
-  // Closes BACKLOG #20.
+  // True when the PATCH carries any field other than the flag toggles —
+  // drives the "flag-only fast paths" below (no new version, simpler
+  // logAccess). Closes BACKLOG #20.
   const hasContentChanges =
     name !== undefined ||
     description !== undefined ||
@@ -50,22 +50,42 @@ export async function PATCH(req: NextRequest, { params }: Params) {
     metadata !== undefined ||
     files !== undefined;
 
-  // Handle archive toggle separately (doesn't create a new version)
-  if (archived !== undefined && !hasContentChanges) {
-    const stash = db.archiveStash(id, archived);
-    if (!stash) {
-      return NextResponse.json({ error: 'Stash not found' }, { status: 404 });
+  // Handle flag-only toggles separately (no version snapshot).
+  if (!hasContentChanges && (archived !== undefined || backup_enabled !== undefined)) {
+    let stash = null;
+    if (archived !== undefined) {
+      stash = db.archiveStash(id, archived);
+      if (!stash) {
+        return NextResponse.json({ error: 'Stash not found' }, { status: 404 });
+      }
+      db.logAccess(stash.id, source, archived ? 'archive' : 'unarchive', ip, userAgent);
     }
-    db.logAccess(stash.id, source, archived ? 'archive' : 'unarchive', ip, userAgent);
+    if (backup_enabled !== undefined) {
+      stash = db.setStashBackupEnabled(id, backup_enabled);
+      if (!stash) {
+        return NextResponse.json({ error: 'Stash not found' }, { status: 404 });
+      }
+      db.logAccess(
+        stash.id,
+        source,
+        backup_enabled ? 'backup_enable' : 'backup_disable',
+        ip,
+        userAgent,
+      );
+    }
     return NextResponse.json(stash);
   }
 
-  // archived alongside content fields — pass through to updateStash so the
-  // archive flip happens INSIDE the same transaction. Previously the route
-  // called archiveStash() (one tx) and then updateStash() (another tx); a
-  // thrown updateStash left the archive flag flipped without a corresponding
-  // content change. updateStash now accepts `archived` directly.
-  const stash = db.updateStash(id, { name, description, tags, metadata, files, archived }, source);
+  // Flags alongside content fields — pass through to updateStash so the
+  // flips happen INSIDE the same transaction. Previously the route called
+  // archiveStash() (one tx) and then updateStash() (another tx); a thrown
+  // updateStash left the archive flag flipped without a corresponding
+  // content change. updateStash accepts both flags directly.
+  const stash = db.updateStash(
+    id,
+    { name, description, tags, metadata, files, archived, backup_enabled },
+    source,
+  );
   if (!stash) {
     return NextResponse.json({ error: 'Stash not found' }, { status: 404 });
   }

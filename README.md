@@ -13,6 +13,7 @@ AI agents lose context between sessions. ClawStash gives them a persistent memor
 - **Full-text search** — find stashes by content, name, description, or tags
 - **Token-efficient** — MCP tools return summaries first, full content only on demand
 - **Version history** — every change is tracked, diffable, and restorable
+- **GitHub backup** — mirror all stashes into a GitHub repo (scheduled, on change, or manual) with "Sign in with GitHub" or a PAT — see [docs/backup.md](docs/backup.md)
 - **Mermaid diagrams** — `.mmd` files and inline ` ```mermaid ` blocks in Markdown render as diagrams (lazy-loaded, no bundle bloat)
 - **Web GUI included** — dark-themed dashboard to browse, search, and manage stashes manually
 
@@ -111,6 +112,7 @@ Create API tokens in the web GUI under **Settings > API & Tokens** (scopes: `rea
 | [API Reference](docs/api-reference.md)                    | REST endpoints, examples, query parameters             |
 | [MCP Guide](docs/mcp.md)                                  | MCP tools, token-efficient patterns, transport options |
 | [Authentication](docs/authentication.md)                  | Admin login, API tokens, scopes                        |
+| [GitHub Backup](docs/backup.md)                           | Mirror stashes into a GitHub repo: setup, security     |
 | [Deployment](docs/deployment.md)                          | Docker, CI/CD, GHCR, production setup                  |
 
 ## License

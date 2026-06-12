@@ -70,6 +70,7 @@ When a session begins, read in this order. Stop early if a file is missing.
 - Admin login gate with session management
 - Settings area with API management, token CRUD, and storage statistics
 - Version history with diff comparison and restore functionality
+- GitHub backup: mirror stashes into a GitHub repo (device-flow login or PAT, scheduled/mutation/manual sync, per-stash opt-out) -- `docs/backup.md`
 - Mobile-optimized responsive layout with collapsible sidebar
 
 ## Tech Stack
@@ -149,6 +150,7 @@ Full pattern descriptions live in `agent_docs/key-patterns.md`. CLAUDE.md keeps 
 - **Graph Viewer** (`src/components/GraphViewer.tsx`) -- canvas-based force-directed tag graph with cluster-aware layout.
 - **Mermaid Rendering** (`src/utils/mermaid.ts`, `src/components/MermaidDiagram.tsx`) -- lazy-loaded, single render entry point, zoom/pan toolbar for standalone diagrams.
 - **MCP Server** (`src/server/mcp-server.ts`, `src/server/mcp.ts`) -- factory function reads `tool-defs.ts`, Streamable HTTP at `/mcp` + stdio via `npm run mcp`.
+- **GitHub Backup** (`src/server/backup/`, `stores/backup-store.ts`) -- Git Data API sync engine, device-flow/PAT auth, AES-256-GCM token at rest, scheduler via `src/instrumentation.ts`, DB mutation listener. Refs #108, ADR-0002.
 
 ### Error Handling
 
@@ -195,14 +197,15 @@ Significant decisions are recorded as ADRs under `docs/adr/`. Triggers + format:
 
 ## Environment Variables
 
-| Variable              | Description                                                                                       | Default               | Required                                |
-| --------------------- | ------------------------------------------------------------------------------------------------- | --------------------- | --------------------------------------- |
-| `PORT`                | Server port                                                                                       | `3000`                | No                                      |
-| `DATABASE_PATH`       | Path to SQLite database file                                                                      | `./data/clawstash.db` | No                                      |
-| `NODE_ENV`            | Environment mode                                                                                  | `development`         | No                                      |
-| `ADMIN_PASSWORD`      | Admin password for login (unset = open access)                                                    | --                    | No                                      |
-| `ADMIN_SESSION_HOURS` | Admin session duration in hours (0 = unlimited)                                                   | `24`                  | No                                      |
-| `TRUST_PROXY`         | Trust `X-Forwarded-*` headers (set to `1` or `true` when behind nginx, Traefik, Cloudflare, etc.) | off                   | No (recommended behind a reverse proxy) |
+| Variable                   | Description                                                                                                                         | Default               | Required                                |
+| -------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- | --------------------- | --------------------------------------- |
+| `PORT`                     | Server port                                                                                                                         | `3000`                | No                                      |
+| `DATABASE_PATH`            | Path to SQLite database file                                                                                                        | `./data/clawstash.db` | No                                      |
+| `NODE_ENV`                 | Environment mode                                                                                                                    | `development`         | No                                      |
+| `ADMIN_PASSWORD`           | Admin password for login (unset = open access)                                                                                      | --                    | No                                      |
+| `ADMIN_SESSION_HOURS`      | Admin session duration in hours (0 = unlimited)                                                                                     | `24`                  | No                                      |
+| `TRUST_PROXY`              | Trust `X-Forwarded-*` headers (set to `1` or `true` when behind nginx, Traefik, Cloudflare, etc.)                                   | off                   | No (recommended behind a reverse proxy) |
+| `CLAWSTASH_ENCRYPTION_KEY` | Key for secrets at rest (GitHub backup token), 64 hex chars. Unset = auto-generated key file next to the DB (`data/.clawstash-key`) | auto-generated        | No                                      |
 
 Full list / details: `.env.example`.
 
@@ -304,6 +307,7 @@ npx gitnexus analyze --skip-agents-md
 - The SQLite database auto-creates in the `data/` directory on first run
 - DB singleton uses `globalThis` to survive Next.js HMR reloads in development
 - MCP is available as Streamable HTTP at `/mcp` (Next.js route handler) and as stdio via `npm run mcp`
+- `src/instrumentation.ts` starts the GitHub backup scheduler at server boot (nodejs runtime only); the stdio MCP process runs no scheduler -- its writes are caught up by the web process's next sync
 - Docker uses multi-stage build with Node 26-slim; requires python3/make/g++ for better-sqlite3 native addon compilation
 - Docker volume maps to `/app/data` for database persistence
 - Docker entrypoint (`docker-entrypoint.sh`) starts as root, chowns the data dir (fixes root-owned bind mounts), then drops to `node` (uid 1000) via `setpriv` — no `USER` directive in the Dockerfile; `ClawStashDB` additionally fail-fasts on unwritable DB paths (`db-access-check.ts`)
@@ -333,6 +337,7 @@ After every code change, check and update:
 | `MEMORY.md`                  | Architecture decisions, gotchas, external deps, user preferences                      |
 | `SCRATCHPAD.md`              | Current working context, open questions, short-lived notes                            |
 | `docs/api-reference.md`      | New API endpoints, query parameters, examples                                         |
+| `docs/backup.md`             | GitHub backup setup, sync semantics, security notes                                   |
 | `docs/mcp.md`                | New MCP tools, transport options, usage patterns                                      |
 | `docs/deployment.md`         | Docker, CI/CD, or production setup changes                                            |
 | `docs/authentication.md`     | Auth flow, token, or scope changes                                                    |

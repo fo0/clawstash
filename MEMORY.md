@@ -4,6 +4,7 @@ Session-spanning project knowledge. **Read at session start, update during work.
 
 ## Architecture Decisions
 
+- **GitHub backup (#108, 2026-06-12)** — full rationale in ADR-0002. Key choices: OAuth **device flow** (user's own OAuth app, client ID only) + PAT fallback — user explicitly wanted "login via GitHub, then pick a repo"; NO admin SSO (separate issue if ever). Sync via **Git Data API over fetch** (no git binary, no new deps). One commit per changed stash, SHA-256 hash idempotence, last-writer-wins with 422 retry. Token AES-256-GCM at rest (`CLAWSTASH_ENCRYPTION_KEY` env or auto-generated `data/.clawstash-key`). Mutation events via `ClawStashDB.setMutationListener` (stdio MCP process has no listener — caught up by scheduled runs). Scheduler boots from `src/instrumentation.ts`.
 - **Mermaid viewer zoom/pan/fullscreen (#100, 2026-04-26)** — chose `react-zoom-pan-pinch` over `panzoom` (anvaka) and `svg-pan-zoom`: React 19 compatible, native pinch + Ctrl/Cmd-modifier wheel zoom, programmatic API via wrapper ref (`zoomIn`/`zoomOut`/`setTransform`). Enhanced standalone `MermaidDiagram` component only; inline ` ```mermaid ` markdown blocks stay as static SVG (separate DOM hydration path; small diagrams in practice). Persistent zoom via `localStorage["clawstash_mermaid_zoom_${stash.id}:${filename}"]`. Initial render auto-fits to width unless a stored zoom exists.
 
 ## Gotchas & Pitfalls

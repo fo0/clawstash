@@ -261,3 +261,15 @@ Detailed pattern descriptions for clawstash internals. CLAUDE.md keeps a short i
 - Onboarding served at `/api/mcp-onboarding` as `text/plain` (no auth required) for initial AI self-onboarding via REST
 - `getMcpRefreshText(baseUrl)` wraps the MCP spec with update-focused framing for connected AI agents
 - MCP `refresh_tools` tool returns the refresh text so connected AIs can periodically update their tool knowledge
+
+## GitHub Backup (src/server/backup/, src/server/stores/backup-store.ts)
+
+- Mirrors stashes into a GitHub repo via the **Git Data API** (blobs → trees → commits → single ref update per run) over global `fetch` — no git binary, no SDK dependency. Refs #108, ADR-0002.
+- **Module layout:** `github-client.ts` (device flow + REST + Git Data), `backup-service.ts` (sync engine: hash diff, commit planning, LWW retry on 422), `backup-scheduler.ts` (globalThis-singleton: interval timer, 10 s mutation debounce, serialized run queue), `backup-crypto.ts` (AES-256-GCM token at rest + `redactSecrets`), `device-sessions.ts` (in-memory pending logins, device code stays server-side).
+- **Persistence:** migration v10 adds `app_settings` (generic KV — settings JSON, encrypted token, connection, health), `backup_state` (per-stash hash/state/commit, intentionally NO FK so deletions survive until mirrored), `backup_log` (capped at 500 rows), and `stashes.backup_enabled`.
+- **Mutation events:** `ClawStashDB.setMutationListener()` fires after successful create/update/delete/archive/import transactions (covers REST + MCP HTTP + import; stdio MCP is a separate process and is caught up by hash diffing on the next scheduled run). Listener errors are swallowed.
+- **Idempotence:** `computeStashContentHash()` excludes version/timestamps; a run with no changes makes zero GitHub calls and logs `skipped`.
+- **Boot:** `src/instrumentation.ts` (`register()`, nodejs runtime only) starts the scheduler so scheduled syncs run without any incoming request.
+- **Repo layout:** `<prefix>/<stash-id>/stash.json` (envelope) + `<prefix>/<stash-id>/files/<filename>` (raw) + `<prefix>/INDEX.md` (regenerated in the final commit of a run).
+- **Routes:** `src/app/api/backup/*` — settings/token/device (admin), sync (write), status/log (read). Shared response builder in `src/app/api/backup/_helpers.ts`. The token never appears in any response; stored errors are redacted at write time.
+- **UI:** `src/components/settings/BackupSection.tsx` (+ ConnectCard/ActivityCard) and `src/components/StashBackupControls.tsx` (viewer status bar; renders nothing when unconfigured).

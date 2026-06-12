@@ -24,6 +24,7 @@ flowchart TD
             StashRoutes["Stash Routes (/api/stashes/*)"]
             TokenRoutes["Token Routes (/api/tokens/*)"]
             AdminRoutes["Admin Routes (/api/admin/*)"]
+            BackupRoutes["Backup Routes (/api/backup/*)"]
             SpecRoutes["Spec Routes (openapi, mcp-spec, health)"]
         end
 
@@ -43,6 +44,10 @@ flowchart TD
         OpenAPI["OpenAPI Schema Generator"]
         MCPSpec["MCP Spec Generator"]
         DBSingleton["DB Singleton (globalThis HMR)"]
+        BackupScheduler["Backup Scheduler (interval + mutation debounce)"]
+        BackupService["Backup Sync Engine (hash diff, commits)"]
+        GitHubClient["GitHub Client (device flow + Git Data API)"]
+        BackupCrypto["Backup Crypto (AES-256-GCM token at rest)"]
     end
 
     subgraph "Data Layer"
@@ -52,6 +57,7 @@ flowchart TD
     subgraph "External"
         GHCR{{"GHCR (Docker Registry)"}}
         GitHub{{"GitHub (Version Check)"}}
+        GitHubAPI{{"GitHub API (Backup Target Repo)"}}
     end
 
     Browser -->|"HTTP"| Middleware
@@ -63,6 +69,7 @@ flowchart TD
     Middleware --> StashRoutes
     Middleware --> TokenRoutes
     Middleware --> AdminRoutes
+    Middleware --> BackupRoutes
     Middleware --> SpecRoutes
     Middleware --> MCPRoute
 
@@ -100,6 +107,15 @@ flowchart TD
     MCPServer --> DBSingleton
     DBSingleton --> DB
 
+    BackupRoutes --> Helpers
+    BackupRoutes --> DBSingleton
+    BackupRoutes --> BackupScheduler
+    BackupScheduler -->|"mutation listener + runs"| BackupService
+    BackupService --> BackupCrypto
+    BackupService --> GitHubClient
+    BackupService --> DBSingleton
+    GitHubClient -->|"blobs/trees/commits/refs"| GitHubAPI
+
     SpecRoutes -->|"version check"| GitHub
 
     click Browser "src/App.tsx"
@@ -129,6 +145,11 @@ flowchart TD
     click MCPSpec "src/server/mcp-spec.ts"
     click DBSingleton "src/server/singleton.ts"
     click DB "src/server/db.ts"
+    click BackupRoutes "src/app/api/backup"
+    click BackupScheduler "src/server/backup/backup-scheduler.ts"
+    click BackupService "src/server/backup/backup-service.ts"
+    click GitHubClient "src/server/backup/github-client.ts"
+    click BackupCrypto "src/server/backup/backup-crypto.ts"
 
     classDef frontend fill:#42b883,stroke:#35495e,color:#fff
     classDef backend fill:#3178c6,stroke:#265a8f,color:#fff
@@ -139,9 +160,9 @@ flowchart TD
     classDef middleware fill:#e6a817,stroke:#b8860b,color:#fff
 
     class Browser,AppRoot,Sidebar,Dashboard,StashViewer,StashEditor,GraphViewer,Settings,SearchOverlay frontend
-    class Helpers,StashRoutes,TokenRoutes,AdminRoutes,SpecRoutes backend
+    class Helpers,StashRoutes,TokenRoutes,AdminRoutes,BackupRoutes,SpecRoutes backend
     class MCPRoute,MCPServer,ToolDefs,MCPStdio mcp
-    class Auth,AuthRateLimit,Validation,SharedText,OpenAPI,MCPSpec,DBSingleton server
+    class Auth,AuthRateLimit,Validation,SharedText,OpenAPI,MCPSpec,DBSingleton,BackupScheduler,BackupService,GitHubClient,BackupCrypto server
     class DB database
-    class GHCR,GitHub,AIAgent,APIClient external
+    class GHCR,GitHub,GitHubAPI,AIAgent,APIClient external
     class Middleware middleware

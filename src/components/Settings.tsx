@@ -3,6 +3,7 @@ import type { SettingsSection, LayoutMode, Stats, TagInfo } from '../types';
 import { api } from '../api';
 import { formatExportTimestamp } from '../utils/format';
 import ApiManager from './api/ApiManager';
+import BackupSection from './settings/BackupSection';
 import Spinner from './shared/Spinner';
 
 // --- Welcome Section ---
@@ -62,6 +63,28 @@ const WELCOME_CARDS: {
         <path d="m18 10 2-2a1.5 1.5 0 0 0-3-3l-2 2" />
         <path d="m8 16-1.5 1.5" />
         <path d="M2 2l4 4" />
+      </svg>
+    ),
+  },
+  {
+    section: 'backup',
+    title: 'GitHub Backup',
+    description: 'Mirror stashes into a GitHub repository — scheduled, on change, or manually.',
+    color: '#f783ac',
+    icon: (
+      <svg
+        width="22"
+        height="22"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      >
+        <path d="M4 14.899A7 7 0 1 1 15.71 8h1.79a4.5 4.5 0 0 1 2.5 8.242" />
+        <path d="M12 12v9" />
+        <path d="m16 16-4-4-4 4" />
       </svg>
     ),
   },
@@ -679,6 +702,7 @@ export default function Settings({
         <GeneralSection layout={layout} onLayoutChange={onLayoutChange} />
       )}
       {activeSection === 'api' && <ApiManager embedded />}
+      {activeSection === 'backup' && <BackupSection />}
       {activeSection === 'storage' && <StorageSection />}
       {activeSection === 'about' && <AboutSection />}
     </div>

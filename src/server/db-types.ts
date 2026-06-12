@@ -22,6 +22,7 @@ export interface Stash {
   metadata: Record<string, unknown>;
   version: number;
   archived: boolean;
+  backup_enabled: boolean;
   created_at: string;
   updated_at: string;
   files: StashFile[];
@@ -72,6 +73,7 @@ export interface StashListItem {
   tags: string[];
   version: number;
   archived: boolean;
+  backup_enabled: boolean;
   created_at: string;
   updated_at: string;
   total_size: number;
@@ -86,6 +88,7 @@ export interface StashMeta {
   metadata: Record<string, unknown>;
   version: number;
   archived: boolean;
+  backup_enabled: boolean;
   created_at: string;
   updated_at: string;
   total_size: number;
@@ -141,6 +144,10 @@ export interface UpdateStashInput {
   // alone, callers should use `archiveStash()` instead — that path skips
   // the version snapshot per the documented archive semantics.
   archived?: boolean;
+  // Same transactional semantics as `archived`. When set alone, callers
+  // should use `setStashBackupEnabled()` instead — that path skips the
+  // version snapshot (the flag is sync bookkeeping, not content).
+  backup_enabled?: boolean;
 }
 
 export interface ListStashesOptions {
@@ -220,3 +227,58 @@ export interface StashGraphResult {
   time_range: { min: string; max: string };
   total_stashes: number;
 }
+
+// === GitHub Backup ===
+
+export type BackupTrigger = 'scheduled' | 'mutation' | 'manual';
+
+export type BackupSyncState = 'idle' | 'pending' | 'syncing' | 'error';
+
+export interface BackupStashState {
+  stash_id: string;
+  stash_name: string;
+  content_hash: string;
+  state: BackupSyncState;
+  pending_delete: boolean;
+  last_synced_at: string | null;
+  last_commit_sha: string | null;
+  error: string | null;
+  updated_at: string;
+}
+
+export interface BackupLogEntry {
+  id: string;
+  run_id: string;
+  stash_id: string | null;
+  stash_name: string | null;
+  trigger: BackupTrigger;
+  status: 'success' | 'error' | 'skipped';
+  action: string | null;
+  message: string;
+  commit_sha: string | null;
+  started_at: string;
+  finished_at: string;
+}
+
+/** Minimal stash projection used by the backup sync to pick candidates. */
+export interface BackupCandidate {
+  id: string;
+  name: string;
+  backup_enabled: boolean;
+}
+
+export type StashMutationAction = 'create' | 'update' | 'delete' | 'import';
+
+export interface StashMutationEvent {
+  action: StashMutationAction;
+  /** Unset for whole-database events (`import`). */
+  stashId?: string;
+  /** Last known stash name (needed for delete events — the row is gone). */
+  name?: string;
+}
+
+/**
+ * Fired by ClawStashDB after a successful mutation transaction. Listener
+ * errors are swallowed — a broken listener must never fail the mutation.
+ */
+export type StashMutationListener = (event: StashMutationEvent) => void;

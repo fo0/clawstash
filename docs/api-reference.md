@@ -82,6 +82,27 @@ See [authentication.md](authentication.md) for token creation and scopes.
 > exports (a ZIP from a different server) therefore do NOT carry their
 > tokens across — re-issue tokens / re-login on the target server if needed.
 
+### GitHub Backup
+
+Mirror stashes into a GitHub repository — full guide: [backup.md](backup.md).
+
+| Endpoint                      | Method | Auth  | Description                                                            |
+| ----------------------------- | ------ | ----- | ---------------------------------------------------------------------- |
+| `/api/backup/settings`        | GET    | admin | Current configuration, connection, health (never includes the token)   |
+| `/api/backup/settings`        | PUT    | admin | Replace configuration (repo, branch, prefix, interval, delete mode, …) |
+| `/api/backup/token`           | POST   | admin | Connect with a PAT (`{"token": "…"}`); verified, then stored encrypted |
+| `/api/backup/token`           | DELETE | admin | Disconnect (remove stored token)                                       |
+| `/api/backup/device/start`    | POST   | admin | Start the OAuth device-flow login (`{"clientId": "…"}` optional)       |
+| `/api/backup/device/poll`     | POST   | admin | Poll a pending login (`{"sessionId": "…"}`)                            |
+| `/api/backup/github/repos`    | GET    | admin | Repositories visible to the connected account                          |
+| `/api/backup/github/branches` | GET    | admin | Branches of a candidate repo (`?owner=&repo=`)                         |
+| `/api/backup/sync`            | POST   | write | Back up now (`{"stashId": "…"?, "force": bool?}`; empty body = all)    |
+| `/api/backup/status`          | GET    | read  | Configuration summary, health, per-stash sync states (`?stashId=`)     |
+| `/api/backup/log`             | GET    | read  | Recent sync log (`?stashId=&limit=`, max 200)                          |
+
+> Per-stash opt-out: `PATCH /api/stashes/:id` with `{"backup_enabled": false}` excludes a stash
+> from the mirror (its mirrored copy is removed on the next sync, subject to the delete mode).
+
 ### System
 
 | Endpoint              | Method | Description                                                                 |

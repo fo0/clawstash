@@ -19,6 +19,7 @@ import { DELETE_CONFIRM_TIMEOUT_MS } from '../utils/constants';
 import { escapeHtml } from '../utils/html';
 import MermaidDiagram from './MermaidDiagram';
 import Spinner from './shared/Spinner';
+import StashBackupControls from './StashBackupControls';
 
 interface Props {
   stash: Stash;
@@ -733,6 +734,8 @@ export default function StashViewer({
           </button>
         </div>
       </div>
+
+      <StashBackupControls stash={stash} onStashUpdated={onStashUpdated} />
 
       {stash.description && (
         <div
