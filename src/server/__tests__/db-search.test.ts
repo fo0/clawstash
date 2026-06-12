@@ -184,6 +184,25 @@ describe('ClawStashDB searchStashes', () => {
     });
   });
 
+  describe('snippet ambiguity (#75)', () => {
+    it('does not emit ambiguous "****" when a match sits next to literal ** in content', () => {
+      // User content contains literal "**" (markdown bold / **kwargs) directly
+      // adjacent to a term that will be highlighted. Naive sentinel conversion
+      // would produce "****kwargs**" — ambiguous markdown. The fix strips the
+      // user's literal "**" so only the genuine highlight markers remain.
+      db.createStash({
+        name: 'kwargs-doc',
+        files: [{ filename: 'a.py', content: 'pass the **kwargs along to the caller' }],
+      });
+      const r = db.searchStashes('kwargs');
+      const snippet = r.stashes[0]?.snippets?.file_content ?? '';
+      // A real highlight marker must be present
+      expect(snippet).toContain('**');
+      // …but never a run of three-or-more asterisks (the ambiguity #75 flags)
+      expect(snippet).not.toMatch(/\*{3,}/);
+    });
+  });
+
   describe('pagination', () => {
     it('clamps invalid page/limit values to safe defaults', () => {
       db.createStash({
