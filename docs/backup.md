@@ -17,10 +17,10 @@ Uses the GitHub OAuth **device flow**: no client secret, no callback URL, works 
 
 One-time setup:
 
-1. On GitHub: **Settings → Developer settings → OAuth Apps → New OAuth App**.
+1. On GitHub: **Settings → Developer settings → OAuth Apps → New OAuth App** — or click **create a GitHub OAuth app** in ClawStash's connect card, which opens the form pre-filled.
    - Name: anything (e.g. `ClawStash Backup`), Homepage: anything.
-   - Authorization callback URL: any placeholder (not used by the device flow).
-2. After creating the app, **enable "Device Flow"** in the app settings and copy the **Client ID**.
+   - Authorization callback URL: any placeholder (not used by the device flow; the pre-filled form uses `http://localhost`).
+2. Tick **"Enable Device Flow"** (on the creation form, or later in the app settings) and copy the **Client ID**.
 3. In ClawStash: paste the Client ID, click **Sign in with GitHub**, open the shown link, and enter the one-time code.
 
 The resulting token has the `repo` scope (GitHub OAuth apps have no narrower repo-level scope). If you want tighter scoping, use a fine-grained PAT instead.
@@ -29,8 +29,8 @@ The resulting token has the `repo` scope (GitHub OAuth apps have no narrower rep
 
 Best minimal-scope option and ideal for headless setups:
 
-1. On GitHub: **Settings → Developer settings → Fine-grained tokens → Generate new token**.
-2. Repository access: **Only select repositories** → your backup repo.
+1. On GitHub: **Settings → Developer settings → Fine-grained tokens → Generate new token** — or click **create one on GitHub** in ClawStash's connect card, which opens the form pre-filled with name, description, and the `Contents` permission.
+2. Repository access: **Only select repositories** → your backup repo (cannot be pre-filled — always set this manually).
 3. Permissions: **Contents → Read and write**. Nothing else (GitHub automatically adds the mandatory **Metadata → Read**).
 4. Paste the token into **connect with a personal access token** in ClawStash.
 
