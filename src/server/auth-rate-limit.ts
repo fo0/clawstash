@@ -134,6 +134,10 @@ export function resetAuthAttempts(scope: Scope, ip: string): void {
  * truth — drift between the two surfaces would mean rate-limit IP
  * extraction and OpenAPI `servers[].url` could disagree about whether
  * `x-forwarded-*` is trusted.
+ *
+ * NOTE: `isHttpsRequest()` in `src/middleware.ts` INLINES this same
+ * two-value check (the Edge runtime cannot import this Node-only module).
+ * If the accepted values ever change, update both places together.
  */
 export function isTrustedProxy(): boolean {
   return process.env.TRUST_PROXY === '1' || process.env.TRUST_PROXY === 'true';

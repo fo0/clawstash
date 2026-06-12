@@ -22,6 +22,10 @@ describe('sanitizeLogValue', () => {
     expect(sanitizeLogValue('a\x9bb\u2028c\u2029d')).toBe('abcd');
   });
 
+  it('strips bidi direction controls (Trojan-source display spoofing guard)', () => {
+    expect(sanitizeLogValue('a\u202eb\u200fc\u2066d')).toBe('abcd');
+  });
+
   it("falls back to 'unknown' for undefined and empty input", () => {
     expect(sanitizeLogValue(undefined)).toBe('unknown');
     expect(sanitizeLogValue('')).toBe('unknown');
