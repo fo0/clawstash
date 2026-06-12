@@ -55,6 +55,7 @@ docker compose up -d
 Open http://localhost:3000 — done. Database persists in `./data/`.
 
 > Change port mapping (e.g. `"8080:3000"`) for a different port. Uncomment `ADMIN_PASSWORD` to protect the instance.
+> If login fails and the logs show `SQLITE_READONLY` (data directory created by an older version), run `sudo chown -R 1000:1000 ./data` once and restart — details in [Deployment → Bind mounts & file permissions](docs/deployment.md#bind-mounts--file-permissions).
 
 After starting, point your AI agent at the onboarding endpoint to self-configure:
 

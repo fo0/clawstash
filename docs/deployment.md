@@ -55,6 +55,39 @@ docker run -p 3000:3000 \
   ghcr.io/fo0/clawstash:latest
 ```
 
+## Bind mounts & file permissions
+
+The server process inside the container runs as the unprivileged `node` user (**uid 1000**), not as root. The container _starts_ as root only so the entrypoint can fix ownership of the data directory, then immediately drops privileges before launching the app.
+
+- **Named volume** (`clawstash-data:/app/data`, the default in `docker-compose.yml`): works out of the box — Docker seeds the volume with the image's ownership.
+- **Bind mount** (`./data:/app/data`): on Linux hosts Docker creates `./data` owned by `root:root`. The entrypoint chowns the data directory to `node` on every start, so this also works out of the box.
+
+You only need to intervene in these cases:
+
+| Case                                                                      | Fix                                                                            |
+| ------------------------------------------------------------------------- | ------------------------------------------------------------------------------ |
+| Running an **older image** (which started directly as `node`)             | One-time on the host: `sudo chown -R 1000:1000 ./data`, then restart           |
+| Compose file sets a custom **`user:`** (entrypoint then can't chown)      | Make the mounted directory writable for that uid: `sudo chown -R <uid> ./data` |
+| Mount where chown is impossible (NFS `root_squash`, read-only mount, ...) | Ensure uid 1000 can write the directory by other means, or use a named volume  |
+
+### Symptom: login fails / `SQLITE_READONLY`
+
+If the data directory or database file is not writable by uid 1000, the logs show one of:
+
+```
+SqliteError: attempt to write a readonly database  (code: 'SQLITE_READONLY')
+SqliteError: unable to open database file           (code: 'SQLITE_CANTOPEN')
+ClawStash cannot start: the database directory '/app/data' is not writable ...
+```
+
+Typical effect: the server starts and pages load, but **admin login fails** (creating a session is the first database write). Fix the ownership as above and restart the container:
+
+```bash
+docker compose down
+sudo chown -R 1000:1000 ./data
+docker compose up -d
+```
+
 ## Node.js (without Docker)
 
 **Prerequisites:** Node.js 26+ (project pins Node 26 in Docker; `better-sqlite3` 12.x requires ≥ 20)

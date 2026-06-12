@@ -27,6 +27,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/), and this
 
 ### Fixed
 
+- Docker bind mounts (`./data:/app/data`) no longer break with `SQLITE_READONLY` / failing admin login: the container now starts as root, fixes data-directory ownership, and drops privileges to `node` (uid 1000) via `setpriv` before launching the server. Databases created by older root-running image versions are repaired automatically. Additionally, `ClawStashDB` fails fast with an actionable error when the database path is not writable, instead of letting SQLite silently fall back to read-only mode
 - Multiple security and atomicity hardening rounds (#97 R1, #99 R2, #105 R3): metadata-array rejection, token-validate rate limit, FTS sentinel collision, transactional archive+update, useClickOutside touch on iOS Safari, popstate cancellation, mermaid hydration race, build-info NaN fallback, and many more — see #96 for the rolling list
 
 ## [1.0.0] - 2026-02-11

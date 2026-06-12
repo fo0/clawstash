@@ -8,6 +8,8 @@ services:
       - '${PORT:-3000}:3000'
     volumes:
       - clawstash-data:/app/data
+      # Bind mount alternative (entrypoint fixes ownership automatically):
+      # - ./data:/app/data
     environment:
       - NODE_ENV=production
       - PORT=3000
