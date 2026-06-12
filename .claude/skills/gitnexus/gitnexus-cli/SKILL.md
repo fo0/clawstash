@@ -12,16 +12,19 @@ All commands work via `npx` — no global install required.
 ### analyze — Build or refresh the index
 
 ```bash
-npx gitnexus analyze
+npx gitnexus analyze --skip-agents-md
 ```
 
-Run from the project root. This parses all source files, builds the knowledge graph, writes it to `.gitnexus/`, and generates CLAUDE.md / AGENTS.md context files.
+Run from the project root. This parses all source files, builds the knowledge graph, and writes it to `.gitnexus/`. Without `--skip-agents-md` it ALSO rewrites the CLAUDE.md / AGENTS.md context sections — in this project those files are **optimizer-managed**, so the flag is mandatory on every `analyze` (see note below).
 
 | Flag                | Effect                                                                                               |
 | ------------------- | ---------------------------------------------------------------------------------------------------- |
+| `--skip-agents-md`  | Preserve custom AGENTS.md/CLAUDE.md section edits — **mandatory in this project, on every analyze**   |
 | `--force`           | Force full re-index even if up to date                                                               |
 | `--embeddings`      | Enable embedding generation for semantic search (off by default)                                     |
 | `--drop-embeddings` | Drop existing embeddings on rebuild. By default, an `analyze` without `--embeddings` preserves them. |
+
+> **Why `--skip-agents-md` is mandatory:** CLAUDE.md / AGENTS.md are generated and size-guarded by the optimizer (40k limit, managed `<!-- gitnexus:start/end -->` block). An unguarded `analyze` rewrites those sections and churns the stats on every index rebuild. Only `analyze` writes these files — `status`, `index`, `clean`, and `list` never touch them (`wiki` writes its own docs, not CLAUDE.md).
 
 **When to run:** First time in a project, after major code changes, or when `gitnexus://repo/{name}/context` reports the index is stale. In Claude Code, a PostToolUse hook runs `analyze` automatically after `git commit` and `git merge`, preserving embeddings if previously generated.
 

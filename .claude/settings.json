@@ -25,7 +25,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "if echo \"$CLAUDE_TOOL_INPUT\" | grep -qE 'git (commit|merge)'; then cd \"$CLAUDE_PROJECT_DIR\" && npx gitnexus analyze --embeddings; fi"
+            "command": "if echo \"$CLAUDE_TOOL_INPUT\" | grep -qE 'git (commit|merge)'; then cd \"$CLAUDE_PROJECT_DIR\" && npx gitnexus analyze --skip-agents-md --embeddings; fi"
           }
         ]
       }
