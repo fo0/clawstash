@@ -15,6 +15,15 @@ import type {
   StashGraphResult,
   StashVersionListItem,
   StashVersion,
+  BackupSettings,
+  BackupSettingsResponse,
+  BackupRepoInfo,
+  BackupBranchesResponse,
+  BackupDeviceStartResponse,
+  BackupDevicePollResponse,
+  BackupStatusResponse,
+  BackupLogEntry,
+  BackupRunResult,
 } from './types';
 
 const BASE = '/api/stashes';
@@ -258,5 +267,85 @@ export const api = {
       throw new Error(body.error || `HTTP ${res.status}`);
     }
     return res.json();
+  },
+
+  // GitHub backup (refs #108)
+  getBackupSettings(): Promise<BackupSettingsResponse> {
+    return request('/api/backup/settings', { headers: getHeaders() });
+  },
+
+  saveBackupSettings(settings: BackupSettings): Promise<BackupSettingsResponse> {
+    return request('/api/backup/settings', {
+      method: 'PUT',
+      headers: getHeaders(),
+      body: JSON.stringify(settings),
+    });
+  },
+
+  connectBackupPat(token: string): Promise<BackupSettingsResponse> {
+    return request('/api/backup/token', {
+      method: 'POST',
+      headers: getHeaders(),
+      body: JSON.stringify({ token }),
+    });
+  },
+
+  disconnectBackup(): Promise<BackupSettingsResponse> {
+    return request('/api/backup/token', { method: 'DELETE', headers: getHeaders() });
+  },
+
+  startBackupDeviceFlow(clientId?: string): Promise<BackupDeviceStartResponse> {
+    return request('/api/backup/device/start', {
+      method: 'POST',
+      headers: getHeaders(),
+      body: JSON.stringify(clientId ? { clientId } : {}),
+    });
+  },
+
+  pollBackupDeviceFlow(sessionId: string): Promise<BackupDevicePollResponse> {
+    return request('/api/backup/device/poll', {
+      method: 'POST',
+      headers: getHeaders(),
+      body: JSON.stringify({ sessionId }),
+    });
+  },
+
+  listBackupRepos(): Promise<{ repos: BackupRepoInfo[] }> {
+    return request('/api/backup/github/repos', { headers: getHeaders() });
+  },
+
+  listBackupBranches(owner: string, repo: string): Promise<BackupBranchesResponse> {
+    const qs = new URLSearchParams({ owner, repo });
+    return request(`/api/backup/github/branches?${qs}`, { headers: getHeaders() });
+  },
+
+  triggerBackupSync(opts?: { stashId?: string; force?: boolean }): Promise<BackupRunResult> {
+    return request('/api/backup/sync', {
+      method: 'POST',
+      headers: getHeaders(),
+      body: JSON.stringify(opts ?? {}),
+    });
+  },
+
+  getBackupStatus(stashId?: string): Promise<BackupStatusResponse> {
+    const qs = stashId ? `?stashId=${encodeURIComponent(stashId)}` : '';
+    return request(`/api/backup/status${qs}`, { headers: getHeaders() });
+  },
+
+  getBackupLog(params?: { stashId?: string; limit?: number }): Promise<{
+    entries: BackupLogEntry[];
+  }> {
+    const qs = new URLSearchParams();
+    if (params?.stashId) qs.set('stashId', params.stashId);
+    if (params?.limit) qs.set('limit', String(params.limit));
+    return request(`/api/backup/log${qs.toString() ? `?${qs}` : ''}`, { headers: getHeaders() });
+  },
+
+  setStashBackupEnabled(id: string, enabled: boolean): Promise<Stash> {
+    return request(`${BASE}/${id}`, {
+      method: 'PATCH',
+      headers: getHeaders(),
+      body: JSON.stringify({ backup_enabled: enabled }),
+    });
   },
 };

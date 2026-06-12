@@ -30,6 +30,7 @@ function makeStash(overrides: Partial<StashListItem>): StashListItem {
     tags: [],
     version: 1,
     archived: false,
+    backup_enabled: true,
     created_at: '2026-01-01T00:00:00.000Z',
     updated_at: '2026-01-01T00:00:00.000Z',
     total_size: 0,

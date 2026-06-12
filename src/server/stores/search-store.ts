@@ -16,6 +16,7 @@ function rowToListItem(row: Record<string, unknown>): Omit<StashListItem, 'files
     tags: safeParseTags(row.tags),
     version: (row.version as number) || 1,
     archived: (row.archived as number) === 1,
+    backup_enabled: (row.backup_enabled as number) === 1,
     created_at: row.created_at as string,
     updated_at: row.updated_at as string,
   };

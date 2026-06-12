@@ -6484,3 +6484,169 @@ body {
   cursor: pointer;
   max-width: 360px;
 }
+
+/* === GitHub Backup (refs #108) === */
+
+.backup-form-row {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 12px;
+  flex-wrap: wrap;
+}
+
+.backup-form-row .form-input {
+  flex: 1;
+  min-width: 200px;
+}
+
+.backup-field-label {
+  display: block;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  margin: 12px 0 6px;
+}
+
+.backup-toggle-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 14px 0;
+  font-size: 13px;
+  color: var(--text-primary);
+  cursor: pointer;
+}
+
+.backup-link-btn {
+  background: none;
+  border: none;
+  padding: 0;
+  color: var(--accent-blue, #58a6ff);
+  font-size: inherit;
+  cursor: pointer;
+  text-decoration: underline;
+}
+
+.backup-device-pending {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.backup-device-code {
+  font-family: var(--font-mono, monospace);
+  font-size: 24px;
+  font-weight: 700;
+  letter-spacing: 3px;
+  padding: 10px 18px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius);
+  user-select: all;
+}
+
+.backup-device-waiting {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.backup-state-badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-size: 11px;
+  font-weight: 500;
+  white-space: nowrap;
+  background: var(--bg-secondary);
+  color: var(--text-secondary);
+}
+
+.backup-state-idle,
+.backup-log-success {
+  background: rgba(63, 185, 80, 0.15);
+  color: var(--accent-green, #3fb950);
+}
+
+.backup-state-pending,
+.backup-state-syncing,
+.backup-log-skipped {
+  background: rgba(210, 153, 34, 0.15);
+  color: var(--accent-orange);
+}
+
+.backup-state-error,
+.backup-log-error {
+  background: rgba(248, 81, 73, 0.15);
+  color: #f85149;
+}
+
+.backup-state-off {
+  background: var(--bg-secondary);
+  color: var(--text-secondary);
+}
+
+.backup-error-text {
+  color: #f85149;
+  font-size: 12px;
+}
+
+.backup-table-wrap {
+  margin-top: 12px;
+  overflow-x: auto;
+}
+
+.backup-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.backup-table th {
+  text-align: left;
+  padding: 6px 10px;
+  color: var(--text-secondary);
+  font-weight: 600;
+  border-bottom: 1px solid var(--border-color);
+  white-space: nowrap;
+}
+
+.backup-table td {
+  padding: 6px 10px;
+  border-bottom: 1px solid var(--border-color);
+  vertical-align: top;
+}
+
+.backup-table code {
+  font-size: 12px;
+}
+
+.backup-log-header {
+  margin-top: 20px;
+}
+
+/* Per-stash backup bar in the viewer */
+.viewer-backup-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  padding: 8px 0;
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.viewer-backup-label {
+  font-weight: 600;
+  font-size: 12px;
+}
+
+.viewer-backup-info {
+  font-size: 12px;
+}
+
+.viewer-backup-ok {
+  color: var(--accent-green, #3fb950);
+  font-size: 12px;
+}

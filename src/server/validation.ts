@@ -131,6 +131,7 @@ export const UpdateStashSchema = z.object({
   metadata: MetadataSchema.optional(),
   files: z.array(FileSchema).max(MAX_FILES).optional(),
   archived: z.boolean().optional(),
+  backup_enabled: z.boolean().optional(),
 });
 
 // --- Import Schemas ---
@@ -154,6 +155,7 @@ export const ImportStashRowSchema = z.object({
   metadata: JsonStringSchema.nullable().optional(),
   version: z.number().int().min(0).nullable().optional(),
   archived: z.union([z.boolean(), z.number().int(), z.null()]).optional(),
+  backup_enabled: z.union([z.boolean(), z.number().int(), z.null()]).optional(),
   created_at: IsoDateStringSchema.nullable().optional(),
   updated_at: IsoDateStringSchema.nullable().optional(),
 });
@@ -198,6 +200,86 @@ export const CreateTokenSchema = z.object({
     .min(1)
     .transform((s) => [...new Set(s)])
     .optional(),
+});
+
+// --- GitHub Backup Schemas (refs #108) ---
+
+// GitHub logins: alphanumeric + inner hyphens. Repo names additionally
+// allow dot and underscore. Empty string = "not chosen yet" (settings can
+// be saved before a repo is picked).
+const GITHUB_OWNER_PATTERN = /^[A-Za-z0-9](?:[A-Za-z0-9-]*[A-Za-z0-9])?$/;
+const GITHUB_REPO_PATTERN = /^[A-Za-z0-9._-]+$/;
+// Pragmatic subset of valid git ref names — covers `main`, `backups/prod`
+// etc. while rejecting whitespace and ref-syntax metacharacters.
+const GIT_BRANCH_PATTERN = /^[A-Za-z0-9._/-]+$/;
+const REPO_PATH_PREFIX_PATTERN = /^[A-Za-z0-9._/-]*$/;
+
+export const GithubOwnerSchema = z
+  .string()
+  .max(100)
+  .refine((v) => v === '' || GITHUB_OWNER_PATTERN.test(v), 'Invalid repository owner');
+
+export const GithubRepoNameSchema = z
+  .string()
+  .max(150)
+  .refine((v) => v === '' || GITHUB_REPO_PATTERN.test(v), 'Invalid repository name');
+
+export const BackupSettingsSchema = z.object({
+  enabled: z.boolean(),
+  repoOwner: GithubOwnerSchema,
+  repoName: GithubRepoNameSchema,
+  branch: z
+    .string()
+    .min(1)
+    .max(200)
+    .regex(GIT_BRANCH_PATTERN, 'Invalid branch name')
+    .refine((v) => !v.includes('..'), 'Invalid branch name'),
+  pathPrefix: z
+    .string()
+    .max(200)
+    .regex(REPO_PATH_PREFIX_PATTERN, 'Path prefix may contain letters, digits, ., _, - and /')
+    .refine((v) => !v.includes('..'), 'Path prefix must not contain ".."'),
+  intervalMinutes: z.union([
+    z.literal(0),
+    z.literal(5),
+    z.literal(15),
+    z.literal(60),
+    z.literal(360),
+    z.literal(1440),
+  ]),
+  deleteMode: z.enum(['remove', 'keep']),
+  commitAuthorName: z.string().min(1).max(100),
+  commitAuthorEmail: z.string().min(3).max(200).email(),
+  oauthClientId: z
+    .string()
+    .max(100)
+    .regex(/^[A-Za-z0-9._-]*$/, 'Invalid OAuth client ID'),
+});
+
+export const BackupPatSchema = z.object({
+  token: z
+    .string()
+    .min(8, 'Token is too short')
+    .max(300)
+    .regex(/^\S+$/, 'Token must not contain whitespace'),
+});
+
+export const BackupDeviceStartSchema = z.object({
+  clientId: z
+    .string()
+    .min(10)
+    .max(100)
+    .regex(/^[A-Za-z0-9._-]+$/, 'Invalid OAuth client ID')
+    .optional(),
+});
+
+export const BackupDevicePollSchema = z.object({
+  sessionId: z.string().uuid(),
+});
+
+export const BackupSyncSchema = z.object({
+  stashId: z.string().min(1).max(100).optional(),
+  force: z.boolean().optional(),
 });
 
 // --- Helpers ---

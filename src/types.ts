@@ -15,6 +15,7 @@ export interface Stash {
   metadata: Record<string, unknown>;
   version: number;
   archived: boolean;
+  backup_enabled: boolean;
   created_at: string;
   updated_at: string;
   files: StashFile[];
@@ -27,6 +28,7 @@ export interface StashListItem {
   tags: string[];
   version: number;
   archived: boolean;
+  backup_enabled: boolean;
   created_at: string;
   updated_at: string;
   total_size: number;
@@ -84,7 +86,7 @@ export interface FileInput {
 export type ViewMode = 'home' | 'view' | 'edit' | 'new' | 'settings' | 'graph';
 export type LayoutMode = 'grid' | 'list';
 export type SortMode = 'updated' | 'created' | 'name' | 'size';
-export type SettingsSection = 'welcome' | 'general' | 'api' | 'storage' | 'about';
+export type SettingsSection = 'welcome' | 'general' | 'api' | 'backup' | 'storage' | 'about';
 export type ApiTab = 'tokens' | 'rest' | 'mcp';
 export type TokenScope = 'read' | 'write' | 'admin' | 'mcp';
 
@@ -198,4 +200,115 @@ export interface StashVersion {
   created_by: string;
   created_at: string;
   files: StashVersionFile[];
+}
+
+// === GitHub Backup (refs #108) ===
+
+export interface BackupSettings {
+  enabled: boolean;
+  repoOwner: string;
+  repoName: string;
+  branch: string;
+  pathPrefix: string;
+  intervalMinutes: number;
+  deleteMode: 'remove' | 'keep';
+  commitAuthorName: string;
+  commitAuthorEmail: string;
+  oauthClientId: string;
+}
+
+export interface BackupConnection {
+  method: 'oauth' | 'pat';
+  login: string;
+  connectedAt: string;
+}
+
+export interface BackupHealth {
+  consecutiveFailures: number;
+  lastRunAt: string | null;
+  lastRunStatus: 'success' | 'error' | 'skipped' | null;
+  lastError: string | null;
+}
+
+export interface BackupSettingsResponse {
+  settings: BackupSettings;
+  connection: BackupConnection | null;
+  tokenSet: boolean;
+  health: BackupHealth;
+  unhealthy: boolean;
+  schedulerActive: boolean;
+}
+
+export interface BackupRepoInfo {
+  fullName: string;
+  defaultBranch: string;
+  private: boolean;
+  canPush: boolean;
+}
+
+export interface BackupBranchesResponse {
+  branches: string[];
+  defaultBranch: string;
+  canPush: boolean;
+}
+
+export interface BackupDeviceStartResponse {
+  sessionId: string;
+  userCode: string;
+  verificationUri: string;
+  interval: number;
+  expiresIn: number;
+}
+
+export interface BackupDevicePollResponse {
+  status: 'pending' | 'connected' | 'error';
+  login?: string;
+  error?: string;
+}
+
+export type BackupSyncState = 'idle' | 'pending' | 'syncing' | 'error';
+
+export interface BackupStashState {
+  stash_id: string;
+  stash_name: string;
+  content_hash: string;
+  state: BackupSyncState;
+  pending_delete: boolean;
+  last_synced_at: string | null;
+  last_commit_sha: string | null;
+  error: string | null;
+  updated_at: string;
+}
+
+export interface BackupStatusResponse {
+  configured: boolean;
+  enabled: boolean;
+  repoFullName: string | null;
+  branch: string;
+  intervalMinutes: number;
+  health: BackupHealth;
+  unhealthy: boolean;
+  states: BackupStashState[];
+}
+
+export interface BackupLogEntry {
+  id: string;
+  run_id: string;
+  stash_id: string | null;
+  stash_name: string | null;
+  trigger: 'scheduled' | 'mutation' | 'manual';
+  status: 'success' | 'error' | 'skipped';
+  action: string | null;
+  message: string;
+  commit_sha: string | null;
+  started_at: string;
+  finished_at: string;
+}
+
+export interface BackupRunResult {
+  status: 'success' | 'error' | 'skipped' | 'not_configured';
+  message: string;
+  synced: number;
+  removed: number;
+  commitSha: string | null;
 }

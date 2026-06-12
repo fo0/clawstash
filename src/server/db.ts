@@ -10,8 +10,14 @@ import { TokenStore } from './stores/token-store';
 import { SessionStore } from './stores/session-store';
 import { VersionStore } from './stores/version-store';
 import { SearchStore } from './stores/search-store';
+import { BackupStore } from './stores/backup-store';
 import { safeParseTags, safeParseMetadata, clampPagination } from './stores/_parsers';
 import type {
+  BackupCandidate,
+  BackupLogEntry,
+  BackupStashState,
+  StashMutationEvent,
+  StashMutationListener,
   Stash,
   StashFile,
   StashVersion,
@@ -41,6 +47,14 @@ import type {
 // './db'`) keep working unchanged. The actual declarations now live in
 // db-types.ts. See refactor PR for #129.
 export type {
+  BackupCandidate,
+  BackupLogEntry,
+  BackupStashState,
+  BackupSyncState,
+  BackupTrigger,
+  StashMutationAction,
+  StashMutationEvent,
+  StashMutationListener,
   Stash,
   StashFile,
   StashVersionFile,
@@ -72,6 +86,12 @@ export class ClawStashDB {
   private sessions: SessionStore;
   private versions: VersionStore;
   private search: SearchStore;
+  private backup: BackupStore;
+  // Fired after successful mutation transactions (create/update/delete/
+  // archive/import). Used by the backup scheduler to debounce repo syncs.
+  // Process-local: the stdio MCP server runs without a listener and is
+  // caught up by the web process's next scheduled sync.
+  private mutationListener: StashMutationListener | null = null;
 
   constructor(dbPath?: string) {
     const resolvedPath = dbPath || process.env.DATABASE_PATH || './data/clawstash.db';
@@ -101,6 +121,21 @@ export class ClawStashDB {
     // it touches stashes + stash_files with its own pagination / filter
     // SQL that we don't duplicate.
     this.search = new SearchStore(this.db, (options) => this.listStashes(options));
+    this.backup = new BackupStore(this.db);
+  }
+
+  setMutationListener(listener: StashMutationListener | null): void {
+    this.mutationListener = listener;
+  }
+
+  private fireMutation(event: StashMutationEvent): void {
+    if (!this.mutationListener) return;
+    try {
+      this.mutationListener(event);
+    } catch (err) {
+      // A broken listener must never fail the mutation itself.
+      console.error('[clawstash] mutation listener failed:', err);
+    }
   }
 
   private init() {
@@ -117,6 +152,7 @@ export class ClawStashDB {
       metadata: safeParseMetadata(row.metadata),
       version: (row.version as number) || 1,
       archived: (row.archived as number) === 1,
+      backup_enabled: (row.backup_enabled as number) === 1,
       created_at: row.created_at as string,
       updated_at: row.updated_at as string,
     };
@@ -130,6 +166,7 @@ export class ClawStashDB {
       tags: safeParseTags(row.tags),
       version: (row.version as number) || 1,
       archived: (row.archived as number) === 1,
+      backup_enabled: (row.backup_enabled as number) === 1,
       created_at: row.created_at as string,
       updated_at: row.updated_at as string,
     };
@@ -253,6 +290,8 @@ export class ClawStashDB {
 
     const files = transaction();
 
+    this.fireMutation({ action: 'create', stashId: id, name: input.name || '' });
+
     return {
       id,
       name: input.name || '',
@@ -261,6 +300,7 @@ export class ClawStashDB {
       metadata: input.metadata || {},
       version: 1,
       archived: false,
+      backup_enabled: true,
       created_at: now,
       updated_at: now,
       files,
@@ -462,6 +502,10 @@ export class ClawStashDB {
         updates.push('archived = ?');
         params.push(input.archived ? 1 : 0);
       }
+      if (input.backup_enabled !== undefined) {
+        updates.push('backup_enabled = ?');
+        params.push(input.backup_enabled ? 1 : 0);
+      }
 
       params.push(id);
       this.db.prepare(`UPDATE stashes SET ${updates.join(', ')} WHERE id = ?`).run(...params);
@@ -491,10 +535,19 @@ export class ClawStashDB {
 
     transaction();
 
-    return this.getStash(id);
+    const updated = this.getStash(id);
+    if (updated) {
+      this.fireMutation({ action: 'update', stashId: id, name: updated.name });
+    }
+    return updated;
   }
 
   deleteStash(id: string): boolean {
+    // Capture the name before the row is gone — the mutation event needs it
+    // for the backup deletion commit message.
+    const existing = this.db.prepare('SELECT name FROM stashes WHERE id = ?').get(id) as
+      | { name: string }
+      | undefined;
     // Wrap the row delete + FTS cleanup so a mid-operation failure does not
     // leave the FTS index pointing at a stash row that no longer exists.
     const tx = this.db.transaction((stashId: string) => {
@@ -504,7 +557,11 @@ export class ClawStashDB {
       }
       return result.changes > 0;
     });
-    return tx(id);
+    const deleted = tx(id);
+    if (deleted) {
+      this.fireMutation({ action: 'delete', stashId: id, name: existing?.name || '' });
+    }
+    return deleted;
   }
 
   archiveStash(id: string, archived: boolean): Stash | null {
@@ -521,7 +578,33 @@ export class ClawStashDB {
     });
     const ok = tx(id, archived ? 1 : 0);
     if (!ok) return null;
-    return this.getStash(id);
+    const stash = this.getStash(id);
+    if (stash) {
+      this.fireMutation({ action: 'update', stashId: id, name: stash.name });
+    }
+    return stash;
+  }
+
+  /**
+   * Flip the per-stash backup opt-out flag. Mirrors archiveStash(): no
+   * version snapshot — the flag is sync bookkeeping, not stash content.
+   * Turning it off makes the next sync remove the stash from the backup
+   * repo (subject to the configured delete mode); turning it on re-adds it.
+   */
+  setStashBackupEnabled(id: string, enabled: boolean): Stash | null {
+    const tx = this.db.transaction((stashId: string, flag: number): boolean => {
+      const exists = this.db.prepare('SELECT 1 FROM stashes WHERE id = ?').get(stashId);
+      if (!exists) return false;
+      this.db.prepare('UPDATE stashes SET backup_enabled = ? WHERE id = ?').run(flag, stashId);
+      return true;
+    });
+    const ok = tx(id, enabled ? 1 : 0);
+    if (!ok) return null;
+    const stash = this.getStash(id);
+    if (stash) {
+      this.fireMutation({ action: 'update', stashId: id, name: stash.name });
+    }
+    return stash;
   }
 
   getAllTags(options?: { includeArchived?: boolean }): { tag: string; count: number }[] {
@@ -1195,8 +1278,8 @@ export class ClawStashDB {
 
       // Prepare statements once outside loops for performance
       const insertStash = this.db.prepare(`
-        INSERT INTO stashes (id, name, description, tags, metadata, version, archived, created_at, updated_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        INSERT INTO stashes (id, name, description, tags, metadata, version, archived, backup_enabled, created_at, updated_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `);
       const insertFile = this.db.prepare(`
         INSERT INTO stash_files (id, stash_id, filename, content, language, sort_order)
@@ -1216,6 +1299,9 @@ export class ClawStashDB {
       // "false" / "0" must NOT be treated as truthy (they are by `?:`).
       for (const s of data.stashes) {
         const archivedFlag = s.archived === true || s.archived === 1 ? 1 : 0;
+        // backup_enabled defaults to ON; only an explicit false/0 opts out
+        // (older exports without the column stay opted in).
+        const backupFlag = s.backup_enabled === false || s.backup_enabled === 0 ? 0 : 1;
         insertStash.run(
           s.id,
           s.name,
@@ -1224,6 +1310,7 @@ export class ClawStashDB {
           s.metadata,
           s.version ?? 1,
           archivedFlag,
+          backupFlag,
           s.created_at,
           s.updated_at,
         );
@@ -1292,7 +1379,70 @@ export class ClawStashDB {
     } catch (err) {
       console.error('[clawstash] rebuildStashRelations failed after import:', err);
     }
+    this.fireMutation({ action: 'import' });
     return result;
+  }
+
+  // === GitHub Backup ===
+  // Delegated to BackupStore (src/server/stores/backup-store.ts). Refs #108.
+
+  getAppSetting(key: string): string | null {
+    return this.backup.getAppSetting(key);
+  }
+
+  setAppSetting(key: string, value: string): void {
+    this.backup.setAppSetting(key, value);
+  }
+
+  deleteAppSetting(key: string): void {
+    this.backup.deleteAppSetting(key);
+  }
+
+  getBackupState(stashId: string): BackupStashState | null {
+    return this.backup.getBackupState(stashId);
+  }
+
+  listBackupStates(): BackupStashState[] {
+    return this.backup.listBackupStates();
+  }
+
+  markBackupPending(stashId: string, stashName: string): void {
+    this.backup.markBackupPending(stashId, stashName);
+  }
+
+  markBackupPendingDelete(stashId: string, stashName: string): void {
+    this.backup.markBackupPendingDelete(stashId, stashName);
+  }
+
+  setBackupStatesSyncing(stashIds: string[]): void {
+    this.backup.setBackupStatesSyncing(stashIds);
+  }
+
+  recordBackupSuccess(
+    stashId: string,
+    info: { stashName: string; contentHash: string; commitSha: string | null; syncedAt: string },
+  ): void {
+    this.backup.recordBackupSuccess(stashId, info);
+  }
+
+  recordBackupErrors(stashIds: string[], error: string): void {
+    this.backup.recordBackupErrors(stashIds, error);
+  }
+
+  deleteBackupState(stashId: string): void {
+    this.backup.deleteBackupState(stashId);
+  }
+
+  listBackupCandidates(): BackupCandidate[] {
+    return this.backup.listBackupCandidates();
+  }
+
+  insertBackupLogEntries(entries: Omit<BackupLogEntry, 'id'>[]): void {
+    this.backup.insertBackupLogEntries(entries);
+  }
+
+  getBackupLog(options: { stashId?: string; limit?: number } = {}): BackupLogEntry[] {
+    return this.backup.getBackupLog(options);
   }
 
   close() {

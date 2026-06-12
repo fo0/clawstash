@@ -61,6 +61,10 @@ export function getOpenApiSpec(baseUrl: string): OpenApiSpec {
               type: 'boolean',
               description: 'Whether the stash is archived (hidden from default listings)',
             },
+            backup_enabled: {
+              type: 'boolean',
+              description: 'Whether the stash is included in the GitHub backup (default true)',
+            },
             created_at: { type: 'string', format: 'date-time' },
             updated_at: { type: 'string', format: 'date-time' },
             files: { type: 'array', items: { $ref: '#/components/schemas/StashFile' } },
@@ -80,6 +84,10 @@ export function getOpenApiSpec(baseUrl: string): OpenApiSpec {
               description: 'Current version number (1-based, incremented on each update)',
             },
             archived: { type: 'boolean', description: 'Whether the stash is archived' },
+            backup_enabled: {
+              type: 'boolean',
+              description: 'Whether the stash is included in the GitHub backup',
+            },
             created_at: { type: 'string', format: 'date-time' },
             updated_at: { type: 'string', format: 'date-time' },
             total_size: {
@@ -142,6 +150,10 @@ export function getOpenApiSpec(baseUrl: string): OpenApiSpec {
             archived: {
               type: 'boolean',
               description: 'Set to true to archive or false to unarchive',
+            },
+            backup_enabled: {
+              type: 'boolean',
+              description: 'Set to false to exclude the stash from the GitHub backup',
             },
             files: {
               type: 'array',
@@ -279,6 +291,80 @@ export function getOpenApiSpec(baseUrl: string): OpenApiSpec {
           type: 'object',
           properties: {
             error: { type: 'string' },
+          },
+        },
+        BackupSettings: {
+          type: 'object',
+          description: 'GitHub backup configuration (the token is stored separately, encrypted)',
+          properties: {
+            enabled: {
+              type: 'boolean',
+              description: 'Master switch for scheduled + mutation-triggered syncs',
+            },
+            repoOwner: { type: 'string', description: 'Target repository owner' },
+            repoName: { type: 'string', description: 'Target repository name' },
+            branch: { type: 'string', description: 'Target branch (default "main")' },
+            pathPrefix: {
+              type: 'string',
+              description: 'Directory prefix inside the repo (default "stashes")',
+            },
+            intervalMinutes: {
+              type: 'integer',
+              enum: [0, 5, 15, 60, 360, 1440],
+              description: 'Scheduled sync interval; 0 = off',
+            },
+            deleteMode: {
+              type: 'string',
+              enum: ['remove', 'keep'],
+              description: 'Whether stash deletions remove the mirrored files from the repo',
+            },
+            commitAuthorName: { type: 'string' },
+            commitAuthorEmail: { type: 'string' },
+            oauthClientId: {
+              type: 'string',
+              description: 'GitHub OAuth app client ID used for the device-flow login',
+            },
+          },
+        },
+        BackupSettingsResponse: {
+          type: 'object',
+          properties: {
+            settings: { $ref: '#/components/schemas/BackupSettings' },
+            connection: {
+              type: 'object',
+              nullable: true,
+              properties: {
+                method: { type: 'string', enum: ['oauth', 'pat'] },
+                login: { type: 'string', description: 'Connected GitHub account' },
+                connectedAt: { type: 'string', format: 'date-time' },
+              },
+            },
+            tokenSet: { type: 'boolean' },
+            health: {
+              type: 'object',
+              properties: {
+                consecutiveFailures: { type: 'integer' },
+                lastRunAt: { type: 'string', format: 'date-time', nullable: true },
+                lastRunStatus: {
+                  type: 'string',
+                  enum: ['success', 'error', 'skipped'],
+                  nullable: true,
+                },
+                lastError: { type: 'string', nullable: true },
+              },
+            },
+            unhealthy: { type: 'boolean' },
+            schedulerActive: { type: 'boolean' },
+          },
+        },
+        BackupRunResult: {
+          type: 'object',
+          properties: {
+            status: { type: 'string', enum: ['success', 'error', 'skipped', 'not_configured'] },
+            message: { type: 'string' },
+            synced: { type: 'integer' },
+            removed: { type: 'integer' },
+            commitSha: { type: 'string', nullable: true },
           },
         },
       },
@@ -817,10 +903,244 @@ export function getOpenApiSpec(baseUrl: string): OpenApiSpec {
           },
         },
       },
+      '/api/backup/settings': {
+        get: {
+          tags: ['Backup'],
+          summary: 'Get GitHub backup configuration',
+          description:
+            'Requires admin access. The stored GitHub token is never returned — only a tokenSet flag and the connected account login.',
+          security: [{ bearerAuth: [] }],
+          responses: {
+            200: {
+              description: 'Backup configuration, connection and health',
+              content: {
+                'application/json': {
+                  schema: { $ref: '#/components/schemas/BackupSettingsResponse' },
+                },
+              },
+            },
+          },
+        },
+        put: {
+          tags: ['Backup'],
+          summary: 'Replace GitHub backup configuration',
+          description: 'Requires admin access.',
+          security: [{ bearerAuth: [] }],
+          requestBody: {
+            required: true,
+            content: {
+              'application/json': { schema: { $ref: '#/components/schemas/BackupSettings' } },
+            },
+          },
+          responses: {
+            200: {
+              description: 'Updated configuration',
+              content: {
+                'application/json': {
+                  schema: { $ref: '#/components/schemas/BackupSettingsResponse' },
+                },
+              },
+            },
+            400: {
+              description: 'Validation error',
+              content: { 'application/json': { schema: { $ref: '#/components/schemas/Error' } } },
+            },
+          },
+        },
+      },
+      '/api/backup/token': {
+        post: {
+          tags: ['Backup'],
+          summary: 'Connect GitHub via personal access token',
+          description:
+            'Requires admin access. The token is verified against the GitHub API and stored encrypted at rest; it never appears in any response or log.',
+          security: [{ bearerAuth: [] }],
+          requestBody: {
+            required: true,
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  required: ['token'],
+                  properties: {
+                    token: { type: 'string', description: 'GitHub PAT (fine-grained or classic)' },
+                  },
+                },
+              },
+            },
+          },
+          responses: {
+            200: { description: 'Connected' },
+            400: { description: 'Token rejected' },
+          },
+        },
+        delete: {
+          tags: ['Backup'],
+          summary: 'Disconnect GitHub (remove stored token)',
+          security: [{ bearerAuth: [] }],
+          responses: { 200: { description: 'Disconnected' } },
+        },
+      },
+      '/api/backup/device/start': {
+        post: {
+          tags: ['Backup'],
+          summary: 'Start the GitHub OAuth device-flow login',
+          description:
+            'Requires admin access. Returns a user code + verification URI; the device code stays server-side.',
+          security: [{ bearerAuth: [] }],
+          requestBody: {
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: {
+                    clientId: {
+                      type: 'string',
+                      description:
+                        'OAuth app client ID (optional when already stored in the settings)',
+                    },
+                  },
+                },
+              },
+            },
+          },
+          responses: {
+            200: {
+              description: 'Device-flow session started',
+              content: {
+                'application/json': {
+                  schema: {
+                    type: 'object',
+                    properties: {
+                      sessionId: { type: 'string' },
+                      userCode: { type: 'string' },
+                      verificationUri: { type: 'string' },
+                      interval: { type: 'integer' },
+                      expiresIn: { type: 'integer' },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+      '/api/backup/device/poll': {
+        post: {
+          tags: ['Backup'],
+          summary: 'Poll a pending device-flow login',
+          description:
+            'Requires admin access. Returns { status: pending | connected | error }; on success the token is stored encrypted server-side.',
+          security: [{ bearerAuth: [] }],
+          requestBody: {
+            required: true,
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  required: ['sessionId'],
+                  properties: { sessionId: { type: 'string', format: 'uuid' } },
+                },
+              },
+            },
+          },
+          responses: { 200: { description: 'Poll result' } },
+        },
+      },
+      '/api/backup/github/repos': {
+        get: {
+          tags: ['Backup'],
+          summary: 'List repositories visible to the connected account',
+          security: [{ bearerAuth: [] }],
+          responses: {
+            200: { description: 'Repository list' },
+            400: { description: 'Not connected' },
+          },
+        },
+      },
+      '/api/backup/github/branches': {
+        get: {
+          tags: ['Backup'],
+          summary: 'List branches of a candidate target repository',
+          security: [{ bearerAuth: [] }],
+          parameters: [
+            { name: 'owner', in: 'query', required: true, schema: { type: 'string' } },
+            { name: 'repo', in: 'query', required: true, schema: { type: 'string' } },
+          ],
+          responses: {
+            200: { description: 'Branch list + default branch' },
+            400: { description: 'Invalid parameters or not connected' },
+          },
+        },
+      },
+      '/api/backup/sync': {
+        post: {
+          tags: ['Backup'],
+          summary: 'Trigger a backup sync now',
+          description:
+            'Requires write scope. Without a stashId everything is backed up; with one the run is scoped to that stash. No-op when nothing changed.',
+          security: [{ bearerAuth: [] }],
+          requestBody: {
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: {
+                    stashId: { type: 'string' },
+                    force: {
+                      type: 'boolean',
+                      description: 'Re-push even when the content is unchanged',
+                    },
+                  },
+                },
+              },
+            },
+          },
+          responses: {
+            200: {
+              description: 'Run result',
+              content: {
+                'application/json': { schema: { $ref: '#/components/schemas/BackupRunResult' } },
+              },
+            },
+            400: { description: 'Backup not configured' },
+            404: { description: 'Stash not found' },
+          },
+        },
+      },
+      '/api/backup/status': {
+        get: {
+          tags: ['Backup'],
+          summary: 'Backup status and per-stash sync states',
+          security: [{ bearerAuth: [] }],
+          parameters: [
+            {
+              name: 'stashId',
+              in: 'query',
+              schema: { type: 'string' },
+              description: 'Limit the states list to one stash',
+            },
+          ],
+          responses: { 200: { description: 'Status' } },
+        },
+      },
+      '/api/backup/log': {
+        get: {
+          tags: ['Backup'],
+          summary: 'Recent backup sync log',
+          security: [{ bearerAuth: [] }],
+          parameters: [
+            { name: 'stashId', in: 'query', schema: { type: 'string' } },
+            { name: 'limit', in: 'query', schema: { type: 'integer', default: 50, maximum: 200 } },
+          ],
+          responses: { 200: { description: 'Log entries' } },
+        },
+      },
     },
     tags: [
       { name: 'Stashes', description: 'Stash CRUD operations' },
       { name: 'Tokens', description: 'API token management' },
+      { name: 'Backup', description: 'GitHub backup configuration and sync' },
       { name: 'System', description: 'System endpoints' },
     ],
   };

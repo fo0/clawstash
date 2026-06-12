@@ -8,6 +8,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/), and this
 
 ### Added
 
+- GitHub backup (#108): mirror all stashes into a GitHub repository via the Git Data API — scheduled (5 min – 24 h presets), debounced on every mutation, and manual ("Back up now" per stash + globally). "Sign in with GitHub" via OAuth device flow (own OAuth app client ID, no secret/callback) or PAT fallback; token stored AES-256-GCM-encrypted and redacted from all logs/errors. One commit per logical change, idempotent hash-based change detection, per-stash opt-out (`backup_enabled`), configurable delete mode, sync log + health indicator, new Settings section + viewer status bar. Docs: `docs/backup.md`
 - Mermaid diagrams: standalone `.mmd` / `.mermaid` files render as diagrams; inline ` ```mermaid ` blocks in Markdown hydrate after sanitization (#95)
 - Stash archive: hide stashes from default listings without deleting; toggle in UI / REST API / MCP
 - Version history: every update snapshots the prior state into `stash_versions`; UI offers Confluence-style diff comparison and one-click restore
