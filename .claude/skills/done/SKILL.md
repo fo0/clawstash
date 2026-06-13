@@ -90,6 +90,7 @@ Strict format, strict limits:
 ## Rules
 
 - **Format-write always runs before lint** -- never commit unformatted files. CI's `format:check` is unforgiving.
+- **Pre-commit guard is a backstop, not a substitute.** If `agent_docs/ci_formatting_guard.md` (husky + lint-staged) is set up, commits auto-format staged files even outside this skill -- but still run format-write here so the diff you review matches what gets committed, and never bypass the hook with `--no-verify`.
 - **Never push to `main` with failing checks.** Hard stop.
 - **Never force-push** without explicit user request.
 - **Ambiguous state on main** (large uncommitted diff, unclear scope) -> ask first.
