@@ -55,12 +55,18 @@ export function getBaseUrl(req: NextRequest): string {
   // — useful for an attacker who wants to seed onboarding/spec text with a
   // phishing host. Share the `TRUST_PROXY` opt-in with `getClientIp` so the
   // two surfaces cannot drift.
+  //
+  // Multi-hop proxy chains APPEND to `x-forwarded-*` (e.g. `https, http` or
+  // `client.example, proxy.example`), so the raw header is a comma list, not a
+  // single value. Take only the first (client-most) entry — mirroring
+  // `extractClientIp()` (auth-rate-limit) and middleware's `isHttpsRequest()` —
+  // otherwise the OpenAPI/MCP `servers[].url` would get a malformed proto/host
+  // under `TRUST_PROXY`. Closes BACKLOG #120.
   const trustProxy = isTrustedProxy();
-  const proto = (trustProxy && req.headers.get('x-forwarded-proto')) || 'http';
-  const host =
-    (trustProxy && req.headers.get('x-forwarded-host')) ||
-    req.headers.get('host') ||
-    'localhost:3000';
+  const firstForwarded = (header: string): string | undefined =>
+    (trustProxy && req.headers.get(header)?.split(',')[0]?.trim()) || undefined;
+  const proto = firstForwarded('x-forwarded-proto') || 'http';
+  const host = firstForwarded('x-forwarded-host') || req.headers.get('host') || 'localhost:3000';
   return `${proto}://${host}`;
 }
 
