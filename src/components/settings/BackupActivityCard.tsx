@@ -12,6 +12,12 @@ const STATE_LABELS: Record<BackupSyncState, string> = {
   error: 'Error',
 };
 
+// The status endpoint returns one row per stash unbounded; with hundreds of
+// stashes the table would grow the Settings card to thousands of pixels.
+// Render a capped slice by default and let the operator expand on demand
+// (mirrors the server-side limit on the sync log). BACKLOG #113.
+const STATE_ROW_CAP = 50;
+
 interface Props {
   /** Called after a manual run so sibling tabs (sync log) can refetch. */
   onSyncRan?: () => void;
@@ -27,6 +33,7 @@ export default function BackupActivityCard({ onSyncRan }: Props) {
   const [loadFailed, setLoadFailed] = useState(false);
   const [syncing, setSyncing] = useState(false);
   const [result, setResult] = useState<{ ok: boolean; message: string } | null>(null);
+  const [showAllStates, setShowAllStates] = useState(false);
 
   const refresh = useCallback(async () => {
     try {
@@ -91,6 +98,10 @@ export default function BackupActivityCard({ onSyncRan }: Props) {
   }
 
   const { health } = status;
+  const visibleStates =
+    showAllStates || status.states.length <= STATE_ROW_CAP
+      ? status.states
+      : status.states.slice(0, STATE_ROW_CAP);
 
   return (
     <div className="settings-card">
@@ -150,7 +161,7 @@ export default function BackupActivityCard({ onSyncRan }: Props) {
               </tr>
             </thead>
             <tbody>
-              {status.states.map((s) => (
+              {visibleStates.map((s) => (
                 <tr key={s.stash_id}>
                   <td>{s.stash_name || s.stash_id}</td>
                   <td>
@@ -171,6 +182,16 @@ export default function BackupActivityCard({ onSyncRan }: Props) {
               ))}
             </tbody>
           </table>
+          {status.states.length > STATE_ROW_CAP && (
+            <div className="settings-option-group">
+              <button
+                className="btn btn-secondary btn-sm"
+                onClick={() => setShowAllStates((v) => !v)}
+              >
+                {showAllStates ? 'Show fewer' : `Show all ${status.states.length} stashes`}
+              </button>
+            </div>
+          )}
         </div>
       )}
     </div>
