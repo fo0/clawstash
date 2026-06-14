@@ -14,7 +14,7 @@ import { CopyIcon, CheckIcon, XIcon } from './shared/icons';
 import VersionHistory from './VersionHistory';
 import { Marked } from 'marked';
 import { renderDescriptionMarkdown, isUnsafeUrl, sanitizeHtml } from '../utils/markdown';
-import { renderMermaid } from '../utils/mermaid';
+import { hydrateMermaidPlaceholders, encodeMermaidSource } from '../utils/mermaid-hydrate';
 import { DELETE_CONFIRM_TIMEOUT_MS } from '../utils/constants';
 import { escapeHtml } from '../utils/html';
 import MermaidDiagram from './MermaidDiagram';
@@ -99,27 +99,6 @@ function resolveEffectiveLanguage(file: StashFile): string {
   const fromMeta = resolvePrismLanguage(file.language, file.filename);
   if (fromMeta !== 'text') return fromMeta;
   return detectLanguageFromContent(file.content);
-}
-
-/**
- * Base64-encode a UTF-8 string for safe embedding in a `data-*` attribute.
- * Uses TextEncoder/btoa via a binary string round-trip so multi-byte chars
- * survive correctly without relying on the deprecated `escape`/`unescape`
- * globals (removed in strict ECMAScript and flagged by modern lints).
- */
-function encodeMermaidSource(s: string): string {
-  const bytes = new TextEncoder().encode(s);
-  let bin = '';
-  for (let i = 0; i < bytes.length; i++) bin += String.fromCharCode(bytes[i]);
-  return btoa(bin);
-}
-
-/** Inverse of `encodeMermaidSource`. */
-function decodeMermaidSource(s: string): string {
-  const bin = atob(s);
-  const bytes = new Uint8Array(bin.length);
-  for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
-  return new TextDecoder().decode(bytes);
 }
 
 /**
@@ -538,77 +517,20 @@ export default function StashViewer({
     };
   }, []);
 
-  // Hydrate inline Mermaid placeholders inside rendered markdown.
-  // The `code` renderer in mdParser emits <div class="mermaid-placeholder"
-  // data-mermaid-source="BASE64"> for ```mermaid``` blocks; we walk the
-  // freshly-rendered DOM and swap in the SVG (or an inline error block).
+  // Render inline Mermaid placeholders inside the rendered markdown.
   //
-  // The pass is an async sequential loop that RE-QUERIES the live DOM each turn
-  // rather than a parallel `forEach` over a captured NodeList. This fixes
-  // diagrams rendering blank on a full page load / F5 (#286): on a cold load
-  // the lazy `import('mermaid')` resolves long after this effect first runs, by
-  // which point a re-render may have replaced the original placeholder nodes.
-  // The old pass captured every node up front and, on a late resolution against
-  // a detached node, silently dropped it with no retry — leaving the diagram
-  // blank until a full client-side remount. Re-querying after every `await`
-  // means we always act on the placeholders currently in the DOM, and one
-  // diagram at a time keeps us clear of Mermaid's shared global render state.
+  // `hydrateMermaidPlaceholders` walks the freshly-committed DOM and fills each
+  // `.mermaid-placeholder` with its SVG. It is idempotent (claims each node
+  // synchronously) and its writes are NOT tied to this effect's lifecycle, so a
+  // re-render during page boot cannot orphan an in-flight render — the bug that
+  // left diagrams blank on a full page load / F5 (#286). See mermaid-hydrate.ts.
   useEffect(() => {
     if (activeTab !== 'content' || !renderPreview) return;
     const root = filesContainerRef.current;
     if (!root) return;
-    // Nothing to do? Avoid spinning up the async loop (and the lazy import).
-    if (!root.querySelector('.mermaid-placeholder:not([data-rendered="true"])')) return;
-
-    let cancelled = false;
-    void (async () => {
-      // Loop until no un-rendered placeholder remains. Re-querying each turn
-      // lets a single pass finish its work even if nodes were swapped while a
-      // render (including the first cold dynamic import) was in flight.
-      for (;;) {
-        if (cancelled) return;
-        const el = root.querySelector<HTMLElement>(
-          '.mermaid-placeholder:not([data-rendered="true"])',
-        );
-        if (!el) return;
-
-        let source: string;
-        try {
-          source = decodeMermaidSource(el.getAttribute('data-mermaid-source') || '');
-        } catch {
-          el.innerHTML =
-            '<div class="mermaid-error" role="alert"><strong>Mermaid error:</strong> Invalid source encoding</div>';
-          el.setAttribute('data-rendered', 'true');
-          continue;
-        }
-
-        const result = await renderMermaid(source);
-        if (cancelled) return;
-        // A re-render between the query above and this resolution may have
-        // detached `el`. Its replacement carries no data-rendered marker, so
-        // the next loop turn (or a deps-triggered re-run) re-renders it — no
-        // work is lost and no node is left stuck half-rendered.
-        if (!document.contains(el)) continue;
-        if (result.svg) {
-          el.innerHTML = result.svg;
-          el.classList.add('mermaid-diagram');
-        } else {
-          el.innerHTML =
-            `<div class="mermaid-error" role="alert">` +
-            `<div class="mermaid-error-title"><strong>Mermaid syntax error</strong></div>` +
-            `<div class="mermaid-error-message">${escapeHtml(result.error || 'Unknown error')}</div>` +
-            `<pre class="mermaid-error-source">${escapeHtml(source)}</pre>` +
-            `</div>`;
-        }
-        el.setAttribute('data-rendered', 'true');
-      }
-    })();
-
-    return () => {
-      cancelled = true;
-    };
-    // `collapsedFiles` is a dep because re-expanding a collapsed markdown
-    // file remounts pristine placeholders that need a fresh hydration pass.
+    hydrateMermaidPlaceholders(root);
+    // `collapsedFiles` is a dep because re-expanding a collapsed markdown file
+    // mounts pristine placeholders that need a hydration pass.
   }, [renderedContent, renderPreview, activeTab, collapsedFiles]);
 
   const copyAllFiles = () => {
@@ -1058,7 +980,9 @@ export default function StashViewer({
                   ) : (
                     <pre className="file-content">
                       <code
-                        dangerouslySetInnerHTML={{ __html: highlightedContent.get(file.id) || '' }}
+                        dangerouslySetInnerHTML={{
+                          __html: highlightedContent.get(file.id) || '',
+                        }}
                       />
                     </pre>
                   ))}
