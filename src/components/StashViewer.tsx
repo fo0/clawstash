@@ -542,41 +542,53 @@ export default function StashViewer({
   // The `code` renderer in mdParser emits <div class="mermaid-placeholder"
   // data-mermaid-source="BASE64"> for ```mermaid``` blocks; we walk the
   // freshly-rendered DOM and swap in the SVG (or an inline error block).
+  //
+  // The pass is an async sequential loop that RE-QUERIES the live DOM each turn
+  // rather than a parallel `forEach` over a captured NodeList. This fixes
+  // diagrams rendering blank on a full page load / F5 (#286): on a cold load
+  // the lazy `import('mermaid')` resolves long after this effect first runs, by
+  // which point a re-render may have replaced the original placeholder nodes.
+  // The old pass captured every node up front and, on a late resolution against
+  // a detached node, silently dropped it with no retry — leaving the diagram
+  // blank until a full client-side remount. Re-querying after every `await`
+  // means we always act on the placeholders currently in the DOM, and one
+  // diagram at a time keeps us clear of Mermaid's shared global render state.
   useEffect(() => {
     if (activeTab !== 'content' || !renderPreview) return;
     const root = filesContainerRef.current;
     if (!root) return;
-    // Match only fully-rendered placeholders so we re-process any that got
-    // stuck (cancelled mid-render — e.g. React StrictMode double-effect in
-    // dev, or tab switch before mermaid resolves).
-    const placeholders = root.querySelectorAll<HTMLElement>(
-      '.mermaid-placeholder:not([data-rendered="true"])',
-    );
-    if (placeholders.length === 0) return;
+    // Nothing to do? Avoid spinning up the async loop (and the lazy import).
+    if (!root.querySelector('.mermaid-placeholder:not([data-rendered="true"])')) return;
 
     let cancelled = false;
-    placeholders.forEach((el) => {
-      el.setAttribute('data-rendered', 'pending');
-      let source = '';
-      try {
-        source = decodeMermaidSource(el.getAttribute('data-mermaid-source') || '');
-      } catch {
-        el.innerHTML =
-          '<div class="mermaid-error" role="alert"><strong>Mermaid error:</strong> Invalid source encoding</div>';
-        el.setAttribute('data-rendered', 'true');
-        return;
-      }
-      renderMermaid(source).then((result) => {
-        // Two reasons we must bail on a late resolution:
-        // (1) the effect was cancelled (tab switch, prop change), and
-        // (2) the placeholder was detached from the DOM by a re-render
-        //     between the synchronous setAttribute('pending') above and
-        //     this async .then(). Writing innerHTML on a detached node is
-        //     wasted work AND causes the *next* hydration pass to skip the
-        //     replacement (selector excludes only `="true"`), leaving the
-        //     ‘pending’ marker behind — the placeholder would then never
-        //     render again until full remount.
-        if (cancelled || !document.contains(el)) return;
+    void (async () => {
+      // Loop until no un-rendered placeholder remains. Re-querying each turn
+      // lets a single pass finish its work even if nodes were swapped while a
+      // render (including the first cold dynamic import) was in flight.
+      for (;;) {
+        if (cancelled) return;
+        const el = root.querySelector<HTMLElement>(
+          '.mermaid-placeholder:not([data-rendered="true"])',
+        );
+        if (!el) return;
+
+        let source: string;
+        try {
+          source = decodeMermaidSource(el.getAttribute('data-mermaid-source') || '');
+        } catch {
+          el.innerHTML =
+            '<div class="mermaid-error" role="alert"><strong>Mermaid error:</strong> Invalid source encoding</div>';
+          el.setAttribute('data-rendered', 'true');
+          continue;
+        }
+
+        const result = await renderMermaid(source);
+        if (cancelled) return;
+        // A re-render between the query above and this resolution may have
+        // detached `el`. Its replacement carries no data-rendered marker, so
+        // the next loop turn (or a deps-triggered re-run) re-renders it — no
+        // work is lost and no node is left stuck half-rendered.
+        if (!document.contains(el)) continue;
         if (result.svg) {
           el.innerHTML = result.svg;
           el.classList.add('mermaid-diagram');
@@ -589,14 +601,11 @@ export default function StashViewer({
             `</div>`;
         }
         el.setAttribute('data-rendered', 'true');
-      });
-    });
+      }
+    })();
+
     return () => {
       cancelled = true;
-      // We deliberately leave any `data-rendered="pending"` markers in place.
-      // The selector above is `:not([data-rendered="true"])`, so "pending"
-      // placeholders are still picked up by the next hydration pass and the
-      // attribute is overwritten there — no orphan state remains.
     };
     // `collapsedFiles` is a dep because re-expanding a collapsed markdown
     // file remounts pristine placeholders that need a fresh hydration pass.

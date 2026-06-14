@@ -223,9 +223,10 @@ Detailed pattern descriptions for clawstash internals. CLAUDE.md keeps a short i
 
 - `mermaid` npm lib is lazy-loaded via dynamic `import()` on first use -- kept out of the initial bundle (Next.js auto-code-splits dynamic imports)
 - Single shared render entry point: `renderMermaid(code)` returns `{svg?, error?}`; the lib is initialized exactly once with `theme: 'dark'`, `securityLevel: 'strict'`, `fontFamily: 'inherit'`
+- **Renders are serialized globally** (`renderChain` promise in `mermaid.ts`): Mermaid keeps mutable global state for the duration of a `render()`, so overlapping calls corrupt each other into blank/broken SVGs. At most one render runs at a time, app-wide (#286).
 - **Two render paths sharing the util:**
   - Standalone `.mmd` / `.mermaid` files -> React component `<MermaidDiagram>` rendered directly in `StashViewer`
-  - Inline ` ```mermaid ` blocks in Markdown -> marked custom `code` renderer emits `<div class="mermaid-placeholder" data-mermaid-source="BASE64">`, hydrated by a `useEffect` in `StashViewer` after `dangerouslySetInnerHTML`
+  - Inline ` ```mermaid ` blocks in Markdown -> marked custom `code` renderer emits `<div class="mermaid-placeholder" data-mermaid-source="BASE64">`, hydrated by a `useEffect` in `StashViewer` after `dangerouslySetInnerHTML`. The hydration pass is an **async sequential loop that re-queries the live DOM each turn** (not a parallel `forEach` over a captured NodeList) so a cold `import('mermaid')` resolving after a re-render still renders the placeholders currently in the DOM — fixes diagrams blank on full page load / F5 (#286).
 - File extensions `.mmd` / `.mermaid` registered in `src/server/detect-language.ts` (server-side persistence) and `src/languages.ts` (frontend display + `RENDERABLE_LANGUAGES` set)
 - Errors render inline as `.mermaid-error` blocks (red border, message + source echoed) -- no app crash
 - Toggle Raw / Preview reuses the existing `renderPreview` toggle (Mermaid is part of `RENDERABLE_LANGUAGES`)

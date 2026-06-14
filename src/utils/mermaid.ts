@@ -52,18 +52,39 @@ function uniqueId(): string {
   return `mermaid-${Date.now().toString(36)}-${counter.toString(36)}`;
 }
 
+// Every render is funneled through this single promise chain so that at most
+// one `mermaid.render()` runs at a time across the whole app. Mermaid keeps
+// mutable global state for the duration of a render (it mounts a temporary
+// measuring container and swaps the active config/theme), so two renders that
+// overlap can clobber each other and emit a blank or corrupted SVG. Inline
+// markdown diagrams hydrate several placeholders back-to-back and the
+// side-by-side table layout renders multiple at once — exactly the parallel
+// pattern that triggers the corruption. Serializing keeps every caller correct
+// (the inline hydrator and the standalone .mmd viewer alike). See #286.
+let renderChain: Promise<unknown> = Promise.resolve();
+
 /**
  * Render a Mermaid diagram source string to an SVG string.
  * Returns `{svg}` on success, `{error}` on parse/render failure (no throw).
+ *
+ * Calls are serialized globally: a render only starts once the previous one
+ * has settled, so concurrent callers cannot corrupt Mermaid's shared state.
  */
 export async function renderMermaid(code: string): Promise<MermaidRenderResult> {
   const trimmed = code.trim();
   if (!trimmed) return { error: 'Empty diagram source' };
-  try {
-    const mermaid = await loadMermaid();
-    const { svg } = await mermaid.render(uniqueId(), trimmed);
-    return { svg };
-  } catch (err) {
-    return { error: err instanceof Error ? err.message : String(err) };
-  }
+  const run = renderChain.then(async (): Promise<MermaidRenderResult> => {
+    try {
+      const mermaid = await loadMermaid();
+      const { svg } = await mermaid.render(uniqueId(), trimmed);
+      return { svg };
+    } catch (err) {
+      return { error: err instanceof Error ? err.message : String(err) };
+    }
+  });
+  // Keep the chain alive for the next caller regardless of this outcome. `run`
+  // itself always resolves (failures are mapped to `{error}` above), so the
+  // swallow here is purely defensive.
+  renderChain = run.catch(() => undefined);
+  return run;
 }
