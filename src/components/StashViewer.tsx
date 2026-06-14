@@ -18,6 +18,7 @@ import { hydrateMermaidPlaceholders, encodeMermaidSource } from '../utils/mermai
 import { DELETE_CONFIRM_TIMEOUT_MS } from '../utils/constants';
 import { escapeHtml } from '../utils/html';
 import MermaidDiagram from './MermaidDiagram';
+import MarkdownBody from './MarkdownBody';
 import Spinner from './shared/Spinner';
 import StashBackupControls from './StashBackupControls';
 
@@ -966,10 +967,7 @@ export default function StashViewer({
                       />
                     </div>
                   ) : showRendered && lang === 'markdown' ? (
-                    <div
-                      className="file-rendered markdown-body"
-                      dangerouslySetInnerHTML={{ __html: renderedContent.get(file.id) || '' }}
-                    />
+                    <MarkdownBody html={renderedContent.get(file.id) || ''} />
                   ) : showRendered && lang === 'markup' ? (
                     <iframe
                       className="file-rendered html-preview"
