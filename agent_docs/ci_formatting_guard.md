@@ -59,7 +59,7 @@ npx prettier --check .
 - **husky >= 9.1 is mandatory.** `prepare: "husky"` runs on every `npm ci` — including the Docker `deps` stage that `COPY package*.json` then `RUN npm ci` **without `.git`** (ClawStash's Dockerfile is multi-stage, Node 26-slim). husky >= 9.1 only prints a warning and **exits 0** when `.git` is missing; older husky versions abort with an error and break the Docker build. Verify: run `node node_modules/husky/bin.js` in a non-git directory → expect exit 0.
 - **`.husky/pre-commit` must use LF**, not CRLF (it runs on Linux/CI). Generate it via `printf`, not an editor that writes CRLF.
 - **Only commit `.husky/pre-commit`.** husky writes `.husky/_/.gitignore` (`*`), which ignores the wrapper directory. In husky v9 the hook file needs no `+x` and no shebang.
-- **`prettier --check .` silently skips files without a parser in directory mode** (shell hook scripts, `.gitignore`, etc.), so the hook scripts never break the check. (Errors occur only for *explicitly named* unknown files — CI passes a directory, so this is harmless.)
+- **`prettier --check .` silently skips files without a parser in directory mode** (shell hook scripts, `.gitignore`, etc.), so the hook scripts never break the check. (Errors occur only for _explicitly named_ unknown files — CI passes a directory, so this is harmless.)
 - **Never bypass with `git commit --no-verify`.**
 - The guard auto-corrects on **commit**. If commits via external GUIs are a concern, add a `pre-push` mirror that runs `npm run format:check` as a hard gate.
 
