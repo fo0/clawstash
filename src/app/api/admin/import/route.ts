@@ -148,7 +148,14 @@ export async function POST(req: NextRequest) {
     // Standard admin POST response shape: { success: true, message, ... }.
     return NextResponse.json({ success: true, message: 'Import successful', imported: result });
   } catch (err) {
-    console.error('Import error:', err);
+    // The error text is attacker-influenced: V8 `JSON.parse` failures embed
+    // snippets of the uploaded ZIP's content, and our own `Expected … to
+    // contain a JSON array` carries an attacker-controlled entry name. Route
+    // the detail through sanitizeLogValue (strips CR/LF + control chars) so a
+    // crafted upload cannot forge extra log lines. Same class as the [audit]
+    // lines above. Closes BACKLOG #122.
+    const detail = err instanceof Error ? err.message : String(err);
+    console.error(`Import error: ${sanitizeLogValue(detail)}`);
     return NextResponse.json(
       { error: 'Failed to import data. Make sure the ZIP file is a valid ClawStash export.' },
       { status: 400 },
