@@ -12,6 +12,7 @@ import type {
 import { api, setAuthToken } from './api';
 import { loadFavoriteIds, saveFavoriteIds, toggleFavorite } from './utils/favorites';
 import { loadSortMode, saveSortMode } from './utils/sort';
+import { loadShowArchived, saveShowArchived } from './utils/archived';
 import { SEARCH_DEBOUNCE_MS } from './utils/constants';
 import Sidebar from './components/Sidebar';
 import Dashboard from './components/Dashboard';
@@ -103,7 +104,7 @@ export default function App() {
   const [searchOpen, setSearchOpen] = useState(false);
   const [shortcutsHelpOpen, setShortcutsHelpOpen] = useState(false);
   const [analyzeStashId, setAnalyzeStashId] = useState<string | null>(null);
-  const [showArchived, setShowArchived] = useState(false);
+  const [showArchived, setShowArchived] = useState<boolean>(loadShowArchived);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   // Favorite stash ids — persisted to localStorage (key `clawstash_favorite_stashes`).
   // Held as Set<string> for O(1) lookups during sort + per-card render.
@@ -173,6 +174,15 @@ export default function App() {
         setView('new');
         pushUrl('/new');
         setSidebarOpen(false);
+      } else if (e.key === 'a') {
+        // Toggle the "show archived" dashboard filter and persist it (mirrors
+        // the click handler). Functional setState keeps the effect dependency-free.
+        e.preventDefault();
+        setShowArchived((prev) => {
+          const next = !prev;
+          saveShowArchived(next);
+          return next;
+        });
       } else if (e.key === 'Escape') {
         setView((currentView) => {
           if (currentView === 'view' || currentView === 'edit' || currentView === 'graph') {
@@ -594,6 +604,16 @@ export default function App() {
     saveSortMode(mode);
   };
 
+  // Toggle the "show archived" filter and persist it so the choice survives a
+  // reload (mirrors the layout/sort preference handlers above).
+  const handleToggleShowArchived = () => {
+    setShowArchived((prev) => {
+      const next = !prev;
+      saveShowArchived(next);
+      return next;
+    });
+  };
+
   // Show login screen if auth is required and user is not authenticated
   if (adminSession === null) {
     // Still loading session info
@@ -617,7 +637,7 @@ export default function App() {
         tags={tags}
         recentTags={recentTags}
         showArchived={showArchived}
-        onToggleShowArchived={() => setShowArchived((prev) => !prev)}
+        onToggleShowArchived={handleToggleShowArchived}
         onSelectStash={handleSelectStash}
         onNewStash={handleNewStash}
         onGoHome={handleGoHome}
@@ -694,7 +714,7 @@ export default function App() {
               showArchived={showArchived}
               favoriteIds={favoriteIds}
               onToggleFavorite={handleToggleFavorite}
-              onToggleShowArchived={() => setShowArchived((prev) => !prev)}
+              onToggleShowArchived={handleToggleShowArchived}
               onLayoutChange={handleLayoutChange}
               onSortChange={handleSortChange}
               onSelectStash={handleSelectStash}
