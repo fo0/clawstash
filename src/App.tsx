@@ -174,6 +174,15 @@ export default function App() {
         setView('new');
         pushUrl('/new');
         setSidebarOpen(false);
+      } else if (e.key === 'a') {
+        // Toggle the "show archived" dashboard filter and persist it (mirrors
+        // the click handler). Functional setState keeps the effect dependency-free.
+        e.preventDefault();
+        setShowArchived((prev) => {
+          const next = !prev;
+          saveShowArchived(next);
+          return next;
+        });
       } else if (e.key === 'Escape') {
         setView((currentView) => {
           if (currentView === 'view' || currentView === 'edit' || currentView === 'graph') {
