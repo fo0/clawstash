@@ -590,8 +590,16 @@ function StorageSection() {
           </label>
         </div>
 
-        {importResult && <div className="settings-import-success">{importResult}</div>}
-        {importError && <div className="settings-import-error">{importError}</div>}
+        {importResult && (
+          <div role="status" className="settings-import-success">
+            {importResult}
+          </div>
+        )}
+        {importError && (
+          <div role="status" className="settings-import-error">
+            {importError}
+          </div>
+        )}
       </div>
 
       {!stats && (

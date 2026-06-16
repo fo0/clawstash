@@ -110,7 +110,7 @@ export default function BackupActivityCard({ onSyncRan }: Props) {
       </div>
 
       {loadFailed && (
-        <div className="settings-import-error">
+        <div role="status" className="settings-import-error">
           Could not refresh the backup status — the data below may be stale.
         </div>
       )}
@@ -144,7 +144,10 @@ export default function BackupActivityCard({ onSyncRan }: Props) {
         </button>
       </div>
       {result && (
-        <div className={result.ok ? 'settings-import-success' : 'settings-import-error'}>
+        <div
+          role="status"
+          className={result.ok ? 'settings-import-success' : 'settings-import-error'}
+        >
           {result.message}
         </div>
       )}

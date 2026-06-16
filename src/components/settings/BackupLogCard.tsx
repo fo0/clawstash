@@ -53,7 +53,7 @@ export default function BackupLogCard({ repoFullName, refreshToken }: Props) {
       </div>
 
       {loadFailed && (
-        <div className="settings-import-error">
+        <div role="status" className="settings-import-error">
           Could not load the sync log{log.length > 0 ? ' — the entries below may be stale' : ''}.
         </div>
       )}

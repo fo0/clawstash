@@ -260,7 +260,11 @@ export default function BackupConnectCard({ response, onUpdated }: Props) {
         </>
       )}
 
-      {error && <div className="settings-import-error">{error}</div>}
+      {error && (
+        <div role="status" className="settings-import-error">
+          {error}
+        </div>
+      )}
     </div>
   );
 }
