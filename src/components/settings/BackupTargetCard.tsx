@@ -281,7 +281,10 @@ export default function BackupTargetCard({ response, onSaved }: Props) {
         </button>
       </div>
       {saveResult && (
-        <div className={saveResult.ok ? 'settings-import-success' : 'settings-import-error'}>
+        <div
+          role="status"
+          className={saveResult.ok ? 'settings-import-success' : 'settings-import-error'}
+        >
           {saveResult.message}
         </div>
       )}

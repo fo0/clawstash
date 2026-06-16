@@ -102,7 +102,11 @@ export default function BackupSection() {
         (last writer wins).
       </p>
 
-      {loadError && <div className="settings-import-error">{loadError}</div>}
+      {loadError && (
+        <div role="status" className="settings-import-error">
+          {loadError}
+        </div>
+      )}
 
       {!loadError && !response && (
         <div className="settings-card">
