@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import archiver from 'archiver';
 import { getDb } from '@/server/singleton';
 import { checkAdmin, getRequestInfo } from '@/app/api/_helpers';
-import { sanitizeLogValue } from '@/server/log-sanitize';
+import { quoteLogValue } from '@/server/log-sanitize';
 import { formatExportTimestamp } from '@/utils/format';
 
 // archiver + Buffer.concat + better-sqlite3 are Node-only. Pin the runtime so
@@ -26,10 +26,12 @@ export async function GET(req: NextRequest) {
     // a second / minute / day boundary).
     const exportedAt = new Date();
     const timestamp = formatExportTimestamp(exportedAt);
-    // ip/ua are attacker-influenced headers — sanitizeLogValue strips CR/LF
-    // and other control chars so they cannot forge extra [audit] lines.
+    // ip/ua are attacker-influenced headers — quoteLogValue strips CR/LF and
+    // other control chars (so they cannot forge extra [audit] lines) AND quotes
+    // the value so printable text containing "[audit] ..." cannot be mistaken
+    // for a separate field by an unanchored grep (#121).
     console.log(
-      `[audit] admin export: timestamp=${exportedAt.toISOString()} ip=${sanitizeLogValue(ip)} ua=${sanitizeLogValue(userAgent)} stashes=${data.stashes.length}`,
+      `[audit] admin export: timestamp=${exportedAt.toISOString()} ip=${quoteLogValue(ip)} ua=${quoteLogValue(userAgent)} stashes=${data.stashes.length}`,
     );
 
     // Stream ZIP output via archiver -> ReadableStream so the response does

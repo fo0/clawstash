@@ -28,3 +28,24 @@ export function sanitizeLogValue(value: string | undefined): string {
   );
   return stripped === '' ? 'unknown' : stripped;
 }
+
+/**
+ * Like {@link sanitizeLogValue}, but additionally wraps the result in double
+ * quotes with backslash escaping (`\` -> `\\`, `"` -> `\"`).
+ *
+ * `sanitizeLogValue` only removes control/line/bidi characters, so printable
+ * attacker text still lands mid-line: a User-Agent may legitimately (or
+ * maliciously) contain the literal substring `[audit] admin export: ...` with
+ * no control chars at all, which confuses an unanchored `grep '\[audit\]'`
+ * over the logs (BACKLOG #121). Quoting bounds the attacker-influenced value
+ * so it is unambiguously one field \u2014 `ua="...[audit]..."` reads as data, and
+ * any embedded `"` is escaped so the value cannot be terminated early.
+ *
+ * Use for attacker-influenced fields (client IP, User-Agent) in single-line
+ * audit log messages. The `unknown` fallback is also quoted (`"unknown"`) so
+ * the field is always quoted regardless of input.
+ */
+export function quoteLogValue(value: string | undefined): string {
+  const sanitized = sanitizeLogValue(value);
+  return `"${sanitized.replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"`;
+}
