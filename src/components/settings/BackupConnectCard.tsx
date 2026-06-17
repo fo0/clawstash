@@ -228,7 +228,12 @@ export default function BackupConnectCard({ response, onUpdated }: Props) {
           </div>
           <p className="api-hint">
             Alternatively,{' '}
-            <button className="backup-link-btn" onClick={() => setShowPat((v) => !v)}>
+            <button
+              className="backup-link-btn"
+              onClick={() => setShowPat((v) => !v)}
+              aria-expanded={showPat}
+              aria-controls="backup-pat-form"
+            >
               connect with a personal access token
             </button>{' '}
             (fine-grained, “Contents: Read and write” on the target repository —{' '}
@@ -238,7 +243,7 @@ export default function BackupConnectCard({ response, onUpdated }: Props) {
             ).
           </p>
           {showPat && (
-            <div className="backup-form-row">
+            <div className="backup-form-row" id="backup-pat-form">
               <input
                 className="form-input"
                 type="password"
