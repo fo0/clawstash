@@ -50,21 +50,22 @@ export async function PATCH(req: NextRequest, { params }: Params) {
     metadata !== undefined ||
     files !== undefined;
 
-  // Handle flag-only toggles separately (no version snapshot).
+  // Handle flag-only toggles separately (no version snapshot). Both flags are
+  // flipped inside ONE transaction via setStashFlags so that sending `archived`
+  // and `backup_enabled` together can never leave one flag flipped and the
+  // other not (BACKLOG #114). Previously this ran archiveStash() and then
+  // setStashBackupEnabled() as two independent transactions.
   if (!hasContentChanges && (archived !== undefined || backup_enabled !== undefined)) {
-    let stash = null;
+    const stash = db.setStashFlags(id, { archived, backup_enabled });
+    if (!stash) {
+      return NextResponse.json({ error: 'Stash not found' }, { status: 404 });
+    }
+    // logAccess after the atomic update so each flip is still recorded
+    // individually with its specific action verb.
     if (archived !== undefined) {
-      stash = db.archiveStash(id, archived);
-      if (!stash) {
-        return NextResponse.json({ error: 'Stash not found' }, { status: 404 });
-      }
       db.logAccess(stash.id, source, archived ? 'archive' : 'unarchive', ip, userAgent);
     }
     if (backup_enabled !== undefined) {
-      stash = db.setStashBackupEnabled(id, backup_enabled);
-      if (!stash) {
-        return NextResponse.json({ error: 'Stash not found' }, { status: 404 });
-      }
       db.logAccess(
         stash.id,
         source,

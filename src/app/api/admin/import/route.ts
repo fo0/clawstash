@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import AdmZip from 'adm-zip';
 import { getDb } from '@/server/singleton';
 import { checkAdmin, getRequestInfo } from '@/app/api/_helpers';
-import { sanitizeLogValue } from '@/server/log-sanitize';
+import { sanitizeLogValue, quoteLogValue } from '@/server/log-sanitize';
 import {
   MAX_IMPORT_SIZE,
   ImportStashRowSchema,
@@ -140,10 +140,12 @@ export async function POST(req: NextRequest) {
       stash_versions,
       stash_version_files,
     });
-    // ip/ua are attacker-influenced headers — sanitizeLogValue strips CR/LF
-    // and other control chars so they cannot forge extra [audit] lines.
+    // ip/ua are attacker-influenced headers — quoteLogValue strips CR/LF and
+    // other control chars (so they cannot forge extra [audit] lines) AND quotes
+    // the value so printable text containing "[audit] ..." cannot be mistaken
+    // for a separate field by an unanchored grep (#121).
     console.log(
-      `[audit] admin import: timestamp=${new Date().toISOString()} ip=${sanitizeLogValue(ip)} ua=${sanitizeLogValue(userAgent)} stashes=${result.stashes} files=${result.files}`,
+      `[audit] admin import: timestamp=${new Date().toISOString()} ip=${quoteLogValue(ip)} ua=${quoteLogValue(userAgent)} stashes=${result.stashes} files=${result.files}`,
     );
     // Standard admin POST response shape: { success: true, message, ... }.
     return NextResponse.json({ success: true, message: 'Import successful', imported: result });
