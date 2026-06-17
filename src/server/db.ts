@@ -607,6 +607,45 @@ export class ClawStashDB {
     return stash;
   }
 
+  /**
+   * Flip the `archived` and/or `backup_enabled` flags together in a SINGLE
+   * transaction, without a version snapshot. Use this for the PATCH flag-only
+   * fast-path when both flags arrive at once: calling archiveStash() then
+   * setStashBackupEnabled() would run two independent transactions, so a crash
+   * (or concurrent DELETE) between them could leave one flag flipped and the
+   * other not (BACKLOG #114). Pass only the flags you want to change; omit a
+   * field to leave it untouched. Returns null if the stash does not exist or no
+   * flag was supplied (nothing to do). Fires a single `update` mutation event,
+   * matching the single-flag methods (one logical mutation per call).
+   */
+  setStashFlags(id: string, flags: { archived?: boolean; backup_enabled?: boolean }): Stash | null {
+    const sets: string[] = [];
+    const values: number[] = [];
+    if (flags.archived !== undefined) {
+      sets.push('archived = ?');
+      values.push(flags.archived ? 1 : 0);
+    }
+    if (flags.backup_enabled !== undefined) {
+      sets.push('backup_enabled = ?');
+      values.push(flags.backup_enabled ? 1 : 0);
+    }
+    if (sets.length === 0) return null;
+
+    const tx = this.db.transaction((stashId: string): boolean => {
+      const exists = this.db.prepare('SELECT 1 FROM stashes WHERE id = ?').get(stashId);
+      if (!exists) return false;
+      this.db.prepare(`UPDATE stashes SET ${sets.join(', ')} WHERE id = ?`).run(...values, stashId);
+      return true;
+    });
+    const ok = tx(id);
+    if (!ok) return null;
+    const stash = this.getStash(id);
+    if (stash) {
+      this.fireMutation({ action: 'update', stashId: id, name: stash.name });
+    }
+    return stash;
+  }
+
   getAllTags(options?: { includeArchived?: boolean }): { tag: string; count: number }[] {
     // Default: exclude archived so the tag list matches the default stash list
     // (listStashes excludes archived unless ?archived=true). Callers that need

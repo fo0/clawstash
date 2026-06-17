@@ -39,6 +39,40 @@ describe('backup_enabled column', () => {
     expect(updated.backup_enabled).toBe(false);
   });
 
+  describe('setStashFlags (BACKLOG #114)', () => {
+    it('flips archived and backup_enabled together without a version bump', () => {
+      const stash = db.createStash({ name: 'A', files: [{ filename: 'a.txt', content: 'x' }] });
+      const updated = db.setStashFlags(stash.id, { archived: true, backup_enabled: false })!;
+      expect(updated.archived).toBe(true);
+      expect(updated.backup_enabled).toBe(false);
+      expect(updated.version).toBe(1); // no version snapshot for flag-only flips
+      const persisted = db.getStash(stash.id)!;
+      expect(persisted.archived).toBe(true);
+      expect(persisted.backup_enabled).toBe(false);
+    });
+
+    it('flips only the supplied flag, leaving the other untouched', () => {
+      const stash = db.createStash({ name: 'A', files: [{ filename: 'a.txt', content: 'x' }] });
+      const updated = db.setStashFlags(stash.id, { archived: true })!;
+      expect(updated.archived).toBe(true);
+      expect(updated.backup_enabled).toBe(true); // default, unchanged
+    });
+
+    it('returns null for a missing stash and when no flag is supplied', () => {
+      const stash = db.createStash({ name: 'A', files: [{ filename: 'a.txt', content: 'x' }] });
+      expect(db.setStashFlags('missing', { archived: true })).toBeNull();
+      expect(db.setStashFlags(stash.id, {})).toBeNull();
+    });
+
+    it('fires exactly one update mutation event for a combined flag flip', () => {
+      const events: StashMutationEvent[] = [];
+      const stash = db.createStash({ name: 'Alpha', files: [{ filename: 'a.txt', content: 'x' }] });
+      db.setMutationListener((event) => events.push(event));
+      db.setStashFlags(stash.id, { archived: true, backup_enabled: false });
+      expect(events).toEqual([{ action: 'update', stashId: stash.id, name: 'Alpha' }]);
+    });
+  });
+
   it('importAllData preserves an explicit opt-out and defaults the rest to enabled', () => {
     const row = {
       description: '',
