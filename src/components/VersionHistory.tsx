@@ -278,6 +278,7 @@ export default function VersionHistory({ stashId, currentVersion, onRestore }: P
       {error && (
         <div
           className="version-error"
+          role="alert"
           style={{
             color: 'var(--text-danger, #f85149)',
             padding: '8px 12px',
