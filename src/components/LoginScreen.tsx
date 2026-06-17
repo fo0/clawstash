@@ -32,7 +32,7 @@ export default function LoginScreen({ onLogin }: Props) {
         </div>
         <p className="login-hint">Enter your password to continue.</p>
         {error && (
-          <div className="login-error" role="alert">
+          <div id="login-error-msg" className="login-error" role="alert">
             {error}
           </div>
         )}
