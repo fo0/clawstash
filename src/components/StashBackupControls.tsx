@@ -140,6 +140,16 @@ export default function StashBackupControls({ stash, onStashUpdated }: Props) {
           {message.text}
         </span>
       )}
+      {/* Persistent visually-hidden live region so the backup result is
+          announced to screen readers. Kept always-mounted (empty when idle):
+          injecting text into an existing aria-live node announces more
+          reliably than mounting a fresh node with text already in it, and
+          .sr-only is position:absolute so it adds no flex gap. The visible
+          message above carries no aria-live, so sighted behaviour is
+          unchanged. */}
+      <span className="sr-only" role="status" aria-live="polite">
+        {message?.text ?? ''}
+      </span>
     </div>
   );
 }
