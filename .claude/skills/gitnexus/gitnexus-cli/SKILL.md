@@ -1,32 +1,42 @@
 ---
 name: gitnexus-cli
-description: 'Use when the user needs to run GitNexus CLI commands like analyze/index a repo, check status, clean the index, generate a wiki, or list indexed repos. Examples: "Index this repo", "Reanalyze the codebase", "Generate a wiki"'
+description: 'Use for read-only GitNexus index maintenance: check index status, list indexed repos, register or (re)build the index. Examples: "Is the GitNexus index current?", "List indexed repos", "Register this repo"'
 ---
 
 # GitNexus CLI Commands
 
 All commands work via `npx` — no global install required.
 
+> **Read-only / analysis only.** GitNexus must never write tracked files. These commands manage the **index** (`.gitnexus/`, gitignored) and the global registry (`~/.gitnexus/`) only. `analyze` is the one command that *can* touch `CLAUDE.md` / `AGENTS.md` — always pass `--skip-agents-md`, run it only when genuinely needed, and revert any tracked file it changes. Wiki/doc generation is **not used** under this policy. See the Read-Only Analysis Policy in CLAUDE.md / AGENTS.md.
+
 ## Commands
 
-### analyze — Build or refresh the index
+### analyze — (re)build the index — index-only, not routine
 
 ```bash
 npx gitnexus analyze --skip-agents-md
 ```
 
-Run from the project root. This parses all source files, builds the knowledge graph, and writes it to `.gitnexus/`. Without `--skip-agents-md` it ALSO rewrites the CLAUDE.md / AGENTS.md context sections — in this project those files are **optimizer-managed**, so the flag is mandatory on every `analyze` (see note below).
+Run from the project root. This parses all source files, builds the knowledge graph, and writes it to `.gitnexus/` (gitignored). **Always pass `--skip-agents-md`** — without it, `analyze` ALSO rewrites the optimizer-managed CLAUDE.md / AGENTS.md context sections. Run `analyze` **only** when the index is genuinely missing/stale AND the current task needs it; it is not a routine step.
 
-| Flag                | Effect                                                                                               |
-| ------------------- | ---------------------------------------------------------------------------------------------------- |
-| `--skip-agents-md`  | Preserve custom AGENTS.md/CLAUDE.md section edits — **mandatory in this project, on every analyze**   |
-| `--force`           | Force full re-index even if up to date                                                               |
-| `--embeddings`      | Enable embedding generation for semantic search (off by default)                                     |
-| `--drop-embeddings` | Drop existing embeddings on rebuild. By default, an `analyze` without `--embeddings` preserves them. |
+| Flag                | Effect                                                           |
+| ------------------- | ---------------------------------------------------------------- |
+| `--skip-agents-md`  | Preserve AGENTS.md/CLAUDE.md sections — **mandatory on every analyze** |
+| `--force`           | Force full re-index even if up to date                           |
+| `--embeddings`      | Enable embedding generation for semantic search (off by default) |
+| `--drop-embeddings` | Drop existing embeddings on rebuild (default: preserve them)     |
 
-> **Why `--skip-agents-md` is mandatory:** CLAUDE.md / AGENTS.md are generated and size-guarded by the optimizer (40k limit, managed `<!-- gitnexus:start/end -->` block). An unguarded `analyze` rewrites those sections and churns the stats on every index rebuild. Only `analyze` writes these files — `status`, `index`, `clean`, and `list` never touch them (`wiki` writes its own docs, not CLAUDE.md).
+> **Mandatory revert guard:** even with `--skip-agents-md`, after any `analyze` run `git status` and `git checkout -- <paths>` for any tracked file it touched (`.claude/**`, `CLAUDE.md`, `AGENTS.md`, `docs/wiki/**`). Only `analyze` writes tracked files — `status`, `index`, and `list` never do. The index itself (`.gitnexus/`) stays gitignored and uncommitted — never in a commit or PR.
 
-**When to run:** First time in a project, after major code changes, or when `gitnexus://repo/{name}/context` reports the index is stale. In Claude Code, a PostToolUse hook runs `analyze` automatically after `git commit` and `git merge`, preserving embeddings if previously generated.
+**When to run:** only when `gitnexus://repo/{name}/context` (or `status`) reports the index missing/stale **and** the task needs a fresh index. **There is no auto-analyze hook** — GitNexus is analysis-only; index freshness is on-demand, never enforced on every commit/merge.
+
+### index — Register repo in global registry
+
+```bash
+npx gitnexus index .
+```
+
+Registers the current repo in `~/.gitnexus/registry.json` so MCP tools can find it. Use this when `gitnexus_query` returns empty results despite a local `.gitnexus/` directory existing — the local index is fine but the global registry doesn't know about it.
 
 ### status — Check index freshness
 
@@ -49,22 +59,9 @@ Deletes the `.gitnexus/` directory and unregisters the repo from the global regi
 | `--force` | Skip confirmation prompt                          |
 | `--all`   | Clean all indexed repos, not just the current one |
 
-### wiki — Generate documentation from the graph
+### wiki — disabled under the read-only policy
 
-```bash
-npx gitnexus wiki
-```
-
-Generates repository documentation from the knowledge graph using an LLM. Requires an API key (saved to `~/.gitnexus/config.json` on first use).
-
-| Flag                | Effect                                    |
-| ------------------- | ----------------------------------------- |
-| `--force`           | Force full regeneration                   |
-| `--model <model>`   | LLM model (default: minimax/minimax-m2.5) |
-| `--base-url <url>`  | LLM API base URL                          |
-| `--api-key <key>`   | LLM API key                               |
-| `--concurrency <n>` | Parallel LLM calls (default: 3)           |
-| `--gist`            | Publish wiki as a public GitHub Gist      |
+`npx gitnexus wiki` generates documentation files (e.g. under `docs/wiki/**`) from the graph — that is a **write** operation, so it is **out of scope** here. Do not run it as part of any task. If the user explicitly asks for generated docs, treat that as a separate, explicitly-requested task — never an automatic GitNexus side-effect.
 
 ### list — Show all indexed repos
 
@@ -82,5 +79,6 @@ Lists all repositories registered in `~/.gitnexus/registry.json`. The MCP `list_
 ## Troubleshooting
 
 - **"Not inside a git repository"**: Run from a directory inside a git repo
-- **Index is stale after re-analyzing**: Restart Claude Code to reload the MCP server
-- **Embeddings slow**: Omit `--embeddings` (it's off by default) or set `OPENAI_API_KEY` for faster API-based embedding
+- **MCP tools return empty for known repo**: run `npx gitnexus index .` to register
+- **Index is stale after re-analyzing**: Restart the MCP host (e.g. Claude Code) to reload the MCP server
+- **Embeddings slow**: Omit `--embeddings` (off by default) or set `OPENAI_API_KEY` for faster API-based embedding
