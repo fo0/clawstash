@@ -50,8 +50,22 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ status: 'error', error: result.error });
     }
 
-    const { login } = await new GitHubClient(result.token).getAuthenticatedUser();
+    // The device code is single-use and now consumed: GitHub will reject any
+    // re-poll. Persist the token FIRST so a transient failure while resolving
+    // the account login no longer drops a valid, already-exchanged token and
+    // forces the user to restart the flow (#115). The login is cosmetic — it
+    // only labels the connection in the UI — so resolve it best-effort and
+    // fall back to a placeholder the user can re-sync later.
     const db = getDb();
+    let login = 'unknown';
+    try {
+      ({ login } = await new GitHubClient(result.token).getAuthenticatedUser());
+    } catch (lookupErr) {
+      console.warn(
+        '[backup] token stored but account lookup failed:',
+        lookupErr instanceof Error ? lookupErr.message : lookupErr,
+      );
+    }
     storeBackupToken(db, result.token, {
       method: 'oauth',
       login,
