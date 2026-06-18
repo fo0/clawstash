@@ -1913,6 +1913,14 @@ body {
   gap: 8px;
 }
 
+/* Copy button in the VersionHistory file detail header. The header is a
+   flex row (filename + optional lang-tag + this button); margin-left:auto
+   keeps the filename/lang-tag grouped left and pins the button to the
+   right, matching the StashViewer file-header affordance. */
+.version-file-copy-btn {
+  margin-left: auto;
+}
+
 /* Collapsible file headers (stash viewer only — VersionHistory reuses
    .file-header without collapse behavior). The empty header surface is a
    click target; the filename stays selectable and the actions area neutral. */
