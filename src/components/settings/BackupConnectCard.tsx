@@ -226,6 +226,14 @@ export default function BackupConnectCard({ response, onUpdated }: Props) {
               Sign in with GitHub
             </button>
           </div>
+          {/* The client ID is persisted as part of "Sign in with GitHub", not
+              by "Save settings" on the Target & Schedule tab — that button
+              re-submits the server's last-known value. Spell it out so an edit
+              left here without signing in does not look silently dropped. */}
+          <p className="api-hint backup-clientid-hint">
+            The client ID is saved when you sign in — “Save settings” on the
+            Target&nbsp;&amp;&nbsp;Schedule tab does not store an unsubmitted edit here.
+          </p>
           <p className="api-hint">
             Alternatively,{' '}
             <button
