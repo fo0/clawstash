@@ -398,6 +398,7 @@ export default function VersionHistory({ stashId, currentVersion, onRestore }: P
                       checked={compareFrom === v.version}
                       onChange={() => handleFromChange(v.version)}
                       disabled={isNewest || (compareTo !== null && v.version >= compareTo)}
+                      aria-label={`Compare from version ${v.version}`}
                     />
                   </label>
                   {/* "To" radio — disabled for the oldest version (nothing older to compare from) */}
@@ -408,6 +409,7 @@ export default function VersionHistory({ stashId, currentVersion, onRestore }: P
                       checked={compareTo === v.version}
                       onChange={() => handleToChange(v.version)}
                       disabled={isOldest || (compareFrom !== null && v.version <= compareFrom)}
+                      aria-label={`Compare to version ${v.version}`}
                     />
                   </label>
                 </div>
