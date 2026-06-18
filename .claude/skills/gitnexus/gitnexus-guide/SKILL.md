@@ -15,7 +15,9 @@ For any task involving code understanding, debugging, impact analysis, or refact
 2. **Match your task to a skill below** and **read that skill file**
 3. **Follow the skill's workflow and checklist**
 
-> If step 1 warns the index is stale, run `npx gitnexus analyze --skip-agents-md` in the terminal first.
+> **GitNexus is read-only** — every tool and resource here only *reads* the index; none write tracked files (no `rename`, no `wiki`, no skill/doc regeneration). See the Read-Only Analysis Policy in CLAUDE.md / AGENTS.md.
+> If step 1 warns the index is stale, rebuilding is **not routine** — only run `npx gitnexus analyze --skip-agents-md` when the task genuinely needs it, then `git status` and `git checkout --` any tracked file it touched (see `gitnexus-cli`).
+> If `gitnexus_query` returns empty for a known repo, `npx gitnexus index .` registers it in the global registry (writes only `~/.gitnexus`, no tracked files).
 
 ## Skills
 
@@ -24,9 +26,9 @@ For any task involving code understanding, debugging, impact analysis, or refact
 | Understand architecture / "How does X work?" | `gitnexus-exploring`         |
 | Blast radius / "What breaks if I change X?"  | `gitnexus-impact-analysis`   |
 | Trace bugs / "Why is X failing?"             | `gitnexus-debugging`         |
-| Rename / extract / split / refactor          | `gitnexus-refactoring`       |
+| Plan a refactor (read-only impact/refs)      | `gitnexus-refactoring`       |
 | Tools, resources, schema reference           | `gitnexus-guide` (this file) |
-| Index, status, clean, wiki CLI commands      | `gitnexus-cli`               |
+| Index status / list / register (read-only)   | `gitnexus-cli`               |
 
 ## Tools Reference
 
@@ -36,8 +38,7 @@ For any task involving code understanding, debugging, impact analysis, or refact
 | `context`        | 360-degree symbol view — categorized refs, processes it participates in  |
 | `impact`         | Symbol blast radius — what breaks at depth 1/2/3 with confidence         |
 | `detect_changes` | Git-diff impact — what do your current changes affect                    |
-| `rename`         | Multi-file coordinated rename with confidence-tagged edits               |
-| `cypher`         | Raw graph queries (read `gitnexus://repo/{name}/schema` first)           |
+| `cypher`         | Raw graph **read** queries (read `gitnexus://repo/{name}/schema` first)  |
 | `list_repos`     | Discover indexed repos                                                   |
 
 ## Resources Reference

@@ -19,13 +19,15 @@
             "command": "f=\"$CLAUDE_PROJECT_DIR/CLAUDE.md\"; [ -f \"$f\" ] && [ $(wc -c < \"$f\") -gt 40000 ] && echo 'WARNING: CLAUDE.md exceeds 40000 chars -- extract largest section to agent_docs/ per Documentation Rules.' || true"
           }
         ]
-      },
+      }
+    ],
+    "PreToolUse": [
       {
         "matcher": "Bash",
         "hooks": [
           {
             "type": "command",
-            "command": "if echo \"$CLAUDE_TOOL_INPUT\" | grep -qE 'git (commit|merge)'; then cd \"$CLAUDE_PROJECT_DIR\" && npx gitnexus analyze --skip-agents-md --embeddings; fi"
+            "command": "cmd=$(jq -r '.tool_input.command // empty'); if echo \"$cmd\" | grep -qE 'git commit'; then cd \"$CLAUDE_PROJECT_DIR\" && staged=$(git diff --cached --name-only 2>/dev/null | grep -E '^(\\.claude/|CLAUDE\\.md|AGENTS\\.md|agent_docs/|docs/wiki/)' || true); [ -n \"$staged\" ] && echo \"GitNexus read-only guard: agent-config/doc files are staged -- confirm these are intended (not GitNexus side-effects) before committing, else 'git restore --staged' / 'git checkout --':\\n$staged\"; fi; exit 0"
           }
         ]
       }

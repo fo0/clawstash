@@ -23,7 +23,7 @@ description: 'Use when the user wants to know what will break if they change som
 4. Assess risk and report to user
 ```
 
-> If "Index is stale" → run `npx gitnexus analyze --skip-agents-md` in terminal.
+> If the index is reported stale, rebuilding is **not routine** — run `npx gitnexus analyze --skip-agents-md` only if the task needs a fresh index, then `git status` + `git checkout --` any tracked file it touched (read-only policy).
 
 ## Checklist
 

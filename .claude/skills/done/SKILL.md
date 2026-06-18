@@ -44,13 +44,15 @@ Execute the project's lint/typecheck/test/build commands from CLAUDE.md. If any 
 - **Feature branch:** report failure, stop. Do not commit.
 - **Main branch:** hard stop. Never push to main on red.
 
-### 5. (If GitNexus available) Verify scope
+### 5. Verify scope + GitNexus read-only guard
+
+If GitNexus is available, confirm the change scope (read-only):
 
 ```
 gitnexus_detect_changes({scope: "all"})
 ```
 
-Confirm the change scope matches expectations. Surface any unexpected affected processes.
+Surface any unexpected affected processes. Then run `git status` and verify no unexpected `.claude/**`, `CLAUDE.md`, `AGENTS.md`, or `agent_docs/**` changes are staged -- if GitNexus (or anything else) touched them and they weren't the point of the task, revert with `git checkout -- <paths>` before committing.
 
 ### 6. Commit uncommitted changes (if any)
 

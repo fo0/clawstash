@@ -23,7 +23,8 @@ description: 'Use when the user asks how code works, wants to understand archite
 5. READ gitnexus://repo/{name}/process/{name}      → Trace full execution flow
 ```
 
-> If step 2 says "Index is stale" → run `npx gitnexus analyze --skip-agents-md` in terminal.
+> If step 2 reports the index stale, rebuilding is **not routine** — run `npx gitnexus analyze --skip-agents-md` only if the task needs a fresh index, then `git status` + `git checkout --` any tracked file it touched (read-only policy).
+> If `query` returns empty for a known repo → run `npx gitnexus index .` to register.
 
 ## Checklist
 
