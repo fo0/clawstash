@@ -168,8 +168,10 @@ describe('BackupScheduler', () => {
 
     const first = scheduler.triggerManual({ force: true });
     const second = scheduler.triggerManual({});
-    await Promise.resolve();
-    expect(order).toEqual(['start:manual']);
+    // Poll until the first run has started rather than asserting after a single
+    // microtask tick — the tick count is an implementation detail of enqueue()
+    // and a brittle peg for this serialization guarantee (#112).
+    await vi.waitFor(() => expect(order).toEqual(['start:manual']));
 
     releaseFirst();
     await first;
