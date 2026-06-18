@@ -5,6 +5,8 @@ import { formatRelativeTime } from '../utils/format';
 import VersionDiff from './VersionDiff';
 import { highlightCode, resolvePrismLanguage } from '../languages';
 import { DELETE_CONFIRM_TIMEOUT_MS } from '../utils/constants';
+import { useClipboardWithKey } from '../hooks/useClipboard';
+import { CopyIcon, CheckIcon, XIcon } from './shared/icons';
 import Spinner from './shared/Spinner';
 
 interface Props {
@@ -31,6 +33,11 @@ export default function VersionHistory({ stashId, currentVersion, onRestore }: P
   const [compareTo, setCompareTo] = useState<number | null>(null);
   const [diffData, setDiffData] = useState<{ v1: StashVersion; v2: StashVersion } | null>(null);
   const [diffLoading, setDiffLoading] = useState(false);
+
+  // Per-file copy feedback for the version-detail view, mirroring the copy
+  // affordance the main StashViewer offers — keyed by filename so each file
+  // button tracks its own "Copied!" state.
+  const fileClipboard = useClipboardWithKey();
 
   useEffect(() => {
     let cancelled = false;
@@ -238,6 +245,32 @@ export default function VersionHistory({ stashId, currentVersion, onRestore }: P
                 <div className="file-header">
                   <span className="file-name">{file.filename}</span>
                   {file.language && <span className="lang-tag">{file.language}</span>}
+                  <button
+                    className="btn btn-sm btn-ghost version-file-copy-btn"
+                    onClick={() => fileClipboard.copy(file.filename, file.content)}
+                    title={
+                      fileClipboard.isCopied(file.filename)
+                        ? 'Copied!'
+                        : fileClipboard.isFailed(file.filename)
+                          ? 'Copy failed'
+                          : 'Copy file content to clipboard'
+                    }
+                    aria-label={`Copy content of ${file.filename}`}
+                  >
+                    {fileClipboard.isCopied(file.filename) ? (
+                      <>
+                        <CheckIcon size={12} /> Copied!
+                      </>
+                    ) : fileClipboard.isFailed(file.filename) ? (
+                      <>
+                        <XIcon size={12} /> Failed
+                      </>
+                    ) : (
+                      <>
+                        <CopyIcon size={12} /> Copy
+                      </>
+                    )}
+                  </button>
                 </div>
                 <pre className="file-content">
                   <code dangerouslySetInnerHTML={{ __html: highlightCode(file.content, lang) }} />
