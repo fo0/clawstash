@@ -384,7 +384,7 @@ GitNexus is an **analysis/read-only** tool. It must never write to the repositor
 
 This project is indexed by GitNexus as **clawstash** (2191 symbols, 3899 relationships, 189 execution flows). Use the GitNexus MCP tools to understand code, assess impact, and navigate safely.
 
-> **Read-only.** Every tool below only *reads* the index -- none modify files. The Read-Only Analysis Policy above governs this block.
+> **Read-only.** Every tool below only _reads_ the index -- none modify files. The Read-Only Analysis Policy above governs this block.
 > Rebuilding the index is **not routine**: only run `npx gitnexus analyze --skip-agents-md` when the task genuinely needs a fresh index, treat it as index-only, then `git status` and `git checkout --` any tracked file it touched. (`status`/`index`/`list` never write tracked files; `analyze` can, which is why the flag + revert are mandatory.)
 > If `gitnexus_query` returns empty for a known symbol, the local index may not be in the global registry -- `npx gitnexus index .` registers it (writes only `~/.gitnexus`, no tracked files).
 
@@ -415,14 +415,14 @@ This project is indexed by GitNexus as **clawstash** (2191 symbols, 3899 relatio
 
 ## Skill Files
 
-| Task                                                                      | Read this skill file                                        |
-| ------------------------------------------------------------------------- | ----------------------------------------------------------- |
-| Understand architecture / "How does X work?"                              | `.claude/skills/gitnexus/gitnexus-exploring/SKILL.md`       |
-| Blast radius / "What breaks if I change X?"                               | `.claude/skills/gitnexus/gitnexus-impact-analysis/SKILL.md` |
-| Trace bugs / "Why is X failing?"                                          | `.claude/skills/gitnexus/gitnexus-debugging/SKILL.md`       |
+| Task                                                                       | Read this skill file                                        |
+| -------------------------------------------------------------------------- | ----------------------------------------------------------- |
+| Understand architecture / "How does X work?"                               | `.claude/skills/gitnexus/gitnexus-exploring/SKILL.md`       |
+| Blast radius / "What breaks if I change X?"                                | `.claude/skills/gitnexus/gitnexus-impact-analysis/SKILL.md` |
+| Trace bugs / "Why is X failing?"                                           | `.claude/skills/gitnexus/gitnexus-debugging/SKILL.md`       |
 | Plan a refactor -- read-only impact / reference mapping (you do the edits) | `.claude/skills/gitnexus/gitnexus-refactoring/SKILL.md`     |
-| Tools, resources, schema reference                                        | `.claude/skills/gitnexus/gitnexus-guide/SKILL.md`           |
-| Index status / list / register (read-only CLI)                            | `.claude/skills/gitnexus/gitnexus-cli/SKILL.md`             |
+| Tools, resources, schema reference                                         | `.claude/skills/gitnexus/gitnexus-guide/SKILL.md`           |
+| Index status / list / register (read-only CLI)                             | `.claude/skills/gitnexus/gitnexus-cli/SKILL.md`             |
 
 <!-- gitnexus:end -->
 

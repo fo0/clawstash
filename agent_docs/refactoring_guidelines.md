@@ -22,7 +22,7 @@ Refactoring does NOT happen automatically. Only when:
 
 ## GitNexus-Assisted Refactoring (read-only analysis)
 
-When GitNexus is available, use it to *plan and verify* refactors — **read-only**. GitNexus never edits files; you make the edits with normal tools. (See the Read-Only Analysis Policy in CLAUDE.md.)
+When GitNexus is available, use it to _plan and verify_ refactors — **read-only**. GitNexus never edits files; you make the edits with normal tools. (See the Read-Only Analysis Policy in CLAUDE.md.)
 
 1. **Before refactoring:** `gitnexus_impact` to map the blast radius
 2. **For renames:** `gitnexus_impact` + `gitnexus_context` to enumerate every reference, then edit them yourself — never `gitnexus_rename` (it writes files)
