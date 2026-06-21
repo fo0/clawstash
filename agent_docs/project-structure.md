@@ -25,7 +25,11 @@ clawstash/
 │   ├── mcp.md                  # MCP tools, token-efficient patterns, transport options
 │   ├── deployment.md           # Docker, production, CI/CD, GHCR setup
 │   ├── authentication.md       # Admin login, API tokens, scopes, security
-│   └── openclaw-onboarding-prompt.md  # Copy-paste onboarding prompt for OpenClaw agents
+│   ├── backup.md               # GitHub backup feature: setup, sync semantics, security
+│   ├── openclaw-onboarding-prompt.md  # Copy-paste onboarding prompt for OpenClaw agents
+│   └── adr/                    # Architecture Decision Records
+│       ├── 0001-record-architecture-decisions.md
+│       └── 0002-github-backup-architecture.md
 ├── .claude/
 │   └── skills/
 │       └── gitnexus/           # GitNexus code intelligence skills (explore, debug, refactor, review, impact, query)
@@ -74,6 +78,19 @@ clawstash/
 │   │       │   ├── session/route.ts    # GET session status (per-IP rate-limited when token supplied)
 │   │       │   ├── export/route.ts     # GET ZIP download
 │   │       │   └── import/route.ts     # POST ZIP upload
+│   │       ├── backup/                 # GitHub Backup API
+│   │       │   ├── _helpers.ts         # Shared backup route helpers (requireBackupAdmin)
+│   │       │   ├── settings/route.ts   # GET/PUT backup configuration
+│   │       │   ├── token/route.ts      # POST connect PAT, DELETE disconnect
+│   │       │   ├── device/
+│   │       │   │   ├── start/route.ts  # POST start OAuth device-flow login
+│   │       │   │   └── poll/route.ts   # POST poll pending device-flow login
+│   │       │   ├── github/
+│   │       │   │   ├── repos/route.ts      # GET repositories visible to connected account
+│   │       │   │   └── branches/route.ts   # GET branches of a candidate repo
+│   │       │   ├── sync/route.ts       # POST trigger backup (all or single stash)
+│   │       │   ├── status/route.ts     # GET config summary + per-stash sync states
+│   │       │   └── log/route.ts        # GET recent sync log
 │   │       ├── openapi/route.ts        # GET OpenAPI schema
 │   │       ├── version/route.ts        # GET version info
 │   │       ├── mcp-spec/route.ts       # GET MCP specification
@@ -97,10 +114,21 @@ clawstash/
 │   │   ├── validation.ts       # Zod schemas for API input validation + size limits
 │   │   ├── version.ts          # Version check utility (build info + GitHub latest commit)
 │   │   ├── stores/             # Persistence stores split out from db.ts
+│   │   │   ├── _parsers.ts     # Shared defensive parsers + pagination clamp for stash data model
 │   │   │   ├── _token-hash.ts  # Shared token hashing helper
+│   │   │   ├── backup-store.ts # BackupStore: backup settings, sync state, log persistence
+│   │   │   ├── search-store.ts # SearchStore: FTS5 full-text search operations
 │   │   │   ├── session-store.ts # Admin session CRUD
 │   │   │   ├── token-store.ts  # API token CRUD
+│   │   │   ├── version-store.ts # VersionStore: version history + diff operations
 │   │   │   └── __tests__/      # Store unit tests (vitest)
+│   │   ├── backup/             # GitHub backup service layer
+│   │   │   ├── backup-crypto.ts    # AES-256-GCM encryption for stored GitHub token
+│   │   │   ├── backup-scheduler.ts # BackupScheduler: mutation-debounce + interval sync
+│   │   │   ├── backup-service.ts   # BackupService: Git Data API sync engine
+│   │   │   ├── device-sessions.ts  # OAuth device-flow session management (in-memory)
+│   │   │   ├── github-client.ts    # GitHubClient: REST calls (repos, branches, Git Data API)
+│   │   │   └── __tests__/          # Backup unit tests (vitest)
 │   │   └── __tests__/          # Server unit tests (vitest, e.g. mcp-spec)
 │   ├── App.tsx                 # Main app component, state management
 │   ├── api.ts                  # API client (fetch wrapper)
@@ -123,7 +151,10 @@ clawstash/
 │   │   ├── Footer.tsx          # App footer with version (fetched from /api/version), build info toggle
 │   │   ├── Dashboard.tsx       # Home view with grid/list of stash cards
 │   │   ├── GraphViewer.tsx     # Force-directed tag graph visualization (canvas-based)
+│   │   ├── KeyboardShortcutsHelp.tsx  # Modal overlay listing all keyboard shortcuts
+│   │   ├── MarkdownBody.tsx    # Memoised renderer for pre-sanitised Markdown HTML
 │   │   ├── StashCard.tsx       # Individual stash card component
+│   │   ├── StashBackupControls.tsx  # Per-stash backup opt-out toggle + last-synced status
 │   │   ├── StashViewer.tsx     # Stash detail view with file display, TOC, access log, version history
 │   │   ├── StashGraphCanvas.tsx # Stash graph canvas component
 │   │   ├── VersionHistory.tsx  # Version history list, Confluence-style inline comparison radios, restore button
@@ -137,6 +168,7 @@ clawstash/
 │   │   ├── shared/
 │   │   │   ├── icons.tsx       # Shared Octicon-style icons
 │   │   │   ├── CommitLink.tsx  # Short-SHA link to a backup commit on GitHub
+│   │   │   ├── RelativeTime.tsx # Human-readable relative-time display (e.g. "3 minutes ago")
 │   │   │   └── Spinner.tsx     # Loading spinner animation
 │   │   ├── settings/           # Settings sub-components (GitHub backup)
 │   │   │   ├── BackupSection.tsx # Settings → GitHub Backup: tab container (Connection / Target & Schedule / Activity / Sync Log)
