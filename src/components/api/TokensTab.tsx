@@ -15,6 +15,7 @@ import {
   CheckIcon,
 } from './icons';
 import { useCopyToast, useExpandableSpecs } from './useCopyToast';
+import { DELETE_CONFIRM_TIMEOUT_MS } from '../../utils/constants';
 
 interface Props {
   baseUrl: string;
@@ -33,10 +34,17 @@ export default function TokensTab({ baseUrl, openApiJson, mcpSpec }: Props) {
   const { copyNotice, handleCopy } = useCopyToast();
   const { expandedSpecs, toggleSpecPreview } = useExpandableSpecs();
   const mountedRef = useRef(true);
+  // Two-click delete confirm: first click arms a per-token confirm window,
+  // second click within DELETE_CONFIRM_TIMEOUT_MS actually deletes. Mirrors
+  // the StashViewer delete pattern so token deletion is no longer a single
+  // irreversible click.
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+  const confirmTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     return () => {
       mountedRef.current = false;
+      if (confirmTimerRef.current) clearTimeout(confirmTimerRef.current);
     };
   }, []);
 
@@ -86,6 +94,19 @@ export default function TokensTab({ baseUrl, openApiJson, mcpSpec }: Props) {
 
   const handleDeleteToken = useCallback(
     async (id: string) => {
+      // First click on a token's delete button just arms the confirm state
+      // (and auto-disarms after the timeout). Only a second click while this
+      // token is armed proceeds to the irreversible delete.
+      if (confirmDeleteId !== id) {
+        setConfirmDeleteId(id);
+        if (confirmTimerRef.current) clearTimeout(confirmTimerRef.current);
+        confirmTimerRef.current = setTimeout(() => {
+          if (mountedRef.current) setConfirmDeleteId(null);
+        }, DELETE_CONFIRM_TIMEOUT_MS);
+        return;
+      }
+      if (confirmTimerRef.current) clearTimeout(confirmTimerRef.current);
+      setConfirmDeleteId(null);
       try {
         await api.deleteToken(id);
         if (mountedRef.current) {
@@ -99,7 +120,7 @@ export default function TokensTab({ baseUrl, openApiJson, mcpSpec }: Props) {
         }
       }
     },
-    [loadTokens, newlyCreated],
+    [loadTokens, newlyCreated, confirmDeleteId],
   );
 
   const toggleScope = useCallback((scope: TokenScope) => {
@@ -196,6 +217,14 @@ export default function TokensTab({ baseUrl, openApiJson, mcpSpec }: Props) {
               id="token-label"
               value={label}
               onChange={(e) => setLabel(e.target.value)}
+              onKeyDown={(e) => {
+                // Enter in the label field creates the token, matching the
+                // submit-on-Enter behaviour users expect from a form.
+                if (e.key === 'Enter' && !creating) {
+                  e.preventDefault();
+                  handleCreateToken();
+                }
+              }}
               placeholder="e.g. Monitoring, Claude Desktop, etc."
               className="form-input"
             />
@@ -308,11 +337,24 @@ export default function TokensTab({ baseUrl, openApiJson, mcpSpec }: Props) {
                     </button>
                   </div>
                   <button
-                    className="btn btn-ghost btn-sm api-delete-btn"
+                    className={`btn btn-sm api-delete-btn${
+                      confirmDeleteId === token.id
+                        ? ' btn-danger api-delete-btn-confirm'
+                        : ' btn-ghost'
+                    }`}
                     onClick={() => handleDeleteToken(token.id)}
-                    title="Delete token"
+                    title={
+                      confirmDeleteId === token.id
+                        ? 'Click again to permanently delete this token'
+                        : 'Delete token'
+                    }
+                    aria-label={
+                      confirmDeleteId === token.id
+                        ? `Confirm delete token ${token.label || 'Unnamed Token'}`
+                        : `Delete token ${token.label || 'Unnamed Token'}`
+                    }
                   >
-                    <TrashIcon />
+                    {confirmDeleteId === token.id ? 'Delete?' : <TrashIcon />}
                   </button>
                 </div>
               </div>
