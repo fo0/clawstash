@@ -115,6 +115,25 @@ Create API tokens in the web GUI under **Settings > API & Tokens** (scopes: `rea
 | [GitHub Backup](docs/backup.md)                           | Mirror stashes into a GitHub repo: setup, security     |
 | [Deployment](docs/deployment.md)                          | Docker, CI/CD, GHCR, production setup                  |
 
+## Development
+
+**Prerequisites:** Node.js 20+ (project pins Node 26 in Docker)
+
+```bash
+git clone https://github.com/fo0/clawstash.git
+cd clawstash
+npm install
+cp .env.example .env   # adjust DATABASE_PATH / ADMIN_PASSWORD as needed
+
+npm run dev            # Next.js dev server at http://localhost:3000
+npm test               # vitest test suite
+npm run build          # production build
+npm start              # serve the production build
+npm run mcp            # MCP server (stdio transport, for local MCP client testing)
+```
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for code-style rules and the PR workflow.
+
 ## License
 
 [MIT](LICENSE)
