@@ -2170,6 +2170,19 @@ body {
   color: var(--text-primary);
 }
 
+/* Heading + inline action (e.g. "Copy JSON") on one row. */
+.metadata-section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.metadata-section-header h3 {
+  margin-bottom: 0;
+}
+
 .metadata-table {
   width: 100%;
   border-collapse: collapse;

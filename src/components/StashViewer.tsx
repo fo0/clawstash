@@ -1056,7 +1056,30 @@ export default function StashViewer({
 
           {Object.keys(stash.metadata).length > 0 && (
             <div className="metadata-section">
-              <h3>AI Metadata</h3>
+              <div className="metadata-section-header">
+                <h3>AI Metadata</h3>
+                <button
+                  className="btn btn-sm btn-ghost copy-btn-inline"
+                  onClick={() =>
+                    apiClipboard.copy('meta-all-json', JSON.stringify(stash.metadata, null, 2))
+                  }
+                  title={
+                    apiClipboard.isCopied('meta-all-json')
+                      ? 'Copied!'
+                      : apiClipboard.isFailed('meta-all-json')
+                        ? 'Copy failed'
+                        : 'Copy all metadata as JSON'
+                  }
+                  aria-label="Copy all metadata as JSON"
+                >
+                  <CopyButtonContent
+                    copied={apiClipboard.isCopied('meta-all-json')}
+                    failed={apiClipboard.isFailed('meta-all-json')}
+                    size={12}
+                    labelCopy="Copy JSON"
+                  />
+                </button>
+              </div>
               <table className="metadata-table">
                 <tbody>
                   {Object.entries(stash.metadata).map(([key, value]) => {
