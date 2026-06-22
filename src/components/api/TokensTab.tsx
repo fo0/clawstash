@@ -217,6 +217,14 @@ export default function TokensTab({ baseUrl, openApiJson, mcpSpec }: Props) {
               id="token-label"
               value={label}
               onChange={(e) => setLabel(e.target.value)}
+              onKeyDown={(e) => {
+                // Enter in the label field creates the token, matching the
+                // submit-on-Enter behaviour users expect from a form.
+                if (e.key === 'Enter' && !creating) {
+                  e.preventDefault();
+                  handleCreateToken();
+                }
+              }}
               placeholder="e.g. Monitoring, Claude Desktop, etc."
               className="form-input"
             />
