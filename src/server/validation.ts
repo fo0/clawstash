@@ -7,15 +7,18 @@
 import { z } from 'zod';
 
 // --- Size Limits ---
-const MAX_NAME_LENGTH = 500;
-const MAX_DESCRIPTION_LENGTH = 50_000;
-const MAX_TAGS = 50;
-const MAX_TAG_LENGTH = 100;
-const MAX_METADATA_KEYS = 50;
+// Exported as the single source of truth for both the REST schemas below and
+// the MCP tool schemas (src/server/tool-defs.ts imports these). Keeping one
+// copy prevents the two trust boundaries from drifting on payload limits.
+export const MAX_NAME_LENGTH = 500;
+export const MAX_DESCRIPTION_LENGTH = 50_000;
+export const MAX_TAGS = 50;
+export const MAX_TAG_LENGTH = 100;
+export const MAX_METADATA_KEYS = 50;
 export const MAX_METADATA_DEPTH = 5;
-const MAX_FILES = 100;
-const MAX_FILENAME_LENGTH = 255;
-const MAX_FILE_CONTENT_LENGTH = 10 * 1024 * 1024; // 10MB per file
+export const MAX_FILES = 100;
+export const MAX_FILENAME_LENGTH = 255;
+export const MAX_FILE_CONTENT_LENGTH = 10 * 1024 * 1024; // 10MB per file
 export const MAX_IMPORT_SIZE = 100 * 1024 * 1024; // 100MB for ZIP import
 
 /**
