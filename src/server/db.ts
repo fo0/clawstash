@@ -819,10 +819,19 @@ export class ClawStashDB {
       // Tags are stored as JSON arrays, e.g. '["foo","bar"]'. We match
       // '"<tag>"' anywhere in the JSON string — a cheap and correct check
       // since tag values are validated to contain no double-quotes.
+      //
+      // Escape LIKE wildcards (`% _ \`) in the tag and pair every clause with
+      // `ESCAPE '\\'` — a tag literally containing `%`/`_` (both allowed by
+      // TagsSchema) would otherwise over-match unrelated rows and pull
+      // spurious stashes into the focus-tag BFS. Mirrors the escaping used by
+      // every other tag-LIKE in this file (listStashes / getStashGraph) and
+      // search-store.ts.
       const placeholders = Array.from(frontier)
-        .map(() => `tags LIKE ?`)
+        .map(() => `tags LIKE ? ESCAPE '\\'`)
         .join(' OR ');
-      const params: string[] = Array.from(frontier).map((t) => `%"${t}"%`);
+      const params: string[] = Array.from(frontier).map(
+        (t) => `%"${t.replace(/[\\%_]/g, '\\$&')}"%`,
+      );
 
       const rows = this.db
         .prepare(`SELECT id, tags FROM stashes WHERE ${placeholders}`)
