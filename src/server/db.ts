@@ -1125,21 +1125,51 @@ export class ClawStashDB {
 
     // Version nodes & edges
     if (include_versions) {
-      for (const row of stashRows) {
-        const versions = this.db
-          .prepare(
-            `
-          SELECT id, version, created_by, created_at, change_summary
-          FROM stash_versions WHERE stash_id = ? ORDER BY version ASC
-        `,
-          )
-          .all(row.id) as {
+      // Batch-load every stash's versions in a single query grouped by
+      // stash_id (preserving the per-stash `version ASC` order) instead of one
+      // query per row (former N+1 pattern). Bounded by the graph `limit`.
+      // Mirrors getFileInfoByStash / the search-store batch loads.
+      const versionsByStash = new Map<
+        string,
+        {
           id: string;
           version: number;
           created_by: string;
           created_at: string;
           change_summary: string;
+        }[]
+      >();
+      const stashIdList = stashRows.map((r) => r.id);
+      if (stashIdList.length > 0) {
+        const placeholders = stashIdList.map(() => '?').join(', ');
+        const versionRows = this.db
+          .prepare(
+            `
+          SELECT id, stash_id, version, created_by, created_at, change_summary
+          FROM stash_versions WHERE stash_id IN (${placeholders})
+          ORDER BY stash_id, version ASC
+        `,
+          )
+          .all(...stashIdList) as {
+          id: string;
+          stash_id: string;
+          version: number;
+          created_by: string;
+          created_at: string;
+          change_summary: string;
         }[];
+        for (const { stash_id, ...v } of versionRows) {
+          let list = versionsByStash.get(stash_id);
+          if (!list) {
+            list = [];
+            versionsByStash.set(stash_id, list);
+          }
+          list.push(v);
+        }
+      }
+
+      for (const row of stashRows) {
+        const versions = versionsByStash.get(row.id) ?? [];
 
         let prevNodeId = row.id; // current stash is the "head"
         for (let vi = versions.length - 1; vi >= 0; vi--) {
