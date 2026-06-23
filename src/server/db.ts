@@ -11,7 +11,12 @@ import { SessionStore } from './stores/session-store';
 import { VersionStore } from './stores/version-store';
 import { SearchStore } from './stores/search-store';
 import { BackupStore } from './stores/backup-store';
-import { safeParseTags, safeParseMetadata, clampPagination } from './stores/_parsers';
+import {
+  safeParseTags,
+  safeParseMetadata,
+  clampPagination,
+  rowToStashListItem,
+} from './stores/_parsers';
 import type {
   BackupCandidate,
   BackupLogEntry,
@@ -150,20 +155,6 @@ export class ClawStashDB {
       description: (row.description as string) || '',
       tags: safeParseTags(row.tags),
       metadata: safeParseMetadata(row.metadata),
-      version: (row.version as number) || 1,
-      archived: (row.archived as number) === 1,
-      backup_enabled: (row.backup_enabled as number) === 1,
-      created_at: row.created_at as string,
-      updated_at: row.updated_at as string,
-    };
-  }
-
-  private rowToListItem(row: Record<string, unknown>): Omit<StashListItem, 'files' | 'total_size'> {
-    return {
-      id: row.id as string,
-      name: (row.name as string) || '',
-      description: (row.description as string) || '',
-      tags: safeParseTags(row.tags),
       version: (row.version as number) || 1,
       archived: (row.archived as number) === 1,
       backup_enabled: (row.backup_enabled as number) === 1,
@@ -387,7 +378,7 @@ export class ClawStashDB {
       .prepare(`SELECT g.* FROM stashes g ${where} ORDER BY g.updated_at DESC LIMIT ? OFFSET ?`)
       .all(...params, limit, offset) as Record<string, unknown>[];
 
-    const items = rows.map((row) => this.rowToListItem(row));
+    const items = rows.map((row) => rowToStashListItem(row));
 
     // Batch-load files for all listed stashes in a single query instead of one
     // query per row (former N+1 pattern). Bounded by the page limit. Closes
@@ -819,10 +810,19 @@ export class ClawStashDB {
       // Tags are stored as JSON arrays, e.g. '["foo","bar"]'. We match
       // '"<tag>"' anywhere in the JSON string — a cheap and correct check
       // since tag values are validated to contain no double-quotes.
+      //
+      // Escape LIKE wildcards (`% _ \`) in the tag and pair every clause with
+      // `ESCAPE '\\'` — a tag literally containing `%`/`_` (both allowed by
+      // TagsSchema) would otherwise over-match unrelated rows and pull
+      // spurious stashes into the focus-tag BFS. Mirrors the escaping used by
+      // every other tag-LIKE in this file (listStashes / getStashGraph) and
+      // search-store.ts.
       const placeholders = Array.from(frontier)
-        .map(() => `tags LIKE ?`)
+        .map(() => `tags LIKE ? ESCAPE '\\'`)
         .join(' OR ');
-      const params: string[] = Array.from(frontier).map((t) => `%"${t}"%`);
+      const params: string[] = Array.from(frontier).map(
+        (t) => `%"${t.replace(/[\\%_]/g, '\\$&')}"%`,
+      );
 
       const rows = this.db
         .prepare(`SELECT id, tags FROM stashes WHERE ${placeholders}`)
@@ -1116,21 +1116,51 @@ export class ClawStashDB {
 
     // Version nodes & edges
     if (include_versions) {
-      for (const row of stashRows) {
-        const versions = this.db
-          .prepare(
-            `
-          SELECT id, version, created_by, created_at, change_summary
-          FROM stash_versions WHERE stash_id = ? ORDER BY version ASC
-        `,
-          )
-          .all(row.id) as {
+      // Batch-load every stash's versions in a single query grouped by
+      // stash_id (preserving the per-stash `version ASC` order) instead of one
+      // query per row (former N+1 pattern). Bounded by the graph `limit`.
+      // Mirrors getFileInfoByStash / the search-store batch loads.
+      const versionsByStash = new Map<
+        string,
+        {
           id: string;
           version: number;
           created_by: string;
           created_at: string;
           change_summary: string;
+        }[]
+      >();
+      const stashIdList = stashRows.map((r) => r.id);
+      if (stashIdList.length > 0) {
+        const placeholders = stashIdList.map(() => '?').join(', ');
+        const versionRows = this.db
+          .prepare(
+            `
+          SELECT id, stash_id, version, created_by, created_at, change_summary
+          FROM stash_versions WHERE stash_id IN (${placeholders})
+          ORDER BY stash_id, version ASC
+        `,
+          )
+          .all(...stashIdList) as {
+          id: string;
+          stash_id: string;
+          version: number;
+          created_by: string;
+          created_at: string;
+          change_summary: string;
         }[];
+        for (const { stash_id, ...v } of versionRows) {
+          let list = versionsByStash.get(stash_id);
+          if (!list) {
+            list = [];
+            versionsByStash.set(stash_id, list);
+          }
+          list.push(v);
+        }
+      }
+
+      for (const row of stashRows) {
+        const versions = versionsByStash.get(row.id) ?? [];
 
         let prevNodeId = row.id; // current stash is the "head"
         for (let vi = versions.length - 1; vi >= 0; vi--) {

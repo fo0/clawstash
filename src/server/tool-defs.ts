@@ -8,20 +8,23 @@
  * - /api/mcp-tools        → Frontend tool list endpoint
  */
 import { z } from 'zod';
-import { MAX_METADATA_DEPTH, maxObjectDepth } from './validation';
+import {
+  MAX_DESCRIPTION_LENGTH,
+  MAX_FILE_CONTENT_LENGTH,
+  MAX_FILENAME_LENGTH,
+  MAX_FILES,
+  MAX_METADATA_DEPTH,
+  MAX_METADATA_KEYS,
+  MAX_NAME_LENGTH,
+  MAX_TAG_LENGTH,
+  MAX_TAGS,
+  maxObjectDepth,
+} from './validation';
 
 // ---------------------------------------------------------------------------
-// Shared sub-schemas — limits match REST validation (src/server/validation.ts)
+// Shared sub-schemas — size limits are imported from src/server/validation.ts
+// (single source of truth) so REST and MCP cannot drift on payload limits.
 // ---------------------------------------------------------------------------
-
-const MAX_NAME_LENGTH = 500;
-const MAX_DESCRIPTION_LENGTH = 50_000;
-const MAX_TAGS = 50;
-const MAX_TAG_LENGTH = 100;
-const MAX_METADATA_KEYS = 50;
-const MAX_FILES = 100;
-const MAX_FILENAME_LENGTH = 255;
-const MAX_FILE_CONTENT_LENGTH = 10 * 1024 * 1024; // 10MB per file
 
 export const FileInputSchema = z.object({
   filename: z
