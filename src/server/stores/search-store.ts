@@ -6,21 +6,7 @@ import type {
   StashListItem,
   ListStashesOptions,
 } from '../db-types';
-import { safeParseTags, clampPagination } from './_parsers';
-
-function rowToListItem(row: Record<string, unknown>): Omit<StashListItem, 'files' | 'total_size'> {
-  return {
-    id: row.id as string,
-    name: (row.name as string) || '',
-    description: (row.description as string) || '',
-    tags: safeParseTags(row.tags),
-    version: (row.version as number) || 1,
-    archived: (row.archived as number) === 1,
-    backup_enabled: (row.backup_enabled as number) === 1,
-    created_at: row.created_at as string,
-    updated_at: row.updated_at as string,
-  };
-}
+import { safeParseTags, clampPagination, rowToStashListItem } from './_parsers';
 
 // FTS5 snippet markers — Unicode private-use characters that cannot
 // appear in legitimate user content. Used internally so we can detect a
@@ -325,7 +311,7 @@ export class SearchStore {
 
     const stashes: SearchStashItem[] = rows.map((row) => {
       const stashRow = stashRowsById.get(row.stash_id) as Record<string, unknown>;
-      const item = rowToListItem(stashRow);
+      const item = rowToStashListItem(stashRow);
       const files = filesByStash.get(item.id) ?? [];
       const total_size = files.reduce((sum, f) => sum + f.size, 0);
 

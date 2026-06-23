@@ -11,7 +11,12 @@ import { SessionStore } from './stores/session-store';
 import { VersionStore } from './stores/version-store';
 import { SearchStore } from './stores/search-store';
 import { BackupStore } from './stores/backup-store';
-import { safeParseTags, safeParseMetadata, clampPagination } from './stores/_parsers';
+import {
+  safeParseTags,
+  safeParseMetadata,
+  clampPagination,
+  rowToStashListItem,
+} from './stores/_parsers';
 import type {
   BackupCandidate,
   BackupLogEntry,
@@ -150,20 +155,6 @@ export class ClawStashDB {
       description: (row.description as string) || '',
       tags: safeParseTags(row.tags),
       metadata: safeParseMetadata(row.metadata),
-      version: (row.version as number) || 1,
-      archived: (row.archived as number) === 1,
-      backup_enabled: (row.backup_enabled as number) === 1,
-      created_at: row.created_at as string,
-      updated_at: row.updated_at as string,
-    };
-  }
-
-  private rowToListItem(row: Record<string, unknown>): Omit<StashListItem, 'files' | 'total_size'> {
-    return {
-      id: row.id as string,
-      name: (row.name as string) || '',
-      description: (row.description as string) || '',
-      tags: safeParseTags(row.tags),
       version: (row.version as number) || 1,
       archived: (row.archived as number) === 1,
       backup_enabled: (row.backup_enabled as number) === 1,
@@ -387,7 +378,7 @@ export class ClawStashDB {
       .prepare(`SELECT g.* FROM stashes g ${where} ORDER BY g.updated_at DESC LIMIT ? OFFSET ?`)
       .all(...params, limit, offset) as Record<string, unknown>[];
 
-    const items = rows.map((row) => this.rowToListItem(row));
+    const items = rows.map((row) => rowToStashListItem(row));
 
     // Batch-load files for all listed stashes in a single query instead of one
     // query per row (former N+1 pattern). Bounded by the page limit. Closes
