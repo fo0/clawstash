@@ -30,6 +30,10 @@ interface Props {
   onBack: () => void;
   onAnalyzeStash: (id: string) => void;
   onStashUpdated?: (stash: Stash) => void;
+  // Fired specifically when a previous version is restored from the history
+  // tab, so the shell can surface a success toast. Restoring previously gave
+  // no confirmation, unlike save / archive / delete which all show one.
+  onVersionRestored?: (stash: Stash) => void;
 }
 
 function SourceBadge({ source }: { source: string }) {
@@ -322,6 +326,7 @@ export default function StashViewer({
   onBack,
   onAnalyzeStash,
   onStashUpdated,
+  onVersionRestored,
 }: Props) {
   const [activeTab, setActiveTab] = useState<ViewerTab>(getTabPreference);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
@@ -1234,7 +1239,10 @@ export default function StashViewer({
         <VersionHistory
           stashId={stash.id}
           currentVersion={stash.version}
-          onRestore={(restored) => onStashUpdated?.(restored)}
+          onRestore={(restored) => {
+            onStashUpdated?.(restored);
+            onVersionRestored?.(restored);
+          }}
         />
       )}
     </div>

@@ -220,7 +220,9 @@ export default function TokensTab({ baseUrl, openApiJson, mcpSpec }: Props) {
               onKeyDown={(e) => {
                 // Enter in the label field creates the token, matching the
                 // submit-on-Enter behaviour users expect from a form.
-                if (e.key === 'Enter' && !creating) {
+                // Requires at least one scope so Enter can't silently create a
+                // read-only token, mirroring the disabled Create button below.
+                if (e.key === 'Enter' && !creating && selectedScopes.length > 0) {
                   e.preventDefault();
                   handleCreateToken();
                 }
@@ -237,6 +239,7 @@ export default function TokensTab({ baseUrl, openApiJson, mcpSpec }: Props) {
                   key={scope}
                   className={`api-scope-btn ${selectedScopes.includes(scope) ? 'active' : ''}`}
                   onClick={() => toggleScope(scope)}
+                  aria-pressed={selectedScopes.includes(scope)}
                 >
                   {SCOPE_LABELS[scope]}
                 </button>
@@ -258,10 +261,17 @@ export default function TokensTab({ baseUrl, openApiJson, mcpSpec }: Props) {
               </div>
             </div>
           </div>
+          {selectedScopes.length === 0 && (
+            <p className="api-hint" role="status" style={{ marginTop: 0 }}>
+              Select at least one scope to create a token.
+            </p>
+          )}
           <button
             className="btn btn-primary api-create-token-btn"
             onClick={handleCreateToken}
-            disabled={creating}
+            // Block creation with no scope selected — previously the form
+            // silently fell back to a read-only token, which surprised users.
+            disabled={creating || selectedScopes.length === 0}
           >
             <PlusIcon />
             {creating ? 'Creating...' : 'Create Token'}

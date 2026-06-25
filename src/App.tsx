@@ -734,6 +734,7 @@ export default function App() {
                 setSelectedStash(stash);
                 loadStashes();
               }}
+              onVersionRestored={() => showSuccess('Version restored.')}
             />
           )}
           {(view === 'new' || view === 'edit') && (
