@@ -40,6 +40,9 @@ export default function MetadataEditor({ entries, onChange, availableKeys }: Pro
   const [showAll, setShowAll] = useState(false);
   const [keyInput, setKeyInput] = useState('');
   const [showKeyDropdown, setShowKeyDropdown] = useState(false);
+  // Inline notice shown when the user tries to add a key that already exists.
+  // Previously a duplicate add silently cleared the input with no explanation.
+  const [dupWarning, setDupWarning] = useState<string | null>(null);
   const keyInputRef = useRef<HTMLInputElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
@@ -79,11 +82,17 @@ export default function MetadataEditor({ entries, onChange, availableKeys }: Pro
 
   const addEntry = (key: string) => {
     const trimmed = key.trim();
-    if (trimmed && !entries.some((e) => e.key === trimmed)) {
-      entryIds.current.push(idCounter.current++);
-      onChange([...entries, { key: trimmed, value: '' }]);
-      setShowAll(true);
+    if (!trimmed) return;
+    if (entries.some((e) => e.key === trimmed)) {
+      // Duplicate key — keep the typed value and tell the user why nothing
+      // was added instead of silently clearing the field.
+      setDupWarning(`Key "${trimmed}" already exists.`);
+      return;
     }
+    entryIds.current.push(idCounter.current++);
+    onChange([...entries, { key: trimmed, value: '' }]);
+    setShowAll(true);
+    setDupWarning(null);
     setKeyInput('');
     setShowKeyDropdown(false);
   };
@@ -161,12 +170,14 @@ export default function MetadataEditor({ entries, onChange, availableKeys }: Pro
           onChange={(e) => {
             setKeyInput(e.target.value);
             setShowKeyDropdown(true);
+            if (dupWarning) setDupWarning(null);
           }}
           onFocus={() => setShowKeyDropdown(true)}
           onKeyDown={handleKeyInputKeyDown}
           placeholder="Add key..."
           className="form-input metadata-add-input"
           aria-label="Add metadata key"
+          aria-invalid={dupWarning ? true : undefined}
           autoComplete="off"
         />
         <button
@@ -191,6 +202,16 @@ export default function MetadataEditor({ entries, onChange, availableKeys }: Pro
           </div>
         )}
       </div>
+      {dupWarning && (
+        <div
+          className="metadata-dup-warning"
+          role="status"
+          aria-live="polite"
+          style={{ color: 'var(--accent-orange)', fontSize: 12, marginTop: 4 }}
+        >
+          {dupWarning}
+        </div>
+      )}
     </div>
   );
 }
