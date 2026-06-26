@@ -151,6 +151,29 @@ describe('BackupScheduler', () => {
     expect(scheduler.intervalActive).toBe(false);
   });
 
+  it('reschedules to the new interval when the period changes (5 → 15 min)', async () => {
+    const runner = vi.fn().mockResolvedValue(OK_RESULT);
+    scheduler = new BackupScheduler({ runner, debounceMs: 1000 });
+    scheduler.attach(db);
+
+    configureBackup({ intervalMinutes: 5 });
+    scheduler.applySettings(db);
+    expect(scheduler.intervalActive).toBe(true);
+
+    // Change the period before the first tick — the old 5-min timer must be
+    // cleared so it cannot fire on the stale schedule.
+    configureBackup({ intervalMinutes: 15 });
+    scheduler.applySettings(db);
+    expect(scheduler.intervalActive).toBe(true);
+
+    await vi.advanceTimersByTimeAsync(5 * 60_000);
+    expect(runner).not.toHaveBeenCalled(); // old 5-min timer was replaced
+
+    await vi.advanceTimersByTimeAsync(10 * 60_000); // 15 min total
+    expect(runner).toHaveBeenCalledTimes(1);
+    expect(runner.mock.calls[0][0]).toBe('scheduled');
+  });
+
   it('serializes runs — a manual trigger waits for the running sync', async () => {
     configureBackup();
     const order: string[] = [];

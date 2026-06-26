@@ -41,6 +41,8 @@ class FakeGitHub {
   totalCalls = 0;
   refUpdateCalls = 0;
   failNextRefUpdates = 0;
+  /** When true, GET /git/trees responses report `truncated: true`. */
+  truncateTree = false;
   failure: { match: RegExp; status: number; message: string } | null = null;
   private counter = 0;
 
@@ -99,9 +101,12 @@ class FakeGitHub {
     if (method === 'GET' && m) {
       const tree = this.trees.get(m[1]);
       if (!tree) return jsonResponse(404, { message: 'Not Found' });
+      // A truncated listing mimics GitHub dropping entries for a huge repo:
+      // the path set is incomplete, so the sync engine must skip stale-file
+      // and stash-removal cleanup rather than delete blindly.
       return jsonResponse(200, {
-        truncated: false,
-        tree: [...tree.keys()].map((p) => ({ path: p, type: 'blob' })),
+        truncated: this.truncateTree,
+        tree: this.truncateTree ? [] : [...tree.keys()].map((p) => ({ path: p, type: 'blob' })),
       });
     }
 
@@ -440,5 +445,72 @@ describe('runBackupSync', () => {
       name: 'Backup Bot',
       email: DEFAULT_BACKUP_SETTINGS.commitAuthorEmail,
     });
+  });
+
+  it('force re-pushes an unchanged stash (new commit despite a matching hash)', async () => {
+    configureBackup();
+    const stash = db.createStash({ name: 'Force', files: [{ filename: 'f.txt', content: 'f' }] });
+    await runBackupSync(db, 'manual');
+    const commitsBefore = fake.commitMessages('main').length;
+
+    // No content change → a normal run would skip. force overrides the hash check.
+    const result = await runBackupSync(db, 'manual', { force: true });
+    expect(result.status).toBe('success');
+    expect(result.synced).toBe(1);
+    expect(fake.commitMessages('main').length).toBe(commitsBefore + 1);
+    // The stash already had a synced state row, so the action is an update.
+    expect(fake.commitMessages('main')[0]).toBe('stash: update Force');
+    expect(db.getBackupState(stash.id)!.state).toBe('idle');
+  });
+
+  it('normalizes a stuck error/pending row to idle without touching the repo', async () => {
+    configureBackup();
+    const stash = db.createStash({ name: 'Stuck', files: [{ filename: 's.txt', content: 's' }] });
+    await runBackupSync(db, 'manual');
+    const hash = db.getBackupState(stash.id)!.content_hash;
+
+    // Simulate a row stuck in error while the content still matches the last
+    // sync (e.g. a no-op update flipped it). The next run must clear it.
+    db.recordBackupErrors([stash.id], 'transient failure');
+    expect(db.getBackupState(stash.id)!.state).toBe('error');
+
+    const callsBefore = fake.totalCalls;
+    const result = await runBackupSync(db, 'scheduled');
+    expect(result.status).toBe('skipped');
+    // No GitHub write calls — the row was healed locally.
+    expect(fake.totalCalls).toBe(callsBefore);
+
+    const state = db.getBackupState(stash.id)!;
+    expect(state.state).toBe('idle');
+    expect(state.error).toBeNull();
+    expect(state.content_hash).toBe(hash);
+  });
+
+  it('skips stale-file cleanup when the repo tree listing is truncated', async () => {
+    configureBackup();
+    const stash = db.createStash({
+      name: 'Big',
+      files: [
+        { filename: 'a.txt', content: 'old' },
+        { filename: 'b.txt', content: 'keep' },
+      ],
+    });
+    await runBackupSync(db, 'manual');
+    expect(fake.headPaths('main').has(`stashes/${stash.id}/files/a.txt`)).toBe(true);
+
+    // The tree is now reported truncated, so the sync engine cannot see the
+    // existing paths and must not emit deletions. Removing a.txt from the
+    // stash therefore leaves the stale a.txt mirrored in the repo.
+    fake.truncateTree = true;
+    db.updateStash(stash.id, { files: [{ filename: 'b.txt', content: 'keep' }] });
+    const result = await runBackupSync(db, 'mutation');
+    expect(result.status).toBe('success');
+
+    const paths = fake.headPaths('main');
+    // a.txt survives (cleanup skipped) even though it is gone from the stash.
+    expect(paths.has(`stashes/${stash.id}/files/a.txt`)).toBe(true);
+    // The kept file is still present and the state is healthy.
+    expect(paths.get(`stashes/${stash.id}/files/b.txt`)).toBe('keep');
+    expect(db.getBackupState(stash.id)!.state).toBe('idle');
   });
 });
