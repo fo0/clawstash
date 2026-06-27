@@ -6,6 +6,7 @@ import { storeBackupToken } from '@/server/backup/backup-service';
 import { GitHubClient } from '@/server/backup/github-client';
 import { deleteDeviceSession, getDeviceSession } from '@/server/backup/device-sessions';
 import { notifyBackupSettingsChanged } from '@/server/backup/backup-scheduler';
+import { processDevicePoll } from '@/server/backup/device-poll';
 
 // POST /api/backup/device/poll — poll a pending device-flow login (admin).
 // The browser drives the cadence; the server enforces GitHub's minimum
@@ -31,53 +32,20 @@ export async function POST(req: NextRequest) {
     });
   }
 
-  // Honour GitHub's poll interval without bouncing the browser request.
-  if (Date.now() - session.lastPollAt < session.interval * 1000) {
-    return NextResponse.json({ status: 'pending' });
-  }
-  session.lastPollAt = Date.now();
+  const db = getDb();
+  const outcome = await processDevicePoll(session, {
+    pollDeviceFlow: (clientId, deviceCode) =>
+      new GitHubClient(null).pollDeviceFlow(clientId, deviceCode),
+    getAuthenticatedUser: (token) => new GitHubClient(token).getAuthenticatedUser(),
+    storeToken: (token, login) =>
+      storeBackupToken(db, token, {
+        method: 'oauth',
+        login,
+        connectedAt: new Date().toISOString(),
+      }),
+    deleteSession: deleteDeviceSession,
+    notifyChanged: notifyBackupSettingsChanged,
+  });
 
-  try {
-    const client = new GitHubClient(null);
-    const result = await client.pollDeviceFlow(session.clientId, session.deviceCode);
-
-    if (result.status === 'pending') {
-      if (result.interval > session.interval) session.interval = result.interval; // slow_down
-      return NextResponse.json({ status: 'pending' });
-    }
-    if (result.status === 'error') {
-      deleteDeviceSession(session.id);
-      return NextResponse.json({ status: 'error', error: result.error });
-    }
-
-    // The device code is single-use and now consumed: GitHub will reject any
-    // re-poll. Persist the token FIRST so a transient failure while resolving
-    // the account login no longer drops a valid, already-exchanged token and
-    // forces the user to restart the flow (#115). The login is cosmetic — it
-    // only labels the connection in the UI — so resolve it best-effort and
-    // fall back to a placeholder the user can re-sync later.
-    const db = getDb();
-    let login = 'unknown';
-    try {
-      ({ login } = await new GitHubClient(result.token).getAuthenticatedUser());
-    } catch (lookupErr) {
-      console.warn(
-        '[backup] token stored but account lookup failed:',
-        lookupErr instanceof Error ? lookupErr.message : lookupErr,
-      );
-    }
-    storeBackupToken(db, result.token, {
-      method: 'oauth',
-      login,
-      connectedAt: new Date().toISOString(),
-    });
-    deleteDeviceSession(session.id);
-    notifyBackupSettingsChanged();
-    return NextResponse.json({ status: 'connected', login });
-  } catch (err) {
-    // Transient upstream/network failure: keep the session alive and let
-    // the browser retry until the device code expires.
-    console.warn('[backup] device poll failed:', err instanceof Error ? err.message : err);
-    return NextResponse.json({ status: 'pending' });
-  }
+  return NextResponse.json(outcome);
 }
