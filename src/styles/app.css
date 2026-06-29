@@ -2289,6 +2289,14 @@ body {
   white-space: nowrap;
 }
 
+/* "Open in new tab" anchor next to an API-endpoint copy button. Anchors don't
+   inherit the button's flex centering, so re-establish it for icon alignment. */
+.api-open-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
 /* === Stash Editor === */
 .stash-editor {
   max-width: 100%;
