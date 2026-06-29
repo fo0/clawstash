@@ -56,6 +56,7 @@ function SourceBadge({ source }: { source: string }) {
 
 const RENDER_PREF_KEY = 'clawstash-render-preview';
 const ACTIVE_TAB_KEY = 'clawstash-viewer-tab';
+const TOC_PREF_KEY = 'clawstash-toc-expanded';
 
 type ViewerTab = 'content' | 'metadata' | 'access-log' | 'history';
 const VALID_TABS: ViewerTab[] = ['content', 'metadata', 'access-log', 'history'];
@@ -72,6 +73,23 @@ function getRenderPreference(): boolean {
 function setRenderPreference(enabled: boolean): void {
   try {
     localStorage.setItem(RENDER_PREF_KEY, String(enabled));
+  } catch {
+    /* ignore */
+  }
+}
+
+/** Read the persisted Table-of-Contents expanded state. Defaults to expanded. */
+function getTocPreference(): boolean {
+  try {
+    return localStorage.getItem(TOC_PREF_KEY) !== 'false'; // default to true
+  } catch {
+    return true;
+  }
+}
+
+function setTocPreference(expanded: boolean): void {
+  try {
+    localStorage.setItem(TOC_PREF_KEY, String(expanded));
   } catch {
     /* ignore */
   }
@@ -357,7 +375,7 @@ export default function StashViewer({
   const [accessLog, setAccessLog] = useState<AccessLogEntry[]>([]);
   const [logLoading, setLogLoading] = useState(false);
   const [renderPreview, setRenderPreview] = useState(getRenderPreference);
-  const [tocExpanded, setTocExpanded] = useState(true);
+  const [tocExpanded, setTocExpanded] = useState(getTocPreference);
   const [collapsedFiles, setCollapsedFiles] = useState<Set<string>>(new Set());
   const deleteTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const filesContainerRef = useRef<HTMLDivElement>(null);
@@ -845,7 +863,13 @@ export default function StashViewer({
         <div className="viewer-toc">
           <button
             className="viewer-toc-toggle"
-            onClick={() => setTocExpanded(!tocExpanded)}
+            onClick={() =>
+              setTocExpanded((prev) => {
+                const next = !prev;
+                setTocPreference(next);
+                return next;
+              })
+            }
             aria-expanded={tocExpanded}
             aria-controls="viewer-toc-nav"
           >
