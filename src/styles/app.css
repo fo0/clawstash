@@ -1885,6 +1885,21 @@ body {
   gap: 20px;
 }
 
+/* Collapse-all / expand-all toolbar above the file list. Only rendered for
+   multi-file stashes; pins the master toggle to the right so it lines up with
+   the per-file action buttons below it. */
+.viewer-files-toolbar {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: -8px;
+}
+
+.viewer-files-collapse-all {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
 .viewer-file {
   border: 1px solid var(--border-color);
   border-radius: var(--radius-lg);
@@ -2272,6 +2287,14 @@ body {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+/* "Open in new tab" anchor next to an API-endpoint copy button. Anchors don't
+   inherit the button's flex centering, so re-establish it for icon alignment. */
+.api-open-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 
 /* === Stash Editor === */

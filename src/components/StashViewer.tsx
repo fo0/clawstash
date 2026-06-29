@@ -56,6 +56,7 @@ function SourceBadge({ source }: { source: string }) {
 
 const RENDER_PREF_KEY = 'clawstash-render-preview';
 const ACTIVE_TAB_KEY = 'clawstash-viewer-tab';
+const TOC_PREF_KEY = 'clawstash-toc-expanded';
 
 type ViewerTab = 'content' | 'metadata' | 'access-log' | 'history';
 const VALID_TABS: ViewerTab[] = ['content', 'metadata', 'access-log', 'history'];
@@ -72,6 +73,23 @@ function getRenderPreference(): boolean {
 function setRenderPreference(enabled: boolean): void {
   try {
     localStorage.setItem(RENDER_PREF_KEY, String(enabled));
+  } catch {
+    /* ignore */
+  }
+}
+
+/** Read the persisted Table-of-Contents expanded state. Defaults to expanded. */
+function getTocPreference(): boolean {
+  try {
+    return localStorage.getItem(TOC_PREF_KEY) !== 'false'; // default to true
+  } catch {
+    return true;
+  }
+}
+
+function setTocPreference(expanded: boolean): void {
+  try {
+    localStorage.setItem(TOC_PREF_KEY, String(expanded));
   } catch {
     /* ignore */
   }
@@ -318,6 +336,30 @@ function CopyButtonContent({
   );
 }
 
+/**
+ * Small "open in new tab" affordance next to an API-endpoint row. The copy
+ * buttons hand back the relative path (for curl/scripts); this lets the user
+ * load the live endpoint directly without retyping it into the address bar.
+ * `noopener noreferrer` per the usual target=_blank safety.
+ */
+function ApiOpenLink({ path, label }: { path: string; label: string }) {
+  return (
+    <a
+      className="btn btn-sm btn-ghost api-open-link"
+      href={path}
+      target="_blank"
+      rel="noopener noreferrer"
+      title={label}
+      aria-label={label}
+    >
+      <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
+        <path d="M3.75 2A1.75 1.75 0 0 0 2 3.75v8.5C2 13.216 2.784 14 3.75 14h8.5A1.75 1.75 0 0 0 14 12.25v-3.5a.75.75 0 0 0-1.5 0v3.5a.25.25 0 0 1-.25.25h-8.5a.25.25 0 0 1-.25-.25v-8.5a.25.25 0 0 1 .25-.25h3.5a.75.75 0 0 0 0-1.5Z" />
+        <path d="M9.75 2a.75.75 0 0 0 0 1.5h1.69L6.22 8.72a.75.75 0 1 0 1.06 1.06l5.22-5.22v1.69a.75.75 0 0 0 1.5 0v-3.5a.75.75 0 0 0-.75-.75Z" />
+      </svg>
+    </a>
+  );
+}
+
 export default function StashViewer({
   stash,
   onEdit,
@@ -333,7 +375,7 @@ export default function StashViewer({
   const [accessLog, setAccessLog] = useState<AccessLogEntry[]>([]);
   const [logLoading, setLogLoading] = useState(false);
   const [renderPreview, setRenderPreview] = useState(getRenderPreference);
-  const [tocExpanded, setTocExpanded] = useState(true);
+  const [tocExpanded, setTocExpanded] = useState(getTocPreference);
   const [collapsedFiles, setCollapsedFiles] = useState<Set<string>>(new Set());
   const deleteTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const filesContainerRef = useRef<HTMLDivElement>(null);
@@ -442,6 +484,17 @@ export default function StashViewer({
       return next;
     });
   }, []);
+
+  // True when every file is collapsed — drives the master toggle's
+  // collapse-all vs expand-all behavior and its label/icon.
+  const allFilesCollapsed = stash.files.length > 0 && collapsedFiles.size === stash.files.length;
+
+  /** Collapse every file, or — when all are already collapsed — expand them all. */
+  const toggleAllFilesCollapsed = useCallback(() => {
+    setCollapsedFiles((prev) =>
+      prev.size === stash.files.length ? new Set() : new Set(stash.files.map((f) => f.id)),
+    );
+  }, [stash.files]);
 
   /**
    * Clicking the header bar surface toggles collapse. Clicks on the filename
@@ -810,7 +863,13 @@ export default function StashViewer({
         <div className="viewer-toc">
           <button
             className="viewer-toc-toggle"
-            onClick={() => setTocExpanded(!tocExpanded)}
+            onClick={() =>
+              setTocExpanded((prev) => {
+                const next = !prev;
+                setTocPreference(next);
+                return next;
+              })
+            }
             aria-expanded={tocExpanded}
             aria-controls="viewer-toc-nav"
           >
@@ -862,6 +921,30 @@ export default function StashViewer({
 
       {activeTab === 'content' && (
         <div className="viewer-files" ref={filesContainerRef}>
+          {stash.files.length > 1 && (
+            <div className="viewer-files-toolbar">
+              <button
+                type="button"
+                className="btn btn-sm btn-ghost viewer-files-collapse-all"
+                onClick={toggleAllFilesCollapsed}
+                aria-expanded={!allFilesCollapsed}
+                title={allFilesCollapsed ? 'Expand all files' : 'Collapse all files'}
+                aria-label={allFilesCollapsed ? 'Expand all files' : 'Collapse all files'}
+              >
+                <svg
+                  width="12"
+                  height="12"
+                  viewBox="0 0 16 16"
+                  fill="currentColor"
+                  className={`file-collapse-chevron ${allFilesCollapsed ? '' : 'expanded'}`}
+                  aria-hidden="true"
+                >
+                  <path d="M6.22 3.22a.75.75 0 0 1 1.06 0l4.25 4.25a.75.75 0 0 1 0 1.06l-4.25 4.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042L9.94 8 6.22 4.28a.75.75 0 0 1 0-1.06Z" />
+                </svg>
+                {allFilesCollapsed ? 'Expand all' : 'Collapse all'}
+              </button>
+            </div>
+          )}
           {stash.files.map((file, fileIndex) => {
             const lang = resolvedLanguages.get(file.id) || 'text';
             const renderable = isRenderableLanguage(lang);
@@ -1139,6 +1222,10 @@ export default function StashViewer({
                     failed={apiClipboard.isFailed(`get-${stash.id}`)}
                   />
                 </button>
+                <ApiOpenLink
+                  path={`/api/stashes/${stash.id}`}
+                  label="Open API endpoint in a new tab"
+                />
               </div>
               {stash.files.map((f) => (
                 <div key={f.id} className="api-example">
@@ -1169,6 +1256,10 @@ export default function StashViewer({
                       failed={apiClipboard.isFailed(`raw-${f.id}`)}
                     />
                   </button>
+                  <ApiOpenLink
+                    path={`/api/stashes/${stash.id}/files/${encodeURIComponent(f.filename)}/raw`}
+                    label={`Open raw ${f.filename} in a new tab`}
+                  />
                 </div>
               ))}
             </div>
