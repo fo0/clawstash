@@ -443,6 +443,17 @@ export default function StashViewer({
     });
   }, []);
 
+  // True when every file is collapsed — drives the master toggle's
+  // collapse-all vs expand-all behavior and its label/icon.
+  const allFilesCollapsed = stash.files.length > 0 && collapsedFiles.size === stash.files.length;
+
+  /** Collapse every file, or — when all are already collapsed — expand them all. */
+  const toggleAllFilesCollapsed = useCallback(() => {
+    setCollapsedFiles((prev) =>
+      prev.size === stash.files.length ? new Set() : new Set(stash.files.map((f) => f.id)),
+    );
+  }, [stash.files]);
+
   /**
    * Clicking the header bar surface toggles collapse. Clicks on the filename
    * (kept selectable), the action buttons, or the actions area keep their own
@@ -862,6 +873,30 @@ export default function StashViewer({
 
       {activeTab === 'content' && (
         <div className="viewer-files" ref={filesContainerRef}>
+          {stash.files.length > 1 && (
+            <div className="viewer-files-toolbar">
+              <button
+                type="button"
+                className="btn btn-sm btn-ghost viewer-files-collapse-all"
+                onClick={toggleAllFilesCollapsed}
+                aria-expanded={!allFilesCollapsed}
+                title={allFilesCollapsed ? 'Expand all files' : 'Collapse all files'}
+                aria-label={allFilesCollapsed ? 'Expand all files' : 'Collapse all files'}
+              >
+                <svg
+                  width="12"
+                  height="12"
+                  viewBox="0 0 16 16"
+                  fill="currentColor"
+                  className={`file-collapse-chevron ${allFilesCollapsed ? '' : 'expanded'}`}
+                  aria-hidden="true"
+                >
+                  <path d="M6.22 3.22a.75.75 0 0 1 1.06 0l4.25 4.25a.75.75 0 0 1 0 1.06l-4.25 4.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042L9.94 8 6.22 4.28a.75.75 0 0 1 0-1.06Z" />
+                </svg>
+                {allFilesCollapsed ? 'Expand all' : 'Collapse all'}
+              </button>
+            </div>
+          )}
           {stash.files.map((file, fileIndex) => {
             const lang = resolvedLanguages.get(file.id) || 'text';
             const renderable = isRenderableLanguage(lang);

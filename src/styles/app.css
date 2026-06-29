@@ -1885,6 +1885,21 @@ body {
   gap: 20px;
 }
 
+/* Collapse-all / expand-all toolbar above the file list. Only rendered for
+   multi-file stashes; pins the master toggle to the right so it lines up with
+   the per-file action buttons below it. */
+.viewer-files-toolbar {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: -8px;
+}
+
+.viewer-files-collapse-all {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
 .viewer-file {
   border: 1px solid var(--border-color);
   border-radius: var(--radius-lg);
