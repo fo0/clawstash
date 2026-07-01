@@ -361,6 +361,7 @@ export default function Sidebar({
                         value={tagSearch}
                         onChange={(e) => setTagSearch(e.target.value)}
                         className="sidebar-tag-search-input"
+                        aria-label="Search tags"
                         autoFocus
                       />
                     </div>
