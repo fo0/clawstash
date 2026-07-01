@@ -79,6 +79,8 @@ export default function Footer() {
               className={`footer-info-btn${showDetails ? ' active' : ''}`}
               onClick={() => setShowDetails((prev) => !prev)}
               title="Toggle build details"
+              aria-label="Toggle build details"
+              aria-expanded={showDetails}
             >
               <svg
                 width="14"
