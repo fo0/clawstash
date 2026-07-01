@@ -1286,7 +1286,12 @@ export default function GraphViewer({
       <div className="graph-viewer">
         <div className="graph-header">
           <div className="graph-title">
-            <button className="graph-back-btn" onClick={onGoHome} title="Back to dashboard">
+            <button
+              className="graph-back-btn"
+              onClick={onGoHome}
+              title="Back to dashboard"
+              aria-label="Back to dashboard"
+            >
               <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
                 <path d="M7.78 12.53a.75.75 0 0 1-1.06 0L2.47 8.28a.75.75 0 0 1 0-1.06l4.25-4.25a.75.75 0 0 1 1.06 1.06L4.81 7h7.44a.75.75 0 0 1 0 1.5H4.81l2.97 2.97a.75.75 0 0 1 0 1.06Z" />
               </svg>
@@ -1307,7 +1312,12 @@ export default function GraphViewer({
     <div className="graph-viewer">
       <div className="graph-header">
         <div className="graph-title">
-          <button className="graph-back-btn" onClick={onGoHome} title="Back to dashboard">
+          <button
+            className="graph-back-btn"
+            onClick={onGoHome}
+            title="Back to dashboard"
+            aria-label="Back to dashboard"
+          >
             <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
               <path d="M7.78 12.53a.75.75 0 0 1-1.06 0L2.47 8.28a.75.75 0 0 1 0-1.06l4.25-4.25a.75.75 0 0 1 1.06 1.06L4.81 7h7.44a.75.75 0 0 1 0 1.5H4.81l2.97 2.97a.75.75 0 0 1 0 1.06Z" />
             </svg>
@@ -1343,7 +1353,12 @@ export default function GraphViewer({
                   +
                 </button>
               </span>
-              <button className="graph-focus-clear" onClick={handleClearFocus} title="Clear focus">
+              <button
+                className="graph-focus-clear"
+                onClick={handleClearFocus}
+                title="Clear focus"
+                aria-label="Clear focus"
+              >
                 <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor">
                   <path d="M3.72 3.72a.75.75 0 0 1 1.06 0L8 6.94l3.22-3.22a.749.749 0 0 1 1.275.326.749.749 0 0 1-.215.734L9.06 8l3.22 3.22a.749.749 0 0 1-.326 1.275.749.749 0 0 1-.734-.215L8 9.06l-3.22 3.22a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042L6.94 8 3.72 4.78a.75.75 0 0 1 0-1.06Z" />
                 </svg>
@@ -1370,6 +1385,7 @@ export default function GraphViewer({
                 className="graph-highlight-clear"
                 onClick={clearHighlight}
                 title="Clear highlight"
+                aria-label="Clear highlight"
               >
                 <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor">
                   <path d="M3.72 3.72a.75.75 0 0 1 1.06 0L8 6.94l3.22-3.22a.749.749 0 0 1 1.275.326.749.749 0 0 1-.215.734L9.06 8l3.22 3.22a.749.749 0 0 1-.326 1.275.749.749 0 0 1-.734-.215L8 9.06l-3.22 3.22a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042L6.94 8 3.72 4.78a.75.75 0 0 1 0-1.06Z" />
@@ -1526,7 +1542,12 @@ export default function GraphViewer({
                 </svg>
                 <strong>{popup.tag}</strong>
               </div>
-              <button className="graph-popup-close" onClick={closePopup} title="Close">
+              <button
+                className="graph-popup-close"
+                onClick={closePopup}
+                title="Close"
+                aria-label="Close"
+              >
                 <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
                   <path d="M3.72 3.72a.75.75 0 0 1 1.06 0L8 6.94l3.22-3.22a.749.749 0 0 1 1.275.326.749.749 0 0 1-.215.734L9.06 8l3.22 3.22a.749.749 0 0 1-.326 1.275.749.749 0 0 1-.734-.215L8 9.06l-3.22 3.22a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042L6.94 8 3.72 4.78a.75.75 0 0 1 0-1.06Z" />
                 </svg>
