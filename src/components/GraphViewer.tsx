@@ -1,6 +1,7 @@
 import { useRef, useEffect, useCallback, useState } from 'react';
 import type { StashListItem, TagInfo, TagGraphResult } from '../types';
 import { api } from '../api';
+import { pluralize } from '../utils/format';
 import StashGraphCanvas from './StashGraphCanvas';
 
 // --- Physics simulation constants (tag graph) --------------------------------
@@ -1324,7 +1325,7 @@ export default function GraphViewer({
           </button>
           {tabSwitcher}
           <span className="graph-stats">
-            {nodeCount} tags · {edgeCount} connections
+            {pluralize(nodeCount, 'tag')} · {pluralize(edgeCount, 'connection')}
           </span>
         </div>
         <div className="graph-actions">

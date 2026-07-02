@@ -2,6 +2,7 @@ import { useMemo } from 'react';
 import type { StashListItem, LayoutMode, SortMode } from '../types';
 import { sortStashesWithFavorites } from '../utils/favorites';
 import { sortStashes, SORT_OPTIONS } from '../utils/sort';
+import { pluralize } from '../utils/format';
 import StashCard from './StashCard';
 import Spinner from './shared/Spinner';
 
@@ -53,7 +54,7 @@ export default function Dashboard({
         <div className="dashboard-title">
           <h1>Your Stashes</h1>
           <span className="stash-count" title="Total number of stashes stored">
-            {total} stashes
+            {pluralize(total, 'stash', 'stashes')}
           </span>
           {loading && stashes.length > 0 && (
             <span
