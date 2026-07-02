@@ -716,8 +716,50 @@ body {
   border: 1px solid rgba(218, 54, 51, 0.3);
 }
 
+.login-input-wrapper {
+  position: relative;
+  display: flex;
+}
+
 .login-input {
+  /* Symmetric horizontal padding keeps the centered text visually centered
+     while leaving room on the right for the reveal toggle. */
   text-align: center;
+  padding-left: 40px;
+  padding-right: 40px;
+  width: 100%;
+}
+
+.login-password-toggle {
+  position: absolute;
+  top: 0;
+  right: 0;
+  height: 100%;
+  width: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  border-radius: 0 var(--radius) var(--radius) 0;
+  transition: color 0.08s;
+}
+
+.login-password-toggle:hover:not(:disabled) {
+  color: var(--text-primary);
+}
+
+.login-password-toggle:disabled {
+  cursor: default;
+  opacity: 0.5;
+}
+
+.login-password-toggle:focus-visible {
+  outline: 2px solid var(--accent-blue);
+  outline-offset: -2px;
 }
 
 .login-btn {
@@ -889,6 +931,15 @@ body {
   text-overflow: ellipsis;
   white-space: nowrap;
   margin-bottom: 4px;
+}
+
+.search-overlay-mark {
+  /* Accent-orange tint keeps the match visible on the dark surface without the
+     browser default black-on-yellow. `color: inherit` preserves item colors. */
+  background: rgba(210, 153, 34, 0.28);
+  color: inherit;
+  border-radius: 2px;
+  padding: 0 1px;
 }
 
 .search-overlay-item-meta {

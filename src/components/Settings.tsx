@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, type ReactNode } from 'react';
 import type { SettingsSection, LayoutMode, Stats, TagInfo } from '../types';
 import { api } from '../api';
-import { formatExportTimestamp } from '../utils/format';
+import { formatExportTimestamp, pluralize } from '../utils/format';
 import ApiManager from './api/ApiManager';
 import BackupSection from './settings/BackupSection';
 import Spinner from './shared/Spinner';
@@ -185,7 +185,8 @@ function WelcomeSection({ onNavigate }: WelcomeSectionProps) {
         <span>System running normally</span>
         {stats && (
           <span className="settings-welcome-status-stats">
-            &mdash; {stats.totalStashes} stashes, {stats.totalFiles} files
+            &mdash; {pluralize(stats.totalStashes, 'stash', 'stashes')},{' '}
+            {pluralize(stats.totalFiles, 'file')}
           </span>
         )}
       </div>

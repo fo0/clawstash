@@ -5,6 +5,7 @@ import {
   formatDate,
   formatDateTime,
   formatRelativeTime,
+  pluralize,
 } from '../format';
 
 describe('formatBytes', () => {
@@ -52,6 +53,24 @@ describe('formatBuildVersion', () => {
     // the canonical output here so a regression to local-time formatting
     // is caught even when the test runs in TZ=America/Los_Angeles etc.
     expect(formatBuildVersion('2026-12-31T23:30:00Z')).toBe('v20261231-2330');
+  });
+});
+
+describe('pluralize', () => {
+  it('uses the singular noun only when the count is exactly 1', () => {
+    expect(pluralize(1, 'file')).toBe('1 file');
+    expect(pluralize(0, 'file')).toBe('0 files');
+    expect(pluralize(2, 'file')).toBe('2 files');
+  });
+
+  it('honors an explicit plural for irregular nouns', () => {
+    expect(pluralize(1, 'stash', 'stashes')).toBe('1 stash');
+    expect(pluralize(3, 'stash', 'stashes')).toBe('3 stashes');
+  });
+
+  it('defaults the plural to the singular + "s"', () => {
+    expect(pluralize(5, 'connection')).toBe('5 connections');
+    expect(pluralize(1, 'tag')).toBe('1 tag');
   });
 });
 

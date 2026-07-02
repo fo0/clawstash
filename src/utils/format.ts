@@ -92,3 +92,13 @@ export function formatBuildVersion(isoDate: string): string | null {
 export function formatExportTimestamp(date: Date = new Date()): string {
   return date.toISOString().slice(0, 19).replace(/[:.]/g, '-');
 }
+
+/**
+ * Format a count with its noun, choosing singular/plural by the count
+ * ("1 stash", "2 stashes", "0 files"). English-only; irregular plurals pass
+ * an explicit `plural` (the default appends "s"). Avoids the "1 stashes"
+ * grammar glitch in count labels across the dashboard, settings and graph.
+ */
+export function pluralize(count: number, singular: string, plural = `${singular}s`): string {
+  return `${count} ${count === 1 ? singular : plural}`;
+}
