@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import type { StashListItem } from '../types';
 import { api } from '../api';
 import { formatRelativeTime } from '../utils/format';
+import { splitHighlight } from '../utils/highlight';
 import { SEARCH_DEBOUNCE_MS } from '../utils/constants';
 import Spinner from './shared/Spinner';
 
@@ -127,6 +128,20 @@ export default function SearchOverlay({ open, onClose, onSelectStash }: Props) {
     }
   };
 
+  // Wrap the parts of `text` that match the current query in <mark> so the
+  // reason a result surfaced is visible. Segments render as React text nodes
+  // (XSS-safe); non-match segments stay bare strings (no key needed).
+  const renderHighlighted = (text: string) =>
+    splitHighlight(text, query).map((seg, i) =>
+      seg.match ? (
+        <mark key={i} className="search-overlay-mark">
+          {seg.text}
+        </mark>
+      ) : (
+        seg.text
+      ),
+    );
+
   if (!open) return null;
 
   return (
@@ -203,7 +218,7 @@ export default function SearchOverlay({ open, onClose, onSelectStash }: Props) {
               >
                 <div className="search-overlay-item-main">
                   <span className="search-overlay-item-name">
-                    {stash.name || stash.files[0]?.filename || 'Untitled'}
+                    {renderHighlighted(stash.name || stash.files[0]?.filename || 'Untitled')}
                   </span>
                   {stash.files.length > 0 && (
                     <span className="search-overlay-item-files">
@@ -213,9 +228,11 @@ export default function SearchOverlay({ open, onClose, onSelectStash }: Props) {
                 </div>
                 {stash.description && (
                   <div className="search-overlay-item-desc">
-                    {stash.description.length > 100
-                      ? stash.description.slice(0, 100) + '...'
-                      : stash.description}
+                    {renderHighlighted(
+                      stash.description.length > 100
+                        ? stash.description.slice(0, 100) + '...'
+                        : stash.description,
+                    )}
                   </div>
                 )}
                 <div className="search-overlay-item-meta">
