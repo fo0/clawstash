@@ -27,7 +27,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "cmd=$(jq -r '.tool_input.command // empty'); if echo \"$cmd\" | grep -qE 'git commit'; then cd \"$CLAUDE_PROJECT_DIR\" && staged=$(git diff --cached --name-only 2>/dev/null | grep -E '^(\\.claude/|CLAUDE\\.md|AGENTS\\.md|agent_docs/|docs/wiki/)' || true); [ -n \"$staged\" ] && echo \"GitNexus read-only guard: agent-config/doc files are staged -- confirm these are intended (not GitNexus side-effects) before committing, else 'git restore --staged' / 'git checkout --':\\n$staged\"; fi; exit 0"
+            "command": "cmd=$(jq -r '.tool_input.command // empty'); if echo \"$cmd\" | grep -qE 'git commit'; then cd \"$CLAUDE_PROJECT_DIR\" && staged=$(git diff --cached --name-only 2>/dev/null | grep -E '^(\\.claude/|CLAUDE\\.md|AGENTS\\.md|agent_docs/|docs/wiki/)' || true); [ -n \"$staged\" ] && printf \"GitNexus read-only guard: agent-config/doc files are staged -- confirm these are intended (not GitNexus side-effects) before committing, else 'git restore --staged' / 'git checkout --':\\n%s\\n\" \"$staged\"; fi; exit 0"
           }
         ]
       }
