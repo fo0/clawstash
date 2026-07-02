@@ -69,9 +69,11 @@ When the user invokes `/pr` or "PR" without a sub-command, **detect the lifecycl
 
 ```bash
 BRANCH=$(git rev-parse --abbrev-ref HEAD)
-PR_JSON=$(gh pr list --head "$BRANCH" --json number,state,url,headRefOid 2>/dev/null)
+PR_JSON=$(gh pr list --head "$BRANCH" --state all --json number,state,url,headRefOid 2>/dev/null)
 HEAD_SHA=$(git rev-parse HEAD)
 ```
+
+> `--state all` is required — `gh pr list` defaults to open PRs only, which would make the `MERGED`/`CLOSED` row below unreachable. If the branch has several PRs, route on the open one; only when none is open does the `MERGED`/`CLOSED` row apply.
 
 Decision matrix:
 
