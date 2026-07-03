@@ -4,7 +4,7 @@ Thanks for your interest in contributing to ClawStash! Here's how to get started
 
 ## Development Setup
 
-**Prerequisites:** Node.js 26+ (project pins Node 26 in Docker; `better-sqlite3` 12.x requires ≥ 20)
+**Prerequisites:** Node.js 20+ (project pins Node 26 in Docker/CI; `next` requires ≥ 20.9, `better-sqlite3` 12.x supports 20.x–26.x — no dependency needs 26+ for local dev)
 
 ```bash
 git clone https://github.com/fo0/clawstash.git
