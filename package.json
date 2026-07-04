@@ -28,7 +28,7 @@
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.27.1",
-    "adm-zip": "^0.5.17",
+    "adm-zip": "^0.5.18",
     "archiver": "^7.0.1",
     "better-sqlite3": "^12.11.1",
     "diff": "^9.0.0",
