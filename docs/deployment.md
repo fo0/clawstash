@@ -90,7 +90,7 @@ docker compose up -d
 
 ## Node.js (without Docker)
 
-**Prerequisites:** Node.js 26+ (project pins Node 26 in Docker; `better-sqlite3` 12.x requires ≥ 20)
+**Prerequisites:** Node.js 20+ (project pins Node 26 in Docker; `better-sqlite3` 12.x requires ≥ 20)
 
 ### Development
 
