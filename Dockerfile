@@ -44,6 +44,13 @@ RUN chmod +x /usr/local/bin/docker-entrypoint.sh && command -v setpriv
 
 ENV NODE_ENV=production
 ENV PORT=3000
+# Bind to all interfaces: the standalone server.js listens on
+# `process.env.HOSTNAME || '0.0.0.0'`, and Docker sets HOSTNAME to the
+# container ID — without this override the server binds only to the
+# container-IP interface, so in-container loopback access (healthcheck,
+# curl localhost debugging, sidecars) fails. Same override as the official
+# Next.js Docker example.
+ENV HOSTNAME=0.0.0.0
 ENV DATABASE_PATH=/app/data/clawstash.db
 
 EXPOSE 3000
