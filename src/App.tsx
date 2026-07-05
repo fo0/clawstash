@@ -27,12 +27,35 @@ import Footer from './components/Footer';
 
 function getStoredPreference<T extends string>(key: string, fallback: T): T {
   if (typeof window === 'undefined') return fallback;
-  return (localStorage.getItem(key) as T) || fallback;
+  try {
+    return (localStorage.getItem(key) as T) || fallback;
+  } catch {
+    return fallback;
+  }
 }
 
 function getStoredAdminToken(): string {
   if (typeof window === 'undefined') return '';
-  return localStorage.getItem('clawstash_admin_token') || '';
+  try {
+    return localStorage.getItem('clawstash_admin_token') || '';
+  } catch {
+    return '';
+  }
+}
+
+/**
+ * Write a localStorage entry, swallowing storage failures (quota exceeded,
+ * storage disabled in sandboxed iframes / strict privacy modes → throws).
+ * Mirrors the guarded `save*` helpers in utils/ (sort, archived, favorites);
+ * two call sites run inside setState updaters, where an uncaught throw would
+ * propagate into React's render phase and unmount the tree.
+ */
+function safeSetItem(key: string, value: string): void {
+  try {
+    localStorage.setItem(key, value);
+  } catch {
+    // Preference stays in memory only.
+  }
 }
 
 /**
@@ -325,7 +348,9 @@ export default function App() {
 
   const handleLogin = useCallback(async (password: string) => {
     const result = await api.adminLogin(password);
-    localStorage.setItem('clawstash_admin_token', result.token);
+    // Guarded write: a disabled/full storage must not fail the login — the
+    // session then simply lives in memory for this tab.
+    safeSetItem('clawstash_admin_token', result.token);
     setAdminToken(result.token);
   }, []);
 
@@ -335,7 +360,11 @@ export default function App() {
     } catch {
       // Ignore logout errors
     }
-    localStorage.removeItem('clawstash_admin_token');
+    try {
+      localStorage.removeItem('clawstash_admin_token');
+    } catch {
+      // Storage disabled — nothing was persisted to remove.
+    }
     setAdminToken('');
     setAdminSession({ authenticated: false, authRequired: true });
   }, []);
@@ -417,7 +446,7 @@ export default function App() {
     setRecentTags((prev) => {
       const cleaned = prev.filter((t) => tagNames.has(t));
       if (cleaned.length !== prev.length) {
-        localStorage.setItem('clawstash_recent_tags', JSON.stringify(cleaned));
+        safeSetItem('clawstash_recent_tags', JSON.stringify(cleaned));
       }
       return cleaned.length !== prev.length ? cleaned : prev;
     });
@@ -559,7 +588,7 @@ export default function App() {
     if (newTag) {
       setRecentTags((prev) => {
         const updated = [newTag, ...prev.filter((t) => t !== newTag)].slice(0, 3);
-        localStorage.setItem('clawstash_recent_tags', JSON.stringify(updated));
+        safeSetItem('clawstash_recent_tags', JSON.stringify(updated));
         return updated;
       });
     }
@@ -596,7 +625,7 @@ export default function App() {
 
   const handleLayoutChange = (mode: LayoutMode) => {
     setLayout(mode);
-    localStorage.setItem('clawstash_layout', mode);
+    safeSetItem('clawstash_layout', mode);
   };
 
   const handleSortChange = (mode: SortMode) => {
