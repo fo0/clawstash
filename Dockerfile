@@ -44,11 +44,25 @@ RUN chmod +x /usr/local/bin/docker-entrypoint.sh && command -v setpriv
 
 ENV NODE_ENV=production
 ENV PORT=3000
+# Bind to all interfaces: the standalone server.js listens on
+# `process.env.HOSTNAME || '0.0.0.0'`, and Docker sets HOSTNAME to the
+# container ID — without this override the server binds only to the
+# container-IP interface, so in-container loopback access (healthcheck,
+# curl localhost debugging, sidecars) fails. Same override as the official
+# Next.js Docker example.
+ENV HOSTNAME=0.0.0.0
 ENV DATABASE_PATH=/app/data/clawstash.db
 
 EXPOSE 3000
 
 VOLUME ["/app/data"]
+
+# Surface container health via the dedicated /api/health endpoint (200 when
+# the SQLite database is reachable, 503 otherwise — see its route handler,
+# which names Docker HEALTHCHECK as its primary consumer). `node -e` because
+# the slim image ships no curl/wget; global fetch is stable on Node >= 21.
+HEALTHCHECK --interval=30s --timeout=5s --start-period=15s --retries=3 \
+  CMD node -e 'fetch("http://127.0.0.1:"+(process.env.PORT||3000)+"/api/health").then((r)=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))'
 
 # No USER directive: docker-entrypoint.sh needs root for the one-time chown
 # and immediately drops to `node` (uid 1000) for the server process.
