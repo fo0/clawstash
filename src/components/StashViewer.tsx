@@ -17,6 +17,7 @@ import { renderDescriptionMarkdown, isUnsafeUrl, sanitizeHtml } from '../utils/m
 import { hydrateMermaidPlaceholders, encodeMermaidSource } from '../utils/mermaid-hydrate';
 import { DELETE_CONFIRM_TIMEOUT_MS } from '../utils/constants';
 import { escapeHtml } from '../utils/html';
+import { buildStashUrl } from '../utils/stash-url';
 import MermaidDiagram from './MermaidDiagram';
 import MarkdownBody from './MarkdownBody';
 import Spinner from './shared/Spinner';
@@ -382,6 +383,7 @@ export default function StashViewer({
   const pendingScrollIdRef = useRef<string | null>(null);
   const copyAllClipboard = useClipboard();
   const titleClipboard = useClipboard();
+  const linkClipboard = useClipboard();
   const fileClipboard = useClipboardWithKey();
   const apiClipboard = useClipboardWithKey();
 
@@ -599,6 +601,16 @@ export default function StashViewer({
     copyAllClipboard.copy(allContent);
   };
 
+  /**
+   * Copy a shareable deep-link to this stash. Uses the live page origin so the
+   * copied URL works in whatever context the app is served from (dev, custom
+   * port, reverse-proxied host). Runs only in the browser (click handler), so
+   * `window` is always available here.
+   */
+  const copyStashLink = () => {
+    linkClipboard.copy(buildStashUrl(window.location.origin, stash.id));
+  };
+
   const handleDelete = () => {
     if (showDeleteConfirm) {
       onDelete(stash.id);
@@ -630,6 +642,8 @@ export default function StashViewer({
         {copyAllClipboard.status === 'failed' && 'Copy failed'}
         {titleClipboard.status === 'copied' && 'Stash name copied to clipboard'}
         {titleClipboard.status === 'failed' && 'Copy failed'}
+        {linkClipboard.status === 'copied' && 'Stash link copied to clipboard'}
+        {linkClipboard.status === 'failed' && 'Copy failed'}
         {fileClipboard.copiedKey && 'File copied to clipboard'}
         {fileClipboard.failedKey && 'Copy failed'}
         {apiClipboard.copiedKey && 'API endpoint copied to clipboard'}
@@ -670,6 +684,26 @@ export default function StashViewer({
           </button>
         </h2>
         <div className="viewer-actions">
+          <button
+            className="btn btn-secondary"
+            onClick={copyStashLink}
+            title={
+              linkClipboard.copied
+                ? 'Link copied!'
+                : linkClipboard.status === 'failed'
+                  ? 'Copy failed'
+                  : 'Copy a shareable link to this stash'
+            }
+            aria-label="Copy a shareable link to this stash"
+          >
+            <CopyButtonContent
+              copied={linkClipboard.copied}
+              failed={linkClipboard.status === 'failed'}
+              size={14}
+              labelCopy="Copy Link"
+              labelCopied="Link copied"
+            />
+          </button>
           <button
             className="btn btn-secondary"
             onClick={copyAllFiles}
