@@ -4,6 +4,7 @@ import { api } from '../api';
 import { formatRelativeTime } from '../utils/format';
 import { splitHighlight } from '../utils/highlight';
 import { SEARCH_DEBOUNCE_MS } from '../utils/constants';
+import { loadRecentViews, type RecentView } from '../utils/recent-views';
 import Spinner from './shared/Spinner';
 
 interface Props {
@@ -15,6 +16,7 @@ interface Props {
 export default function SearchOverlay({ open, onClose, onSelectStash }: Props) {
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<StashListItem[]>([]);
+  const [recent, setRecent] = useState<RecentView[]>([]);
   const [loading, setLoading] = useState(false);
   const [activeIndex, setActiveIndex] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -40,6 +42,9 @@ export default function SearchOverlay({ open, onClose, onSelectStash }: Props) {
       setResults([]);
       setActiveIndex(0);
       setLoading(false);
+      // Refresh the "Recently viewed" shortcut list each time the overlay
+      // opens so it reflects stashes opened since the last open.
+      setRecent(loadRecentViews());
       // Small delay to ensure the DOM is rendered
       requestAnimationFrame(() => inputRef.current?.focus());
     }
@@ -257,7 +262,31 @@ export default function SearchOverlay({ open, onClose, onSelectStash }: Props) {
           </div>
         )}
 
-        {!query.trim() && (
+        {!query.trim() && recent.length > 0 && (
+          <div
+            className="search-overlay-results"
+            role="listbox"
+            aria-label={`${recent.length} recently viewed stash${recent.length !== 1 ? 'es' : ''}`}
+          >
+            <div className="search-overlay-results-count">Recently viewed</div>
+            {recent.map((item) => (
+              <button
+                type="button"
+                key={item.id}
+                className="search-overlay-item"
+                role="option"
+                aria-selected={false}
+                onClick={() => handleSelect(item.id)}
+              >
+                <div className="search-overlay-item-main">
+                  <span className="search-overlay-item-name">{item.title}</span>
+                </div>
+              </button>
+            ))}
+          </div>
+        )}
+
+        {!query.trim() && recent.length === 0 && (
           <div className="search-overlay-hint">
             <span>Type to search by name, filename, or content</span>
           </div>

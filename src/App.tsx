@@ -13,6 +13,7 @@ import { api, setAuthToken } from './api';
 import { loadFavoriteIds, saveFavoriteIds, toggleFavorite } from './utils/favorites';
 import { loadSortMode, saveSortMode } from './utils/sort';
 import { loadShowArchived, saveShowArchived } from './utils/archived';
+import { recordRecentView } from './utils/recent-views';
 import { SEARCH_DEBOUNCE_MS } from './utils/constants';
 import Sidebar from './components/Sidebar';
 import Dashboard from './components/Dashboard';
@@ -473,6 +474,13 @@ export default function App() {
       setView('view');
       pushUrl(`/stash/${id}`);
       setSidebarOpen(false);
+      // Remember this stash for the quick-search "Recently viewed" shortcut.
+      // Captured here (not on URL/popstate loads) so the list reflects
+      // deliberate user navigation. Title mirrors the viewer/card fallback.
+      recordRecentView({
+        id: stash.id,
+        title: stash.name || stash.files[0]?.filename || 'Untitled',
+      });
     } catch (err) {
       console.error('Failed to load stash:', err);
       showError('Failed to load stash. Please try again.');
@@ -800,7 +808,7 @@ export default function App() {
             />
           )}
         </main>
-        <Footer />
+        <Footer onShowShortcuts={() => setShortcutsHelpOpen(true)} />
       </div>
       <SearchOverlay
         open={searchOpen}
