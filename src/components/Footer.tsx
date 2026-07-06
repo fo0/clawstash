@@ -7,7 +7,16 @@ interface BuildInfo {
   branch: string;
 }
 
-export default function Footer() {
+interface FooterProps {
+  /**
+   * Opens the keyboard-shortcuts help dialog. Optional so the footer still
+   * renders standalone (e.g. in isolation) when no handler is wired up — the
+   * shortcuts button is simply omitted in that case.
+   */
+  onShowShortcuts?: () => void;
+}
+
+export default function Footer({ onShowShortcuts }: FooterProps) {
   const [showDetails, setShowDetails] = useState(false);
   const [buildInfo, setBuildInfo] = useState<BuildInfo | null>(null);
 
@@ -164,6 +173,31 @@ export default function Footer() {
                 </span>
               )}
             </div>
+          )}
+          {onShowShortcuts && (
+            <button
+              type="button"
+              className="footer-info-btn"
+              onClick={onShowShortcuts}
+              title="Show keyboard shortcuts (press ?)"
+              aria-label="Show keyboard shortcuts"
+            >
+              <svg
+                width="14"
+                height="14"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                aria-hidden="true"
+              >
+                <rect width="20" height="16" x="2" y="4" rx="2" ry="2" />
+                <path d="M6 8h.01M10 8h.01M14 8h.01M18 8h.01M8 12h.01M12 12h.01M16 12h.01M7 16h10" />
+              </svg>
+              <span className="footer-info-label">Shortcuts</span>
+            </button>
           )}
           <a
             href="https://github.com/fo0/clawstash"
