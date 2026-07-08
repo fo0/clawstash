@@ -112,6 +112,7 @@ export default function McpTab({ baseUrl, mcpSpec, mcpTools }: Props) {
               className="btn btn-ghost btn-sm api-code-copy-btn"
               onClick={() => handleCopy(streamableConfigJson, 'MCP Config')}
               title="Copy configuration"
+              aria-label="Copy Streamable HTTP configuration"
             >
               <CopyIcon />
             </button>
@@ -132,6 +133,7 @@ export default function McpTab({ baseUrl, mcpSpec, mcpTools }: Props) {
               className="btn btn-ghost btn-sm api-code-copy-btn"
               onClick={() => handleCopy(stdioConfigJson, 'Stdio MCP Config')}
               title="Copy configuration"
+              aria-label="Copy stdio transport configuration"
             >
               <CopyIcon />
             </button>

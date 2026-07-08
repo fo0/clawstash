@@ -294,6 +294,7 @@ export default function TokensTab({ baseUrl, openApiJson, mcpSpec }: Props) {
                 className="btn btn-sm api-copy-btn"
                 onClick={() => handleCopy(newlyCreated.token, newlyCreated.label || 'Token')}
                 title="Copy token"
+                aria-label="Copy token"
               >
                 <CopyIcon />
               </button>
@@ -342,6 +343,7 @@ export default function TokensTab({ baseUrl, openApiJson, mcpSpec }: Props) {
                         )
                       }
                       title={newlyCreated?.id === token.id ? 'Copy full token' : 'Copy prefix'}
+                      aria-label={newlyCreated?.id === token.id ? 'Copy full token' : 'Copy prefix'}
                     >
                       <CopyIcon size={12} />
                     </button>
