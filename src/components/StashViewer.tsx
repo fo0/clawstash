@@ -375,6 +375,12 @@ export default function StashViewer({
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [accessLog, setAccessLog] = useState<AccessLogEntry[]>([]);
   const [logLoading, setLogLoading] = useState(false);
+  // Distinguish a failed access-log fetch from a genuinely empty log — a
+  // swallowed error previously rendered the same "No access recorded yet."
+  // empty state, hiding the failure. `logReloadKey` lets the error's Retry
+  // button re-run the fetch effect without leaving the tab.
+  const [logError, setLogError] = useState(false);
+  const [logReloadKey, setLogReloadKey] = useState(0);
   const [renderPreview, setRenderPreview] = useState(getRenderPreference);
   const [tocExpanded, setTocExpanded] = useState(getTocPreference);
   const [collapsedFiles, setCollapsedFiles] = useState<Set<string>>(new Set());
@@ -555,13 +561,17 @@ export default function StashViewer({
     if (activeTab !== 'access-log') return;
     let cancelled = false;
     setLogLoading(true);
+    setLogError(false);
     api
       .getAccessLog(stash.id, 100)
       .then((log) => {
         if (!cancelled) setAccessLog(log);
       })
       .catch(() => {
-        if (!cancelled) setAccessLog([]);
+        if (!cancelled) {
+          setAccessLog([]);
+          setLogError(true);
+        }
       })
       .finally(() => {
         if (!cancelled) setLogLoading(false);
@@ -569,7 +579,7 @@ export default function StashViewer({
     return () => {
       cancelled = true;
     };
-  }, [activeTab, stash.id]);
+  }, [activeTab, stash.id, logReloadKey]);
 
   // Cleanup delete confirmation timer on unmount
   useEffect(() => {
@@ -1328,6 +1338,26 @@ export default function StashViewer({
             <div className="loading" role="status" aria-live="polite">
               <Spinner size={16} />
               <span style={{ marginLeft: 10 }}>Loading access log...</span>
+            </div>
+          ) : logError ? (
+            <div className="access-log-empty" role="alert">
+              <svg
+                width="24"
+                height="24"
+                viewBox="0 0 16 16"
+                fill="currentColor"
+                style={{ marginBottom: 8, color: 'var(--text-danger, #f85149)' }}
+                aria-hidden="true"
+              >
+                <path d="M6.457 1.047c.659-1.234 2.427-1.234 3.086 0l6.082 11.378A1.75 1.75 0 0 1 14.082 15H1.918a1.75 1.75 0 0 1-1.543-2.575Zm1.763.707a.25.25 0 0 0-.44 0L1.698 13.132a.25.25 0 0 0 .22.368h12.164a.25.25 0 0 0 .22-.368Zm.53 3.996v2.5a.75.75 0 0 1-1.5 0v-2.5a.75.75 0 0 1 1.5 0ZM9 11a1 1 0 1 1-2 0 1 1 0 0 1 2 0Z" />
+              </svg>
+              <p>Failed to load access log.</p>
+              <button
+                className="btn btn-sm btn-secondary"
+                onClick={() => setLogReloadKey((k) => k + 1)}
+              >
+                Retry
+              </button>
             </div>
           ) : accessLog.length === 0 ? (
             <div className="access-log-empty">
