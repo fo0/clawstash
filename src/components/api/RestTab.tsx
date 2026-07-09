@@ -1,5 +1,6 @@
 import Spinner from '../shared/Spinner';
 import SwaggerViewer from './SwaggerViewer';
+import CodeExample from './CodeExample';
 import { getRestConfigText } from './api-data';
 import { BookIcon, KeyIcon, CopyIcon, ChevronIcon, CheckIcon } from './icons';
 import { useCopyToast, useExpandableSpecs } from './useCopyToast';
@@ -115,19 +116,22 @@ export default function RestTab({ baseUrl, openApiJson }: Props) {
           <h2>Examples</h2>
         </div>
         <div className="api-mgr-examples">
-          <div className="api-example-item">
-            <div className="api-example-title">cURL - List Stashes</div>
-            <pre className="api-code-block">{`curl -H "Authorization: Bearer YOUR_TOKEN" \\
-  ${baseUrl}/api/stashes`}</pre>
-          </div>
-          <div className="api-example-item">
-            <div className="api-example-title">cURL - Get Stash with Token</div>
-            <pre className="api-code-block">{`curl -H "Authorization: Bearer YOUR_TOKEN" \\
-  ${baseUrl}/api/stashes/STASH_ID`}</pre>
-          </div>
-          <div className="api-example-item">
-            <div className="api-example-title">cURL - Create Stash</div>
-            <pre className="api-code-block">{`curl -X POST ${baseUrl}/api/stashes \\
+          <CodeExample
+            title="cURL - List Stashes"
+            onCopy={handleCopy}
+            code={`curl -H "Authorization: Bearer YOUR_TOKEN" \\
+  ${baseUrl}/api/stashes`}
+          />
+          <CodeExample
+            title="cURL - Get Stash with Token"
+            onCopy={handleCopy}
+            code={`curl -H "Authorization: Bearer YOUR_TOKEN" \\
+  ${baseUrl}/api/stashes/STASH_ID`}
+          />
+          <CodeExample
+            title="cURL - Create Stash"
+            onCopy={handleCopy}
+            code={`curl -X POST ${baseUrl}/api/stashes \\
   -H "Content-Type: application/json" \\
   -H "Authorization: Bearer YOUR_TOKEN" \\
   -d '{
@@ -139,26 +143,29 @@ export default function RestTab({ baseUrl, openApiJson }: Props) {
         "content": "print('Hello World')"
       }
     ]
-  }'`}</pre>
-          </div>
-          <div className="api-example-item">
-            <div className="api-example-title">cURL - Create API Token</div>
-            <pre className="api-code-block">{`curl -X POST ${baseUrl}/api/tokens \\
+  }'`}
+          />
+          <CodeExample
+            title="cURL - Create API Token"
+            onCopy={handleCopy}
+            code={`curl -X POST ${baseUrl}/api/tokens \\
   -H "Content-Type: application/json" \\
   -H "Authorization: Bearer YOUR_ADMIN_TOKEN" \\
-  -d '{"label": "My Token", "scopes": ["read", "write"]}'`}</pre>
-          </div>
-          <div className="api-example-item">
-            <div className="api-example-title">JavaScript - List Stashes</div>
-            <pre className="api-code-block">{`const response = await fetch('${baseUrl}/api/stashes', {
+  -d '{"label": "My Token", "scopes": ["read", "write"]}'`}
+          />
+          <CodeExample
+            title="JavaScript - List Stashes"
+            onCopy={handleCopy}
+            code={`const response = await fetch('${baseUrl}/api/stashes', {
   headers: { 'Authorization': 'Bearer YOUR_TOKEN' },
 });
 const data = await response.json();
-console.log(data.stashes);`}</pre>
-          </div>
-          <div className="api-example-item">
-            <div className="api-example-title">JavaScript - Create Stash</div>
-            <pre className="api-code-block">{`const response = await fetch('${baseUrl}/api/stashes', {
+console.log(data.stashes);`}
+          />
+          <CodeExample
+            title="JavaScript - Create Stash"
+            onCopy={handleCopy}
+            code={`const response = await fetch('${baseUrl}/api/stashes', {
   method: 'POST',
   headers: {
     'Content-Type': 'application/json',
@@ -170,11 +177,12 @@ console.log(data.stashes);`}</pre>
     tags: ['notes'],
   }),
 });
-const stash = await response.json();`}</pre>
-          </div>
-          <div className="api-example-item">
-            <div className="api-example-title">Python - Search Stashes</div>
-            <pre className="api-code-block">{`import requests
+const stash = await response.json();`}
+          />
+          <CodeExample
+            title="Python - Search Stashes"
+            onCopy={handleCopy}
+            code={`import requests
 
 response = requests.get(
     '${baseUrl}/api/stashes',
@@ -182,8 +190,8 @@ response = requests.get(
     headers={'Authorization': 'Bearer YOUR_TOKEN'}
 )
 data = response.json()
-print(f"Found {data['total']} stashes")`}</pre>
-          </div>
+print(f"Found {data['total']} stashes")`}
+          />
         </div>
       </section>
 

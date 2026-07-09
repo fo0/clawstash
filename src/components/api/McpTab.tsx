@@ -1,6 +1,7 @@
 import { buildMcpStreamableConfig, buildMcpStdioConfig } from './api-data';
 import { ServerIcon, WifiIcon, KeyIcon, CopyIcon, ChevronIcon, CheckIcon } from './icons';
 import { useCopyToast, useExpandableSpecs } from './useCopyToast';
+import CodeExample from './CodeExample';
 import Spinner from '../shared/Spinner';
 
 interface Props {
@@ -174,9 +175,10 @@ export default function McpTab({ baseUrl, mcpSpec, mcpTools }: Props) {
           <h2>Examples</h2>
         </div>
         <div className="api-mgr-examples">
-          <div className="api-example-item">
-            <div className="api-example-title">MCP Tool Call - Create Stash</div>
-            <pre className="api-code-block">{`Tool: create_stash
+          <CodeExample
+            title="MCP Tool Call - Create Stash"
+            onCopy={handleCopy}
+            code={`Tool: create_stash
 Parameters: {
   "description": "My Notes",
   "files": [
@@ -186,24 +188,26 @@ Parameters: {
     }
   ],
   "tags": ["meeting", "notes"]
-}`}</pre>
-          </div>
-          <div className="api-example-item">
-            <div className="api-example-title">MCP Tool Call - Search Stashes</div>
-            <pre className="api-code-block">{`Tool: search_stashes
+}`}
+          />
+          <CodeExample
+            title="MCP Tool Call - Search Stashes"
+            onCopy={handleCopy}
+            code={`Tool: search_stashes
 Parameters: {
   "query": "meeting notes",
   "limit": 10
-}`}</pre>
-          </div>
-          <div className="api-example-item">
-            <div className="api-example-title">MCP Tool Call - List by Tag</div>
-            <pre className="api-code-block">{`Tool: list_stashes
+}`}
+          />
+          <CodeExample
+            title="MCP Tool Call - List by Tag"
+            onCopy={handleCopy}
+            code={`Tool: list_stashes
 Parameters: {
   "tag": "important",
   "limit": 20
-}`}</pre>
-          </div>
+}`}
+          />
         </div>
       </section>
 
