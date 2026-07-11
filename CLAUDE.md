@@ -92,7 +92,7 @@ When a session begins, read in this order. Stop early if a file is missing.
 | Containerization          | Docker (multi-stage, standalone output) | --         |
 | CI/CD                     | GitHub Actions -> GHCR                  | --         |
 | Package Manager           | npm (`package-lock.json`)               | --         |
-| Formatter                 | Prettier                                | 3.8        |
+| Formatter                 | Prettier                                | 3.9        |
 | Test Framework            | vitest                                  | 4.x        |
 
 ## Project Structure
