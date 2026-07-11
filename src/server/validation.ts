@@ -53,19 +53,30 @@ export function maxObjectDepth(value: unknown): number {
 // --- Shared Sub-Schemas ---
 
 /**
- * Validates a filename: no path separators, no ".." segments, no null bytes,
- * non-empty, within length cap. Used by both write-side schemas (Create/Update)
- * and the read-side raw-file route, so traversal attempts are rejected
- * symmetrically. Today the DB does an exact-match lookup so traversal cannot
- * escape the row; this is defense-in-depth in case file storage ever becomes
- * filesystem-backed.
+ * Validates a filename: no path separators, no ".." segments, no control
+ * characters (incl. NUL / CR / LF), non-empty, within length cap. Used by both
+ * write-side schemas (Create/Update) and the read-side raw-file route, so
+ * traversal attempts are rejected symmetrically. Today the DB does an
+ * exact-match lookup so traversal cannot escape the row; this is
+ * defense-in-depth in case file storage ever becomes filesystem-backed.
+ *
+ * The control-character rejection also closes a header-injection vector: the
+ * raw-file route reflects the stored filename into a `Content-Disposition`
+ * response header, so a CR/LF in a filename could otherwise smuggle extra
+ * header lines. The scan uses char-code comparisons (not a regex with inline
+ * control bytes, which are invisible and formatter-fragile).
  */
 export function isValidFilename(filename: string): boolean {
   if (typeof filename !== 'string') return false;
   if (filename.length === 0 || filename.length > MAX_FILENAME_LENGTH) return false;
   if (/[/\\]/.test(filename)) return false;
   if (filename.includes('..')) return false;
-  if (filename.includes('\0')) return false;
+  // Reject C0 controls (0x00-0x1F, incl. NUL/CR/LF), DEL (0x7F) and C1
+  // controls (0x80-0x9F). No legitimate filename contains control bytes.
+  for (let i = 0; i < filename.length; i++) {
+    const code = filename.charCodeAt(i);
+    if (code <= 0x1f || (code >= 0x7f && code <= 0x9f)) return false;
+  }
   return true;
 }
 
