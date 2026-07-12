@@ -32,6 +32,7 @@ import type {
   StashListItem,
   StashMeta,
   AccessLogEntry,
+  DeletionAuditEntry,
   TokenScope,
   ApiToken,
   ApiTokenListItem,
@@ -69,6 +70,7 @@ export type {
   StashListItem,
   StashMeta,
   AccessLogEntry,
+  DeletionAuditEntry,
   TokenScope,
   ApiToken,
   ApiTokenListItem,
@@ -213,6 +215,17 @@ export class ClawStashDB {
     return this.db
       .prepare('SELECT * FROM access_log WHERE stash_id = ? ORDER BY timestamp DESC LIMIT ?')
       .all(stashId, limit) as AccessLogEntry[];
+  }
+
+  /**
+   * Durable deletion trail. Rows in `deletion_audit` have no FK to stashes, so
+   * they survive the deleted stash (unlike `access_log`, which CASCADEs away).
+   * Most-recent first. Closes BACKLOG #42.
+   */
+  getDeletionAudit(limit = 100): DeletionAuditEntry[] {
+    return this.db
+      .prepare('SELECT * FROM deletion_audit ORDER BY timestamp DESC LIMIT ?')
+      .all(limit) as DeletionAuditEntry[];
   }
 
   createStash(input: CreateStashInput): Stash {
@@ -531,17 +544,38 @@ export class ClawStashDB {
     return updated;
   }
 
-  deleteStash(id: string): boolean {
+  deleteStash(
+    id: string,
+    context?: { source?: 'api' | 'mcp' | 'ui'; ip?: string; userAgent?: string },
+  ): boolean {
     // Capture the name before the row is gone — the mutation event needs it
-    // for the backup deletion commit message.
+    // for the backup deletion commit message, and the deletion_audit row keeps
+    // it after the stash is gone.
     const existing = this.db.prepare('SELECT name FROM stashes WHERE id = ?').get(id) as
       { name: string } | undefined;
-    // Wrap the row delete + FTS cleanup so a mid-operation failure does not
-    // leave the FTS index pointing at a stash row that no longer exists.
+    // Wrap the row delete + FTS cleanup + audit record so a mid-operation
+    // failure does not leave the FTS index pointing at a stash row that no
+    // longer exists, and the audit row is written iff the delete happened.
     const tx = this.db.transaction((stashId: string) => {
       const result = this.db.prepare('DELETE FROM stashes WHERE id = ?').run(stashId);
       if (result.changes > 0) {
         this.removeFtsIndex(stashId);
+        // access_log CASCADEs with the stash, so it cannot preserve a record
+        // of the deletion. deletion_audit has no FK and survives. Closes #42.
+        this.db
+          .prepare(
+            `INSERT INTO deletion_audit (id, stash_id, stash_name, source, timestamp, ip, user_agent)
+             VALUES (?, ?, ?, ?, ?, ?, ?)`,
+          )
+          .run(
+            crypto.randomUUID(),
+            stashId,
+            existing?.name || '',
+            context?.source || 'api',
+            new Date().toISOString(),
+            context?.ip || null,
+            context?.userAgent || null,
+          );
       }
       return result.changes > 0;
     });

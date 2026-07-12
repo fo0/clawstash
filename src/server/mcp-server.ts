@@ -192,13 +192,15 @@ ${TOKEN_EFFICIENT_GUIDE}`,
   );
 
   // Delete a stash
-  // No logAccess: access_log has ON DELETE CASCADE, so entries are removed with the stash.
+  // No logAccess: access_log has ON DELETE CASCADE, so entries are removed with
+  // the stash. The deletion is recorded in the non-cascading deletion_audit
+  // table instead (BACKLOG #42).
   const deleteDef = getToolDef('delete_stash');
   server.registerTool(
     deleteDef.name,
     { description: deleteDef.description, inputSchema: deleteDef.schema.shape },
     async ({ id }) => {
-      const deleted = db.deleteStash(id);
+      const deleted = db.deleteStash(id, { source: 'mcp' });
       if (!deleted) {
         return { content: [{ type: 'text', text: `Error: Stash "${id}" not found.` }] };
       }

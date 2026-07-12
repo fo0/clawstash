@@ -254,6 +254,42 @@ describe('ClawStashDB stash CRUD + FTS sync', () => {
     });
   });
 
+  // access_log CASCADEs with the stash, so it cannot preserve a deletion
+  // record; deletion_audit has no FK and must survive the deleted row. #42.
+  describe('deletion audit trail (#42)', () => {
+    it('records a surviving deletion_audit row with name + source', () => {
+      const s = db.createStash({ name: 'to-delete', files: [{ filename: 'x.txt', content: 'x' }] });
+      db.deleteStash(s.id, { source: 'mcp', ip: '1.2.3.4', userAgent: 'agent/1' });
+
+      const audit = db.getDeletionAudit();
+      const entry = audit.find((a) => a.stash_id === s.id);
+      expect(entry).toBeTruthy();
+      expect(entry!.stash_name).toBe('to-delete');
+      expect(entry!.source).toBe('mcp');
+      expect(entry!.ip).toBe('1.2.3.4');
+      expect(entry!.user_agent).toBe('agent/1');
+      // The stash itself is gone but the audit row remains (no cascade).
+      expect(db.getStash(s.id)).toBeNull();
+    });
+
+    it('defaults source to api and leaves ip/user_agent null without context', () => {
+      const s = db.createStash({ name: 'ctxless', files: [{ filename: 'y.txt', content: 'y' }] });
+      db.deleteStash(s.id);
+
+      const entry = db.getDeletionAudit().find((a) => a.stash_id === s.id);
+      expect(entry).toBeTruthy();
+      expect(entry!.source).toBe('api');
+      expect(entry!.ip ?? null).toBeNull();
+      expect(entry!.user_agent ?? null).toBeNull();
+    });
+
+    it('writes no audit row when the stash does not exist', () => {
+      const before = db.getDeletionAudit().length;
+      expect(db.deleteStash('missing-id')).toBe(false);
+      expect(db.getDeletionAudit().length).toBe(before);
+    });
+  });
+
   describe('stash files multi-file behaviour', () => {
     it('replaces full file list on update when files key is provided', () => {
       const s = db.createStash({
