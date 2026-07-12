@@ -305,8 +305,7 @@ export class ClawStashDB {
 
   getStash(id: string): Stash | null {
     const row = this.db.prepare('SELECT * FROM stashes WHERE id = ?').get(id) as
-      | Record<string, unknown>
-      | undefined;
+      Record<string, unknown> | undefined;
     if (!row) return null;
 
     const files = this.db
@@ -318,8 +317,7 @@ export class ClawStashDB {
 
   getStashMeta(id: string): StashMeta | null {
     const row = this.db.prepare('SELECT * FROM stashes WHERE id = ?').get(id) as
-      | Record<string, unknown>
-      | undefined;
+      Record<string, unknown> | undefined;
     if (!row) return null;
 
     const files = this.db
@@ -537,8 +535,7 @@ export class ClawStashDB {
     // Capture the name before the row is gone — the mutation event needs it
     // for the backup deletion commit message.
     const existing = this.db.prepare('SELECT name FROM stashes WHERE id = ?').get(id) as
-      | { name: string }
-      | undefined;
+      { name: string } | undefined;
     // Wrap the row delete + FTS cleanup so a mid-operation failure does not
     // leave the FTS index pointing at a stash row that no longer exists.
     const tx = this.db.transaction((stashId: string) => {
