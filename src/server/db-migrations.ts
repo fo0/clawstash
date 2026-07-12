@@ -305,6 +305,30 @@ export const MIGRATIONS: Migration[] = [
       }
     },
   },
+  {
+    version: 11,
+    name: 'add_deletion_audit_table',
+    up: (db) => {
+      // deletion_audit has NO foreign key to stashes on purpose: access_log
+      // carries `ON DELETE CASCADE`, so a stash deletion erases its own access
+      // trail. This table records the deletion itself and must survive the
+      // stash row it refers to. Closes BACKLOG #42.
+      db.exec(`
+        CREATE TABLE IF NOT EXISTS deletion_audit (
+          id TEXT PRIMARY KEY,
+          stash_id TEXT NOT NULL,
+          stash_name TEXT NOT NULL DEFAULT '',
+          source TEXT NOT NULL CHECK(source IN ('api', 'mcp', 'ui')),
+          timestamp TEXT NOT NULL DEFAULT (datetime('now')),
+          ip TEXT,
+          user_agent TEXT
+        );
+
+        CREATE INDEX IF NOT EXISTS idx_deletion_audit_timestamp ON deletion_audit(timestamp);
+        CREATE INDEX IF NOT EXISTS idx_deletion_audit_stash_id ON deletion_audit(stash_id);
+      `);
+    },
+  },
 ];
 
 /**

@@ -105,6 +105,19 @@ export interface AccessLogEntry {
   user_agent?: string;
 }
 
+// Durable record of a stash deletion. Unlike access_log (which CASCADEs with
+// the stash), deletion_audit has no FK to stashes, so the trail survives the
+// deleted row. See BACKLOG #42.
+export interface DeletionAuditEntry {
+  id: string;
+  stash_id: string;
+  stash_name: string;
+  source: 'api' | 'mcp' | 'ui';
+  timestamp: string;
+  ip?: string;
+  user_agent?: string;
+}
+
 export type TokenScope = 'read' | 'write' | 'admin' | 'mcp';
 
 export interface ApiToken {

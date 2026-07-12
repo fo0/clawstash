@@ -98,15 +98,17 @@ export async function PATCH(req: NextRequest, { params }: Params) {
 }
 
 // DELETE /api/stashes/:id
-// No logAccess here: access_log has ON DELETE CASCADE on stash_id,
-// so any log entry would be immediately removed with the stash.
+// No logAccess here: access_log has ON DELETE CASCADE on stash_id, so any log
+// entry would be immediately removed with the stash. The deletion is instead
+// recorded in the non-cascading deletion_audit table (BACKLOG #42).
 export async function DELETE(req: NextRequest, { params }: Params) {
   const scope = checkScope(req, 'write');
   if (!scope.ok) return scope.response;
 
   const { id } = await params;
   const db = getDb();
-  const deleted = db.deleteStash(id);
+  const { ip, userAgent } = getRequestInfo(req);
+  const deleted = db.deleteStash(id, { source: getAccessSource(req), ip, userAgent });
   if (!deleted) {
     return NextResponse.json({ error: 'Stash not found' }, { status: 404 });
   }
