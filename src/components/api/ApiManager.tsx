@@ -113,10 +113,13 @@ export default function ApiManager({ onBack, embedded }: Props) {
       )}
 
       {/* Tabs */}
-      <div className="api-tabs">
+      <div className="api-tabs" role="tablist" aria-label="API documentation">
         {tabs.map((tab) => (
           <button
             key={tab.id}
+            type="button"
+            role="tab"
+            aria-selected={activeTab === tab.id}
             className={`api-tab ${activeTab === tab.id ? 'active' : ''}`}
             onClick={() => setActiveTab(tab.id)}
           >
