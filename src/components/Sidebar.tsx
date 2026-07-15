@@ -317,6 +317,17 @@ export default function Sidebar({
                       setTagDropdownOpen(!tagDropdownOpen);
                       setTagSearch('');
                     }}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        setTagDropdownOpen(!tagDropdownOpen);
+                        setTagSearch('');
+                      }
+                    }}
+                    role="button"
+                    tabIndex={0}
+                    aria-expanded={tagDropdownOpen}
+                    aria-label={`Change tag filter, currently "${filterTag}"`}
                     title="Click to change tag filter"
                   >
                     {filterTag}
