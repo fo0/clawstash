@@ -194,7 +194,12 @@ export default function StashEditor({ stash, onSave, onCancel }: Props) {
   useEffect(() => {
     const handler = (e: BeforeUnloadEvent) => {
       if (dirtyRef.current) {
+        // preventDefault() alone is enough for spec-compliant browsers, but
+        // several (older Chrome/Safari, some mobile engines) only raise the
+        // native "unsaved changes" prompt when the legacy returnValue is also
+        // set. Setting both makes the data-loss guard fire reliably everywhere.
         e.preventDefault();
+        e.returnValue = '';
       }
     };
     window.addEventListener('beforeunload', handler);
