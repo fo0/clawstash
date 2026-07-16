@@ -74,6 +74,9 @@ export default function SearchOverlay({ open, onClose, onSelectStash }: Props) {
 
   const handleInputChange = (value: string) => {
     setQuery(value);
+    // Clearing the field falls back to the "Recently viewed" list — re-home the
+    // highlight to its first item so arrow-nav resumes from a valid position.
+    if (!value.trim()) setActiveIndex(0);
     if (debounceRef.current) clearTimeout(debounceRef.current);
     debounceRef.current = setTimeout(() => doSearch(value), SEARCH_DEBOUNCE_MS);
   };
@@ -115,17 +118,22 @@ export default function SearchOverlay({ open, onClose, onSelectStash }: Props) {
     onClose();
   };
 
+  // Arrow/Enter navigation targets whichever list is on screen: search results
+  // when a query is present, otherwise the "Recently viewed" shortcuts. Both
+  // item shapes expose an `id`, so selection is uniform.
+  const navItems: { id: string }[] = query.trim() ? results : recent;
+
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'ArrowDown') {
       e.preventDefault();
-      setActiveIndex((i) => (i < results.length - 1 ? i + 1 : i));
+      setActiveIndex((i) => (i < navItems.length - 1 ? i + 1 : i));
     } else if (e.key === 'ArrowUp') {
       e.preventDefault();
       setActiveIndex((i) => (i > 0 ? i - 1 : 0));
     } else if (e.key === 'Enter') {
       e.preventDefault();
-      if (results[activeIndex]) {
-        handleSelect(results[activeIndex].id);
+      if (navItems[activeIndex]) {
+        handleSelect(navItems[activeIndex].id);
       }
     } else if (e.key === 'Escape') {
       e.preventDefault();
@@ -269,13 +277,14 @@ export default function SearchOverlay({ open, onClose, onSelectStash }: Props) {
             aria-label={`${recent.length} recently viewed stash${recent.length !== 1 ? 'es' : ''}`}
           >
             <div className="search-overlay-results-count">Recently viewed</div>
-            {recent.map((item) => (
+            {recent.map((item, idx) => (
               <button
                 type="button"
                 key={item.id}
-                className="search-overlay-item"
+                className={`search-overlay-item ${idx === activeIndex ? 'active' : ''}`}
                 role="option"
-                aria-selected={false}
+                aria-selected={idx === activeIndex}
+                onMouseEnter={() => setActiveIndex(idx)}
                 onClick={() => handleSelect(item.id)}
               >
                 <div className="search-overlay-item-main">
