@@ -40,6 +40,10 @@ export default function MetadataEditor({ entries, onChange, availableKeys }: Pro
   const [showAll, setShowAll] = useState(false);
   const [keyInput, setKeyInput] = useState('');
   const [showKeyDropdown, setShowKeyDropdown] = useState(false);
+  // Highlighted suggestion index for keyboard navigation of the key dropdown.
+  // -1 = nothing highlighted (mirrors TagCombobox). Keeps the key input
+  // arrow-navigable + Enter-selectable instead of mouse-click only.
+  const [activeIndex, setActiveIndex] = useState(-1);
   // Inline notice shown when the user tries to add a key that already exists.
   // Previously a duplicate add silently cleared the input with no explanation.
   const [dupWarning, setDupWarning] = useState<string | null>(null);
@@ -68,6 +72,12 @@ export default function MetadataEditor({ entries, onChange, availableKeys }: Pro
   const filteredKeys = availableKeys
     .filter((k) => !existingKeys.includes(k))
     .filter((k) => !keyInput || k.toLowerCase().includes(keyInput.toLowerCase()));
+  // Cap mirrors the render slice below so keyboard navigation and the visible
+  // option list stay in lockstep.
+  const visibleKeys = filteredKeys.slice(0, 8);
+  const dropdownVisible = showKeyDropdown && visibleKeys.length > 0;
+  const activeOptionId =
+    dropdownVisible && activeIndex >= 0 ? `metadata-key-option-${activeIndex}` : undefined;
 
   const updateEntry = (index: number, field: 'key' | 'value', val: string) => {
     const updated = [...entries];
@@ -95,14 +105,32 @@ export default function MetadataEditor({ entries, onChange, availableKeys }: Pro
     setDupWarning(null);
     setKeyInput('');
     setShowKeyDropdown(false);
+    setActiveIndex(-1);
   };
 
   const handleKeyInputKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter') {
+    if (e.key === 'ArrowDown') {
       e.preventDefault();
-      if (keyInput.trim()) addEntry(keyInput);
+      setShowKeyDropdown(true);
+      setActiveIndex((prev) =>
+        visibleKeys.length === 0 ? -1 : Math.min(prev + 1, visibleKeys.length - 1),
+      );
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      setShowKeyDropdown(true);
+      setActiveIndex((prev) => Math.max(prev - 1, -1));
+    } else if (e.key === 'Enter') {
+      e.preventDefault();
+      // Prefer the highlighted suggestion; otherwise fall back to adding the
+      // typed key (preserves the original Enter-adds-typed-key behaviour).
+      if (dropdownVisible && activeIndex >= 0 && visibleKeys[activeIndex]) {
+        addEntry(visibleKeys[activeIndex]);
+      } else if (keyInput.trim()) {
+        addEntry(keyInput);
+      }
     } else if (e.key === 'Escape') {
       setShowKeyDropdown(false);
+      setActiveIndex(-1);
     }
   };
 
@@ -170,12 +198,19 @@ export default function MetadataEditor({ entries, onChange, availableKeys }: Pro
           onChange={(e) => {
             setKeyInput(e.target.value);
             setShowKeyDropdown(true);
+            setActiveIndex(-1);
             if (dupWarning) setDupWarning(null);
           }}
           onFocus={() => setShowKeyDropdown(true)}
           onKeyDown={handleKeyInputKeyDown}
           placeholder="Add key..."
           className="form-input metadata-add-input"
+          role="combobox"
+          aria-expanded={dropdownVisible}
+          aria-haspopup="listbox"
+          aria-autocomplete="list"
+          aria-controls="metadata-key-listbox"
+          aria-activedescendant={activeOptionId}
           aria-label="Add metadata key"
           aria-invalid={dupWarning ? true : undefined}
           autoComplete="off"
@@ -192,10 +227,22 @@ export default function MetadataEditor({ entries, onChange, availableKeys }: Pro
           </svg>
           Add
         </button>
-        {showKeyDropdown && filteredKeys.length > 0 && (
-          <div className="tag-combobox-dropdown metadata-key-dropdown">
-            {filteredKeys.slice(0, 8).map((k) => (
-              <button key={k} className="tag-combobox-option" onClick={() => addEntry(k)}>
+        {dropdownVisible && (
+          <div
+            id="metadata-key-listbox"
+            className="tag-combobox-dropdown metadata-key-dropdown"
+            role="listbox"
+          >
+            {visibleKeys.map((k, i) => (
+              <button
+                key={k}
+                id={`metadata-key-option-${i}`}
+                className={`tag-combobox-option${activeIndex === i ? ' active' : ''}`}
+                onClick={() => addEntry(k)}
+                onMouseEnter={() => setActiveIndex(i)}
+                role="option"
+                aria-selected={activeIndex === i}
+              >
                 {k}
               </button>
             ))}
