@@ -58,7 +58,26 @@ export function sanitizeHtml(html: string): string {
   doc
     .querySelectorAll('script,style,iframe,object,embed,form,link,base,meta,noscript')
     .forEach((el) => el.remove());
+  // Strip SVG/MathML foreign content + SMIL animation elements. Markdown never
+  // legitimately emits these, and they are the vector for mutation-XSS and the
+  // SMIL `<animate attributeName=href values="javascript:...">` bypass of the
+  // href/on* checks below. Match on lowercased tagName so case-sensitive SVG
+  // element names (animateTransform, foreignObject) are caught regardless of case.
+  const FOREIGN_ELEMENTS = new Set([
+    'svg',
+    'math',
+    'animate',
+    'animatetransform',
+    'animatemotion',
+    'set',
+    'foreignobject',
+    'template',
+  ]);
   doc.querySelectorAll('*').forEach((el) => {
+    if (FOREIGN_ELEMENTS.has(el.tagName.toLowerCase())) {
+      el.remove();
+      return;
+    }
     for (const attr of [...el.attributes]) {
       const lowerName = attr.name.toLowerCase();
       const isEventHandler = lowerName.startsWith('on');
