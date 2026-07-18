@@ -195,7 +195,18 @@ export default function SearchOverlay({ open, onClose, onSelectStash }: Props) {
             value={query}
             onChange={(e) => handleInputChange(e.target.value)}
             aria-label="Search stashes"
-            aria-controls={query.trim() ? 'search-overlay-results' : 'search-overlay-recent'}
+            // Only reference a listbox that is actually rendered — a query with
+            // zero results (or no query and no recents) renders no list, so a
+            // dangling aria-controls id would point at nothing.
+            aria-controls={
+              query.trim()
+                ? results.length > 0
+                  ? 'search-overlay-results'
+                  : undefined
+                : recent.length > 0
+                  ? 'search-overlay-recent'
+                  : undefined
+            }
             aria-activedescendant={
               navItems.length > 0 ? `search-overlay-option-${activeIndex}` : undefined
             }

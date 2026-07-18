@@ -204,6 +204,11 @@ export default function MermaidDiagram({ code, className, storageKey }: Props) {
     const handler = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         e.preventDefault();
+        // Consume the Escape so it does not bubble to App's window-level
+        // hotkey handler, which would ALSO navigate back to the dashboard
+        // from the stash viewer (same overlay contract as SearchOverlay /
+        // KeyboardShortcutsHelp / the graph popups).
+        e.stopPropagation();
         setIsFullscreen(false);
       }
     };

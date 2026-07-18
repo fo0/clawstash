@@ -18,17 +18,18 @@ export default function ApiManager({ onBack, embedded }: Props) {
     null,
   );
   // Failed spec/tool loads previously only console.error'd, leaving the
-  // consumers' "Loading..." spinners spinning forever. Track failures so the
-  // tabs can show an error + Retry instead.
-  const [loadFailed, setLoadFailed] = useState(false);
+  // consumers' "Loading..." spinners spinning forever. Track failures PER
+  // resource so a success clears only its own error (a single shared boolean
+  // would race: on the tokens tab two specs load together, and one spec's
+  // success must not hide the banner while the other is still broken).
+  const [openApiFailed, setOpenApiFailed] = useState(false);
+  const [mcpSpecFailed, setMcpSpecFailed] = useState(false);
+  const [mcpToolsFailed, setMcpToolsFailed] = useState(false);
   // Bumped by Retry — the load effects below re-run and re-attempt whatever
   // is still missing.
   const [retryNonce, setRetryNonce] = useState(0);
 
-  const retryLoads = () => {
-    setLoadFailed(false);
-    setRetryNonce((n) => n + 1);
-  };
+  const retryLoads = () => setRetryNonce((n) => n + 1);
 
   // Load OpenAPI JSON when REST or tokens tab is selected
   useEffect(() => {
@@ -37,11 +38,14 @@ export default function ApiManager({ onBack, embedded }: Props) {
       api
         .getOpenApiSchema()
         .then((schema) => {
-          if (!cancelled) setOpenApiJson(JSON.stringify(schema, null, 2));
+          if (!cancelled) {
+            setOpenApiJson(JSON.stringify(schema, null, 2));
+            setOpenApiFailed(false);
+          }
         })
         .catch((err) => {
           console.error('Failed to load OpenAPI schema:', err);
-          if (!cancelled) setLoadFailed(true);
+          if (!cancelled) setOpenApiFailed(true);
         });
       return () => {
         cancelled = true;
@@ -56,11 +60,14 @@ export default function ApiManager({ onBack, embedded }: Props) {
       api
         .getMcpSpec()
         .then((spec) => {
-          if (!cancelled) setMcpSpec(spec);
+          if (!cancelled) {
+            setMcpSpec(spec);
+            setMcpSpecFailed(false);
+          }
         })
         .catch((err) => {
           console.error('Failed to load MCP spec:', err);
-          if (!cancelled) setLoadFailed(true);
+          if (!cancelled) setMcpSpecFailed(true);
         });
       return () => {
         cancelled = true;
@@ -75,17 +82,30 @@ export default function ApiManager({ onBack, embedded }: Props) {
       api
         .getMcpTools()
         .then((tools) => {
-          if (!cancelled) setMcpTools(tools);
+          if (!cancelled) {
+            setMcpTools(tools);
+            setMcpToolsFailed(false);
+          }
         })
         .catch((err) => {
           console.error('Failed to load MCP tools:', err);
-          if (!cancelled) setLoadFailed(true);
+          if (!cancelled) setMcpToolsFailed(true);
         });
       return () => {
         cancelled = true;
       };
     }
   }, [activeTab, mcpTools, retryNonce]);
+
+  // Only surface failures relevant to the visible tab, so the shared banner
+  // never lies (e.g. a failed MCP spec must not warn on the REST tab, whose
+  // only spec loaded fine).
+  const loadFailed =
+    activeTab === 'rest'
+      ? openApiFailed
+      : activeTab === 'mcp'
+        ? mcpSpecFailed || mcpToolsFailed
+        : openApiFailed || mcpSpecFailed; // tokens tab shows both spec previews
 
   const baseUrl = useMemo(() => {
     if (typeof window === 'undefined') return 'https://your-host';
@@ -160,23 +180,26 @@ export default function ApiManager({ onBack, embedded }: Props) {
         </div>
       )}
 
+      {/* Each tab receives the failure flag for the exact spec it renders, so
+          an inline "Failed to load …" replaces only the spinner that will
+          never resolve. */}
       {activeTab === 'tokens' && (
         <TokensTab
           baseUrl={baseUrl}
           openApiJson={openApiJson}
           mcpSpec={mcpSpec}
-          specLoadFailed={loadFailed}
+          specLoadFailed={mcpSpecFailed}
         />
       )}
       {activeTab === 'rest' && (
-        <RestTab baseUrl={baseUrl} openApiJson={openApiJson} specLoadFailed={loadFailed} />
+        <RestTab baseUrl={baseUrl} openApiJson={openApiJson} specLoadFailed={openApiFailed} />
       )}
       {activeTab === 'mcp' && (
         <McpTab
           baseUrl={baseUrl}
           mcpSpec={mcpSpec}
           mcpTools={mcpTools ?? []}
-          specLoadFailed={loadFailed}
+          specLoadFailed={mcpSpecFailed || mcpToolsFailed}
         />
       )}
     </div>
