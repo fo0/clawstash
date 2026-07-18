@@ -17,6 +17,18 @@ export default function ApiManager({ onBack, embedded }: Props) {
   const [mcpTools, setMcpTools] = useState<Array<{ name: string; description: string }> | null>(
     null,
   );
+  // Failed spec/tool loads previously only console.error'd, leaving the
+  // consumers' "Loading..." spinners spinning forever. Track failures so the
+  // tabs can show an error + Retry instead.
+  const [loadFailed, setLoadFailed] = useState(false);
+  // Bumped by Retry — the load effects below re-run and re-attempt whatever
+  // is still missing.
+  const [retryNonce, setRetryNonce] = useState(0);
+
+  const retryLoads = () => {
+    setLoadFailed(false);
+    setRetryNonce((n) => n + 1);
+  };
 
   // Load OpenAPI JSON when REST or tokens tab is selected
   useEffect(() => {
@@ -27,12 +39,15 @@ export default function ApiManager({ onBack, embedded }: Props) {
         .then((schema) => {
           if (!cancelled) setOpenApiJson(JSON.stringify(schema, null, 2));
         })
-        .catch((err) => console.error('Failed to load OpenAPI schema:', err));
+        .catch((err) => {
+          console.error('Failed to load OpenAPI schema:', err);
+          if (!cancelled) setLoadFailed(true);
+        });
       return () => {
         cancelled = true;
       };
     }
-  }, [activeTab, openApiJson]);
+  }, [activeTab, openApiJson, retryNonce]);
 
   // Load MCP spec when MCP or tokens tab is selected
   useEffect(() => {
@@ -43,12 +58,15 @@ export default function ApiManager({ onBack, embedded }: Props) {
         .then((spec) => {
           if (!cancelled) setMcpSpec(spec);
         })
-        .catch((err) => console.error('Failed to load MCP spec:', err));
+        .catch((err) => {
+          console.error('Failed to load MCP spec:', err);
+          if (!cancelled) setLoadFailed(true);
+        });
       return () => {
         cancelled = true;
       };
     }
-  }, [activeTab, mcpSpec]);
+  }, [activeTab, mcpSpec, retryNonce]);
 
   // Load MCP tool summaries when MCP tab is selected
   useEffect(() => {
@@ -59,12 +77,15 @@ export default function ApiManager({ onBack, embedded }: Props) {
         .then((tools) => {
           if (!cancelled) setMcpTools(tools);
         })
-        .catch((err) => console.error('Failed to load MCP tools:', err));
+        .catch((err) => {
+          console.error('Failed to load MCP tools:', err);
+          if (!cancelled) setLoadFailed(true);
+        });
       return () => {
         cancelled = true;
       };
     }
-  }, [activeTab, mcpTools]);
+  }, [activeTab, mcpTools, retryNonce]);
 
   const baseUrl = useMemo(() => {
     if (typeof window === 'undefined') return 'https://your-host';
@@ -128,12 +149,35 @@ export default function ApiManager({ onBack, embedded }: Props) {
         ))}
       </div>
 
-      {activeTab === 'tokens' && (
-        <TokensTab baseUrl={baseUrl} openApiJson={openApiJson} mcpSpec={mcpSpec} />
+      {/* Spec/tool load failure: one shared banner with Retry. Token CRUD and
+          the code examples keep working — only the spec previews are affected. */}
+      {loadFailed && (
+        <div className="error-banner" role="alert">
+          Some API documentation failed to load.{' '}
+          <button className="btn btn-secondary btn-sm" onClick={retryLoads}>
+            Retry
+          </button>
+        </div>
       )}
-      {activeTab === 'rest' && <RestTab baseUrl={baseUrl} openApiJson={openApiJson} />}
+
+      {activeTab === 'tokens' && (
+        <TokensTab
+          baseUrl={baseUrl}
+          openApiJson={openApiJson}
+          mcpSpec={mcpSpec}
+          specLoadFailed={loadFailed}
+        />
+      )}
+      {activeTab === 'rest' && (
+        <RestTab baseUrl={baseUrl} openApiJson={openApiJson} specLoadFailed={loadFailed} />
+      )}
       {activeTab === 'mcp' && (
-        <McpTab baseUrl={baseUrl} mcpSpec={mcpSpec} mcpTools={mcpTools ?? []} />
+        <McpTab
+          baseUrl={baseUrl}
+          mcpSpec={mcpSpec}
+          mcpTools={mcpTools ?? []}
+          specLoadFailed={loadFailed}
+        />
       )}
     </div>
   );

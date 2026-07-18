@@ -97,6 +97,12 @@ export default function SearchOverlay({ open, onClose, onSelectStash }: Props) {
     const handler = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         e.preventDefault();
+        // The overlay consumes this Escape. Without stopPropagation the event
+        // would continue to App's window-level hotkey handler, which treats
+        // Escape as "back to dashboard" and would ALSO navigate away from the
+        // currently open stash/editor/graph. (App additionally guards via
+        // modalOpenRef — this is defense in depth.)
+        e.stopPropagation();
         onClose();
       }
     };
@@ -137,6 +143,7 @@ export default function SearchOverlay({ open, onClose, onSelectStash }: Props) {
       }
     } else if (e.key === 'Escape') {
       e.preventDefault();
+      e.stopPropagation();
       onClose();
     }
   };
@@ -158,12 +165,10 @@ export default function SearchOverlay({ open, onClose, onSelectStash }: Props) {
   if (!open) return null;
 
   return (
-    <div
-      className="search-overlay-backdrop"
-      role="presentation"
-      aria-hidden="true"
-      onMouseDown={onClose}
-    >
+    // NOTE: no aria-hidden on the backdrop — the dialog is its child, and
+    // aria-hidden on an ancestor would remove the entire dialog (including
+    // the focused input) from the accessibility tree.
+    <div className="search-overlay-backdrop" role="presentation" onMouseDown={onClose}>
       <div
         className="search-overlay"
         role="dialog"
@@ -190,7 +195,10 @@ export default function SearchOverlay({ open, onClose, onSelectStash }: Props) {
             value={query}
             onChange={(e) => handleInputChange(e.target.value)}
             aria-label="Search stashes"
-            aria-controls="search-overlay-results"
+            aria-controls={query.trim() ? 'search-overlay-results' : 'search-overlay-recent'}
+            aria-activedescendant={
+              navItems.length > 0 ? `search-overlay-option-${activeIndex}` : undefined
+            }
           />
           <kbd className="search-overlay-kbd">Esc</kbd>
         </div>
@@ -223,6 +231,7 @@ export default function SearchOverlay({ open, onClose, onSelectStash }: Props) {
               <button
                 type="button"
                 key={stash.id}
+                id={`search-overlay-option-${idx}`}
                 className={`search-overlay-item ${idx === activeIndex ? 'active' : ''}`}
                 role="option"
                 aria-selected={idx === activeIndex}
@@ -274,6 +283,7 @@ export default function SearchOverlay({ open, onClose, onSelectStash }: Props) {
           <div
             className="search-overlay-results"
             role="listbox"
+            id="search-overlay-recent"
             aria-label={`${recent.length} recently viewed stash${recent.length !== 1 ? 'es' : ''}`}
           >
             <div className="search-overlay-results-count">Recently viewed</div>
@@ -281,6 +291,7 @@ export default function SearchOverlay({ open, onClose, onSelectStash }: Props) {
               <button
                 type="button"
                 key={item.id}
+                id={`search-overlay-option-${idx}`}
                 className={`search-overlay-item ${idx === activeIndex ? 'active' : ''}`}
                 role="option"
                 aria-selected={idx === activeIndex}

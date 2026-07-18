@@ -6692,6 +6692,12 @@ body {
   gap: 8px;
 }
 
+.backup-device-code-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
 .backup-device-code {
   font-family: var(--font-mono, monospace);
   font-size: 24px;

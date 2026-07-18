@@ -6,6 +6,8 @@ import { formatDate } from '../utils/format';
 
 interface Props {
   stashes: StashListItem[];
+  /** Full result count from the server — the list itself is capped. */
+  total: number;
   selectedId: string | null;
   search: string;
   onSearch: (query: string) => void;
@@ -158,6 +160,7 @@ const SETTINGS_SECTIONS: { id: SettingsSection; label: string; icon: JSX.Element
 
 export default function Sidebar({
   stashes,
+  total,
   selectedId,
   search,
   onSearch,
@@ -447,8 +450,11 @@ export default function Sidebar({
 
           {stashes.length > 0 && (
             <div className="sidebar-list-count" aria-live="polite">
-              {stashes.length} stash{stashes.length !== 1 ? 'es' : ''}
+              {/* Use the server's total — the returned list is capped, so
+                  counting rendered rows would disagree with the dashboard. */}
+              {total} stash{total !== 1 ? 'es' : ''}
               {(search || filterTag) && ' matching'}
+              {stashes.length < total && ` · showing ${stashes.length}`}
             </div>
           )}
 

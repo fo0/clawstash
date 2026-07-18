@@ -152,6 +152,41 @@ export default function App() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
 
+  // Mirror modal-open state into a ref so the dependency-free global hotkey
+  // handler below can see it. While an overlay is open, navigation hotkeys
+  // must not fire behind it — most importantly Escape, which the overlays
+  // consume via their own listeners but which would otherwise ALSO trigger
+  // the "back to dashboard" branch and silently drop the current view.
+  const modalOpenRef = useRef({ search: false, help: false });
+  useEffect(() => {
+    modalOpenRef.current = { search: searchOpen, help: shortcutsHelpOpen };
+  }, [searchOpen, shortcutsHelpOpen]);
+
+  // Set by StashEditor via onDirtyChange. In-app navigation (sidebar clicks,
+  // hotkeys, quick-search selection) checks this before leaving the editor —
+  // beforeunload only guards real page unloads, not SPA navigation.
+  const editorDirtyRef = useRef(false);
+
+  // Mirror of selectedStash for the dependency-free hotkey handler (Escape
+  // from a clean editor returns to the stash's view instead of home).
+  const selectedStashRef = useRef<Stash | null>(null);
+  useEffect(() => {
+    selectedStashRef.current = selectedStash;
+  }, [selectedStash]);
+
+  /**
+   * In-app navigation guard: ask before discarding unsaved editor changes.
+   * Returns true when navigation may proceed. Uses the native confirm dialog
+   * (same idiom as the data-import guard in Settings) because the caller may
+   * be a plain event handler with no place to render an inline confirm.
+   */
+  const confirmDiscardUnsaved = useCallback(() => {
+    if (!editorDirtyRef.current) return true;
+    const ok = window.confirm('You have unsaved changes. Discard them?');
+    if (ok) editorDirtyRef.current = false;
+    return ok;
+  }, []);
+
   // Global hotkeys: "n" → new stash, Escape → back to dashboard from view/edit/graph
   // Skip when focus is inside an input, textarea, or contenteditable to avoid
   // stealing keystrokes from the user while they are typing.
@@ -161,6 +196,17 @@ export default function App() {
       const isEditing =
         tag === 'input' || tag === 'textarea' || (e.target as HTMLElement)?.isContentEditable;
       if (isEditing || e.metaKey || e.ctrlKey || e.altKey) return;
+
+      // A modal overlay is open: swallow all navigation hotkeys. The overlays
+      // close themselves on Escape; '?' still toggles the shortcuts help off.
+      const modal = modalOpenRef.current;
+      if (modal.search || modal.help) {
+        if (e.key === '?' && modal.help) {
+          e.preventDefault();
+          setShortcutsHelpOpen(false);
+        }
+        return;
+      }
 
       if (e.key === '?') {
         e.preventDefault();
@@ -194,6 +240,7 @@ export default function App() {
         });
       } else if (e.key === 'n') {
         e.preventDefault();
+        if (!confirmDiscardUnsaved()) return;
         setSelectedStash(null);
         setView('new');
         pushUrl('/new');
@@ -209,7 +256,21 @@ export default function App() {
         });
       } else if (e.key === 'Escape') {
         setView((currentView) => {
-          if (currentView === 'view' || currentView === 'edit' || currentView === 'graph') {
+          if (currentView === 'edit') {
+            // Never let Escape silently discard unsaved editor work — the
+            // editor's Cancel button owns the discard-confirm flow. A clean
+            // editor returns to the stash's viewer (mirrors Cancel).
+            if (editorDirtyRef.current) return currentView;
+            const stash = selectedStashRef.current;
+            if (stash) {
+              pushUrl(`/stash/${stash.id}`);
+              return 'view';
+            }
+            pushUrl('/');
+            setSidebarOpen(false);
+            return 'home';
+          }
+          if (currentView === 'view' || currentView === 'graph') {
             setSelectedStash(null);
             setAnalyzeStashId(null);
             pushUrl('/');
@@ -387,6 +448,20 @@ export default function App() {
     };
   }, []);
 
+  /** Show a transient error toast that auto-dismisses after 4 s. */
+  const showError = useCallback((message: string) => {
+    setErrorToast(message);
+    if (errorToastTimerRef.current) clearTimeout(errorToastTimerRef.current);
+    errorToastTimerRef.current = setTimeout(() => setErrorToast(null), 4000);
+  }, []);
+
+  /** Show a transient success toast that auto-dismisses after 3 s. */
+  const showSuccess = useCallback((message: string) => {
+    setSuccessToast(message);
+    if (successToastTimerRef.current) clearTimeout(successToastTimerRef.current);
+    successToastTimerRef.current = setTimeout(() => setSuccessToast(null), 3000);
+  }, []);
+
   // Generation counter so an older in-flight listStashes() resolution
   // cannot overwrite results from a newer typed-search. Without this, a
   // fast typer's earlier (slower) request can win the race and the UI
@@ -409,10 +484,13 @@ export default function App() {
     } catch (err) {
       if (gen !== loadStashesGenRef.current) return;
       console.error('Failed to load stashes:', err);
+      // Surface the failure — otherwise the dashboard silently shows the
+      // previous list (or the misleading "No stashes yet" empty state).
+      showError('Failed to load stashes. Check your connection and try again.');
     } finally {
       if (gen === loadStashesGenRef.current) setLoading(false);
     }
-  }, [search, filterTag, showArchived]);
+  }, [search, filterTag, showArchived, showError]);
 
   useEffect(() => {
     // Only load stashes when authenticated or in open mode.
@@ -453,21 +531,8 @@ export default function App() {
     });
   }, [tags]);
 
-  /** Show a transient error toast that auto-dismisses after 4 s. */
-  const showError = useCallback((message: string) => {
-    setErrorToast(message);
-    if (errorToastTimerRef.current) clearTimeout(errorToastTimerRef.current);
-    errorToastTimerRef.current = setTimeout(() => setErrorToast(null), 4000);
-  }, []);
-
-  /** Show a transient success toast that auto-dismisses after 3 s. */
-  const showSuccess = useCallback((message: string) => {
-    setSuccessToast(message);
-    if (successToastTimerRef.current) clearTimeout(successToastTimerRef.current);
-    successToastTimerRef.current = setTimeout(() => setSuccessToast(null), 3000);
-  }, []);
-
   const handleSelectStash = async (id: string) => {
+    if (!confirmDiscardUnsaved()) return;
     try {
       const stash = await api.getStash(id);
       setSelectedStash(stash);
@@ -488,6 +553,7 @@ export default function App() {
   };
 
   const handleNewStash = () => {
+    if (!confirmDiscardUnsaved()) return;
     setSelectedStash(null);
     setView('new');
     pushUrl('/new');
@@ -576,6 +642,7 @@ export default function App() {
   };
 
   const handleGoHome = () => {
+    if (!confirmDiscardUnsaved()) return;
     setSelectedStash(null);
     setView('home');
     pushUrl('/');
@@ -609,6 +676,7 @@ export default function App() {
   };
 
   const handleGraphView = () => {
+    if (!confirmDiscardUnsaved()) return;
     setSelectedStash(null);
     setAnalyzeStashId(null);
     setView('graph');
@@ -624,6 +692,7 @@ export default function App() {
   };
 
   const handleSettingsView = () => {
+    if (!confirmDiscardUnsaved()) return;
     setSelectedStash(null);
     setSettingsSection('welcome');
     setView('settings');
@@ -666,6 +735,7 @@ export default function App() {
       {sidebarOpen && <div className="sidebar-overlay" onClick={() => setSidebarOpen(false)} />}
       <Sidebar
         stashes={stashes}
+        total={total}
         selectedId={selectedStash?.id || null}
         search={search}
         onSearch={setSearch}
@@ -747,6 +817,8 @@ export default function App() {
               layout={layout}
               sortMode={sortMode}
               loading={loading}
+              search={search}
+              onClearSearch={() => setSearch('')}
               filterTag={filterTag}
               showArchived={showArchived}
               favoriteIds={favoriteIds}
@@ -776,15 +848,30 @@ export default function App() {
           )}
           {(view === 'new' || view === 'edit') && (
             <StashEditor
+              // Remount when switching between "new" and "edit" (or between
+              // different stashes). Without the key, edit → "New Stash" reuses
+              // the instance: the form keeps the edited stash's content while
+              // the save branch flips to createStash — saving would create a
+              // duplicate of the stash being edited.
+              key={view === 'edit' ? `edit-${selectedStash?.id ?? 'none'}` : 'new'}
               stash={view === 'edit' ? selectedStash : null}
               onSave={handleSaveStash}
+              onDirtyChange={(dirty) => {
+                editorDirtyRef.current = dirty;
+              }}
               onCancel={
                 selectedStash
                   ? () => {
+                      editorDirtyRef.current = false;
                       setView('view');
                       if (selectedStash) pushUrl(`/stash/${selectedStash.id}`);
                     }
-                  : handleGoHome
+                  : () => {
+                      // Discard was already confirmed inside the editor —
+                      // clear the dirty flag so handleGoHome doesn't ask again.
+                      editorDirtyRef.current = false;
+                      handleGoHome();
+                    }
               }
             />
           )}

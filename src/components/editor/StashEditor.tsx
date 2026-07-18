@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import type { Stash, TagInfo, FileInput } from '../../types';
 import { api } from '../../api';
+import { DELETE_CONFIRM_TIMEOUT_MS } from '../../utils/constants';
 import FileCodeEditor from './FileCodeEditor';
 import TagCombobox from './TagCombobox';
 import MetadataEditor, { metadataToEntries, entriesToMetadata } from './MetadataEditor';
@@ -10,6 +11,12 @@ interface Props {
   stash: Stash | null;
   onSave: (savedId?: string) => void;
   onCancel: () => void;
+  /**
+   * Notifies the parent whenever the unsaved-changes state flips, so in-app
+   * navigation (sidebar clicks, hotkeys) can guard against silent data loss.
+   * beforeunload only covers real page unloads, not SPA navigation.
+   */
+  onDirtyChange?: (dirty: boolean) => void;
 }
 
 function InfoIcon({ tooltip }: { tooltip: string }) {
@@ -22,7 +29,7 @@ function InfoIcon({ tooltip }: { tooltip: string }) {
   );
 }
 
-export default function StashEditor({ stash, onSave, onCancel }: Props) {
+export default function StashEditor({ stash, onSave, onCancel, onDirtyChange }: Props) {
   const [name, setName] = useState(stash?.name || '');
   const [description, setDescription] = useState(stash?.description || '');
   const [tags, setTags] = useState<string[]>(stash?.tags || []);
@@ -37,6 +44,10 @@ export default function StashEditor({ stash, onSave, onCancel }: Props) {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [confirmCancel, setConfirmCancel] = useState(false);
+  // Index of the file whose Remove button is armed (two-click confirm),
+  // or null. Removing a file destroys its typed content, so it gets the
+  // same two-step confirm as every other destructive action in the app.
+  const [confirmRemoveIndex, setConfirmRemoveIndex] = useState<number | null>(null);
   const [availableTags, setAvailableTags] = useState<TagInfo[]>([]);
   const [availableMetaKeys, setAvailableMetaKeys] = useState<string[]>([]);
   const [firstFileManuallyEdited, setFirstFileManuallyEdited] = useState(!!stash);
@@ -46,6 +57,30 @@ export default function StashEditor({ stash, onSave, onCancel }: Props) {
   // Track whether the user has made any edits since the editor opened.
   // Used by the beforeunload handler to warn about unsaved changes.
   const dirtyRef = useRef(false);
+  // Re-entry guard for handleSave: the Ctrl/Cmd+S listener bypasses the
+  // disabled Save button, so two quick presses would otherwise fire two
+  // createStash calls and produce a duplicate stash.
+  const savingRef = useRef(false);
+  // Latest onDirtyChange for the unmount cleanup (avoids a stale closure).
+  const onDirtyChangeRef = useRef(onDirtyChange);
+  onDirtyChangeRef.current = onDirtyChange;
+
+  // Reads the callback through a ref so stable useCallbacks (updateFile,
+  // handleNameChange) never capture a stale onDirtyChange prop.
+  const markDirty = () => {
+    if (!dirtyRef.current) {
+      dirtyRef.current = true;
+      onDirtyChangeRef.current?.(true);
+    }
+  };
+
+  // On unmount the editor's unsaved state is gone either way — reset the
+  // parent's dirty flag so a later navigation isn't blocked by a stale guard.
+  useEffect(() => {
+    return () => {
+      onDirtyChangeRef.current?.(false);
+    };
+  }, []);
 
   // useRef(initialValue) re-evaluates `initialValue` on every render but only
   // keeps the FIRST render's result. The naive `.map(() => counter++)` form
@@ -88,7 +123,7 @@ export default function StashEditor({ stash, onSave, onCancel }: Props) {
   // from the dep list also avoids recreating the callback on every keystroke.
   const handleNameChange = useCallback(
     (newName: string) => {
-      dirtyRef.current = true;
+      markDirty();
       setName(newName);
       if (firstFileManuallyEdited) return;
       setFiles((prev) => {
@@ -108,20 +143,38 @@ export default function StashEditor({ stash, onSave, onCancel }: Props) {
   );
 
   const addFile = () => {
-    dirtyRef.current = true;
+    markDirty();
+    const newId = fileIdCounter.current++;
     setFiles([...files, { filename: '', content: '', language: '' }]);
-    fileIds.current.push(fileIdCounter.current++);
+    fileIds.current.push(newId);
+    // Move focus into the new file's filename input. Besides being the
+    // natural next step, this also keeps focus off the Add File button —
+    // where global single-key hotkeys would otherwise be live.
+    requestAnimationFrame(() => {
+      const input = document.getElementById(`stash-file-name-${newId}`);
+      if (input instanceof HTMLInputElement) input.focus();
+    });
   };
 
+  /**
+   * Remove a file row. Rows with typed content require a second click on the
+   * armed button (two-step confirm); empty rows are removed immediately.
+   */
   const removeFile = (index: number) => {
     if (files.length === 1) return;
-    dirtyRef.current = true;
+    const hasContent = !!files[index] && files[index].content.trim().length > 0;
+    if (hasContent && confirmRemoveIndex !== index) {
+      setConfirmRemoveIndex(index);
+      return;
+    }
+    markDirty();
+    setConfirmRemoveIndex(null);
     setFiles(files.filter((_, i) => i !== index));
     fileIds.current.splice(index, 1);
   };
 
   const updateFile = useCallback((index: number, field: keyof FileInput, value: string) => {
-    dirtyRef.current = true;
+    markDirty();
     setFiles((prev) => {
       const updated = [...prev];
       updated[index] = { ...updated[index], [field]: value };
@@ -133,12 +186,16 @@ export default function StashEditor({ stash, onSave, onCancel }: Props) {
   }, []);
 
   const handleSave = async () => {
+    // The Ctrl/Cmd+S listener bypasses the disabled button — bail while a
+    // save is already in flight instead of firing a duplicate request.
+    if (savingRef.current) return;
     const validFiles = files.filter((f) => f.filename.trim());
     if (validFiles.length === 0) {
       setError('At least one file with a filename is required.');
       return;
     }
 
+    savingRef.current = true;
     setSaving(true);
     setError('');
 
@@ -160,15 +217,18 @@ export default function StashEditor({ stash, onSave, onCancel }: Props) {
       if (stash) {
         await api.updateStash(stash.id, payload);
         dirtyRef.current = false;
+        onDirtyChangeRef.current?.(false);
         onSave(stash.id);
       } else {
         const created = await api.createStash(payload);
         dirtyRef.current = false;
+        onDirtyChangeRef.current?.(false);
         onSave(created.id);
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to save stash');
     } finally {
+      savingRef.current = false;
       setSaving(false);
     }
   };
@@ -189,6 +249,14 @@ export default function StashEditor({ stash, onSave, onCancel }: Props) {
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
   }, []);
+
+  // Auto-disarm the two-step file-remove confirm after a short timeout —
+  // mirrors the stash-delete confirm in the viewer.
+  useEffect(() => {
+    if (confirmRemoveIndex === null) return;
+    const timer = setTimeout(() => setConfirmRemoveIndex(null), DELETE_CONFIRM_TIMEOUT_MS);
+    return () => clearTimeout(timer);
+  }, [confirmRemoveIndex]);
 
   // Warn before navigating away (browser back, tab close) with unsaved edits.
   useEffect(() => {
@@ -294,7 +362,7 @@ export default function StashEditor({ stash, onSave, onCancel }: Props) {
             id="stash-description"
             value={description}
             onChange={(e) => {
-              dirtyRef.current = true;
+              markDirty();
               setDescription(e.target.value);
             }}
             placeholder="Describe what this stash contains and what it's used for..."
@@ -320,7 +388,7 @@ export default function StashEditor({ stash, onSave, onCancel }: Props) {
           <TagCombobox
             tags={tags}
             onChange={(t) => {
-              dirtyRef.current = true;
+              markDirty();
               setTags(t);
             }}
             availableTags={availableTags}
@@ -337,7 +405,7 @@ export default function StashEditor({ stash, onSave, onCancel }: Props) {
           <MetadataEditor
             entries={metadataEntries}
             onChange={(e) => {
-              dirtyRef.current = true;
+              markDirty();
               setMetadataEntries(e);
             }}
             availableKeys={availableMetaKeys}
@@ -366,6 +434,7 @@ export default function StashEditor({ stash, onSave, onCancel }: Props) {
             <div key={fileIds.current[index]} className="editor-file">
               <div className="editor-file-header">
                 <input
+                  id={`stash-file-name-${fileIds.current[index]}`}
                   type="text"
                   value={file.filename}
                   onChange={(e) => updateFile(index, 'filename', e.target.value)}
@@ -383,18 +452,28 @@ export default function StashEditor({ stash, onSave, onCancel }: Props) {
                   aria-label={`File ${index + 1} language`}
                   title="Programming language. Leave blank to auto-detect from the file extension."
                 />
-                {files.length > 1 && (
-                  <button
-                    className="btn btn-sm btn-ghost btn-remove"
-                    onClick={() => removeFile(index)}
-                    title="Remove this file"
-                    aria-label="Remove this file"
-                  >
-                    <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
-                      <path d="M11 1.75V3h2.25a.75.75 0 0 1 0 1.5H2.75a.75.75 0 0 1 0-1.5H5V1.75C5 .784 5.784 0 6.75 0h2.5C10.216 0 11 .784 11 1.75ZM4.496 6.675l.66 6.6a.25.25 0 0 0 .249.225h5.19a.25.25 0 0 0 .249-.225l.66-6.6a.75.75 0 0 1 1.492.149l-.66 6.6A1.748 1.748 0 0 1 10.595 15h-5.19a1.75 1.75 0 0 1-1.741-1.575l-.66-6.6a.75.75 0 1 1 1.492-.15ZM6.5 1.75V3h3V1.75a.25.25 0 0 0-.25-.25h-2.5a.25.25 0 0 0-.25.25Z" />
-                    </svg>
-                  </button>
-                )}
+                {files.length > 1 &&
+                  (confirmRemoveIndex === index ? (
+                    <button
+                      className="btn btn-sm btn-danger btn-remove"
+                      onClick={() => removeFile(index)}
+                      title="This file has content — click again to remove it"
+                      aria-label="Confirm removing this file and its content"
+                    >
+                      Remove?
+                    </button>
+                  ) : (
+                    <button
+                      className="btn btn-sm btn-ghost btn-remove"
+                      onClick={() => removeFile(index)}
+                      title="Remove this file"
+                      aria-label="Remove this file"
+                    >
+                      <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
+                        <path d="M11 1.75V3h2.25a.75.75 0 0 1 0 1.5H2.75a.75.75 0 0 1 0-1.5H5V1.75C5 .784 5.784 0 6.75 0h2.5C10.216 0 11 .784 11 1.75ZM4.496 6.675l.66 6.6a.25.25 0 0 0 .249.225h5.19a.25.25 0 0 0 .249-.225l.66-6.6a.75.75 0 0 1 1.492.149l-.66 6.6A1.748 1.748 0 0 1 10.595 15h-5.19a1.75 1.75 0 0 1-1.741-1.575l-.66-6.6a.75.75 0 1 1 1.492-.15ZM6.5 1.75V3h3V1.75a.25.25 0 0 0-.25-.25h-2.5a.25.25 0 0 0-.25.25Z" />
+                      </svg>
+                    </button>
+                  ))}
               </div>
               <div className="code-editor-wrapper">
                 <FileCodeEditor file={file} index={index} updateFile={updateFile} />

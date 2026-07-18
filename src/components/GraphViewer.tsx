@@ -1151,19 +1151,24 @@ export default function GraphViewer({
     };
   }, [screenToWorld, findNodeAt, showPopup, closePopup, graphTab]);
 
-  // Close popup on Escape
+  // Escape closes graph-local UI (popup, search, highlight) first; only a
+  // second Escape — with nothing open — bubbles on to App's global handler,
+  // which navigates back to the dashboard. Registered in the capture phase so
+  // stopPropagation reliably precedes App's bubble-phase window listener.
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        closePopup();
-        setHighlightTag(null);
-        setSearchOpen(false);
-        setSearchQuery('');
-      }
+      if (e.key !== 'Escape') return;
+      const consumed = popup !== null || searchOpen || highlightTag !== null || searchQuery !== '';
+      if (!consumed) return;
+      e.stopPropagation();
+      closePopup();
+      setHighlightTag(null);
+      setSearchOpen(false);
+      setSearchQuery('');
     };
-    window.addEventListener('keydown', onKeyDown);
-    return () => window.removeEventListener('keydown', onKeyDown);
-  }, [closePopup]);
+    window.addEventListener('keydown', onKeyDown, true);
+    return () => window.removeEventListener('keydown', onKeyDown, true);
+  }, [closePopup, popup, searchOpen, highlightTag, searchQuery]);
 
   const handleResetView = () => {
     targetZoomRef.current = null;

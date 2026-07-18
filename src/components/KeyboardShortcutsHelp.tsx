@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 
 interface Props {
   open: boolean;
@@ -44,12 +44,19 @@ const SHORTCUT_GROUPS: ShortcutGroup[] = [
 ];
 
 export default function KeyboardShortcutsHelp({ open, onClose }: Props) {
+  const closeBtnRef = useRef<HTMLButtonElement>(null);
+
   // Close on Escape
   useEffect(() => {
     if (!open) return;
     const handler = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         e.preventDefault();
+        // Consume the Escape — without stopPropagation it would continue to
+        // App's window-level handler, which would ALSO navigate back to the
+        // dashboard from view/edit/graph. (App additionally guards via
+        // modalOpenRef — this is defense in depth.)
+        e.stopPropagation();
         onClose();
       }
     };
@@ -57,15 +64,19 @@ export default function KeyboardShortcutsHelp({ open, onClose }: Props) {
     return () => document.removeEventListener('keydown', handler);
   }, [open, onClose]);
 
+  // Move focus into the dialog on open. Focus otherwise stays on the trigger
+  // behind the backdrop, which both breaks the expected dialog tab order and
+  // leaves global single-key hotkeys aimed at the page underneath.
+  useEffect(() => {
+    if (open) closeBtnRef.current?.focus();
+  }, [open]);
+
   if (!open) return null;
 
   return (
-    <div
-      className="search-overlay-backdrop"
-      role="presentation"
-      aria-hidden="true"
-      onMouseDown={onClose}
-    >
+    // NOTE: no aria-hidden on the backdrop — the dialog is its child, and
+    // aria-hidden on an ancestor would remove it from the accessibility tree.
+    <div className="search-overlay-backdrop" role="presentation" onMouseDown={onClose}>
       <div
         className="shortcuts-help-dialog"
         role="dialog"
@@ -77,6 +88,7 @@ export default function KeyboardShortcutsHelp({ open, onClose }: Props) {
           <span className="shortcuts-help-title">Keyboard Shortcuts</span>
           <button
             type="button"
+            ref={closeBtnRef}
             className="btn btn-ghost shortcuts-help-close"
             onClick={onClose}
             aria-label="Close keyboard shortcuts"

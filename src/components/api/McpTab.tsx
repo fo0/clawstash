@@ -8,9 +8,11 @@ interface Props {
   baseUrl: string;
   mcpSpec: string;
   mcpTools: Array<{ name: string; description: string }>;
+  /** True when a spec/tool fetch failed — show an error instead of an endless spinner. */
+  specLoadFailed?: boolean;
 }
 
-export default function McpTab({ baseUrl, mcpSpec, mcpTools }: Props) {
+export default function McpTab({ baseUrl, mcpSpec, mcpTools, specLoadFailed }: Props) {
   const { copyNotice, handleCopy } = useCopyToast();
   const { expandedSpecs, toggleSpecPreview } = useExpandableSpecs();
 
@@ -59,6 +61,10 @@ export default function McpTab({ baseUrl, mcpSpec, mcpTools }: Props) {
           {expandedSpecs.has('mcp-tab') &&
             (mcpSpec ? (
               <pre className="api-code-block api-spec-preview">{mcpSpec}</pre>
+            ) : specLoadFailed ? (
+              <div className="api-loading" role="alert">
+                Failed to load the MCP spec — use Retry above.
+              </div>
             ) : (
               <div className="api-loading">
                 <Spinner /> Loading spec...
@@ -158,6 +164,10 @@ export default function McpTab({ baseUrl, mcpSpec, mcpTools }: Props) {
                 <span>{tool.description}</span>
               </div>
             ))}
+          </div>
+        ) : specLoadFailed ? (
+          <div className="api-loading" role="alert">
+            Failed to load the tool list — use Retry above.
           </div>
         ) : (
           <div className="api-loading">

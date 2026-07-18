@@ -385,6 +385,10 @@ export default function StashViewer({
   const [tocExpanded, setTocExpanded] = useState(getTocPreference);
   const [collapsedFiles, setCollapsedFiles] = useState<Set<string>>(new Set());
   const deleteTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Timestamp of when the delete confirm was armed. A genuine double-click
+  // lands both clicks on the same button, which would arm AND confirm in
+  // ~100 ms — ignore confirm clicks that arrive implausibly fast.
+  const deleteArmedAtRef = useRef(0);
   const filesContainerRef = useRef<HTMLDivElement>(null);
   const pendingScrollIdRef = useRef<string | null>(null);
   const copyAllClipboard = useClipboard();
@@ -520,9 +524,12 @@ export default function StashViewer({
   );
 
   // Collapse state is per stash; the component instance is reused across
-  // stash switches (no remount), so reset explicitly.
+  // stash switches (no remount), so reset explicitly. Also reset the scroll
+  // container — otherwise navigating from deep inside a long stash leaves
+  // the reader mid-page in the next one.
   useEffect(() => {
     setCollapsedFiles(new Set());
+    document.querySelector('.main-content')?.scrollTo(0, 0);
   }, [stash.id]);
 
   const scrollToId = useCallback(
@@ -623,8 +630,10 @@ export default function StashViewer({
 
   const handleDelete = () => {
     if (showDeleteConfirm) {
+      if (Date.now() - deleteArmedAtRef.current < 300) return;
       onDelete(stash.id);
     } else {
+      deleteArmedAtRef.current = Date.now();
       setShowDeleteConfirm(true);
       if (deleteTimerRef.current) clearTimeout(deleteTimerRef.current);
       deleteTimerRef.current = setTimeout(
@@ -1282,9 +1291,12 @@ export default function StashViewer({
                   <button
                     className="btn btn-sm btn-ghost"
                     onClick={() =>
+                      // Encode the filename — the adjacent open-link already
+                      // does, and an un-encoded copy breaks for filenames
+                      // with spaces or special characters.
                       apiClipboard.copy(
                         `raw-${f.id}`,
-                        `/api/stashes/${stash.id}/files/${f.filename}/raw`,
+                        `/api/stashes/${stash.id}/files/${encodeURIComponent(f.filename)}/raw`,
                       )
                     }
                     title={
@@ -1392,6 +1404,10 @@ export default function StashViewer({
 
       {activeTab === 'history' && (
         <VersionHistory
+          // Remount on stash switch: the internal sub-view (version detail /
+          // diff panel) would otherwise keep showing the PREVIOUS stash's
+          // version content under the new stash's header.
+          key={stash.id}
           stashId={stash.id}
           currentVersion={stash.version}
           onRestore={(restored) => {

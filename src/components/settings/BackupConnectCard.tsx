@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 import type { BackupSettingsResponse } from '../../types';
 import { api } from '../../api';
+import { copyToClipboard } from '../../utils/clipboard';
+import { COPY_TOAST_DURATION_MS, DELETE_CONFIRM_TIMEOUT_MS } from '../../utils/constants';
 import Spinner from '../shared/Spinner';
 
 interface Props {
@@ -57,8 +59,25 @@ export default function BackupConnectCard({ response, onUpdated }: Props) {
   const [pending, setPending] = useState<PendingLogin | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Two-step confirm for Disconnect — tearing down the stored credential on a
+  // single misclick is inconsistent with the app's other destructive actions.
+  const [confirmDisconnect, setConfirmDisconnect] = useState(false);
+  const [codeCopied, setCodeCopied] = useState<'idle' | 'copied' | 'failed'>('idle');
   const pollTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const cancelledRef = useRef(false);
+
+  // Auto-disarm the disconnect confirm (mirrors the token-delete confirm).
+  useEffect(() => {
+    if (!confirmDisconnect) return;
+    const timer = setTimeout(() => setConfirmDisconnect(false), DELETE_CONFIRM_TIMEOUT_MS);
+    return () => clearTimeout(timer);
+  }, [confirmDisconnect]);
+
+  const handleCopyCode = async (code: string) => {
+    const ok = await copyToClipboard(code);
+    setCodeCopied(ok ? 'copied' : 'failed');
+    setTimeout(() => setCodeCopied('idle'), COPY_TOAST_DURATION_MS);
+  };
 
   const stopPolling = () => {
     cancelledRef.current = true;
@@ -152,6 +171,11 @@ export default function BackupConnectCard({ response, onUpdated }: Props) {
   };
 
   const handleDisconnect = async () => {
+    if (!confirmDisconnect) {
+      setConfirmDisconnect(true);
+      return;
+    }
+    setConfirmDisconnect(false);
     setBusy(true);
     setError(null);
     try {
@@ -178,9 +202,27 @@ export default function BackupConnectCard({ response, onUpdated }: Props) {
             {connection.method === 'oauth' ? '(GitHub login)' : '(personal access token)'}.
           </p>
           <div className="settings-option-group">
-            <button className="btn btn-danger btn-sm" onClick={handleDisconnect} disabled={busy}>
-              Disconnect
+            <button
+              className="btn btn-danger btn-sm"
+              onClick={handleDisconnect}
+              disabled={busy}
+              title={
+                confirmDisconnect
+                  ? 'Click again to remove the stored GitHub credential'
+                  : 'Disconnect the GitHub backup'
+              }
+            >
+              {confirmDisconnect ? 'Disconnect?' : 'Disconnect'}
             </button>
+            {confirmDisconnect && (
+              <button
+                className="btn btn-ghost btn-sm"
+                onClick={() => setConfirmDisconnect(false)}
+                title="Keep the GitHub connection"
+              >
+                Keep
+              </button>
+            )}
           </div>
         </>
       ) : pending ? (
@@ -192,7 +234,23 @@ export default function BackupConnectCard({ response, onUpdated }: Props) {
             </a>{' '}
             and enter this code:
           </p>
-          <div className="backup-device-code">{pending.userCode}</div>
+          <div className="backup-device-code-row">
+            <div className="backup-device-code">{pending.userCode}</div>
+            <button
+              className="btn btn-secondary btn-sm"
+              onClick={() => handleCopyCode(pending.userCode)}
+              title={
+                codeCopied === 'copied'
+                  ? 'Copied!'
+                  : codeCopied === 'failed'
+                    ? 'Copy failed — select the code manually'
+                    : 'Copy the device code'
+              }
+              aria-label="Copy device code"
+            >
+              {codeCopied === 'copied' ? 'Copied' : codeCopied === 'failed' ? 'Failed' : 'Copy'}
+            </button>
+          </div>
           <p className="api-hint backup-device-waiting">
             <Spinner /> Waiting for authorization…
           </p>
