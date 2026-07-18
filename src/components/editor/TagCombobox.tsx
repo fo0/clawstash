@@ -26,7 +26,10 @@ export default function TagCombobox({ tags, onChange, availableTags, inputLabell
   const visibleOptions = filtered.slice(0, 10);
   const totalOptions = visibleOptions.length + (showCreate ? 1 : 0);
 
-  const addTag = (tag: string) => {
+  // Commit without touching focus — used by the blur handler, where pulling
+  // focus back into the input would steal it from the element the user just
+  // clicked (e.g. the Save button).
+  const commitTag = (tag: string) => {
     const trimmed = tag.trim().toLowerCase();
     if (trimmed && !tags.includes(trimmed)) {
       onChange([...tags, trimmed]);
@@ -34,6 +37,10 @@ export default function TagCombobox({ tags, onChange, availableTags, inputLabell
     setInput('');
     setShowDropdown(false);
     setActiveIndex(-1);
+  };
+
+  const addTag = (tag: string) => {
+    commitTag(tag);
     inputRef.current?.focus();
   };
 
@@ -95,6 +102,18 @@ export default function TagCombobox({ tags, onChange, availableTags, inputLabell
             setActiveIndex(-1);
           }}
           onFocus={() => setShowDropdown(true)}
+          onBlur={() => {
+            // Commit a typed-but-unconfirmed tag when focus truly leaves the
+            // combobox — otherwise "python" typed without Enter is silently
+            // dropped on Save. Dropdown option clicks never blur the input
+            // (their mousedown is prevented below), so this cannot double-add.
+            if (input.trim()) {
+              commitTag(input);
+            } else {
+              setShowDropdown(false);
+              setActiveIndex(-1);
+            }
+          }}
           onKeyDown={handleKeyDown}
           placeholder={tags.length === 0 ? 'Type to add tags...' : 'Add more...'}
           className="tag-combobox-input"
@@ -115,6 +134,9 @@ export default function TagCombobox({ tags, onChange, availableTags, inputLabell
               key={t.tag}
               id={`tag-combobox-option-${i}`}
               className={`tag-combobox-option${activeIndex === i ? ' active' : ''}`}
+              // Keep focus in the input while clicking an option — a blur
+              // here would commit the half-typed filter text as its own tag.
+              onMouseDown={(e) => e.preventDefault()}
               onClick={() => addTag(t.tag)}
               role="option"
               aria-selected={activeIndex === i}
@@ -127,6 +149,7 @@ export default function TagCombobox({ tags, onChange, availableTags, inputLabell
             <button
               id={`tag-combobox-option-${visibleOptions.length}`}
               className={`tag-combobox-option tag-combobox-create${activeIndex === visibleOptions.length ? ' active' : ''}`}
+              onMouseDown={(e) => e.preventDefault()}
               onClick={() => addTag(input)}
               role="option"
               aria-selected={activeIndex === visibleOptions.length}
@@ -143,6 +166,8 @@ export default function TagCombobox({ tags, onChange, availableTags, inputLabell
               {tag}
               <button
                 className="tag-combobox-tag-remove"
+                // Removing a tag must not blur-commit a half-typed filter.
+                onMouseDown={(e) => e.preventDefault()}
                 onClick={() => removeTag(tag)}
                 title={`Remove tag "${tag}"`}
                 aria-label={`Remove tag "${tag}"`}

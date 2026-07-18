@@ -69,6 +69,12 @@ export default function MetadataEditor({ entries, onChange, availableKeys }: Pro
   const hasMore = entries.length > PREVIEW_COUNT;
 
   const existingKeys = entries.map((e) => e.key);
+  // Keys occurring in more than one row (after trimming — save trims too).
+  // entriesToMetadata assigns by key, so the later row silently overwrites
+  // the earlier one; addEntry blocks duplicates but row EDITS could still
+  // create them unnoticed. Flag the affected rows instead.
+  const trimmedKeys = existingKeys.map((k) => k.trim());
+  const duplicateKeys = new Set(trimmedKeys.filter((k, i) => k && trimmedKeys.indexOf(k) !== i));
   const filteredKeys = availableKeys
     .filter((k) => !existingKeys.includes(k))
     .filter((k) => !keyInput || k.toLowerCase().includes(keyInput.toLowerCase()));
@@ -150,6 +156,12 @@ export default function MetadataEditor({ entries, onChange, availableKeys }: Pro
                 placeholder="Key"
                 className="form-input metadata-key-input"
                 aria-label={`Metadata key ${index + 1}`}
+                aria-invalid={duplicateKeys.has(entry.key.trim()) || undefined}
+                title={
+                  duplicateKeys.has(entry.key.trim())
+                    ? `Duplicate key "${entry.key.trim()}" — only the last value is saved`
+                    : undefined
+                }
               />
               <input
                 type="text"
@@ -186,6 +198,17 @@ export default function MetadataEditor({ entries, onChange, availableKeys }: Pro
             >
               Show less
             </button>
+          )}
+          {duplicateKeys.size > 0 && (
+            <div
+              className="metadata-dup-warning"
+              role="status"
+              aria-live="polite"
+              style={{ color: 'var(--accent-orange)', fontSize: 12, marginTop: 4 }}
+            >
+              Duplicate key{duplicateKeys.size !== 1 ? 's' : ''}:{' '}
+              {Array.from(duplicateKeys).join(', ')} — only the last value per key is saved.
+            </div>
           )}
         </div>
       )}

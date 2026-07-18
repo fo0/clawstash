@@ -18,7 +18,14 @@ export default function LoginScreen({ onLogin }: Props) {
     try {
       await onLogin(password);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Login failed');
+      const message = err instanceof Error ? err.message : 'Login failed';
+      // The rate limiter answers 429 — without a JSON body the raw message is
+      // just "HTTP 429", which tells the user nothing actionable.
+      setError(
+        /\b429\b|too many/i.test(message)
+          ? 'Too many attempts — please wait a moment and try again.'
+          : message,
+      );
     } finally {
       setLoading(false);
     }
@@ -43,7 +50,9 @@ export default function LoginScreen({ onLogin }: Props) {
         <div className="login-input-wrapper">
           <input
             id="login-password"
+            name="password"
             type={showPassword ? 'text' : 'password'}
+            autoComplete="current-password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             placeholder="Password"

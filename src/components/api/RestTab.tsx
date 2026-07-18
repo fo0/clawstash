@@ -8,9 +8,11 @@ import { useCopyToast, useExpandableSpecs } from './useCopyToast';
 interface Props {
   baseUrl: string;
   openApiJson: string;
+  /** True when a spec fetch failed — show an error instead of an endless spinner. */
+  specLoadFailed?: boolean;
 }
 
-export default function RestTab({ baseUrl, openApiJson }: Props) {
+export default function RestTab({ baseUrl, openApiJson, specLoadFailed }: Props) {
   const { copyNotice, handleCopy } = useCopyToast();
   const { expandedSpecs, toggleSpecPreview } = useExpandableSpecs();
 
@@ -100,6 +102,10 @@ export default function RestTab({ baseUrl, openApiJson }: Props) {
         </div>
         {openApiJson ? (
           <pre className="api-code-block api-code-block-scroll">{openApiJson}</pre>
+        ) : specLoadFailed ? (
+          <div className="api-loading" role="alert">
+            Failed to load the OpenAPI schema — use Retry above.
+          </div>
         ) : (
           <div className="api-loading">
             <Spinner /> Loading schema...

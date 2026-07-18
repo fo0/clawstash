@@ -21,9 +21,11 @@ interface Props {
   baseUrl: string;
   openApiJson: string;
   mcpSpec: string;
+  /** True when a spec fetch failed — show an error instead of an endless spinner. */
+  specLoadFailed?: boolean;
 }
 
-export default function TokensTab({ baseUrl, openApiJson, mcpSpec }: Props) {
+export default function TokensTab({ baseUrl, openApiJson, mcpSpec, specLoadFailed }: Props) {
   const [tokens, setTokens] = useState<TokenListItem[]>([]);
   const [tokensLoading, setTokensLoading] = useState(true);
   const [tokensError, setTokensError] = useState<string | null>(null);
@@ -187,6 +189,10 @@ export default function TokensTab({ baseUrl, openApiJson, mcpSpec }: Props) {
             {expandedSpecs.has('mcp-quick') &&
               (mcpSpec ? (
                 <pre className="api-code-block api-spec-preview">{mcpSpec}</pre>
+              ) : specLoadFailed ? (
+                <div className="api-loading" role="alert">
+                  Failed to load the MCP spec — use Retry above.
+                </div>
               ) : (
                 <div className="api-loading">
                   <Spinner /> Loading spec...

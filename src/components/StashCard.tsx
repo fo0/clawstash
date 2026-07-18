@@ -65,6 +65,10 @@ export default function StashCard({
             e.stopPropagation();
             onToggleFavorite(stash.id);
           }}
+          // Enter/Space on the star must not bubble to the card's own
+          // keydown handler, which would ALSO open the stash (the tag chips
+          // below already stop propagation the same way).
+          onKeyDown={(e) => e.stopPropagation()}
           aria-pressed={isFavorite}
           aria-label={isFavorite ? `Unpin "${title}" from top` : `Pin "${title}" to top`}
           title={isFavorite ? 'Unpin from top' : 'Pin to top'}

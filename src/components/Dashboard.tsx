@@ -12,6 +12,10 @@ interface Props {
   layout: LayoutMode;
   sortMode: SortMode;
   loading: boolean;
+  /** Active sidebar search term — it filters this list, so the dashboard
+   * must show it (filter chip + honest empty state). */
+  search: string;
+  onClearSearch: () => void;
   filterTag: string;
   showArchived: boolean;
   favoriteIds: ReadonlySet<string>;
@@ -30,6 +34,8 @@ export default function Dashboard({
   layout,
   sortMode,
   loading,
+  search,
+  onClearSearch,
   filterTag,
   showArchived,
   favoriteIds,
@@ -56,6 +62,17 @@ export default function Dashboard({
           <span className="stash-count" title="Total number of stashes stored">
             {pluralize(total, 'stash', 'stashes')}
           </span>
+          {/* The server caps list responses (50 browse / 20 search), so the
+              header total and the rendered cards can diverge — say so
+              instead of silently looking complete. */}
+          {stashes.length < total && (
+            <span
+              className="stash-count"
+              title={`The list is capped — ${stashes.length} of ${total} stashes are shown. Use search or tag filters to narrow down.`}
+            >
+              showing {stashes.length}
+            </span>
+          )}
           {loading && stashes.length > 0 && (
             <span
               className="dashboard-refresh-indicator"
@@ -69,6 +86,19 @@ export default function Dashboard({
           )}
         </div>
         <div className="dashboard-actions">
+          {search && (
+            <span className="active-filter" title={`Showing stashes matching "${search}"`}>
+              Search: {search}
+              <button
+                className="filter-clear"
+                onClick={onClearSearch}
+                title="Clear search"
+                aria-label={`Clear search: ${search}`}
+              >
+                <span aria-hidden="true">x</span>
+              </button>
+            </span>
+          )}
           {filterTag && (
             <span
               className="active-filter"
@@ -193,9 +223,11 @@ export default function Dashboard({
             </svg>
           </div>
           <p>
-            {filterTag || showArchived
-              ? 'No stashes match the current filter.'
-              : 'No stashes yet. Create your first one!'}
+            {search
+              ? `No stashes match "${search}".`
+              : filterTag || showArchived
+                ? 'No stashes match the current filter.'
+                : 'No stashes yet. Create your first one!'}
           </p>
           <button className="btn btn-new-stash" onClick={onNewStash}>
             <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor">

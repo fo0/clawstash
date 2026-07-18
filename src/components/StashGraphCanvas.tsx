@@ -313,6 +313,12 @@ export default function StashGraphCanvas({
   const [nodeCount, setNodeCount] = useState(0);
   const [edgeCount, setEdgeCount] = useState(0);
   const [loading, setLoading] = useState(true);
+  // Distinguishes a failed graph fetch from a genuinely empty graph — without
+  // this, a network/API error would render the misleading "No stashes to
+  // visualize" empty state.
+  const [loadError, setLoadError] = useState(false);
+  // Bumped by the error-state Retry button to re-run the fetch effect.
+  const [reloadNonce, setReloadNonce] = useState(0);
   const [hoveredLabel, setHoveredLabel] = useState<string | null>(null);
   const [analysedStashes, setAnalysedStashes] = useState<Set<string>>(new Set());
   const [defaultDepth, setDefaultDepth] = useState(1);
@@ -514,6 +520,7 @@ export default function StashGraphCanvas({
   // Fetch data
   useEffect(() => {
     setLoading(true);
+    setLoadError(false);
     api
       .getStashGraph({ mode: 'relations' })
       .then((data) => {
@@ -551,14 +558,16 @@ export default function StashGraphCanvas({
       })
       .catch((err) => {
         console.error('Failed to load stash graph:', err);
+        setLoadError(true);
         setLoading(false);
       });
-    // Fetch once on mount. `applyVisibilityFilter` depends on `defaultDepth`,
-    // so listing it here would re-fetch the entire graph from the server every
-    // time the depth slider moved — but the next effect already re-applies the
-    // filter client-side from `allNodesRef`/`allEdgesRef`.
+    // Fetch once on mount (and again on Retry via reloadNonce).
+    // `applyVisibilityFilter` depends on `defaultDepth`, so listing it here
+    // would re-fetch the entire graph from the server every time the depth
+    // slider moved — but the next effect already re-applies the filter
+    // client-side from `allNodesRef`/`allEdgesRef`.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [reloadNonce]);
 
   // Re-filter when analysedStashes or defaultDepth changes
   useEffect(() => {
@@ -1225,14 +1234,19 @@ export default function StashGraphCanvas({
     };
   }, [screenToWorld, findNodeAt, getConnections, kickAnimation]);
 
-  // Escape to close popup
+  // Escape closes an open popup first; only a second Escape — with no popup
+  // open — bubbles on to App's global handler (back to dashboard). Capture
+  // phase so stopPropagation precedes App's bubble-phase window listener.
   useEffect(() => {
+    if (popup === null) return;
     const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setPopup(null);
+      if (e.key !== 'Escape') return;
+      e.stopPropagation();
+      setPopup(null);
     };
-    window.addEventListener('keydown', onKeyDown);
-    return () => window.removeEventListener('keydown', onKeyDown);
-  }, []);
+    window.addEventListener('keydown', onKeyDown, true);
+    return () => window.removeEventListener('keydown', onKeyDown, true);
+  }, [popup]);
 
   const handleReset = () => {
     targetZoomRef.current = null;
@@ -1406,7 +1420,19 @@ export default function StashGraphCanvas({
           </div>
         )}
 
-        {!loading && nodeCount === 0 && (
+        {!loading && loadError && (
+          <div className="graph-empty" role="alert">
+            <p>Failed to load the stash graph. Check your connection and try again.</p>
+            <button
+              className="btn btn-secondary btn-sm"
+              onClick={() => setReloadNonce((n) => n + 1)}
+            >
+              Retry
+            </button>
+          </div>
+        )}
+
+        {!loading && !loadError && nodeCount === 0 && (
           <div className="graph-empty">
             <svg width="36" height="36" viewBox="0 0 16 16" fill="currentColor" opacity="0.3">
               <path d="M2 1.75C2 .784 2.784 0 3.75 0h6.586c.464 0 .909.184 1.237.513l2.914 2.914c.329.328.513.773.513 1.237v9.586A1.75 1.75 0 0 1 13.25 16h-9.5A1.75 1.75 0 0 1 2 14.25Zm1.75-.25a.25.25 0 0 0-.25.25v12.5c0 .138.112.25.25.25h9.5a.25.25 0 0 0 .25-.25V6h-2.75A1.75 1.75 0 0 1 9 4.25V1.5Zm6.75.062V4.25c0 .138.112.25.25.25h2.688l-.011-.013-2.914-2.914-.013-.011Z" />
@@ -1487,6 +1513,18 @@ export default function StashGraphCanvas({
                       key={t}
                       className={`graph-popup-conn-tag graph-popup-conn-tag-toggle${ignoredTags.has(t) ? ' graph-popup-conn-tag-ignored' : ''}`}
                       onClick={() => handleToggleIgnoreTag(t)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          e.preventDefault();
+                          handleToggleIgnoreTag(t);
+                        }
+                      }}
+                      role="button"
+                      tabIndex={0}
+                      aria-pressed={ignoredTags.has(t)}
+                      aria-label={
+                        ignoredTags.has(t) ? `Re-include tag "${t}"` : `Ignore tag "${t}"`
+                      }
                       title={ignoredTags.has(t) ? `Re-include tag "${t}"` : `Ignore tag "${t}"`}
                     >
                       {t}
