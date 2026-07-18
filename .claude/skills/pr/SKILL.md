@@ -10,7 +10,7 @@ description: "Use for any GitHub Pull Request work. Auto-detects lifecycle phase
 - User says "PR" / "/pr" / "create PR" / "open PR" / "update PR" -> **auto-route by state**
 - User says "PR status" / "/pr status" / "check PR" -> status (override)
 - User says "PR comments" / "/pr comments" -> read review comments (override)
-- User says "merge PR" / "/pr merge" -> merge (explicit only, never automatic)
+- User says "merge PR" / "/pr merge" -> merge (explicit only, never automatic; owner-authorized routines count as explicit — see `/pr merge`)
 - After done-skill push step on a feature branch -> suggested, user invokes `/pr` to trigger
 
 ## Prerequisites
@@ -48,7 +48,7 @@ When a dep-bot PR is detected (i.e. checking out, viewing, or working with a bra
    - **Major** — never auto-recommend merge. Read full migration guide. Surface breaking changes to user with explicit list.
 5. **Security advisories** in PR body -> treat as P0 from the security-review skill — fix-forward even on rough merges.
 6. **Group strategy** — if multiple dep-bot PRs are open, ask user whether to batch-merge ordered by ecosystem; never silently rebase across bots.
-7. **Never auto-merge** dep-bot PRs without explicit user command (same rule as `/pr merge`).
+7. **Never auto-merge** dep-bot PRs without explicit user command (same rule as `/pr merge`). An owner-authorized dep-bot routine counts as an explicit user command (see `/pr merge` -> Routine exception); its own bump-type rules (e.g. major = skip) still apply.
 
 Report:
 
@@ -156,6 +156,8 @@ Group by reviewer + file. Show unresolved comments first. Do NOT auto-fix — su
 
 **Never run without explicit user command.** Even if CI is green and approvals exist. Default `/pr` never reaches this phase.
 
+**Routine exception:** a session running an **owner-authorized routine** whose prompt orders merges counts as an explicit user command (see CLAUDE.md -> Deployment -> Routine exception). Such merges may run unattended — including any deploy the merge triggers — for non-destructive change sets with green verification. The routine's own merge rules (e.g. `--admin` bypass, skip conditions) then override the pre-flight below.
+
 Pre-flight:
 
 1. `gh pr view --json state,statusCheckRollup,reviewDecision,mergeable` — verify mergeable.
@@ -174,7 +176,7 @@ Report: `Merged PR #N (<strategy>). Branch deleted.`
 - **Auto-route only on default `/pr`.** Explicit sub-commands (`status`, `comments`, `merge`) always override detection.
 - **Print detected phase before acting** so user can interrupt if wrong.
 - **Never force-push** to update PR — use `gh pr edit` for body, `git push` (no force) for code unless user explicitly requests force-with-lease.
-- **Never merge automatically.** Explicit `/pr merge` required.
+- **Never merge automatically.** Explicit `/pr merge` required. Exception: merges ordered by an owner-authorized routine (see `/pr merge` -> Routine exception).
 - **Issue linking:** if commit messages contain `#<n>` references -> include `Closes #<n>` in PR body Summary section.
 - **Draft PRs:** if user says "draft PR" -> use `gh pr create --draft`.
 - **Branch-name -> title heuristics:**
