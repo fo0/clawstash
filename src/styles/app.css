@@ -2559,6 +2559,22 @@ body {
   outline: none;
 }
 
+/* Large-file fallback: plain textarea (no per-keystroke re-highlight). Inherits
+   font/colors from .code-editor; mirrors the react-simple-code-editor padding. */
+.code-editor-plain {
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
+  height: 560px;
+  padding: 16px;
+  border: none;
+  resize: vertical;
+  white-space: pre;
+  overflow: auto;
+  overflow-wrap: normal;
+  tab-size: 2;
+}
+
 .editor-file .code-editor-textarea::placeholder {
   color: var(--text-muted) !important;
 }
