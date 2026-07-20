@@ -2050,12 +2050,29 @@ body {
   white-space: pre;
 }
 
+/* "Wrap lines" toggle: break long lines to fit the width instead of
+   scrolling horizontally. Overrides the default `white-space: pre` above. */
+.file-content-wrap code {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
 /* === Render Toggle === */
 .render-toggle {
   gap: 4px;
 }
 
 .render-toggle.render-active {
+  color: var(--accent-blue);
+}
+
+/* === Wrap Toggle === */
+.wrap-toggle {
+  gap: 4px;
+}
+
+.wrap-toggle.wrap-active {
   color: var(--accent-blue);
 }
 
