@@ -16,6 +16,7 @@ import { Marked } from 'marked';
 import { renderDescriptionMarkdown, isUnsafeUrl, sanitizeHtml } from '../utils/markdown';
 import { hydrateMermaidPlaceholders, encodeMermaidSource } from '../utils/mermaid-hydrate';
 import { DELETE_CONFIRM_TIMEOUT_MS } from '../utils/constants';
+import { formatBytes } from '../utils/format';
 import { escapeHtml } from '../utils/html';
 import { buildStashUrl } from '../utils/stash-url';
 import MermaidDiagram from './MermaidDiagram';
@@ -58,6 +59,7 @@ function SourceBadge({ source }: { source: string }) {
 const RENDER_PREF_KEY = 'clawstash-render-preview';
 const ACTIVE_TAB_KEY = 'clawstash-viewer-tab';
 const TOC_PREF_KEY = 'clawstash-toc-expanded';
+const WRAP_PREF_KEY = 'clawstash-wrap-lines';
 
 type ViewerTab = 'content' | 'metadata' | 'access-log' | 'history';
 const VALID_TABS: ViewerTab[] = ['content', 'metadata', 'access-log', 'history'];
@@ -74,6 +76,27 @@ function getRenderPreference(): boolean {
 function setRenderPreference(enabled: boolean): void {
   try {
     localStorage.setItem(RENDER_PREF_KEY, String(enabled));
+  } catch {
+    /* ignore */
+  }
+}
+
+/**
+ * Read the persisted "wrap long lines" preference for the raw code view.
+ * Defaults to false (long lines scroll horizontally, preserving the original
+ * layout). Mirrors the render-preview / TOC preference helpers above.
+ */
+function getWrapPreference(): boolean {
+  try {
+    return localStorage.getItem(WRAP_PREF_KEY) === 'true'; // default to false
+  } catch {
+    return false;
+  }
+}
+
+function setWrapPreference(enabled: boolean): void {
+  try {
+    localStorage.setItem(WRAP_PREF_KEY, String(enabled));
   } catch {
     /* ignore */
   }
@@ -382,6 +405,7 @@ export default function StashViewer({
   const [logError, setLogError] = useState(false);
   const [logReloadKey, setLogReloadKey] = useState(0);
   const [renderPreview, setRenderPreview] = useState(getRenderPreference);
+  const [wrapLines, setWrapLines] = useState(getWrapPreference);
   const [tocExpanded, setTocExpanded] = useState(getTocPreference);
   const [collapsedFiles, setCollapsedFiles] = useState<Set<string>>(new Set());
   const deleteTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -452,6 +476,15 @@ export default function StashViewer({
     setRenderPreview((prev) => {
       const next = !prev;
       setRenderPreference(next);
+      return next;
+    });
+  }, []);
+
+  /** Toggle raw-code line wrapping and persist the choice (global preference). */
+  const toggleWrapLines = useCallback(() => {
+    setWrapLines((prev) => {
+      const next = !prev;
+      setWrapPreference(next);
       return next;
     });
   }, []);
@@ -651,6 +684,14 @@ export default function StashViewer({
   const descriptionHtml = useMemo(
     () => (stash.description ? renderDescriptionMarkdown(stash.description) : ''),
     [stash.description],
+  );
+
+  // Total content size (UTF-8 bytes) across all files. The list/card view
+  // already shows this via `total_size`, but the full Stash payload carries
+  // only file content, so recompute it here for the Details table.
+  const totalBytes = useMemo(
+    () => stash.files.reduce((sum, f) => sum + new TextEncoder().encode(f.content).length, 0),
+    [stash.files],
   );
 
   return (
@@ -1060,6 +1101,30 @@ export default function StashViewer({
                         {showRendered ? 'Raw' : 'Preview'}
                       </button>
                     )}
+                    {!showRendered && (
+                      <button
+                        className={`btn btn-sm btn-ghost wrap-toggle ${wrapLines ? 'wrap-active' : ''}`}
+                        onClick={toggleWrapLines}
+                        aria-pressed={wrapLines}
+                        title={
+                          wrapLines
+                            ? 'Stop wrapping — scroll long lines horizontally'
+                            : 'Wrap long lines to fit the width'
+                        }
+                        aria-label={wrapLines ? 'Stop wrapping long lines' : 'Wrap long lines'}
+                      >
+                        <svg
+                          width="12"
+                          height="12"
+                          viewBox="0 0 16 16"
+                          fill="currentColor"
+                          aria-hidden="true"
+                        >
+                          <path d="M1.75 3.5a.75.75 0 0 1 0-1.5h12.5a.75.75 0 0 1 0 1.5H1.75Zm0 5a.75.75 0 0 1 0-1.5h9.5a2.75 2.75 0 0 1 0 5.5H8.56l.72.72a.75.75 0 1 1-1.06 1.06l-2-2a.75.75 0 0 1 0-1.06l2-2a.75.75 0 0 1 1.06 1.06l-.72.72h2.69a1.25 1.25 0 0 0 0-2.5h-9.5Zm0 5a.75.75 0 0 1 0-1.5h3.5a.75.75 0 0 1 0 1.5h-3.5Z" />
+                        </svg>
+                        Wrap
+                      </button>
+                    )}
                     <button
                       className="btn btn-sm btn-ghost"
                       onClick={() => fileClipboard.copy(file.id, file.content)}
@@ -1117,7 +1182,7 @@ export default function StashViewer({
                       title={`Preview of ${file.filename}`}
                     />
                   ) : (
-                    <pre className="file-content">
+                    <pre className={`file-content${wrapLines ? ' file-content-wrap' : ''}`}>
                       <code
                         dangerouslySetInnerHTML={{
                           __html: highlightedContent.get(file.id) || '',
@@ -1165,6 +1230,10 @@ export default function StashViewer({
                 <tr>
                   <td>Files</td>
                   <td>{stash.files.length}</td>
+                </tr>
+                <tr>
+                  <td>Size</td>
+                  <td>{formatBytes(totalBytes)}</td>
                 </tr>
                 <tr>
                   <td>Created</td>
