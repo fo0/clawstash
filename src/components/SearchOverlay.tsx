@@ -16,6 +16,10 @@ interface Props {
 export default function SearchOverlay({ open, onClose, onSelectStash }: Props) {
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<StashListItem[]>([]);
+  // Full server-side match count. The result list is capped (see the `limit`
+  // below), so `total > results.length` means matches are hidden — surfaced to
+  // the user, mirroring the dashboard/sidebar "showing N" honesty pattern.
+  const [total, setTotal] = useState(0);
   const [recent, setRecent] = useState<RecentView[]>([]);
   const [loading, setLoading] = useState(false);
   const [activeIndex, setActiveIndex] = useState(0);
@@ -40,6 +44,7 @@ export default function SearchOverlay({ open, onClose, onSelectStash }: Props) {
       }
       setQuery('');
       setResults([]);
+      setTotal(0);
       setActiveIndex(0);
       setLoading(false);
       // Refresh the "Recently viewed" shortcut list each time the overlay
@@ -54,6 +59,7 @@ export default function SearchOverlay({ open, onClose, onSelectStash }: Props) {
   const doSearch = useCallback(async (q: string) => {
     if (!q.trim()) {
       setResults([]);
+      setTotal(0);
       setLoading(false);
       return;
     }
@@ -63,10 +69,12 @@ export default function SearchOverlay({ open, onClose, onSelectStash }: Props) {
       const res = await api.listStashes({ search: q, limit: 12 });
       if (gen !== searchGenRef.current) return;
       setResults(res.stashes);
+      setTotal(res.total);
       setActiveIndex(0);
     } catch {
       if (gen !== searchGenRef.current) return;
       setResults([]);
+      setTotal(0);
     } finally {
       if (gen === searchGenRef.current) setLoading(false);
     }
@@ -236,7 +244,9 @@ export default function SearchOverlay({ open, onClose, onSelectStash }: Props) {
             aria-label={`${results.length} result${results.length !== 1 ? 's' : ''}`}
           >
             <div className="search-overlay-results-count" aria-live="polite" role="status">
-              {results.length} result{results.length !== 1 ? 's' : ''}
+              {total > results.length
+                ? `Showing first ${results.length} of ${total} matches — refine to narrow`
+                : `${results.length} result${results.length !== 1 ? 's' : ''}`}
             </div>
             {results.map((stash, idx) => (
               <button
