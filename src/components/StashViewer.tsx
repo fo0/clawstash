@@ -16,6 +16,7 @@ import { Marked } from 'marked';
 import { renderDescriptionMarkdown, isUnsafeUrl, sanitizeHtml } from '../utils/markdown';
 import { hydrateMermaidPlaceholders, encodeMermaidSource } from '../utils/mermaid-hydrate';
 import { DELETE_CONFIRM_TIMEOUT_MS } from '../utils/constants';
+import { formatBytes } from '../utils/format';
 import { escapeHtml } from '../utils/html';
 import { buildStashUrl } from '../utils/stash-url';
 import MermaidDiagram from './MermaidDiagram';
@@ -685,6 +686,14 @@ export default function StashViewer({
     [stash.description],
   );
 
+  // Total content size (UTF-8 bytes) across all files. The list/card view
+  // already shows this via `total_size`, but the full Stash payload carries
+  // only file content, so recompute it here for the Details table.
+  const totalBytes = useMemo(
+    () => stash.files.reduce((sum, f) => sum + new TextEncoder().encode(f.content).length, 0),
+    [stash.files],
+  );
+
   return (
     <div className="stash-viewer">
       {/* Screen-reader announcement for copy status */}
@@ -1221,6 +1230,10 @@ export default function StashViewer({
                 <tr>
                   <td>Files</td>
                   <td>{stash.files.length}</td>
+                </tr>
+                <tr>
+                  <td>Size</td>
+                  <td>{formatBytes(totalBytes)}</td>
                 </tr>
                 <tr>
                   <td>Created</td>
