@@ -986,6 +986,11 @@ export default function StashGraphCanvas({
         hoveredRef.current = node;
         canvas.style.cursor = node ? 'pointer' : 'grab';
         setHoveredLabel(node ? node.label : null);
+        // Hover emphasis is painted only inside the rAF draw() (it reads
+        // hoveredRef); re-kick the idle loop so hovering still updates the
+        // canvas after the layout settles. Mirrors the drag/pan branches above
+        // and GraphViewer's onMouseMove.
+        kickAnimation();
       }
     };
 
@@ -1324,6 +1329,11 @@ export default function StashGraphCanvas({
       trackedTagsRef.current = next;
       return next;
     });
+    // Tracked-tag node/edge highlighting is painted inside the rAF draw()
+    // (it reads trackedTagsRef); no effect depends on trackedTags, so re-kick
+    // the idle loop here or the highlight will not update after the layout
+    // settles.
+    kickAnimation();
   };
 
   const handleToggleIgnoreTag = (tagName: string) => {
