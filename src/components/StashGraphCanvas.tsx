@@ -914,12 +914,18 @@ export default function StashGraphCanvas({
       canvas.height = rect.height * dpr;
       canvas.style.width = rect.width + 'px';
       canvas.style.height = rect.height + 'px';
+      // Resizing the canvas resets its bitmap (clears it). Once the physics
+      // loop has settled it stops itself, so without re-kicking it here the
+      // graph stays blank after any resize (window / sidebar collapse / mobile
+      // URL bar / ResizeObserver). kickAnimation() draws one frame when idle.
+      // Mirrors GraphViewer's resize handler.
+      kickAnimation();
     };
     resize();
     const observer = new ResizeObserver(resize);
     observer.observe(container);
     return () => observer.disconnect();
-  }, []);
+  }, [kickAnimation]);
 
   // Mouse events
   useEffect(() => {
