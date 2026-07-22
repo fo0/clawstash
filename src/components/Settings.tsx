@@ -698,6 +698,21 @@ interface Props {
   onSettingsSection: (section: SettingsSection) => void;
 }
 
+// Every other top-level view (Dashboard, API Documentation) starts with a
+// visible <h1>, but these settings sections previously started at <h2> with
+// no <h1> anywhere in the tree — a missing top-level heading for screen
+// reader / assistive-tech navigation. 'api' is excluded: ApiManager renders
+// its own visible <h1> ("API Documentation"), so adding one here would
+// duplicate it.
+const SETTINGS_SECTION_TITLES: Record<SettingsSection, string> = {
+  welcome: 'Admin Dashboard',
+  general: 'General',
+  api: 'API Documentation',
+  backup: 'GitHub Backup',
+  storage: 'Storage',
+  about: 'About',
+};
+
 export default function Settings({
   activeSection,
   layout,
@@ -706,6 +721,16 @@ export default function Settings({
 }: Props) {
   return (
     <div className="settings">
+      {/*
+        Visually-hidden heading restoring a proper <h1> landmark without
+        changing any visible heading or its CSS — several of the visible
+        h2/h3 below are styled via tag-selector rules (e.g.
+        `.settings-section-title h2`), so renumbering them would need a much
+        larger CSS pass. This is purely additive for assistive tech.
+      */}
+      {activeSection !== 'api' && (
+        <h1 className="sr-only">{SETTINGS_SECTION_TITLES[activeSection]}</h1>
+      )}
       {activeSection === 'welcome' && <WelcomeSection onNavigate={onSettingsSection} />}
       {activeSection === 'general' && (
         <GeneralSection layout={layout} onLayoutChange={onLayoutChange} />
