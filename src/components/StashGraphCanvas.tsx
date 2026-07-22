@@ -1475,7 +1475,12 @@ export default function StashGraphCanvas({
 
         {/* Popup */}
         {popup && popup.node.type === 'stash' && (
-          <div className="graph-node-popup" style={getPopupStyle()} role="dialog">
+          <div
+            className="graph-node-popup"
+            style={getPopupStyle()}
+            role="dialog"
+            aria-label={`Stash: ${popup.node.label}`}
+          >
             <div className="graph-popup-header">
               <div className="graph-popup-tag">
                 <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
@@ -1605,7 +1610,12 @@ export default function StashGraphCanvas({
 
         {/* Tag Popup */}
         {popup && popup.node.type === 'tag' && (
-          <div className="graph-node-popup" style={getPopupStyle()} role="dialog">
+          <div
+            className="graph-node-popup"
+            style={getPopupStyle()}
+            role="dialog"
+            aria-label={`Tag: ${popup.node.label}`}
+          >
             <div className="graph-popup-header">
               <div className="graph-popup-tag">
                 <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
