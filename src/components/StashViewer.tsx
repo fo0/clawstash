@@ -696,6 +696,15 @@ export default function StashViewer({
 
   return (
     <div className="stash-viewer">
+      {/*
+        This view has no <h1> above it in the tree (App.tsx renders no
+        app-level heading), so the visible ".viewer-title" <h2> below was the
+        highest heading on the page — a missing top-level landmark for
+        assistive tech. A visually-hidden <h1> restores the hierarchy
+        (h1 -> h2 -> h3) without changing the visible heading or its
+        tag-selector CSS.
+      */}
+      <h1 className="sr-only">{title}</h1>
       {/* Screen-reader announcement for copy status */}
       <div className="sr-only" aria-live="polite">
         {copyAllClipboard.status === 'copied' && 'All files copied to clipboard'}
