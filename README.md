@@ -126,6 +126,7 @@ npm install
 cp .env.example .env   # adjust DATABASE_PATH / ADMIN_PASSWORD as needed
 
 npm run dev            # Next.js dev server at http://localhost:3000
+npm run format         # auto-format with Prettier (CI verifies formatting via format:check)
 npm test               # vitest test suite
 npm run build          # production build
 npm start              # serve the production build
