@@ -856,6 +856,39 @@ body {
   flex-shrink: 0;
 }
 
+/* Inline clear button shown while the quick-search field has a value — clears
+   the query and returns to "Recently viewed" without closing the overlay.
+   Mirrors the sidebar search's .search-input-clear (flex child, not absolute). */
+.search-overlay-input-clear {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  flex-shrink: 0;
+  transition:
+    color 0.15s,
+    background 0.15s,
+    border-color 0.15s;
+}
+
+.search-overlay-input-clear:hover {
+  color: var(--text-primary);
+  background: var(--bg-tertiary);
+}
+
+.search-overlay-input-clear:focus-visible {
+  outline: 2px solid var(--accent-blue);
+  outline-offset: 1px;
+  color: var(--text-primary);
+}
+
 .search-overlay-status {
   display: flex;
   align-items: center;

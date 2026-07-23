@@ -89,6 +89,26 @@ export default function SearchOverlay({ open, onClose, onSelectStash }: Props) {
     debounceRef.current = setTimeout(() => doSearch(value), SEARCH_DEBOUNCE_MS);
   };
 
+  // Clear the query without closing the overlay — Escape closes it entirely, so
+  // there was previously no way to wipe the field and fall back to the "Recently
+  // viewed" list short of selecting-all + delete. Mirrors the sidebar search's
+  // inline clear button.
+  const handleClearQuery = () => {
+    if (debounceRef.current) {
+      clearTimeout(debounceRef.current);
+      debounceRef.current = undefined;
+    }
+    // Invalidate any in-flight search so a late response cannot repopulate the
+    // list after the field has been cleared.
+    searchGenRef.current++;
+    setQuery('');
+    setResults([]);
+    setTotal(0);
+    setActiveIndex(0);
+    setLoading(false);
+    inputRef.current?.focus();
+  };
+
   // Cleanup debounce on unmount
   useEffect(() => {
     return () => {
@@ -219,6 +239,25 @@ export default function SearchOverlay({ open, onClose, onSelectStash }: Props) {
               navItems.length > 0 ? `search-overlay-option-${activeIndex}` : undefined
             }
           />
+          {query && (
+            <button
+              type="button"
+              className="search-overlay-input-clear"
+              onClick={handleClearQuery}
+              title="Clear search"
+              aria-label="Clear search"
+            >
+              <svg
+                width="14"
+                height="14"
+                viewBox="0 0 16 16"
+                fill="currentColor"
+                aria-hidden="true"
+              >
+                <path d="M3.72 3.72a.75.75 0 0 1 1.06 0L8 6.94l3.22-3.22a.749.749 0 0 1 1.275.326.749.749 0 0 1-.215.734L9.06 8l3.22 3.22a.749.749 0 0 1-.326 1.275.749.749 0 0 1-.734-.215L8 9.06l-3.22 3.22a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042L6.94 8 3.72 4.78a.75.75 0 0 1 0-1.06Z" />
+              </svg>
+            </button>
+          )}
           <kbd className="search-overlay-kbd">Esc</kbd>
         </div>
 
