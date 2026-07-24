@@ -387,6 +387,17 @@ function StorageSection() {
     };
   }, []);
 
+  // Tracks whether the storage section is still mounted, so async ops launched
+  // from event handlers don't trigger setState-after-unmount warnings if the
+  // user navigates away mid-import / mid-export.
+  const sectionMountedRef = useRef(true);
+  useEffect(() => {
+    sectionMountedRef.current = true;
+    return () => {
+      sectionMountedRef.current = false;
+    };
+  }, []);
+
   const handleExport = async () => {
     setExporting(true);
     setImportResult(null);
@@ -402,22 +413,13 @@ function StorageSection() {
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
     } catch (err) {
-      setImportError(err instanceof Error ? err.message : 'Export failed');
+      if (sectionMountedRef.current) {
+        setImportError(err instanceof Error ? err.message : 'Export failed');
+      }
     } finally {
-      setExporting(false);
+      if (sectionMountedRef.current) setExporting(false);
     }
   };
-
-  // Tracks whether the storage section is still mounted, so async ops launched
-  // from event handlers don't trigger setState-after-unmount warnings if the
-  // user navigates away mid-import / mid-export.
-  const sectionMountedRef = useRef(true);
-  useEffect(() => {
-    sectionMountedRef.current = true;
-    return () => {
-      sectionMountedRef.current = false;
-    };
-  }, []);
 
   const handleImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];

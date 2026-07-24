@@ -33,13 +33,14 @@ export async function POST(req: NextRequest) {
       { status: 400 },
     );
   }
-  // Remember a newly entered client ID for the next login.
-  if (parsed.data.clientId && parsed.data.clientId !== settings.oauthClientId) {
-    writeBackupSettings(db, { ...settings, oauthClientId: parsed.data.clientId });
-  }
-
   try {
     const flow = await new GitHubClient(null).startDeviceFlow(clientId);
+    // Remember a newly entered client ID for the next login — but only after
+    // GitHub accepted it. Persisting before the flow start stored typo'd /
+    // rejected IDs, which then pre-filled the connection form on every visit.
+    if (parsed.data.clientId && parsed.data.clientId !== settings.oauthClientId) {
+      writeBackupSettings(db, { ...settings, oauthClientId: parsed.data.clientId });
+    }
     const session = createDeviceSession({
       clientId,
       deviceCode: flow.deviceCode,

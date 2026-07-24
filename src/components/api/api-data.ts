@@ -42,12 +42,19 @@ export function buildMcpStreamableConfig(baseUrl: string) {
  */
 export const MCP_STDIO_CWD_PLACEHOLDER = '<ABSOLUTE_PATH_TO_CLAWSTASH_REPO>';
 
+/**
+ * Entry point of the stdio MCP server, relative to the repo root. Must match
+ * the `mcp` script in package.json (`tsx src/server/mcp.ts`) — a drifted path
+ * here ships a copy-paste config that fails with "Cannot find module".
+ */
+export const MCP_STDIO_ENTRY = 'src/server/mcp.ts';
+
 export function buildMcpStdioConfig() {
   return {
     mcpServers: {
       clawstash: {
         command: 'npx',
-        args: ['tsx', 'server/mcp.ts'],
+        args: ['tsx', MCP_STDIO_ENTRY],
         cwd: MCP_STDIO_CWD_PLACEHOLDER,
       },
     },
