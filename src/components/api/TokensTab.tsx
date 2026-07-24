@@ -3,6 +3,7 @@ import type { TokenListItem, TokenScope, NewlyCreatedToken } from '../../types';
 import { api } from '../../api';
 import { formatDateTime } from '../../utils/format';
 import Spinner from '../shared/Spinner';
+import SpecPreview from './SpecPreview';
 import { SCOPE_LABELS, SCOPE_OPTIONS, getRestConfigText } from './api-data';
 import {
   BookIcon,
@@ -21,11 +22,19 @@ interface Props {
   baseUrl: string;
   openApiJson: string;
   mcpSpec: string;
-  /** True when a spec fetch failed — show an error instead of an endless spinner. */
-  specLoadFailed?: boolean;
+  /** True when the OpenAPI fetch failed — show an error instead of an endless spinner. */
+  openApiFailed?: boolean;
+  /** True when the MCP spec fetch failed — show an error instead of an endless spinner. */
+  mcpSpecFailed?: boolean;
 }
 
-export default function TokensTab({ baseUrl, openApiJson, mcpSpec, specLoadFailed }: Props) {
+export default function TokensTab({
+  baseUrl,
+  openApiJson,
+  mcpSpec,
+  openApiFailed,
+  mcpSpecFailed,
+}: Props) {
   const [tokens, setTokens] = useState<TokenListItem[]>([]);
   const [tokensLoading, setTokensLoading] = useState(true);
   const [tokensError, setTokensError] = useState<string | null>(null);
@@ -151,6 +160,7 @@ export default function TokensTab({ baseUrl, openApiJson, mcpSpec, specLoadFaile
                 className="btn btn-primary api-copy-config-btn"
                 onClick={() => handleCopy(getRestConfigText(baseUrl, openApiJson), 'REST API Spec')}
                 title="Copy complete REST API reference with all endpoints, OpenAPI schema, and purpose description"
+                disabled={!openApiJson}
               >
                 <CopyIcon size={14} /> Copy REST API Spec
               </button>
@@ -163,9 +173,11 @@ export default function TokensTab({ baseUrl, openApiJson, mcpSpec, specLoadFaile
               </button>
             </div>
             {expandedSpecs.has('rest-quick') && (
-              <pre className="api-code-block api-spec-preview">
-                {getRestConfigText(baseUrl, openApiJson)}
-              </pre>
+              <SpecPreview
+                content={openApiJson ? getRestConfigText(baseUrl, openApiJson) : ''}
+                failed={openApiFailed}
+                label="OpenAPI schema"
+              />
             )}
           </div>
           <div className="api-spec-copy-group">
@@ -186,18 +198,9 @@ export default function TokensTab({ baseUrl, openApiJson, mcpSpec, specLoadFaile
                 <ChevronIcon expanded={expandedSpecs.has('mcp-quick')} /> Preview
               </button>
             </div>
-            {expandedSpecs.has('mcp-quick') &&
-              (mcpSpec ? (
-                <pre className="api-code-block api-spec-preview">{mcpSpec}</pre>
-              ) : specLoadFailed ? (
-                <div className="api-loading" role="alert">
-                  Failed to load the MCP spec — use Retry above.
-                </div>
-              ) : (
-                <div className="api-loading">
-                  <Spinner /> Loading spec...
-                </div>
-              ))}
+            {expandedSpecs.has('mcp-quick') && (
+              <SpecPreview content={mcpSpec} failed={mcpSpecFailed} label="MCP spec" />
+            )}
           </div>
         </div>
       </section>
@@ -345,7 +348,7 @@ export default function TokensTab({ baseUrl, openApiJson, mcpSpec, specLoadFaile
                       onClick={() =>
                         handleCopy(
                           newlyCreated?.id === token.id ? newlyCreated.token : token.tokenPrefix,
-                          token.label,
+                          token.label || 'Unnamed Token',
                         )
                       }
                       title={newlyCreated?.id === token.id ? 'Copy full token' : 'Copy prefix'}

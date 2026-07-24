@@ -2,17 +2,26 @@ import { buildMcpStreamableConfig, buildMcpStdioConfig } from './api-data';
 import { ServerIcon, WifiIcon, KeyIcon, CopyIcon, ChevronIcon, CheckIcon } from './icons';
 import { useCopyToast, useExpandableSpecs } from './useCopyToast';
 import CodeExample from './CodeExample';
+import SpecPreview from './SpecPreview';
 import Spinner from '../shared/Spinner';
 
 interface Props {
   baseUrl: string;
   mcpSpec: string;
   mcpTools: Array<{ name: string; description: string }>;
-  /** True when a spec/tool fetch failed — show an error instead of an endless spinner. */
-  specLoadFailed?: boolean;
+  /** True when the MCP spec fetch failed — show an error instead of an endless spinner. */
+  mcpSpecFailed?: boolean;
+  /** True when the tool-summary fetch failed — show an error instead of an endless spinner. */
+  mcpToolsFailed?: boolean;
 }
 
-export default function McpTab({ baseUrl, mcpSpec, mcpTools, specLoadFailed }: Props) {
+export default function McpTab({
+  baseUrl,
+  mcpSpec,
+  mcpTools,
+  mcpSpecFailed,
+  mcpToolsFailed,
+}: Props) {
   const { copyNotice, handleCopy } = useCopyToast();
   const { expandedSpecs, toggleSpecPreview } = useExpandableSpecs();
 
@@ -58,18 +67,9 @@ export default function McpTab({ baseUrl, mcpSpec, mcpTools, specLoadFailed }: P
             Copies complete MCP specification with tool definitions (JSON Schema), data types,
             token-efficient usage patterns, and purpose description.
           </span>
-          {expandedSpecs.has('mcp-tab') &&
-            (mcpSpec ? (
-              <pre className="api-code-block api-spec-preview">{mcpSpec}</pre>
-            ) : specLoadFailed ? (
-              <div className="api-loading" role="alert">
-                Failed to load the MCP spec — use Retry above.
-              </div>
-            ) : (
-              <div className="api-loading">
-                <Spinner /> Loading spec...
-              </div>
-            ))}
+          {expandedSpecs.has('mcp-tab') && (
+            <SpecPreview content={mcpSpec} failed={mcpSpecFailed} label="MCP spec" />
+          )}
         </div>
       </section>
 
@@ -165,7 +165,7 @@ export default function McpTab({ baseUrl, mcpSpec, mcpTools, specLoadFailed }: P
               </div>
             ))}
           </div>
-        ) : specLoadFailed ? (
+        ) : mcpToolsFailed ? (
           <div className="api-loading" role="alert">
             Failed to load the tool list — use Retry above.
           </div>

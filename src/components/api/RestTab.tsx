@@ -1,4 +1,5 @@
 import Spinner from '../shared/Spinner';
+import SpecPreview from './SpecPreview';
 import SwaggerViewer from './SwaggerViewer';
 import CodeExample from './CodeExample';
 import { getRestConfigText } from './api-data';
@@ -36,6 +37,7 @@ export default function RestTab({ baseUrl, openApiJson, specLoadFailed }: Props)
               className="btn btn-primary api-copy-config-btn"
               onClick={() => handleCopy(getRestConfigText(baseUrl, openApiJson), 'REST API Spec')}
               title="Copy complete REST API reference with OpenAPI schema for AI agents"
+              disabled={!openApiJson}
             >
               <CopyIcon size={16} /> Copy REST API Spec for AI
             </button>
@@ -52,9 +54,11 @@ export default function RestTab({ baseUrl, openApiJson, specLoadFailed }: Props)
             OpenAPI 3.0 specification.
           </span>
           {expandedSpecs.has('rest-tab') && (
-            <pre className="api-code-block api-spec-preview">
-              {getRestConfigText(baseUrl, openApiJson)}
-            </pre>
+            <SpecPreview
+              content={openApiJson ? getRestConfigText(baseUrl, openApiJson) : ''}
+              failed={specLoadFailed}
+              label="OpenAPI schema"
+            />
           )}
         </div>
       </section>

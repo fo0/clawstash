@@ -188,7 +188,8 @@ export default function ApiManager({ onBack, embedded }: Props) {
           baseUrl={baseUrl}
           openApiJson={openApiJson}
           mcpSpec={mcpSpec}
-          specLoadFailed={mcpSpecFailed}
+          openApiFailed={openApiFailed}
+          mcpSpecFailed={mcpSpecFailed}
         />
       )}
       {activeTab === 'rest' && (
@@ -199,7 +200,8 @@ export default function ApiManager({ onBack, embedded }: Props) {
           baseUrl={baseUrl}
           mcpSpec={mcpSpec}
           mcpTools={mcpTools ?? []}
-          specLoadFailed={mcpSpecFailed || mcpToolsFailed}
+          mcpSpecFailed={mcpSpecFailed}
+          mcpToolsFailed={mcpToolsFailed}
         />
       )}
     </div>

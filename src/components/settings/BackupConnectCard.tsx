@@ -63,8 +63,16 @@ export default function BackupConnectCard({ response, onUpdated }: Props) {
   // single misclick is inconsistent with the app's other destructive actions.
   const [confirmDisconnect, setConfirmDisconnect] = useState(false);
   const [codeCopied, setCodeCopied] = useState<'idle' | 'copied' | 'failed'>('idle');
+  const copyResetTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const pollTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const cancelledRef = useRef(false);
+
+  // Clear the copy-feedback timer on unmount so it cannot fire afterwards.
+  useEffect(() => {
+    return () => {
+      if (copyResetTimer.current) clearTimeout(copyResetTimer.current);
+    };
+  }, []);
 
   // Auto-disarm the disconnect confirm (mirrors the token-delete confirm).
   useEffect(() => {
@@ -76,7 +84,10 @@ export default function BackupConnectCard({ response, onUpdated }: Props) {
   const handleCopyCode = async (code: string) => {
     const ok = await copyToClipboard(code);
     setCodeCopied(ok ? 'copied' : 'failed');
-    setTimeout(() => setCodeCopied('idle'), COPY_TOAST_DURATION_MS);
+    // Track the reset timer so a repeated copy re-arms the full display
+    // window instead of the first timer cutting the second notice short.
+    if (copyResetTimer.current) clearTimeout(copyResetTimer.current);
+    copyResetTimer.current = setTimeout(() => setCodeCopied('idle'), COPY_TOAST_DURATION_MS);
   };
 
   const stopPolling = () => {
