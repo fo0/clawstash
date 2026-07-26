@@ -227,7 +227,7 @@ Rules:
 
 ## Deployment
 
-- **Trigger:** push/tag on `main` -> GitHub Actions workflow `docker-publish.yml`
+- **Trigger:** manual `workflow_dispatch` on GitHub Actions workflow `docker-publish.yml`
 - **Pipeline:** type-check -> build -> Docker build (multi-stage, standalone output) -> push image to GHCR
 - **Environments:** single image deployed to any container host; database persisted via volume mounted at `/app/data`
 - **Agent scope:** Agent can push to feature branches, open/update PRs, suggest merge. **Agent does NOT trigger production deploys** without explicit user command.

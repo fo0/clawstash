@@ -136,12 +136,12 @@ cp .env.example .env
 
 ## CI/CD (GitHub Actions)
 
-The repository includes `.github/workflows/docker-publish.yml` which automatically:
+The repository includes `.github/workflows/docker-publish.yml` which, when triggered:
 
 1. **Check code** — TypeScript type-check, optional lint/tests, Next.js build
 2. **Build & push** — Multi-stage Docker image pushed to GitHub Container Registry (GHCR)
 
-Triggers on push to `main`/`master` and manual dispatch.
+Triggered manually via `workflow_dispatch` (GitHub → **Actions** tab); there is no automatic push trigger.
 
 ## Architecture Notes
 
