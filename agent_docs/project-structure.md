@@ -31,7 +31,7 @@ clawstash/
 │       ├── 0001-record-architecture-decisions.md
 │       └── 0002-github-backup-architecture.md
 ├── .claude/
-│   └── skills/
+│   └── skills/                 # Agent workflow skills: done, pr, review, security-review, rollback, ci, stuck, verify
 │       └── gitnexus/           # GitNexus code intelligence skills (explore, debug, refactor, review, impact, query)
 ├── .github/
 │   └── workflows/
@@ -101,9 +101,11 @@ clawstash/
 │   │   ├── db-schema.ts        # SQLite table / index definitions
 │   │   ├── db-migrations.ts    # Schema migrations runner
 │   │   ├── db-types.ts         # Shared DB row / domain types
+│   │   ├── db-access-check.ts  # Fail-fast guard: actionable error when the SQLite path is not writable
 │   │   ├── singleton.ts        # DB singleton with globalThis for HMR protection
 │   │   ├── auth.ts             # Auth utility (token extraction, validation, scope checking)
 │   │   ├── auth-rate-limit.ts  # In-memory per-IP rate limiter (login, token-validate, session)
+│   │   ├── log-sanitize.ts     # Strip control/bidi chars from request-derived values (IP, UA) before logging
 │   │   ├── detect-language.ts  # Filename → language tag (server persistence)
 │   │   ├── shared-text.ts      # Shared text constants (PURPOSE, TOKEN_EFFICIENT_GUIDE)
 │   │   ├── tool-defs.ts        # MCP tool definitions (Zod schemas + descriptions)
@@ -138,14 +140,20 @@ clawstash/
 │   │   ├── useClipboard.ts     # useClipboard + useClipboardWithKey hooks
 │   │   └── useClickOutside.ts  # Click-outside detection hook (used by Sidebar, TagCombobox, MetadataEditor)
 │   ├── utils/
+│   │   ├── archived.ts         # localStorage persistence for the "show archived" dashboard toggle
 │   │   ├── clipboard.ts        # Copy-to-clipboard with fallback for non-HTTPS
 │   │   ├── constants.ts        # Shared client/server constants
 │   │   ├── favorites.ts        # Favorite-stash localStorage helpers
 │   │   ├── format.ts           # Date formatting (formatDate, formatDateTime, formatRelativeTime)
+│   │   ├── highlight.ts        # Split text into matched/unmatched segments to <mark> search terms
 │   │   ├── html.ts             # HTML sanitization helpers
 │   │   ├── markdown.ts         # Markdown rendering for descriptions (Marked + sanitization)
 │   │   ├── mermaid.ts          # Lazy-loaded Mermaid renderer (shared util for .mmd files + inline ```mermaid blocks)
-│   │   └── __tests__/          # Util unit tests (vitest: favorites, format, html)
+│   │   ├── mermaid-hydrate.ts  # Hydrate inline ```mermaid placeholders inside rendered Markdown HTML
+│   │   ├── recent-views.ts     # Recently-viewed stashes MRU list (localStorage) for the search overlay
+│   │   ├── sort.ts             # Dashboard sort-order state + pure sort helper
+│   │   ├── stash-url.ts        # Build a shareable deep-link URL for a stash
+│   │   └── __tests__/          # Util unit tests (vitest)
 │   ├── components/
 │   │   ├── Sidebar.tsx         # Left sidebar with search, tag filter, stash list, settings nav
 │   │   ├── Footer.tsx          # App footer with version (fetched from /api/version), build info toggle
