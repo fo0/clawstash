@@ -19,10 +19,14 @@ description: "Use for any GitHub Pull Request work. Auto-detects lifecycle phase
 gh auth status && gh repo view --json name,owner
 ```
 
-If `gh` is missing or unauthenticated:
+If `gh` is missing or unauthenticated, check for the **GitHub MCP server** before giving up -- Claude Code web/remote
+sessions ship `mcp__github__*` tools instead of the CLI, and an unattended routine must not stall there:
 
-- Print: `gh CLI required. Install: https://cli.github.com — then run: gh auth login`
-- Stop. Do NOT fall back to manual PR creation via web.
+| Available       | Do this                                                                                                                                                                                                                                                                                                    |
+| --------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `gh`            | Use the commands as written below (preferred -- least round-trips)                                                                                                                                                                                                                                         |
+| GitHub MCP only | Same workflow, MCP equivalents: `list_pull_requests` / `create_pull_request` / `update_pull_request` / `pull_request_read` (`get`, `get_status`, `get_comments`, `get_review_comments`) / `merge_pull_request`. `git push` still runs over plain git                                                         |
+| Neither         | Print `No GitHub access (gh CLI or GitHub MCP required).` and stop -- do NOT fall back to manual PR creation via web                                                                                                                                                                                        |
 
 ## Dependency-Bot PRs (auto-detect)
 

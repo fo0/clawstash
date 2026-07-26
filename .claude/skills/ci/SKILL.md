@@ -17,7 +17,11 @@ description: "Use when the user wants CI status, failed-job logs, or help fixing
 gh auth status && gh repo view --json name,owner
 ```
 
-If `gh` is missing or unauthenticated -> print install/login instructions, stop. CI providers other than GitHub Actions: see "Other CI Providers" at the bottom.
+If `gh` is missing or unauthenticated, fall back to the **GitHub MCP server** before stopping (Claude Code web/remote
+sessions have `mcp__github__*` but no CLI): `actions_list` / `actions_get` for runs and jobs, `get_job_logs`
+(`failed_only: true`) for the failed-step logs Phase D needs, `get_check_run` for check details,
+`pull_request_read(method: "get_check_runs")` for a PR's checks. Only when neither exists: print the install/login
+instructions and stop. CI providers other than GitHub Actions: see "Other CI Providers" at the bottom.
 
 ## Auto-Routing (default `/ci`)
 

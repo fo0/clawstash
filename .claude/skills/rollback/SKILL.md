@@ -83,14 +83,16 @@ If revert produces a conflict -> stop, ask user to resolve manually.
 
 ## Phase E — Revert merged PR
 
+The `gh` CLI has no `pr revert` subcommand -- build the revert PR manually (CLI equivalent of GitHub's web "Revert" button). A revert **PR** is preferred over a direct push to main: it survives branch protection and keeps the change reviewable.
+
 ```bash
 PR=<number>
 gh pr view "$PR" --json mergeCommit,baseRefName,headRefName
-# Open a revert PR
-gh pr revert "$PR"   # if available; otherwise:
 git checkout main && git pull
-git revert -m 1 <merge-commit-sha>
-git push origin main
+git checkout -b revert-pr-$PR
+git revert -m 1 <merge-commit-sha>      # -m 1 = keep mainline parent
+git push -u origin revert-pr-$PR
+gh pr create --title "Revert PR #$PR" --body "Reverts #$PR -- <reason>"
 gh pr comment "$PR" --body "Reverted via #<new-pr-number> -- <reason>"
 ```
 
