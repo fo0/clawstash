@@ -33,6 +33,10 @@ export default function SwaggerViewer() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    // Re-arm on every setup: under React StrictMode the effect runs
+    // setup → cleanup → setup, so without this the ref would stay false
+    // after the second setup and Swagger UI would never initialize.
+    mountedRef.current = true;
     return () => {
       mountedRef.current = false;
     };

@@ -140,8 +140,15 @@ export default function MetadataEditor({ entries, onChange, availableKeys }: Pro
     }
   };
 
-  const closeKeyDropdown = useCallback(() => setShowKeyDropdown(false), []);
-  useClickOutside(dropdownRef, closeKeyDropdown);
+  const closeKeyDropdown = useCallback(() => {
+    setShowKeyDropdown(false);
+    // Also drop a hover-set highlight — otherwise a later Enter in the key
+    // input would silently add the stale highlighted suggestion.
+    setActiveIndex(-1);
+  }, []);
+  // Only listen while the dropdown is open, so the hook's document-level
+  // Escape handler doesn't swallow Escape presses meant for other UI.
+  useClickOutside(dropdownRef, closeKeyDropdown, showKeyDropdown);
 
   return (
     <div className="metadata-editor">

@@ -48,6 +48,18 @@ export default function BackupSection() {
   const [activeTab, setActiveTab] = useState<BackupTab>('connection');
   // Bumped after "Back up all now" so the sync-log tab refetches.
   const [logRefresh, setLogRefresh] = useState(0);
+  // Bumped by Retry so a transient failure of the initial settings load
+  // isn't a dead end (mirrors the ApiManager retry pattern).
+  const [retryNonce, setRetryNonce] = useState(0);
+  // Fresh health flag reported by the activity tab's own status fetches —
+  // the settings response's `unhealthy` is only a mount-time snapshot and
+  // would keep the alert dot stale after a manual sync run.
+  const [liveUnhealthy, setLiveUnhealthy] = useState<boolean | null>(null);
+
+  const retryLoad = () => {
+    setLoadError(null);
+    setRetryNonce((n) => n + 1);
+  };
 
   useEffect(() => {
     let cancelled = false;
@@ -80,7 +92,7 @@ export default function BackupSection() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [retryNonce]);
 
   const settings = response?.settings;
   const repoFullName =
@@ -103,8 +115,11 @@ export default function BackupSection() {
       </p>
 
       {loadError && (
-        <div role="status" className="settings-import-error">
-          {loadError}
+        <div role="alert" className="settings-import-error">
+          {loadError}{' '}
+          <button className="btn btn-secondary btn-sm" onClick={retryLoad}>
+            Retry
+          </button>
         </div>
       )}
 
@@ -118,7 +133,9 @@ export default function BackupSection() {
         <>
           <div className="api-tabs backup-tabs" role="tablist" aria-label="GitHub backup sections">
             {TABS.map((tab) => {
-              const showAlert = tab.id === 'activity' && response.unhealthy;
+              // Prefer the activity tab's live report; fall back to the
+              // mount-time settings snapshot until the first status fetch.
+              const showAlert = tab.id === 'activity' && (liveUnhealthy ?? response.unhealthy);
               return (
                 <button
                   key={tab.id}
@@ -156,7 +173,10 @@ export default function BackupSection() {
             aria-labelledby="backup-tab-activity"
             hidden={activeTab !== 'activity'}
           >
-            <BackupActivityCard onSyncRan={() => setLogRefresh((n) => n + 1)} />
+            <BackupActivityCard
+              onSyncRan={() => setLogRefresh((n) => n + 1)}
+              onUnhealthyChange={setLiveUnhealthy}
+            />
           </div>
           <div role="tabpanel" aria-labelledby="backup-tab-log" hidden={activeTab !== 'log'}>
             <BackupLogCard repoFullName={repoFullName} refreshToken={logRefresh} />

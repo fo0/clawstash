@@ -4,6 +4,7 @@ import { api } from '../../api';
 import { DELETE_CONFIRM_TIMEOUT_MS } from '../../utils/constants';
 import FileCodeEditor from './FileCodeEditor';
 import TagCombobox from './TagCombobox';
+import type { TagComboboxHandle } from './TagCombobox';
 import MetadataEditor, { metadataToEntries, entriesToMetadata } from './MetadataEditor';
 import type { MetadataEntry } from './MetadataEditor';
 
@@ -64,6 +65,10 @@ export default function StashEditor({ stash, onSave, onCancel, onDirtyChange }: 
   // Latest onDirtyChange for the unmount cleanup (avoids a stale closure).
   const onDirtyChangeRef = useRef(onDirtyChange);
   onDirtyChangeRef.current = onDirtyChange;
+  // Imperative handle for committing a half-typed tag before saving —
+  // Ctrl/Cmd+S doesn't blur the tag input, so without this the pending
+  // text would be silently lost.
+  const tagComboboxRef = useRef<TagComboboxHandle>(null);
 
   // Reads the callback through a ref so stable useCallbacks (updateFile,
   // handleNameChange) never capture a stale onDirtyChange prop.
@@ -189,10 +194,38 @@ export default function StashEditor({ stash, onSave, onCancel, onDirtyChange }: 
     // The Ctrl/Cmd+S listener bypasses the disabled button — bail while a
     // save is already in flight instead of firing a duplicate request.
     if (savingRef.current) return;
+
+    // Commit a half-typed tag before validating/saving. The commit's
+    // onChange -> setTags is batched by React and NOT yet visible in this
+    // closure's `tags`, so commitPending() also RETURNS the added tags and
+    // we append them to the payload ourselves. The state update still runs,
+    // keeping the UI in sync (chip appears, e.g. if validation fails below).
+    const pendingTags = tagComboboxRef.current?.commitPending() ?? [];
+    const allTags = pendingTags.length > 0 ? [...tags, ...pendingTags] : tags;
+
+    // A file with content but no filename would be silently dropped by the
+    // filter below — and its content lost when the editor unmounts. Block
+    // the save instead.
+    const missingNameIndex = files.findIndex((f) => f.content.trim() && !f.filename.trim());
+    if (missingNameIndex !== -1) {
+      setError(`File ${missingNameIndex + 1} has content but no filename.`);
+      return;
+    }
     const validFiles = files.filter((f) => f.filename.trim());
     if (validFiles.length === 0) {
       setError('At least one file with a filename is required.');
       return;
+    }
+    // Duplicate filenames: the raw-file route looks files up by exact name,
+    // so the second file would be stored but unreachable. Block the save.
+    const seenFilenames = new Set<string>();
+    for (const f of validFiles) {
+      const trimmedName = f.filename.trim();
+      if (seenFilenames.has(trimmedName)) {
+        setError(`Duplicate filename "${trimmedName}" — filenames must be unique within a stash.`);
+        return;
+      }
+      seenFilenames.add(trimmedName);
     }
 
     savingRef.current = true;
@@ -205,10 +238,13 @@ export default function StashEditor({ stash, onSave, onCancel, onDirtyChange }: 
       const payload = {
         name,
         description,
-        tags,
+        tags: allTags,
         metadata,
         files: validFiles.map((f) => ({
-          filename: f.filename,
+          // Trim: filenames are validated trimmed above; sending them raw
+          // would store invisible whitespace and break exact-match raw
+          // file lookups.
+          filename: f.filename.trim(),
           content: f.content,
           language: f.language || undefined,
         })),
@@ -241,7 +277,9 @@ export default function StashEditor({ stash, onSave, onCancel, onDirtyChange }: 
   // Ctrl+S / Cmd+S — save the stash from anywhere inside the editor.
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
-      if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+      // toLowerCase: with Caps Lock on, e.key is 'S' and the browser's own
+      // Save dialog would open instead.
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') {
         e.preventDefault();
         handleSaveRef.current();
       }
@@ -386,6 +424,7 @@ export default function StashEditor({ stash, onSave, onCancel, onDirtyChange }: 
             <InfoIcon tooltip="Tags to categorize your stash. Type to search existing tags or create new ones. Press Enter or comma to add. Tags let you filter and find stashes quickly." />
           </label>
           <TagCombobox
+            ref={tagComboboxRef}
             tags={tags}
             onChange={(t) => {
               markDirty();

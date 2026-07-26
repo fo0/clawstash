@@ -1,10 +1,13 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { formatRelativeTime } from '../../utils/format';
 
 interface Props {
   dateStr: string;
   className?: string;
 }
+
+/** Re-render cadence keeping the relative label current on long-lived views. */
+const RELATIVE_TICK_MS = 60 * 1000;
 
 /**
  * Displays a relative timestamp ("3d ago") that toggles to the full locale
@@ -16,6 +19,14 @@ interface Props {
  */
 export default function RelativeTime({ dateStr, className }: Props) {
   const [showAbsolute, setShowAbsolute] = useState(false);
+  // Ticks every minute so a dashboard left open doesn't show "just now"
+  // forever — the state value is unused, only the re-render matters.
+  const [, setTick] = useState(0);
+
+  useEffect(() => {
+    const interval = setInterval(() => setTick((t) => t + 1), RELATIVE_TICK_MS);
+    return () => clearInterval(interval);
+  }, []);
 
   const toggle = useCallback((e: React.MouseEvent) => {
     e.stopPropagation();
@@ -29,8 +40,16 @@ export default function RelativeTime({ dateStr, className }: Props) {
     <span
       className={`relative-time${className ? ' ' + className : ''}`}
       onClick={toggle}
-      title={showAbsolute ? 'Click to show relative time' : absoluteStr}
-      aria-label={showAbsolute ? relativeStr : absoluteStr}
+      // Tooltip carries the alternate representation and advertises the
+      // click-toggle in BOTH states.
+      title={
+        showAbsolute
+          ? `${relativeStr} — click to show relative time`
+          : `${absoluteStr} — click to show absolute time`
+      }
+      // Announce exactly what is displayed; the alternate form lives in the
+      // title above.
+      aria-label={showAbsolute ? absoluteStr : relativeStr}
       role="button"
       tabIndex={0}
       onKeyDown={(e) => {

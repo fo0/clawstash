@@ -49,6 +49,12 @@ describe('diffAddedFile', () => {
       { type: 'add', content: 'world', newLineNo: 2 },
     ]);
   });
+
+  it('emits no lines for an empty file (no phantom +1)', () => {
+    const r = diffAddedFile('empty.txt', '');
+    expect(r.status).toBe('added');
+    expect(r.hunks[0].lines).toEqual([]);
+  });
 });
 
 describe('diffRemovedFile', () => {
@@ -59,6 +65,12 @@ describe('diffRemovedFile', () => {
       { type: 'remove', content: 'gone', oldLineNo: 1 },
       { type: 'remove', content: 'away', oldLineNo: 2 },
     ]);
+  });
+
+  it('emits no lines for an empty file (no phantom -1)', () => {
+    const r = diffRemovedFile('empty.txt', '');
+    expect(r.status).toBe('removed');
+    expect(r.hunks[0].lines).toEqual([]);
   });
 });
 

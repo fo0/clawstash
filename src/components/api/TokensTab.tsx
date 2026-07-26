@@ -53,6 +53,10 @@ export default function TokensTab({
   const confirmTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
+    // Re-arm on every setup: under React StrictMode the effect runs
+    // setup → cleanup → setup, so without this the ref would stay false
+    // after the second setup and every guarded setState would be skipped.
+    mountedRef.current = true;
     return () => {
       mountedRef.current = false;
       if (confirmTimerRef.current) clearTimeout(confirmTimerRef.current);

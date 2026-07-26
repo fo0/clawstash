@@ -167,16 +167,29 @@ function downloadFile(filename: string, content: string): void {
 }
 
 /**
+ * Scroll behavior for explicit programmatic scrolls: honor the user's
+ * reduced-motion preference (the CSS `scroll-behavior` override only affects
+ * scrolls without an explicit `behavior`).
+ */
+function preferredScrollBehavior(): ScrollBehavior {
+  return window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth';
+}
+
+/**
  * Slugify a heading string following GitHub conventions:
  * lowercase, remove non-letter/number/space/hyphen chars, spaces → hyphens.
  * Uses Unicode-aware regex to preserve accented characters (ü, é, etc.).
  */
 function slugify(text: string): string {
-  return text
+  const slug = text
     .toLowerCase()
     .replace(/[^\p{L}\p{M}\p{N}\p{Pc}\s-]/gu, '') // keep letters, marks, numbers, connectors, spaces, hyphens
     .trim()
     .replace(/\s+/g, '-'); // collapse spaces → single hyphen
+  // Headings with no letters/digits (e.g. "!!!") slug to '', which would
+  // produce id="" and an href="#" anchor. Fall back to a stable stub — the
+  // caller's duplicate counter disambiguates collisions.
+  return slug || 'heading';
 }
 
 /**
@@ -213,7 +226,11 @@ function createMdParser(headingIdPrefix: string): Marked {
         return `<h${depth} id="${safeSlug}"><a class="heading-anchor" href="#${safeSlug}" aria-hidden="true">#</a>${rendered}</h${depth}>\n`;
       },
       // Open external links in a new tab; keep anchor links in-page
-      link({ href, title, text }) {
+      link({ href, title, tokens }) {
+        // Parse the label's inline tokens (bold, code, escaped HTML, …) like
+        // the heading renderer does — the raw `text` field is the unrendered,
+        // unescaped source label.
+        const label = this.parser.parseInline(tokens);
         const titleAttr = title ? ` title="${escapeHtml(title)}"` : '';
         // Strip dangerous schemes (javascript:/vbscript:/data:text/html, with
         // case + control-char obfuscation) before rendering — defence-in-depth
@@ -225,10 +242,10 @@ function createMdParser(headingIdPrefix: string): Marked {
             headingIdPrefix && cleanHref !== '#'
               ? `#${headingIdPrefix}${cleanHref.slice(1)}`
               : cleanHref;
-          return `<a href="${escapeHtml(resolvedHref)}"${titleAttr}>${text}</a>`;
+          return `<a href="${escapeHtml(resolvedHref)}"${titleAttr}>${label}</a>`;
         }
         const safeHref = escapeHtml(cleanHref);
-        return `<a href="${safeHref}"${titleAttr} target="_blank" rel="noopener noreferrer">${text}</a>`;
+        return `<a href="${safeHref}"${titleAttr} target="_blank" rel="noopener noreferrer">${label}</a>`;
       },
       // Custom code renderer: emit a placeholder div for ```mermaid``` blocks
       // (hydrated post-render in StashViewer) and otherwise mimic marked's
@@ -240,11 +257,19 @@ function createMdParser(headingIdPrefix: string): Marked {
           const encoded = encodeMermaidSource(text);
           return `<div class="mermaid-placeholder" data-mermaid-source="${encoded}"></div>\n`;
         }
-        const body = escapeHtml(text.replace(/\n$/, '')) + '\n';
+        const source = text.replace(/\n$/, '');
         if (language) {
+          // Syntax-highlight fenced blocks like the raw file view does.
+          // `resolvePrismLanguage` maps common fence names ("shell" → bash);
+          // unmapped names fall through as-is so Prism's own aliases ("js",
+          // "py") still resolve. `highlightCode` escape-falls-back when no
+          // grammar exists either way.
+          const resolved = resolvePrismLanguage(language);
+          const grammarKey = resolved !== 'text' ? resolved : lower;
+          const body = highlightCode(source, grammarKey) + '\n';
           return `<pre><code class="language-${escapeHtml(language)}">${body}</code></pre>\n`;
         }
-        return `<pre><code>${body}</code></pre>\n`;
+        return `<pre><code>${escapeHtml(source)}\n</code></pre>\n`;
       },
     },
   });
@@ -506,6 +531,9 @@ export default function StashViewer({
     };
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.metaKey || e.ctrlKey || e.altKey) return;
+      // Modal overlays (search, shortcuts help, mermaid fullscreen) all
+      // render role="dialog" — don't switch tabs behind an open modal.
+      if (document.querySelector('[role="dialog"]')) return;
       const tag = (e.target as HTMLElement)?.tagName?.toLowerCase();
       const isEditing =
         tag === 'input' || tag === 'textarea' || (e.target as HTMLElement)?.isContentEditable;
@@ -562,6 +590,18 @@ export default function StashViewer({
   // the reader mid-page in the next one.
   useEffect(() => {
     setCollapsedFiles(new Set());
+    // Disarm a pending delete confirmation — the armed "Confirm Delete?"
+    // button would otherwise survive the switch and delete the NEW stash.
+    setShowDeleteConfirm(false);
+    if (deleteTimerRef.current) {
+      clearTimeout(deleteTimerRef.current);
+      deleteTimerRef.current = null;
+    }
+    // Drop the previous stash's access log so the Access Log tab doesn't
+    // flash stale entries (its fetch effect only runs while the tab is
+    // active).
+    setAccessLog([]);
+    setLogError(false);
     document.querySelector('.main-content')?.scrollTo(0, 0);
   }, [stash.id]);
 
@@ -570,7 +610,7 @@ export default function StashViewer({
       e.preventDefault();
       const el = document.getElementById(id);
       if (el) {
-        el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        el.scrollIntoView({ behavior: preferredScrollBehavior(), block: 'start' });
         return;
       }
       // Heading targets live inside file content, so they are missing from
@@ -594,7 +634,7 @@ export default function StashViewer({
     if (!pendingScrollIdRef.current) return;
     const el = document.getElementById(pendingScrollIdRef.current);
     pendingScrollIdRef.current = null;
-    el?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    el?.scrollIntoView({ behavior: preferredScrollBehavior(), block: 'start' });
   }, [collapsedFiles]);
 
   useEffect(() => {

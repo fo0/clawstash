@@ -257,7 +257,16 @@ export default function BackupConnectCard({ response, onUpdated }: Props) {
                     ? 'Copy failed — select the code manually'
                     : 'Copy the device code'
               }
-              aria-label="Copy device code"
+              // The accessible name must track the visible feedback — a
+              // static label would leave screen-reader users without any
+              // copied/failed confirmation.
+              aria-label={
+                codeCopied === 'copied'
+                  ? 'Device code copied'
+                  : codeCopied === 'failed'
+                    ? 'Copying the device code failed — select it manually'
+                    : 'Copy device code'
+              }
             >
               {codeCopied === 'copied' ? 'Copied' : codeCopied === 'failed' ? 'Failed' : 'Copy'}
             </button>
@@ -286,6 +295,15 @@ export default function BackupConnectCard({ response, onUpdated }: Props) {
               aria-label="OAuth app client ID"
               value={clientId}
               onChange={(e) => setClientId(e.target.value)}
+              onKeyDown={(e) => {
+                // Enter starts the sign-in, matching the submit-on-Enter
+                // behaviour of the token-label field. Guards mirror the
+                // button's disabled condition.
+                if (e.key === 'Enter' && !busy && clientId.trim()) {
+                  e.preventDefault();
+                  handleDeviceLogin();
+                }
+              }}
             />
             <button
               className="btn btn-primary"
@@ -328,6 +346,15 @@ export default function BackupConnectCard({ response, onUpdated }: Props) {
                 aria-label="Personal access token"
                 value={pat}
                 onChange={(e) => setPat(e.target.value)}
+                onKeyDown={(e) => {
+                  // Enter connects, matching the submit-on-Enter behaviour of
+                  // the token-label field. Guards mirror the button's
+                  // disabled condition.
+                  if (e.key === 'Enter' && !busy && pat.trim().length >= 8) {
+                    e.preventDefault();
+                    handlePatConnect();
+                  }
+                }}
                 autoComplete="off"
               />
               <button
@@ -343,7 +370,7 @@ export default function BackupConnectCard({ response, onUpdated }: Props) {
       )}
 
       {error && (
-        <div role="status" className="settings-import-error">
+        <div role="alert" className="settings-import-error">
           {error}
         </div>
       )}

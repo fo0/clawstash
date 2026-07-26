@@ -85,6 +85,10 @@ export default function MermaidDiagram({ code, className, storageKey }: Props) {
   const persistTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const pendingScaleRef = useRef<number | null>(null);
   const initializedRef = useRef(false);
+  // Element focused before entering fullscreen — restored on exit so focus
+  // does not drop to <body> (all exit paths run the fullscreen effect's
+  // cleanup: Esc, toolbar toggle, backdrop click, `f` key, unmount).
+  const previousFocusRef = useRef<HTMLElement | null>(null);
 
   // Render mermaid SVG (lazy-loaded). Re-runs on `code` change.
   useEffect(() => {
@@ -212,6 +216,10 @@ export default function MermaidDiagram({ code, className, storageKey }: Props) {
         setIsFullscreen(false);
       }
     };
+    // Capture the currently focused element (typically the fullscreen
+    // toolbar button) before focus moves into the dialog.
+    previousFocusRef.current =
+      document.activeElement instanceof HTMLElement ? document.activeElement : null;
     const prevOverflow = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
     // Defer focus to next frame so the dialog is in the DOM with its new role.
@@ -221,6 +229,11 @@ export default function MermaidDiagram({ code, className, storageKey }: Props) {
       document.removeEventListener('keydown', handler);
       document.body.style.overflow = prevOverflow;
       cancelAnimationFrame(focusId);
+      // Restore focus to where it was before fullscreen. `focus()` on an
+      // element no longer in the DOM is a silent no-op, so this is safe
+      // even if the page changed underneath.
+      previousFocusRef.current?.focus();
+      previousFocusRef.current = null;
     };
   }, [isFullscreen]);
 

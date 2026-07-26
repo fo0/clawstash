@@ -37,7 +37,9 @@ export const STATUS_ORDER: Record<FileDiff['status'], number> = {
 };
 
 export function diffAddedFile(filename: string, content: string): FileDiff {
-  const lines = content.split('\n');
+  // ''.split('\n') yields [''] — an empty file would render a phantom +1
+  // line and inflate the diff stats. Emit an empty hunk instead.
+  const lines = content === '' ? [] : content.split('\n');
   return {
     filename,
     status: 'added',
@@ -50,7 +52,8 @@ export function diffAddedFile(filename: string, content: string): FileDiff {
 }
 
 export function diffRemovedFile(filename: string, content: string): FileDiff {
-  const lines = content.split('\n');
+  // Same phantom-line guard as `diffAddedFile` — see comment there.
+  const lines = content === '' ? [] : content.split('\n');
   return {
     filename,
     status: 'removed',

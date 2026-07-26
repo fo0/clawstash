@@ -4,7 +4,7 @@ Temporary working context. **Clean up aggressively -- delete when resolved.**
 
 ## Current Work
 
-- Backup settings UI tabs (2026-06-12): Settings → GitHub Backup split into 4 tabs (Connection / Target & Schedule / Activity / Sync Log) on `claude/awesome-davinci-o46cv8`, PR #272. Panels stay mounted (hidden) so device-flow polling + unsaved form edits survive tab switches; review done (a11y fix for the unhealthy tab dot).
+- Whole-app UI/UX review + bugfix sweep (2026-07-26) on `claude/ui-ux-review-bugfixes-hnuu1q`: 5 parallel review agents (shell / viewer / editor / settings+API / graph) + real-browser walkthrough (Playwright, dev server on :3100, scratch DB). 13 P1s fixed (armed delete-confirm surviving stash switch, useClickOutside Escape contract, select-stash race, hotkeys on login screen, editor silent data loss, StrictMode mountedRef bugs, broken cURL example, tag graph built from filtered page-1 list, silent focus-fetch failure) + ~40 trivial P2s; non-trivial P2s deferred to BACKLOG #131-#148.
 
 ## Open Questions
 

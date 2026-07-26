@@ -329,6 +329,22 @@ export default function StashGraphCanvas({
   const allNodesRef = useRef<RenderNode[]>([]);
   const allEdgesRef = useRef<StashGraphEdge[]>([]);
   const analysedStashesRef = useRef<Set<string>>(new Set());
+  const adjacencyRef = useRef<Set<string> | null>(null);
+
+  // Rebuild adjacency set for a given node (O(edges) once, then O(1) lookups
+  // in the per-node draw loop — mirrors GraphViewer's adjacencyRef pattern)
+  const rebuildAdjacency = useCallback((nodeId: string | null) => {
+    if (!nodeId) {
+      adjacencyRef.current = null;
+      return;
+    }
+    const set = new Set<string>();
+    for (const e of edgesRef.current) {
+      if (e.source === nodeId) set.add(e.target);
+      else if (e.target === nodeId) set.add(e.source);
+    }
+    adjacencyRef.current = set;
+  }, []);
 
   // Auto-fit (smooth: sets targets, animation loop interpolates)
   const autoFit = useCallback(() => {
@@ -519,11 +535,15 @@ export default function StashGraphCanvas({
 
   // Fetch data
   useEffect(() => {
+    // Cancellation guard: a late resolution after unmount (or Retry) must
+    // not set state or restart the rAF loop over detached refs
+    let cancelled = false;
     setLoading(true);
     setLoadError(false);
     api
       .getStashGraph({ mode: 'relations' })
       .then((data) => {
+        if (cancelled) return;
         const { nodes, edges } = buildRenderNodes(data);
         allNodesRef.current = nodes;
         allEdgesRef.current = edges;
@@ -550,6 +570,9 @@ export default function StashGraphCanvas({
         edgesRef.current = filteredEdges;
         setNodeCount(filtered.length);
         setEdgeCount(filteredEdges.length);
+        rebuildAdjacency(hoveredRef.current?.id ?? null);
+        // Close the popup if its node does not exist in the new node set
+        setPopup((prev) => (prev && !filtered.some((n) => n.id === prev.node.id) ? null : prev));
 
         alphaRef.current = 1;
         autoFitDoneRef.current = false;
@@ -557,10 +580,14 @@ export default function StashGraphCanvas({
         kickAnimation();
       })
       .catch((err) => {
+        if (cancelled) return;
         console.error('Failed to load stash graph:', err);
         setLoadError(true);
         setLoading(false);
       });
+    return () => {
+      cancelled = true;
+    };
     // Fetch once on mount (and again on Retry via reloadNonce).
     // `applyVisibilityFilter` depends on `defaultDepth`, so listing it here
     // would re-fetch the entire graph from the server every time the depth
@@ -582,10 +609,20 @@ export default function StashGraphCanvas({
     edgesRef.current = edges;
     setNodeCount(nodes.length);
     setEdgeCount(edges.length);
+    rebuildAdjacency(hoveredRef.current?.id ?? null);
+    // Close the popup if its node was filtered out of the new node set
+    setPopup((prev) => (prev && !nodes.some((n) => n.id === prev.node.id) ? null : prev));
     alphaRef.current = 1;
     autoFitDoneRef.current = false;
     kickAnimation();
-  }, [analysedStashes, defaultDepth, ignoredTags, applyVisibilityFilter, kickAnimation]);
+  }, [
+    analysedStashes,
+    defaultDepth,
+    ignoredTags,
+    applyVisibilityFilter,
+    rebuildAdjacency,
+    kickAnimation,
+  ]);
 
   const screenToWorld = useCallback((sx: number, sy: number, canvas: HTMLCanvasElement) => {
     const cx = canvas.width / (2 * devicePixelRatio),
@@ -609,9 +646,12 @@ export default function StashGraphCanvas({
   }, []);
 
   const getConnections = useCallback((nodeId: string) => {
+    // The popup only renders shared_tags connections — filter BEFORE the
+    // top-8 slice so other edge types cannot crowd them out
     const conns: { id: string; label: string; type: string; weight: number }[] = [];
     const nodeMap = new Map(nodesRef.current.map((n) => [n.id, n]));
     for (const edge of edgesRef.current) {
+      if (edge.type !== 'shared_tags') continue;
       if (edge.source === nodeId) {
         const t = nodeMap.get(edge.target);
         if (t) conns.push({ id: t.id, label: t.label, type: edge.type, weight: edge.weight });
@@ -781,14 +821,10 @@ export default function StashGraphCanvas({
     // Draw nodes
     for (const node of nodes) {
       const isHovered = hovered && hovered.id === node.id;
+      // Adjacency is rebuilt once on hover change — O(1) per node here
+      // instead of scanning all edges for every node on every frame
       const isConnected =
-        hovered &&
-        (edges.some(
-          (e) =>
-            (e.source === hovered.id && e.target === node.id) ||
-            (e.target === hovered.id && e.source === node.id),
-        ) ||
-          tagHoverHighlightIds.has(node.id));
+        hovered && (adjacencyRef.current?.has(node.id) || tagHoverHighlightIds.has(node.id));
       const dimmed = !!hovered && !isHovered && !isConnected;
 
       const isAnalysed = node.type === 'stash' && analysedStashesRef.current.has(node.id);
@@ -899,6 +935,9 @@ export default function StashGraphCanvas({
     animRef.current = requestAnimationFrame(tick);
     return () => {
       if (animRef.current) cancelAnimationFrame(animRef.current);
+      // Reset the handle so kickAnimation() sees the loop as stopped — a
+      // stale non-zero id would otherwise misrepresent the loop state
+      animRef.current = 0;
     };
   }, [draw, autoFit]);
 
@@ -932,7 +971,14 @@ export default function StashGraphCanvas({
     const canvas = canvasRef.current;
     if (!canvas) return;
 
+    // Start position of the current mouse press — drag/pan only begins once
+    // the pointer travels past a small threshold (matches touch behavior),
+    // so a 1px twitch during a click does not suppress the click.
+    let mouseDownPos = { x: 0, y: 0 };
+
     const onMouseDown = (e: MouseEvent) => {
+      // Only the primary button starts drags/pans or closes the popup
+      if (e.button !== 0) return;
       // Cancel smooth animation on user interaction
       targetZoomRef.current = null;
       targetPanRef.current = null;
@@ -942,9 +988,9 @@ export default function StashGraphCanvas({
       const { x: wx, y: wy } = screenToWorld(sx, sy, canvas);
       const node = findNodeAt(wx, wy);
       didDragRef.current = false;
+      mouseDownPos = { x: e.clientX, y: e.clientY };
       if (node) {
         dragRef.current = { node, offsetX: wx - node.x, offsetY: wy - node.y };
-        alphaRef.current = Math.max(alphaRef.current, 0.3);
       } else {
         isPanningRef.current = true;
         panStartRef.current = {
@@ -963,7 +1009,18 @@ export default function StashGraphCanvas({
       const sx = e.clientX - rect.left,
         sy = e.clientY - rect.top;
       if (dragRef.current) {
-        didDragRef.current = true;
+        if (!didDragRef.current) {
+          const moveDist = Math.sqrt(
+            (e.clientX - mouseDownPos.x) ** 2 + (e.clientY - mouseDownPos.y) ** 2,
+          );
+          if (moveDist > 8) {
+            // Drag actually starts here — re-heat the simulation only for a
+            // real drag, not for a plain click on a node
+            didDragRef.current = true;
+            alphaRef.current = Math.max(alphaRef.current, 0.3);
+          }
+        }
+        if (!didDragRef.current) return;
         const { x: wx, y: wy } = screenToWorld(sx, sy, canvas);
         dragRef.current.node.x = wx - dragRef.current.offsetX;
         dragRef.current.node.y = wy - dragRef.current.offsetY;
@@ -974,7 +1031,13 @@ export default function StashGraphCanvas({
         return;
       }
       if (isPanningRef.current) {
-        didDragRef.current = true;
+        if (!didDragRef.current) {
+          const moveDist = Math.sqrt(
+            (e.clientX - mouseDownPos.x) ** 2 + (e.clientY - mouseDownPos.y) ** 2,
+          );
+          if (moveDist > 4) didDragRef.current = true; // matches touch pan threshold
+        }
+        if (!didDragRef.current) return;
         panRef.current.x = panStartRef.current.panX + (e.clientX - panStartRef.current.x);
         panRef.current.y = panStartRef.current.panY + (e.clientY - panStartRef.current.y);
         kickAnimation();
@@ -984,6 +1047,7 @@ export default function StashGraphCanvas({
       const node = findNodeAt(wx, wy);
       if (node !== hoveredRef.current) {
         hoveredRef.current = node;
+        rebuildAdjacency(node?.id ?? null);
         canvas.style.cursor = node ? 'pointer' : 'grab';
         setHoveredLabel(node ? node.label : null);
         // Hover emphasis is painted only inside the rAF draw() (it reads
@@ -997,6 +1061,19 @@ export default function StashGraphCanvas({
     const onMouseUp = () => {
       dragRef.current = null;
       isPanningRef.current = false;
+    };
+
+    const onMouseLeave = () => {
+      onMouseUp();
+      // Clear hover state — resetting only drag/pan would leave the graph
+      // dimmed and the header hover chip frozen after the pointer leaves
+      if (hoveredRef.current) {
+        hoveredRef.current = null;
+        rebuildAdjacency(null);
+        canvas.style.cursor = 'grab';
+        setHoveredLabel(null);
+        kickAnimation();
+      }
     };
 
     const onClick = (e: MouseEvent) => {
@@ -1048,18 +1125,18 @@ export default function StashGraphCanvas({
     canvas.addEventListener('mousedown', onMouseDown);
     canvas.addEventListener('mousemove', onMouseMove);
     canvas.addEventListener('mouseup', onMouseUp);
-    canvas.addEventListener('mouseleave', onMouseUp);
+    canvas.addEventListener('mouseleave', onMouseLeave);
     canvas.addEventListener('click', onClick);
     canvas.addEventListener('wheel', onWheel, { passive: false });
     return () => {
       canvas.removeEventListener('mousedown', onMouseDown);
       canvas.removeEventListener('mousemove', onMouseMove);
       canvas.removeEventListener('mouseup', onMouseUp);
-      canvas.removeEventListener('mouseleave', onMouseUp);
+      canvas.removeEventListener('mouseleave', onMouseLeave);
       canvas.removeEventListener('click', onClick);
       canvas.removeEventListener('wheel', onWheel);
     };
-  }, [screenToWorld, findNodeAt, getConnections, kickAnimation]);
+  }, [screenToWorld, findNodeAt, getConnections, rebuildAdjacency, kickAnimation]);
 
   // Touch events for mobile
   useEffect(() => {
@@ -1113,7 +1190,6 @@ export default function StashGraphCanvas({
         if (node) {
           e.preventDefault();
           dragRef.current = { node, offsetX: wx - node.x, offsetY: wy - node.y };
-          alphaRef.current = Math.max(alphaRef.current, 0.3);
           kickAnimation();
         } else {
           panStartRef.current = {
@@ -1164,7 +1240,12 @@ export default function StashGraphCanvas({
           const moveDist = Math.sqrt(
             (touch.clientX - touchStartPos.x) ** 2 + (touch.clientY - touchStartPos.y) ** 2,
           );
-          if (moveDist > 8) isTouchDragging = true;
+          if (moveDist > 8 && !isTouchDragging) {
+            // Drag actually starts here — re-heat the simulation only for a
+            // real drag, not for a plain tap on a node
+            isTouchDragging = true;
+            alphaRef.current = Math.max(alphaRef.current, 0.3);
+          }
           const { x: wx, y: wy } = screenToWorld(sx, sy, canvas);
           dragRef.current.node.x = wx - dragRef.current.offsetX;
           dragRef.current.node.y = wy - dragRef.current.offsetY;
@@ -1428,6 +1509,8 @@ export default function StashGraphCanvas({
           ref={canvasRef}
           className="graph-canvas"
           style={{ cursor: 'grab', touchAction: 'none' }}
+          role="img"
+          aria-label={`Stash graph: ${nodeCount} nodes, ${edgeCount} edges`}
         />
 
         {loading && (
@@ -1570,14 +1653,14 @@ export default function StashGraphCanvas({
               <div className="graph-popup-section">
                 <div className="graph-popup-section-title">Connections</div>
                 <div className="graph-popup-connections">
-                  {popup.connections
-                    .filter((c) => c.type === 'shared_tags')
-                    .map((c) => (
-                      <span key={c.id} className="graph-popup-conn-tag">
-                        {c.label}
-                        <span className="graph-popup-conn-weight">{c.weight}</span>
-                      </span>
-                    ))}
+                  {/* getConnections already filters to shared_tags, so the
+                      section gate above matches the rendered chips */}
+                  {popup.connections.map((c) => (
+                    <span key={c.id} className="graph-popup-conn-tag">
+                      {c.label}
+                      <span className="graph-popup-conn-weight">{c.weight}</span>
+                    </span>
+                  ))}
                 </div>
               </div>
             )}

@@ -32,6 +32,13 @@ describe('formatBytes', () => {
     expect(formatBytes(NaN)).toBe('0 B');
     expect(formatBytes(Infinity)).toBe('0 B');
   });
+
+  it('promotes to the next unit when rounding reaches 1024', () => {
+    // 1,048,530 B = 1023.96 KB — rounding used to yield "1024 KB"
+    expect(formatBytes(1_048_530)).toBe('1 MB');
+    expect(formatBytes(1024 * 1024 - 1)).toBe('1 MB');
+    expect(formatBytes(1024 * 1024 * 1024 - 1)).toBe('1 GB');
+  });
 });
 
 describe('formatBuildVersion', () => {
@@ -75,12 +82,19 @@ describe('pluralize', () => {
 });
 
 describe('format helpers — characterization', () => {
+  // Locale-dependent output (formats in the browser locale) — assert
+  // structure, not exact strings, so the tests pass under any test locale.
   it('formatDate returns a non-empty string for a valid ISO date', () => {
     expect(formatDate('2026-05-10T00:00:00Z')).toMatch(/\d/);
   });
 
   it('formatDateTime returns a non-empty string for a valid ISO date', () => {
     expect(formatDateTime('2026-05-10T07:48:59Z')).toMatch(/\d/);
+  });
+
+  it('falls back to the raw string for unparseable dates', () => {
+    expect(formatDate('not-a-date')).toBe('not-a-date');
+    expect(formatDateTime('not-a-date')).toBe('not-a-date');
   });
 
   it('formatRelativeTime returns "just now" for the current time', () => {

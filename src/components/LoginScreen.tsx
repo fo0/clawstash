@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 
 interface Props {
   onLogin: (password: string) => Promise<void>;
@@ -9,10 +9,13 @@ export default function LoginScreen({ onLogin }: Props) {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!password) return;
+    // The input is readOnly (not disabled) during submit, so Enter still
+    // reaches the form — the loading guard blocks a double login.
+    if (!password || loading) return;
     setLoading(true);
     setError('');
     try {
@@ -26,6 +29,10 @@ export default function LoginScreen({ onLogin }: Props) {
           ? 'Too many attempts — please wait a moment and try again.'
           : message,
       );
+      // Put the user straight back into the field to retype (select the wrong
+      // password so typing replaces it).
+      inputRef.current?.focus();
+      inputRef.current?.select();
     } finally {
       setLoading(false);
     }
@@ -49,6 +56,7 @@ export default function LoginScreen({ onLogin }: Props) {
         </label>
         <div className="login-input-wrapper">
           <input
+            ref={inputRef}
             id="login-password"
             name="password"
             type={showPassword ? 'text' : 'password'}
@@ -57,7 +65,9 @@ export default function LoginScreen({ onLogin }: Props) {
             onChange={(e) => setPassword(e.target.value)}
             placeholder="Password"
             className="form-input login-input"
-            disabled={loading}
+            // readOnly, not disabled: disabled drops keyboard focus during
+            // submit and never gives it back after a failed attempt.
+            readOnly={loading}
             autoFocus
             aria-describedby={error ? 'login-error-msg' : undefined}
           />

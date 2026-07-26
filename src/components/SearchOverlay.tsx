@@ -82,10 +82,20 @@ export default function SearchOverlay({ open, onClose, onSelectStash }: Props) {
 
   const handleInputChange = (value: string) => {
     setQuery(value);
-    // Clearing the field falls back to the "Recently viewed" list — re-home the
-    // highlight to its first item so arrow-nav resumes from a valid position.
-    if (!value.trim()) setActiveIndex(0);
     if (debounceRef.current) clearTimeout(debounceRef.current);
+    // Clearing the field falls back to the "Recently viewed" list — drop the
+    // stale results synchronously (waiting for the debounce would render both
+    // lists at once, with duplicate option ids) and invalidate any in-flight
+    // search. Mirrors handleClearQuery; re-homes the highlight to item 0.
+    if (!value.trim()) {
+      debounceRef.current = undefined;
+      searchGenRef.current++;
+      setResults([]);
+      setTotal(0);
+      setActiveIndex(0);
+      setLoading(false);
+      return;
+    }
     debounceRef.current = setTimeout(() => doSearch(value), SEARCH_DEBOUNCE_MS);
   };
 
@@ -295,7 +305,10 @@ export default function SearchOverlay({ open, onClose, onSelectStash }: Props) {
                 className={`search-overlay-item ${idx === activeIndex ? 'active' : ''}`}
                 role="option"
                 aria-selected={idx === activeIndex}
-                onMouseEnter={() => setActiveIndex(idx)}
+                // onMouseMove (not onMouseEnter): keyboard-nav's scrollIntoView
+                // shifts the list under a stationary cursor, which would fire
+                // enter events and yank the highlight back to the hovered row.
+                onMouseMove={() => setActiveIndex(idx)}
                 onClick={() => handleSelect(stash.id)}
               >
                 <div className="search-overlay-item-main">
@@ -355,7 +368,7 @@ export default function SearchOverlay({ open, onClose, onSelectStash }: Props) {
                 className={`search-overlay-item ${idx === activeIndex ? 'active' : ''}`}
                 role="option"
                 aria-selected={idx === activeIndex}
-                onMouseEnter={() => setActiveIndex(idx)}
+                onMouseMove={() => setActiveIndex(idx)}
                 onClick={() => handleSelect(item.id)}
               >
                 <div className="search-overlay-item-main">

@@ -140,15 +140,23 @@ interface WelcomeSectionProps {
 
 function WelcomeSection({ onNavigate }: WelcomeSectionProps) {
   const [stats, setStats] = useState<Stats | null>(null);
+  // A failed stats fetch must not keep the green "System running normally"
+  // banner — track it and degrade the status display instead.
+  const [statsFailed, setStatsFailed] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
     api
       .getStats()
       .then((data) => {
-        if (!cancelled) setStats(data);
+        if (!cancelled) {
+          setStats(data);
+          setStatsFailed(false);
+        }
       })
-      .catch(() => {});
+      .catch(() => {
+        if (!cancelled) setStatsFailed(true);
+      });
     return () => {
       cancelled = true;
     };
@@ -180,9 +188,26 @@ function WelcomeSection({ onNavigate }: WelcomeSectionProps) {
         </div>
       </div>
 
-      <div className="settings-welcome-status">
-        <span className="settings-welcome-status-dot" />
-        <span>System running normally</span>
+      {/* Degraded state uses inline overrides on the existing green classes —
+          a gray, non-pulsing dot must not claim the system is healthy when
+          the stats fetch failed. */}
+      <div
+        className="settings-welcome-status"
+        style={
+          statsFailed
+            ? {
+                background: 'rgba(139, 148, 158, 0.08)',
+                borderColor: 'rgba(139, 148, 158, 0.25)',
+                color: 'var(--text-muted)',
+              }
+            : undefined
+        }
+      >
+        <span
+          className="settings-welcome-status-dot"
+          style={statsFailed ? { background: 'var(--text-muted)', animation: 'none' } : undefined}
+        />
+        <span>{statsFailed ? 'Status unavailable' : 'System running normally'}</span>
         {stats && (
           <span className="settings-welcome-status-stats">
             &mdash; {pluralize(stats.totalStashes, 'stash', 'stashes')},{' '}
@@ -599,7 +624,7 @@ function StorageSection() {
           </div>
         )}
         {importError && (
-          <div role="status" className="settings-import-error">
+          <div role="alert" className="settings-import-error">
             {importError}
           </div>
         )}

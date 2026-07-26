@@ -21,13 +21,16 @@ const STATE_ROW_CAP = 50;
 interface Props {
   /** Called after a manual run so sibling tabs (sync log) can refetch. */
   onSyncRan?: () => void;
+  /** Reports the fresh health flag from every status fetch so the parent's
+      alert dot doesn't stay stuck on the mount-time settings snapshot. */
+  onUnhealthyChange?: (unhealthy: boolean) => void;
 }
 
 /**
  * Sync activity: health summary, "Back up all now" and per-stash states.
  * Self-refreshing after manual runs.
  */
-export default function BackupActivityCard({ onSyncRan }: Props) {
+export default function BackupActivityCard({ onSyncRan, onUnhealthyChange }: Props) {
   const [status, setStatus] = useState<BackupStatusResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [loadFailed, setLoadFailed] = useState(false);
@@ -40,13 +43,14 @@ export default function BackupActivityCard({ onSyncRan }: Props) {
       const statusData = await api.getBackupStatus();
       setStatus(statusData);
       setLoadFailed(false);
+      onUnhealthyChange?.(statusData.unhealthy);
     } catch (err) {
       console.error('Failed to load backup status:', err);
       setLoadFailed(true);
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [onUnhealthyChange]);
 
   useEffect(() => {
     refresh();
@@ -150,6 +154,10 @@ export default function BackupActivityCard({ onSyncRan }: Props) {
         >
           {result.message}
         </div>
+      )}
+
+      {status.states.length === 0 && !loadFailed && (
+        <p className="api-hint">No stashes tracked yet.</p>
       )}
 
       {status.states.length > 0 && (

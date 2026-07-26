@@ -16,6 +16,9 @@ const EDGE_ATTRACTION = 0.008; // edge spring coefficient
 // -----------------------------------------------------------------------------
 
 interface Props {
+  // Accepted for App compatibility; the graph itself is fetched from the
+  // server (`/api/stashes/graph`) — the sidebar list is filtered/paginated
+  // and would produce wrong edge weights.
   stashes: StashListItem[];
   tags: TagInfo[];
   onFilterTag: (tag: string) => void;
@@ -169,45 +172,6 @@ function initClusterLayout(nodes: GraphNode[]): void {
   }
 }
 
-function buildGraph(stashes: StashListItem[], tags: TagInfo[]) {
-  const tagMap = new Map(tags.map((t) => [t.tag, t.count]));
-  const nodes: GraphNode[] = tags.map((t) => ({
-    id: t.tag,
-    label: t.tag,
-    count: t.count,
-    degree: 0,
-    x: 0,
-    y: 0,
-    vx: 0,
-    vy: 0,
-    radius: Math.max(6, Math.min(24, 6 + Math.sqrt(t.count) * 4)),
-    cluster: 0,
-  }));
-
-  const edgeMap = new Map<string, number>();
-  for (const stash of stashes) {
-    const stashTags = stash.tags.filter((t) => tagMap.has(t));
-    for (let i = 0; i < stashTags.length; i++) {
-      for (let j = i + 1; j < stashTags.length; j++) {
-        const key = JSON.stringify([stashTags[i], stashTags[j]].sort());
-        edgeMap.set(key, (edgeMap.get(key) || 0) + 1);
-      }
-    }
-  }
-
-  const edges: GraphEdge[] = [];
-  for (const [key, weight] of edgeMap) {
-    const [source, target] = JSON.parse(key) as [string, string];
-    edges.push({ source, target, weight });
-  }
-
-  assignClusters(nodes, edges);
-  computeDegrees(nodes, edges);
-  initClusterLayout(nodes);
-
-  return { nodes, edges };
-}
-
 function buildGraphFromApi(data: TagGraphResult) {
   const nodes: GraphNode[] = data.nodes.map((t) => ({
     id: t.tag,
@@ -340,7 +304,6 @@ function simulate(nodes: GraphNode[], edges: GraphEdge[], alpha: number) {
 }
 
 export default function GraphViewer({
-  stashes,
   tags,
   onFilterTag,
   onSelectStash,
@@ -367,6 +330,15 @@ export default function GraphViewer({
   const [popup, setPopup] = useState<PopupState | null>(null);
   const [focusTag, setFocusTag] = useState<string | null>(null);
   const [focusDepth, setFocusDepth] = useState(2);
+  const [loading, setLoading] = useState(true);
+  // Distinguishes a failed graph fetch (default or focus mode) from a
+  // genuinely empty graph — mirrors StashGraphCanvas.
+  const [loadError, setLoadError] = useState(false);
+  // Bumped by the error-state Retry button to re-run the active fetch effect.
+  const [reloadNonce, setReloadNonce] = useState(0);
+  // True while nodesRef holds the built default (non-focus) graph, so tab
+  // switches keep the user's layout instead of rebuilding it.
+  const defaultGraphBuiltRef = useRef(false);
   const hasManyCluster = useRef(false);
   const autoFitDoneRef = useRef(false);
   const targetZoomRef = useRef<number | null>(null);
@@ -462,24 +434,59 @@ export default function GraphViewer({
     return value;
   }, []);
 
-  // Build graph data
+  // Build graph data — default (non-focus) mode fetches the full tag graph
+  // from the server. The sidebar `stashes` prop is filtered and paginated, so
+  // building edges from it client-side produced wrong weights whenever a
+  // filter was active or more than one page of stashes existed.
+  // Lazy: only fetches while the Tags tab is visible; a layout that was
+  // already built survives tab switches untouched.
   useEffect(() => {
     if (focusTag) return; // Focus mode handles its own graph
-    const { nodes, edges } = buildGraph(stashes, tags);
-    nodesRef.current = nodes;
-    edgesRef.current = edges;
-    setEdgeCount(edges.length);
-    hasManyCluster.current = new Set(nodes.map((n) => n.cluster)).size > 1;
-    glowThresholdRef.current = null;
-    alphaRef.current = 1;
-    autoFitDoneRef.current = false;
-    startLoop();
-  }, [stashes, tags, focusTag, graphTab]);
+    if (graphTab !== 'tags') return; // Stashes tab: no tag-graph work
+    if (defaultGraphBuiltRef.current) {
+      // Layout already built — clear any stale focus-fetch error and redraw
+      setLoading(false);
+      setLoadError(false);
+      startLoop();
+      return;
+    }
+    let cancelled = false;
+    setLoading(true);
+    setLoadError(false);
+    api
+      .getTagGraph()
+      .then((data) => {
+        if (cancelled) return;
+        const { nodes, edges } = buildGraphFromApi(data);
+        nodesRef.current = nodes;
+        edgesRef.current = edges;
+        setEdgeCount(edges.length);
+        hasManyCluster.current = new Set(nodes.map((n) => n.cluster)).size > 1;
+        glowThresholdRef.current = null;
+        alphaRef.current = 1;
+        autoFitDoneRef.current = false;
+        defaultGraphBuiltRef.current = true;
+        // Close the popup if its node does not exist in the new graph
+        setPopup((prev) => (prev && !nodes.some((n) => n.id === prev.tag) ? null : prev));
+        setLoading(false);
+        startLoop();
+      })
+      .catch((err) => {
+        if (cancelled) return;
+        console.error('Failed to load tag graph:', err);
+        setLoading(false);
+        setLoadError(true);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [focusTag, graphTab, reloadNonce]);
 
   // Focus mode: fetch subgraph from server
   useEffect(() => {
     if (!focusTag) return;
     let cancelled = false;
+    setLoadError(false);
     api
       .getTagGraph({ tag: focusTag, depth: focusDepth })
       .then((data) => {
@@ -492,15 +499,22 @@ export default function GraphViewer({
         glowThresholdRef.current = null;
         alphaRef.current = 1;
         autoFitDoneRef.current = false;
+        defaultGraphBuiltRef.current = false; // nodesRef now holds the focus graph
+        // Close the popup if its node was dropped by the focus/depth change
+        setPopup((prev) => (prev && !nodes.some((n) => n.id === prev.tag) ? null : prev));
         startLoop();
       })
       .catch((err) => {
+        if (cancelled) return;
         console.error('Failed to load focus graph:', err);
+        // Surface the failure (error overlay + Retry) instead of silently
+        // keeping the previous graph under the new focus chip
+        setLoadError(true);
       });
     return () => {
       cancelled = true;
     };
-  }, [focusTag, focusDepth]);
+  }, [focusTag, focusDepth, reloadNonce]);
 
   const screenToWorld = useCallback((sx: number, sy: number, canvas: HTMLCanvasElement) => {
     const cx = canvas.width / (2 * devicePixelRatio);
@@ -700,6 +714,9 @@ export default function GraphViewer({
 
   // Start/restart the animation loop (idempotent — safe to call if already running)
   const startLoop = useCallback(() => {
+    // No canvas → the tag graph is not mounted (Stashes tab active); running
+    // the O(n²) simulation would be invisible wasted work.
+    if (!canvasRef.current) return;
     if (loopRunningRef.current) return;
     loopRunningRef.current = true;
 
@@ -843,7 +860,14 @@ export default function GraphViewer({
     const canvas = canvasRef.current;
     if (!canvas) return;
 
+    // Start position of the current mouse press — drag/pan only begins once
+    // the pointer travels past a small threshold (matches touch behavior),
+    // so a 1px twitch during a click does not suppress the click.
+    let mouseDownPos = { x: 0, y: 0 };
+
     const onMouseDown = (e: MouseEvent) => {
+      // Only the primary button starts drags/pans or clears graph state
+      if (e.button !== 0) return;
       // Cancel smooth animation on user interaction
       targetZoomRef.current = null;
       targetPanRef.current = null;
@@ -853,10 +877,10 @@ export default function GraphViewer({
       const { x: wx, y: wy } = screenToWorld(sx, sy, canvas);
       const node = findNodeAt(wx, wy);
       didDragRef.current = false;
+      mouseDownPos = { x: e.clientX, y: e.clientY };
 
       if (node) {
         dragRef.current = { node, offsetX: wx - node.x, offsetY: wy - node.y };
-        alphaRef.current = Math.max(alphaRef.current, 0.3);
         startLoopRef.current();
       } else {
         isPanningRef.current = true;
@@ -878,7 +902,18 @@ export default function GraphViewer({
       const sy = e.clientY - rect.top;
 
       if (dragRef.current) {
-        didDragRef.current = true;
+        if (!didDragRef.current) {
+          const moveDist = Math.sqrt(
+            (e.clientX - mouseDownPos.x) ** 2 + (e.clientY - mouseDownPos.y) ** 2,
+          );
+          if (moveDist > 8) {
+            // Drag actually starts here — re-heat the simulation only for a
+            // real drag, not for a plain click on a node
+            didDragRef.current = true;
+            alphaRef.current = Math.max(alphaRef.current, 0.3);
+          }
+        }
+        if (!didDragRef.current) return;
         const { x: wx, y: wy } = screenToWorld(sx, sy, canvas);
         dragRef.current.node.x = wx - dragRef.current.offsetX;
         dragRef.current.node.y = wy - dragRef.current.offsetY;
@@ -890,7 +925,13 @@ export default function GraphViewer({
       }
 
       if (isPanningRef.current) {
-        didDragRef.current = true;
+        if (!didDragRef.current) {
+          const moveDist = Math.sqrt(
+            (e.clientX - mouseDownPos.x) ** 2 + (e.clientY - mouseDownPos.y) ** 2,
+          );
+          if (moveDist > 4) didDragRef.current = true; // matches touch pan threshold
+        }
+        if (!didDragRef.current) return;
         panRef.current.x = panStartRef.current.panX + (e.clientX - panStartRef.current.x);
         panRef.current.y = panStartRef.current.panY + (e.clientY - panStartRef.current.y);
         startLoopRef.current();
@@ -913,6 +954,19 @@ export default function GraphViewer({
         dragRef.current = null;
       }
       isPanningRef.current = false;
+    };
+
+    const onMouseLeave = () => {
+      onMouseUp();
+      // Clear hover state — resetting only drag/pan would leave the graph
+      // dimmed and the header hover chip frozen after the pointer leaves
+      if (hoveredRef.current) {
+        hoveredRef.current = null;
+        rebuildAdjacency(highlightTagRef.current);
+        canvas.style.cursor = 'grab';
+        setHoveredTag(null);
+        startLoopRef.current();
+      }
     };
 
     const onClick = (e: MouseEvent) => {
@@ -954,7 +1008,7 @@ export default function GraphViewer({
     canvas.addEventListener('mousedown', onMouseDown);
     canvas.addEventListener('mousemove', onMouseMove);
     canvas.addEventListener('mouseup', onMouseUp);
-    canvas.addEventListener('mouseleave', onMouseUp);
+    canvas.addEventListener('mouseleave', onMouseLeave);
     canvas.addEventListener('click', onClick);
     canvas.addEventListener('wheel', onWheel, { passive: false });
 
@@ -962,11 +1016,11 @@ export default function GraphViewer({
       canvas.removeEventListener('mousedown', onMouseDown);
       canvas.removeEventListener('mousemove', onMouseMove);
       canvas.removeEventListener('mouseup', onMouseUp);
-      canvas.removeEventListener('mouseleave', onMouseUp);
+      canvas.removeEventListener('mouseleave', onMouseLeave);
       canvas.removeEventListener('click', onClick);
       canvas.removeEventListener('wheel', onWheel);
     };
-  }, [screenToWorld, findNodeAt, showPopup, closePopup, graphTab]);
+  }, [screenToWorld, findNodeAt, showPopup, closePopup, rebuildAdjacency, graphTab]);
 
   // Touch events for mobile
   useEffect(() => {
@@ -1021,7 +1075,6 @@ export default function GraphViewer({
         if (node) {
           e.preventDefault();
           dragRef.current = { node, offsetX: wx - node.x, offsetY: wy - node.y };
-          alphaRef.current = Math.max(alphaRef.current, 0.3);
           startLoopRef.current();
         } else {
           panStartRef.current = {
@@ -1073,7 +1126,12 @@ export default function GraphViewer({
           const moveDist = Math.sqrt(
             (touch.clientX - touchStartPos.x) ** 2 + (touch.clientY - touchStartPos.y) ** 2,
           );
-          if (moveDist > 8) isTouchDragging = true;
+          if (moveDist > 8 && !isTouchDragging) {
+            // Drag actually starts here — re-heat the simulation only for a
+            // real drag, not for a plain tap on a node
+            isTouchDragging = true;
+            alphaRef.current = Math.max(alphaRef.current, 0.3);
+          }
           const { x: wx, y: wy } = screenToWorld(sx, sy, canvas);
           dragRef.current.node.x = wx - dragRef.current.offsetX;
           dragRef.current.node.y = wy - dragRef.current.offsetY;
@@ -1158,6 +1216,9 @@ export default function GraphViewer({
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.key !== 'Escape') return;
+      // Tag-graph-local UI only exists on the Tags tab — never consume on
+      // the Stashes tab (StashGraphCanvas has its own popup handler)
+      if (graphTab !== 'tags') return;
       const consumed = popup !== null || searchOpen || highlightTag !== null || searchQuery !== '';
       if (!consumed) return;
       e.stopPropagation();
@@ -1165,10 +1226,23 @@ export default function GraphViewer({
       setHighlightTag(null);
       setSearchOpen(false);
       setSearchQuery('');
+      // Blur the search input too — otherwise it keeps focus and swallows
+      // the next Escape instead of letting it exit the view
+      searchInputRef.current?.blur();
     };
     window.addEventListener('keydown', onKeyDown, true);
     return () => window.removeEventListener('keydown', onKeyDown, true);
-  }, [closePopup, popup, searchOpen, highlightTag, searchQuery]);
+  }, [closePopup, popup, searchOpen, highlightTag, searchQuery, graphTab]);
+
+  // Switching to the Stashes tab hides all tag-graph-local UI — clear it so
+  // stale invisible state cannot swallow the first Escape there
+  useEffect(() => {
+    if (graphTab === 'tags') return;
+    setPopup(null);
+    setHighlightTag(null);
+    setSearchOpen(false);
+    setSearchQuery('');
+  }, [graphTab]);
 
   const handleResetView = () => {
     targetZoomRef.current = null;
@@ -1185,11 +1259,9 @@ export default function GraphViewer({
     if (focusTag) {
       setFocusTag(null);
     } else {
-      const { nodes, edges } = buildGraph(stashes, tags);
-      nodesRef.current = nodes;
-      edgesRef.current = edges;
-      setEdgeCount(edges.length);
-      hasManyCluster.current = new Set(nodes.map((n) => n.cluster)).size > 1;
+      // Re-fetch the full graph from the server for a fresh layout
+      defaultGraphBuiltRef.current = false;
+      setReloadNonce((n) => n + 1);
     }
     startLoopRef.current();
   };
@@ -1266,7 +1338,8 @@ export default function GraphViewer({
     return { left, top };
   };
 
-  const nodeCount = focusTag ? nodesRef.current.length : tags.length;
+  // Both modes now render server-built graphs, so nodesRef is authoritative
+  const nodeCount = nodesRef.current.length;
 
   const isStashTab = graphTab === 'stashes';
 
@@ -1525,8 +1598,29 @@ export default function GraphViewer({
           ref={canvasRef}
           className="graph-canvas"
           style={{ cursor: 'grab', touchAction: 'none' }}
+          role="img"
+          aria-label={`Tag graph: ${pluralize(nodeCount, 'tag')}, ${pluralize(edgeCount, 'connection')}`}
         />
-        {tags.length === 0 && !focusTag && (
+
+        {loading && (
+          <div className="graph-empty">
+            <p>Loading tag graph...</p>
+          </div>
+        )}
+
+        {!loading && loadError && (
+          <div className="graph-empty" role="alert">
+            <p>Failed to load the tag graph. Check your connection and try again.</p>
+            <button
+              className="btn btn-secondary btn-sm"
+              onClick={() => setReloadNonce((n) => n + 1)}
+            >
+              Retry
+            </button>
+          </div>
+        )}
+
+        {!loading && !loadError && tags.length === 0 && !focusTag && (
           <div className="graph-empty">
             <svg width="36" height="36" viewBox="0 0 16 16" fill="currentColor" opacity="0.3">
               <path d="M1 7.775V2.75C1 1.784 1.784 1 2.75 1h5.025c.464 0 .91.184 1.238.513l6.25 6.25a1.75 1.75 0 0 1 0 2.474l-5.026 5.026a1.75 1.75 0 0 1-2.474 0l-6.25-6.25A1.752 1.752 0 0 1 1 7.775Zm1.5 0c0 .066.026.13.073.177l6.25 6.25a.25.25 0 0 0 .354 0l5.025-5.025a.25.25 0 0 0 0-.354l-6.25-6.25a.25.25 0 0 0-.177-.073H2.75a.25.25 0 0 0-.25.25ZM6 5a1 1 0 1 1 0 2 1 1 0 0 1 0-2Z" />
