@@ -2,7 +2,7 @@
 
 Ready-to-paste hook snippets that enforce optimizer rules beyond the Tier-1 minimum in `.claude/settings.json`. Copy what fits, paste into `.claude/settings.json` under the matching trigger.
 
-> **Tier-1 hooks** (already in `.claude/settings.json`): GitNexus read-only pre-commit guard (no auto-analyze), CLAUDE.md size guard, SessionStart memory reminder.
+> **Tier-1 hooks** (already in `.claude/settings.json`): GitNexus read-only pre-commit guard (no auto-analyze), context budget guard (CLAUDE.md / MEMORY.md / SCRATCHPAD.md), SessionStart memory reminder.
 > **Tier-2** = recommended, default off -- copy if relevant.
 > **Tier-3** = optional, situational -- copy only if you actively want the behavior.
 
@@ -28,37 +28,7 @@ Each snippet below states its **Trigger** and, where it matters, whether it is a
 
 ## Tier 2 -- Recommended
 
-### MEMORY.md size warning (>16,000 chars)
-
-```json
-{
-  "matcher": "Edit|Write",
-  "hooks": [
-    {
-      "type": "command",
-      "command": "f=\"$CLAUDE_PROJECT_DIR/MEMORY.md\"; if [ -f \"$f\" ] && [ \"$(wc -c < \"$f\")\" -gt 16000 ]; then printf '%s' '{\"hookSpecificOutput\":{\"hookEventName\":\"PostToolUse\",\"additionalContext\":\"MEMORY.md exceeds 16000 chars -- remove obsolete entries per memory_process.md.\"}}'; fi; exit 0"
-    }
-  ]
-}
-```
-
-Trigger: `PostToolUse`
-
-### SCRATCHPAD.md size warning (>8,000 chars)
-
-```json
-{
-  "matcher": "Edit|Write",
-  "hooks": [
-    {
-      "type": "command",
-      "command": "f=\"$CLAUDE_PROJECT_DIR/SCRATCHPAD.md\"; if [ -f \"$f\" ] && [ \"$(wc -c < \"$f\")\" -gt 8000 ]; then printf '%s' '{\"hookSpecificOutput\":{\"hookEventName\":\"PostToolUse\",\"additionalContext\":\"SCRATCHPAD.md exceeds 8000 chars -- clean resolved entries; promote long-lived ones to MEMORY.md.\"}}'; fi; exit 0"
-    }
-  ]
-}
-```
-
-Trigger: `PostToolUse`
+> **MEMORY.md / SCRATCHPAD.md size warnings are no longer here** -- since v1.18.0 they are part of the Tier-1 **context budget guard** in `.claude/settings.json`, which checks all three budgeted files (`CLAUDE.md` 20k, `MEMORY.md` 16k, `SCRATCHPAD.md` 8k) in a single `PostToolUse` hook and points at `agent_docs/context_budget.md`. Nothing to paste; adjust the thresholds there if this project needs different ones.
 
 ### Stop -- scratchpad cleanup reminder
 
