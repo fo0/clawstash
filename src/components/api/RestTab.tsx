@@ -98,6 +98,9 @@ export default function RestTab({ baseUrl, openApiJson, specLoadFailed }: Props)
           <a
             href="/api/openapi"
             className="btn btn-primary"
+            // Same-origin, so the download attribute is honored — without it
+            // the JSON just renders inline in the new tab instead of saving.
+            download="clawstash-openapi.json"
             target="_blank"
             rel="noopener noreferrer"
           >
@@ -150,7 +153,7 @@ export default function RestTab({ baseUrl, openApiJson, specLoadFailed }: Props)
     "files": [
       {
         "filename": "hello.py",
-        "content": "print('Hello World')"
+        "content": "print(\\"Hello World\\")"
       }
     ]
   }'`}

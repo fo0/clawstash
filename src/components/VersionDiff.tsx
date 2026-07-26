@@ -7,6 +7,13 @@ interface Props {
   v2: StashVersion;
 }
 
+/** Compact "key: value" listing of a version's metadata for the meta-diff row. */
+function formatMetadataSummary(metadata: Record<string, unknown> | undefined): string {
+  return Object.entries(metadata ?? {})
+    .map(([key, value]) => `${key}: ${typeof value === 'string' ? value : JSON.stringify(value)}`)
+    .join(', ');
+}
+
 function MetaDiff({ label, oldVal, newVal }: { label: string; oldVal: string; newVal: string }) {
   if (oldVal === newVal) return null;
   return (
@@ -50,7 +57,8 @@ export default function VersionDiff({ v1, v2 }: Props) {
       {/* Metadata changes */}
       {(v1.name !== v2.name ||
         v1.description !== v2.description ||
-        JSON.stringify(v1.tags) !== JSON.stringify(v2.tags)) && (
+        JSON.stringify(v1.tags) !== JSON.stringify(v2.tags) ||
+        JSON.stringify(v1.metadata ?? {}) !== JSON.stringify(v2.metadata ?? {})) && (
         <div className="diff-meta-section">
           <div className="diff-file-header">
             <span className="diff-file-status diff-status-modified">M</span>
@@ -60,6 +68,11 @@ export default function VersionDiff({ v1, v2 }: Props) {
             <MetaDiff label="Name" oldVal={v1.name} newVal={v2.name} />
             <MetaDiff label="Description" oldVal={v1.description} newVal={v2.description} />
             <MetaDiff label="Tags" oldVal={v1.tags.join(', ')} newVal={v2.tags.join(', ')} />
+            <MetaDiff
+              label="Metadata"
+              oldVal={formatMetadataSummary(v1.metadata)}
+              newVal={formatMetadataSummary(v2.metadata)}
+            />
           </div>
         </div>
       )}

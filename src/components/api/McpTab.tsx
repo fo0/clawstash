@@ -8,7 +8,8 @@ import Spinner from '../shared/Spinner';
 interface Props {
   baseUrl: string;
   mcpSpec: string;
-  mcpTools: Array<{ name: string; description: string }>;
+  /** null while the tool list is still loading; [] is a legitimately empty list. */
+  mcpTools: Array<{ name: string; description: string }> | null;
   /** True when the MCP spec fetch failed — show an error instead of an endless spinner. */
   mcpSpecFailed?: boolean;
   /** True when the tool-summary fetch failed — show an error instead of an endless spinner. */
@@ -154,9 +155,21 @@ export default function McpTab({
           <span className="api-section-icon purple">
             <ServerIcon />
           </span>
-          <h2>Available Tools ({mcpTools.length})</h2>
+          {/* Show the count only once the list actually loaded — "(0)" while
+              loading would misreport a server with tools as having none. */}
+          <h2>Available Tools{mcpTools !== null ? ` (${mcpTools.length})` : ''}</h2>
         </div>
-        {mcpTools.length > 0 ? (
+        {mcpTools === null ? (
+          mcpToolsFailed ? (
+            <div className="api-loading" role="alert">
+              Failed to load the tool list — use Retry above.
+            </div>
+          ) : (
+            <div className="api-loading">
+              <Spinner /> Loading tools...
+            </div>
+          )
+        ) : mcpTools.length > 0 ? (
           <div className="api-mcp-tool-list">
             {mcpTools.map((tool) => (
               <div key={tool.name} className="api-mcp-tool">
@@ -165,14 +178,8 @@ export default function McpTab({
               </div>
             ))}
           </div>
-        ) : mcpToolsFailed ? (
-          <div className="api-loading" role="alert">
-            Failed to load the tool list — use Retry above.
-          </div>
         ) : (
-          <div className="api-loading">
-            <Spinner /> Loading tools...
-          </div>
+          <p className="api-hint">The MCP server currently exposes no tools.</p>
         )}
       </section>
 

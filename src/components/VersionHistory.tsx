@@ -187,9 +187,30 @@ export default function VersionHistory({ stashId, currentVersion, onRestore }: P
     );
   }
 
+  // Shared error alert — rendered in both the list view and the version-detail
+  // view (whose Restore button can fail too; previously the failure was
+  // silent there because the alert only existed in the list return).
+  const errorAlert = error ? (
+    <div
+      className="version-error"
+      role="alert"
+      style={{
+        color: 'var(--text-danger, #f85149)',
+        padding: '8px 12px',
+        marginBottom: 8,
+        background: 'rgba(248, 81, 73, 0.1)',
+        borderRadius: 6,
+        fontSize: 13,
+      }}
+    >
+      {error}
+    </div>
+  ) : null;
+
   if (subView === 'detail' && selectedVersion) {
     return (
       <div className="version-detail">
+        {errorAlert}
         <div className="version-detail-header">
           <button className="btn btn-ghost btn-sm" onClick={handleBack}>
             <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
@@ -308,22 +329,7 @@ export default function VersionHistory({ stashId, currentVersion, onRestore }: P
 
   return (
     <div className="version-history">
-      {error && (
-        <div
-          className="version-error"
-          role="alert"
-          style={{
-            color: 'var(--text-danger, #f85149)',
-            padding: '8px 12px',
-            marginBottom: 8,
-            background: 'rgba(248, 81, 73, 0.1)',
-            borderRadius: 6,
-            fontSize: 13,
-          }}
-        >
-          {error}
-        </div>
-      )}
+      {errorAlert}
       {/* Compare action bar */}
       {hasMultipleVersions && (
         <div className="version-compare-bar">

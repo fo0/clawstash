@@ -13,6 +13,11 @@ interface Props {
   onToggleFavorite: (id: string) => void;
 }
 
+// The server allows up to 100 files / 50 tags per stash — rendering them all
+// blows a card past 1000px. Cap the lists and summarize the overflow.
+const MAX_VISIBLE_FILES = 4;
+const MAX_VISIBLE_TAGS = 6;
+
 function getUniqueLanguages(stash: StashListItem): string[] {
   const langs = new Set<string>();
   for (const f of stash.files) {
@@ -106,7 +111,7 @@ export default function StashCard({
       )}
 
       <div className="stash-card-files">
-        {stash.files.map((file) => (
+        {stash.files.slice(0, MAX_VISIBLE_FILES).map((file) => (
           // Filenames are validated to be unique per stash by the server
           // (see validation.ts FileSchema / DB unique constraint), so they
           // are a stable React key. Using the array index instead would
@@ -124,6 +129,17 @@ export default function StashCard({
             <span>{file.filename}</span>
           </div>
         ))}
+        {fileCount > MAX_VISIBLE_FILES && (
+          <div
+            className="stash-card-file stash-card-file-more"
+            title={stash.files
+              .slice(MAX_VISIBLE_FILES)
+              .map((f) => f.filename)
+              .join(', ')}
+          >
+            +{fileCount - MAX_VISIBLE_FILES} more file{fileCount - MAX_VISIBLE_FILES !== 1 && 's'}
+          </div>
+        )}
       </div>
 
       <div className="stash-card-footer">
@@ -133,7 +149,7 @@ export default function StashCard({
               {lang}
             </span>
           ))}
-          {stash.tags.map((tag) => (
+          {stash.tags.slice(0, MAX_VISIBLE_TAGS).map((tag) => (
             <span
               key={tag}
               className="stash-tag"
@@ -156,6 +172,12 @@ export default function StashCard({
               {tag}
             </span>
           ))}
+          {stash.tags.length > MAX_VISIBLE_TAGS && (
+            // Same "+N" overflow pattern as the quick-search result tags.
+            <span className="stash-tag-more" title={stash.tags.slice(MAX_VISIBLE_TAGS).join(', ')}>
+              +{stash.tags.length - MAX_VISIBLE_TAGS}
+            </span>
+          )}
         </div>
         <div className="stash-card-meta">
           <span

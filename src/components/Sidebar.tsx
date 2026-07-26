@@ -466,7 +466,9 @@ export default function Sidebar({
           </button>
 
           {stashes.length > 0 && (
-            <div className="sidebar-list-count" aria-live="polite">
+            // No aria-live here — it would announce on every search keystroke;
+            // screen readers get the results from the list itself.
+            <div className="sidebar-list-count">
               {/* Use the server's total — the returned list is capped, so
                   counting rendered rows would disagree with the dashboard. */}
               {total} stash{total !== 1 ? 'es' : ''}
@@ -546,7 +548,9 @@ export default function Sidebar({
                 }}
                 role="button"
                 tabIndex={0}
-                aria-pressed={settingsSection === section.id}
+                // aria-current, not aria-pressed: these are nav items marking
+                // the selected section, not toggle buttons.
+                aria-current={settingsSection === section.id ? 'page' : undefined}
               >
                 <span className="sidebar-settings-nav-icon">{section.icon}</span>
                 {section.label}

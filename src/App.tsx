@@ -122,6 +122,9 @@ export default function App() {
   const [tags, setTags] = useState<TagInfo[]>([]);
   const [recentTags, setRecentTags] = useState<string[]>(getStoredRecentTags);
   const [loading, setLoading] = useState(true);
+  // True after a failed stash list load — lets the dashboard replace the
+  // misleading "No stashes yet" empty state with an error state + retry.
+  const [loadError, setLoadError] = useState(false);
   const [settingsSection, setSettingsSection] = useState<SettingsSection>('welcome');
   const [adminToken, setAdminToken] = useState<string>(getStoredAdminToken);
   const [adminSession, setAdminSession] = useState<AdminSessionInfo | null>(null);
@@ -140,20 +143,8 @@ export default function App() {
   const [successToast, setSuccessToast] = useState<string | null>(null);
   const successToastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Global Alt+K shortcut for quick search
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.altKey && e.key.toLowerCase() === 'k') {
-        e.preventDefault();
-        setSearchOpen((prev) => !prev);
-      }
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, []);
-
   // Mirror modal-open state into a ref so the dependency-free global hotkey
-  // handler below can see it. While an overlay is open, navigation hotkeys
+  // handlers below can see it. While an overlay is open, navigation hotkeys
   // must not fire behind it — most importantly Escape, which the overlays
   // consume via their own listeners but which would otherwise ALSO trigger
   // the "back to dashboard" branch and silently drop the current view.
@@ -161,6 +152,31 @@ export default function App() {
   useEffect(() => {
     modalOpenRef.current = { search: searchOpen, help: shortcutsHelpOpen };
   }, [searchOpen, shortcutsHelpOpen]);
+
+  // Mirror auth state for the dependency-free hotkey handlers. Without this
+  // guard, hotkeys fire on the login screen — 'n' mutates view state + URL,
+  // 'a' toggles + persists showArchived, ?/Alt+K open modals — all pre-auth.
+  const isAuthedRef = useRef(false);
+  useEffect(() => {
+    isAuthedRef.current =
+      adminSession !== null && (adminSession.authenticated || !adminSession.authRequired);
+  }, [adminSession]);
+
+  // Global Alt+K shortcut for quick search
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.altKey && e.key.toLowerCase() === 'k') {
+        if (!isAuthedRef.current) return;
+        e.preventDefault();
+        // No-op while the shortcuts help dialog is open — toggling search on
+        // top would stack both modals (double-Escape needed to get out).
+        if (modalOpenRef.current.help) return;
+        setSearchOpen((prev) => !prev);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
 
   // Set by StashEditor via onDirtyChange. In-app navigation (sidebar clicks,
   // hotkeys, quick-search selection) checks this before leaving the editor —
@@ -197,6 +213,10 @@ export default function App() {
         tag === 'input' || tag === 'textarea' || (e.target as HTMLElement)?.isContentEditable;
       if (isEditing || e.metaKey || e.ctrlKey || e.altKey) return;
 
+      // Hotkeys are inert on the login screen — pre-auth they would still
+      // mutate view state, the URL, and persisted preferences.
+      if (!isAuthedRef.current) return;
+
       // A modal overlay is open: swallow all navigation hotkeys. The overlays
       // close themselves on Escape; '?' still toggles the shortcuts help off.
       const modal = modalOpenRef.current;
@@ -207,6 +227,12 @@ export default function App() {
         }
         return;
       }
+
+      // A fullscreen dialog App doesn't track is open (Mermaid fullscreen
+      // viewer, graph popups — all render role="dialog"): swallow navigation
+      // hotkeys so they don't act underneath it. Escape stays untouched —
+      // those dialogs consume it themselves (overlay contract).
+      if (e.key !== 'Escape' && document.querySelector('[role="dialog"]')) return;
 
       if (e.key === '?') {
         e.preventDefault();
@@ -270,7 +296,15 @@ export default function App() {
             setSidebarOpen(false);
             return 'home';
           }
-          if (currentView === 'view' || currentView === 'graph') {
+          if (currentView === 'new') {
+            // Shortcuts help documents "Esc — back to dashboard"; a dirty
+            // new-stash form still asks before discarding (mirrors 'n').
+            if (!confirmDiscardUnsaved()) return currentView;
+            pushUrl('/');
+            setSidebarOpen(false);
+            return 'home';
+          }
+          if (currentView === 'view' || currentView === 'graph' || currentView === 'settings') {
             setSelectedStash(null);
             setAnalyzeStashId(null);
             pushUrl('/');
@@ -315,7 +349,10 @@ export default function App() {
         .catch((err) => {
           if (cancelled) return;
           console.error('Failed to load stash from URL:', err);
+          showError('Failed to load stash.');
           setView('home');
+          // Replace the stale deep-link URL so it matches the home view.
+          window.history.replaceState(null, '', '/');
         });
     } else {
       setView(route.view);
@@ -347,6 +384,9 @@ export default function App() {
           .catch((err) => {
             if (gen !== popstateGenRef.current) return;
             console.error('Failed to load stash from popstate:', err);
+            showError('Failed to load stash.');
+            setView('home');
+            window.history.replaceState(null, '', '/');
           });
       } else if (route.view === 'edit' && route.stashId) {
         // Back-navigation into /stash/:id/edit must rehydrate the editor,
@@ -361,7 +401,9 @@ export default function App() {
           .catch((err) => {
             if (gen !== popstateGenRef.current) return;
             console.error('Failed to load stash from popstate:', err);
+            showError('Failed to load stash.');
             setView('home');
+            window.history.replaceState(null, '', '/');
           });
       } else {
         setView(route.view);
@@ -380,7 +422,10 @@ export default function App() {
   // .sidebar-overlay backdrop continues to intercept clicks on desktop.
   useEffect(() => {
     if (typeof window === 'undefined' || !window.matchMedia) return;
-    const mq = window.matchMedia('(min-width: 640px)');
+    // 640.02px keeps this disjoint from the CSS mobile breakpoint
+    // (max-width: 640px) — a plain 640px would ALSO match at exactly 640px,
+    // auto-closing the drawer while CSS still shows the mobile layout.
+    const mq = window.matchMedia('(min-width: 640.02px)');
     const onChange = (e: MediaQueryListEvent) => {
       if (e.matches) setSidebarOpen(false);
     };
@@ -448,8 +493,14 @@ export default function App() {
     };
   }, []);
 
-  /** Show a transient error toast that auto-dismisses after 4 s. */
+  /**
+   * Show a transient error toast that auto-dismisses after 4 s.
+   * Toasts are mutually exclusive — both render at the same fixed position,
+   * so a lingering success toast would overlap the error exactly.
+   */
   const showError = useCallback((message: string) => {
+    setSuccessToast(null);
+    if (successToastTimerRef.current) clearTimeout(successToastTimerRef.current);
     setErrorToast(message);
     if (errorToastTimerRef.current) clearTimeout(errorToastTimerRef.current);
     errorToastTimerRef.current = setTimeout(() => setErrorToast(null), 4000);
@@ -457,6 +508,8 @@ export default function App() {
 
   /** Show a transient success toast that auto-dismisses after 3 s. */
   const showSuccess = useCallback((message: string) => {
+    setErrorToast(null);
+    if (errorToastTimerRef.current) clearTimeout(errorToastTimerRef.current);
     setSuccessToast(message);
     if (successToastTimerRef.current) clearTimeout(successToastTimerRef.current);
     successToastTimerRef.current = setTimeout(() => setSuccessToast(null), 3000);
@@ -481,28 +534,42 @@ export default function App() {
       if (gen !== loadStashesGenRef.current) return;
       setStashes(result.stashes);
       setTotal(result.total);
+      setLoadError(false);
     } catch (err) {
       if (gen !== loadStashesGenRef.current) return;
       console.error('Failed to load stashes:', err);
       // Surface the failure — otherwise the dashboard silently shows the
       // previous list (or the misleading "No stashes yet" empty state).
+      setLoadError(true);
       showError('Failed to load stashes. Check your connection and try again.');
     } finally {
       if (gen === loadStashesGenRef.current) setLoading(false);
     }
   }, [search, filterTag, showArchived, showError]);
 
+  // Search term used by the previous load — lets the effect below debounce
+  // ONLY typed-search changes, not every reload trigger.
+  const prevSearchRef = useRef(search);
+
   useEffect(() => {
     // Only load stashes when authenticated or in open mode.
-    // Debounce the call so each keystroke in the sidebar search field does
-    // not fire a fresh request — without this, typing "react" issues five
-    // overlapping fetches and the slowest one wins the race (last-wins).
     if (!adminSession || (!adminSession.authenticated && adminSession.authRequired)) return;
+    const searchChanged = prevSearchRef.current !== search;
+    prevSearchRef.current = search;
+    if (!searchChanged) {
+      // Tag-filter clicks, the archive toggle, and post-save refreshes load
+      // immediately — debouncing them only adds lag and a grid flash.
+      loadStashes();
+      return;
+    }
+    // Debounce typed search so each keystroke in the sidebar search field
+    // does not fire a fresh request — without this, typing "react" issues
+    // five overlapping fetches and the slowest one wins the race (last-wins).
     const timer = setTimeout(() => {
       loadStashes();
     }, SEARCH_DEBOUNCE_MS);
     return () => clearTimeout(timer);
-  }, [loadStashes, adminSession]);
+  }, [loadStashes, adminSession, search]);
 
   // Load tags once on auth, then refresh via loadTags() in save/delete handlers
   useEffect(() => {
@@ -531,10 +598,17 @@ export default function App() {
     });
   }, [tags]);
 
+  // Generation guard for user-driven stash selection: clicking stash A (slow
+  // fetch) then stash B (fast) must not let A's late resolution overwrite B's
+  // selection. Same pattern as `popstateGenRef`.
+  const selectGenRef = useRef(0);
+
   const handleSelectStash = async (id: string) => {
     if (!confirmDiscardUnsaved()) return;
+    const gen = ++selectGenRef.current;
     try {
       const stash = await api.getStash(id);
+      if (gen !== selectGenRef.current) return;
       setSelectedStash(stash);
       setView('view');
       pushUrl(`/stash/${id}`);
@@ -547,6 +621,8 @@ export default function App() {
         title: stash.name || stash.files[0]?.filename || 'Untitled',
       });
     } catch (err) {
+      // Stale rejection: a newer selection is already in flight / resolved.
+      if (gen !== selectGenRef.current) return;
       console.error('Failed to load stash:', err);
       showError('Failed to load stash. Please try again.');
     }
@@ -635,9 +711,13 @@ export default function App() {
       showSuccess(isNew ? 'Stash created.' : 'Stash saved.');
     } catch (err) {
       console.error('Failed to reload stash after save:', err);
+      // The save itself succeeded — only the follow-up reload failed. Say so
+      // instead of silently bouncing home, and still refresh the tag list.
+      showError('Stash saved, but reloading it failed.');
       setView('home');
       pushUrl('/');
       loadStashes();
+      loadTags();
     }
   };
 
@@ -817,6 +897,8 @@ export default function App() {
               layout={layout}
               sortMode={sortMode}
               loading={loading}
+              loadError={loadError}
+              onRetryLoad={loadStashes}
               search={search}
               onClearSearch={() => setSearch('')}
               filterTag={filterTag}

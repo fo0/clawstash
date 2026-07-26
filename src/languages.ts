@@ -198,8 +198,14 @@ export function detectLanguageFromFilename(filename: string): string {
  */
 export function resolvePrismLanguage(language: string, filename?: string): string {
   if (language) {
-    const mapped = languageNameToPrism[language.toLowerCase()];
+    const lower = language.toLowerCase();
+    const mapped = languageNameToPrism[lower];
     if (mapped) return mapped;
+    // The editor's language field is free text — users often type
+    // extension-style shorthands ("js", "py", "yml", "md"), so fall back to
+    // the extension map before ignoring the explicit language entirely.
+    const fromExtension = extensionToLanguage[lower];
+    if (fromExtension) return fromExtension;
   }
   if (filename) {
     return detectLanguageFromFilename(filename);

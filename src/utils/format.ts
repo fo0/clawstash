@@ -14,16 +14,27 @@ export function formatBytes(bytes: number): string {
     unit++;
   }
   // Bytes are always whole; higher units get one decimal unless already whole.
-  const rounded = unit === 0 ? Math.round(value) : Math.round(value * 10) / 10;
+  let rounded = unit === 0 ? Math.round(value) : Math.round(value * 10) / 10;
+  // Rounding can push the value back to 1024 (e.g. 1,048,530 bytes →
+  // 1023.96 KB → "1024 KB"); promote to the next unit so it reads "1 MB".
+  if (rounded >= 1024 && unit < units.length - 1) {
+    value /= 1024;
+    unit++;
+    rounded = Math.round(value * 10) / 10;
+  }
   const text = Number.isInteger(rounded) ? String(rounded) : rounded.toFixed(1);
   return `${text} ${units[unit]}`;
 }
 
 /**
- * Format a date string as "MM/DD/YYYY, HH:MM" (used in token lists, etc.)
+ * Format a date string as a numeric date + time in the browser locale
+ * (used in token lists, etc.). Falls back to the raw string for
+ * unparseable input instead of rendering "Invalid Date".
  */
 export function formatDateTime(dateStr: string): string {
-  return new Date(dateStr).toLocaleString('en-US', {
+  const d = new Date(dateStr);
+  if (Number.isNaN(d.getTime())) return dateStr;
+  return d.toLocaleString(undefined, {
     day: '2-digit',
     month: '2-digit',
     year: 'numeric',
@@ -33,10 +44,13 @@ export function formatDateTime(dateStr: string): string {
 }
 
 /**
- * Format a date string as "M/D/YYYY" (used in sidebar, cards)
+ * Format a date string as a numeric date in the browser locale (used in
+ * sidebar, cards). Falls back to the raw string for unparseable input.
  */
 export function formatDate(dateStr: string): string {
-  return new Date(dateStr).toLocaleDateString('en-US', {
+  const d = new Date(dateStr);
+  if (Number.isNaN(d.getTime())) return dateStr;
+  return d.toLocaleDateString(undefined, {
     day: 'numeric',
     month: 'numeric',
     year: 'numeric',

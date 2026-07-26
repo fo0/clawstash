@@ -12,6 +12,17 @@ interface Props {
 
 export default function ApiManager({ onBack, embedded }: Props) {
   const [activeTab, setActiveTab] = useState<ApiTab>('tokens');
+  // Panels stay mounted once visited (hidden via the `hidden` attribute, the
+  // same deliberate pattern as BackupSection): switching away must not
+  // destroy TokensTab's once-only new-token banner. Lazy-mount on first
+  // activation so hidden tabs don't fetch eagerly — most notably RestTab's
+  // SwaggerViewer, which pulls the Swagger UI bundle from a CDN on mount.
+  const [visitedTabs, setVisitedTabs] = useState<Set<ApiTab>>(() => new Set(['tokens']));
+
+  const selectTab = (id: ApiTab) => {
+    setActiveTab(id);
+    setVisitedTabs((prev) => (prev.has(id) ? prev : new Set(prev).add(id)));
+  };
   const [openApiJson, setOpenApiJson] = useState('');
   const [mcpSpec, setMcpSpec] = useState('');
   const [mcpTools, setMcpTools] = useState<Array<{ name: string; description: string }> | null>(
@@ -159,10 +170,12 @@ export default function ApiManager({ onBack, embedded }: Props) {
           <button
             key={tab.id}
             type="button"
+            id={`api-tab-${tab.id}`}
             role="tab"
             aria-selected={activeTab === tab.id}
+            aria-controls={`api-panel-${tab.id}`}
             className={`api-tab ${activeTab === tab.id ? 'active' : ''}`}
-            onClick={() => setActiveTab(tab.id)}
+            onClick={() => selectTab(tab.id)}
           >
             {tab.label}
           </button>
@@ -182,28 +195,50 @@ export default function ApiManager({ onBack, embedded }: Props) {
 
       {/* Each tab receives the failure flag for the exact spec it renders, so
           an inline "Failed to load …" replaces only the spinner that will
-          never resolve. */}
-      {activeTab === 'tokens' && (
-        <TokensTab
-          baseUrl={baseUrl}
-          openApiJson={openApiJson}
-          mcpSpec={mcpSpec}
-          openApiFailed={openApiFailed}
-          mcpSpecFailed={mcpSpecFailed}
-        />
-      )}
-      {activeTab === 'rest' && (
-        <RestTab baseUrl={baseUrl} openApiJson={openApiJson} specLoadFailed={openApiFailed} />
-      )}
-      {activeTab === 'mcp' && (
-        <McpTab
-          baseUrl={baseUrl}
-          mcpSpec={mcpSpec}
-          mcpTools={mcpTools ?? []}
-          mcpSpecFailed={mcpSpecFailed}
-          mcpToolsFailed={mcpToolsFailed}
-        />
-      )}
+          never resolve. Visited panels are hidden, not unmounted — see the
+          visitedTabs comment above. */}
+      <div
+        role="tabpanel"
+        id="api-panel-tokens"
+        aria-labelledby="api-tab-tokens"
+        hidden={activeTab !== 'tokens'}
+      >
+        {visitedTabs.has('tokens') && (
+          <TokensTab
+            baseUrl={baseUrl}
+            openApiJson={openApiJson}
+            mcpSpec={mcpSpec}
+            openApiFailed={openApiFailed}
+            mcpSpecFailed={mcpSpecFailed}
+          />
+        )}
+      </div>
+      <div
+        role="tabpanel"
+        id="api-panel-rest"
+        aria-labelledby="api-tab-rest"
+        hidden={activeTab !== 'rest'}
+      >
+        {visitedTabs.has('rest') && (
+          <RestTab baseUrl={baseUrl} openApiJson={openApiJson} specLoadFailed={openApiFailed} />
+        )}
+      </div>
+      <div
+        role="tabpanel"
+        id="api-panel-mcp"
+        aria-labelledby="api-tab-mcp"
+        hidden={activeTab !== 'mcp'}
+      >
+        {visitedTabs.has('mcp') && (
+          <McpTab
+            baseUrl={baseUrl}
+            mcpSpec={mcpSpec}
+            mcpTools={mcpTools}
+            mcpSpecFailed={mcpSpecFailed}
+            mcpToolsFailed={mcpToolsFailed}
+          />
+        )}
+      </div>
     </div>
   );
 }

@@ -1292,6 +1292,20 @@ body {
   background: rgba(88, 166, 255, 0.2);
 }
 
+/* Non-interactive "+N" overflow chip — caps card height for many-tag stashes
+   (same pattern as .search-overlay-tag-more in the quick-search results). */
+.stash-tag-more {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 10px;
+  border-radius: 12px;
+  font-size: 11px;
+  line-height: 1.4;
+  background: var(--bg-tertiary);
+  color: var(--text-muted);
+  border: 1px solid var(--border-color);
+}
+
 /* === Dashboard === */
 .dashboard {
   max-width: 100%;
@@ -1629,6 +1643,11 @@ body {
   gap: 6px;
   font-size: 12px;
   color: var(--text-secondary);
+}
+
+/* "+N more files" overflow row — caps card height for many-file stashes. */
+.stash-card-file-more {
+  color: var(--text-muted);
 }
 
 .file-icon {
@@ -6668,7 +6687,7 @@ body {
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
   z-index: 2000;
   cursor: pointer;
-  max-width: 360px;
+  max-width: min(360px, calc(100vw - 48px));
 }
 
 /* === Global Error Toast === */
@@ -6689,7 +6708,7 @@ body {
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
   z-index: 2000;
   cursor: pointer;
-  max-width: 360px;
+  max-width: min(360px, calc(100vw - 48px));
 }
 
 /* === GitHub Backup (refs #108) === */

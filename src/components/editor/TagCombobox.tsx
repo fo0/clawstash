@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from 'react';
+import { useState, useRef, useCallback, forwardRef, useImperativeHandle } from 'react';
 import { useClickOutside } from '../../hooks/useClickOutside';
 import type { TagInfo } from '../../types';
 
@@ -9,35 +9,81 @@ interface Props {
   inputLabelledBy?: string;
 }
 
-export default function TagCombobox({ tags, onChange, availableTags, inputLabelledBy }: Props) {
+export interface TagComboboxHandle {
+  /**
+   * Commit any half-typed tag text (same logic as the blur handler) and
+   * return the tags that were actually added. The accompanying onChange
+   * state update is batched by React, so a caller inside the same event
+   * (e.g. StashEditor's Ctrl+S save) will NOT see it in its own `tags`
+   * closure — it must append the returned tags to the payload itself.
+   */
+  commitPending: () => string[];
+}
+
+const TagCombobox = forwardRef<TagComboboxHandle, Props>(function TagCombobox(
+  { tags, onChange, availableTags, inputLabelledBy },
+  ref,
+) {
   const [input, setInput] = useState('');
   const [showDropdown, setShowDropdown] = useState(false);
   const [activeIndex, setActiveIndex] = useState(-1);
+  // Inline notice shown when the user tries to add an already-present tag.
+  // Mirrors MetadataEditor's dupWarning — a duplicate add used to be a
+  // silent no-op that still cleared the input.
+  const [dupWarning, setDupWarning] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const wrapperRef = useRef<HTMLDivElement>(null);
 
+  // Tags are stored lowercase on commit, but availableTags from the API can
+  // be mixed-case — compare case-insensitively everywhere.
   const filtered = availableTags
-    .filter((t) => !tags.includes(t.tag))
+    .filter((t) => !tags.some((existing) => existing.toLowerCase() === t.tag.toLowerCase()))
     .filter((t) => !input || t.tag.toLowerCase().includes(input.toLowerCase()));
 
   // Build the full option list: filtered suggestions + optional "Create" entry
   const showCreate =
-    !!input.trim() && !availableTags.some((t) => t.tag === input.trim().toLowerCase());
+    !!input.trim() &&
+    !availableTags.some((t) => t.tag.toLowerCase() === input.trim().toLowerCase());
   const visibleOptions = filtered.slice(0, 10);
   const totalOptions = visibleOptions.length + (showCreate ? 1 : 0);
 
   // Commit without touching focus — used by the blur handler, where pulling
   // focus back into the input would steal it from the element the user just
-  // clicked (e.g. the Save button).
-  const commitTag = (tag: string) => {
-    const trimmed = tag.trim().toLowerCase();
-    if (trimmed && !tags.includes(trimmed)) {
-      onChange([...tags, trimmed]);
+  // clicked (e.g. the Save button). Pasted values may contain comma-separated
+  // lists ("a, b, c") — split and commit each part with the same lowercase +
+  // dedupe rules as typed input. Returns the tags actually added.
+  const commitTag = (tag: string): string[] => {
+    const parts = tag
+      .split(',')
+      .map((p) => p.trim().toLowerCase())
+      .filter(Boolean);
+    const added: string[] = [];
+    const dups: string[] = [];
+    for (const part of parts) {
+      if (added.includes(part)) continue; // repeated within the same input
+      if (tags.includes(part)) {
+        dups.push(part);
+      } else {
+        added.push(part);
+      }
     }
+    if (added.length > 0) {
+      onChange([...tags, ...added]);
+    }
+    setDupWarning(
+      dups.length > 0
+        ? `Tag${dups.length !== 1 ? 's' : ''} ${dups.map((d) => `"${d}"`).join(', ')} already added.`
+        : null,
+    );
     setInput('');
     setShowDropdown(false);
     setActiveIndex(-1);
+    return added;
   };
+
+  useImperativeHandle(ref, () => ({
+    commitPending: () => (input.trim() ? commitTag(input) : []),
+  }));
 
   const addTag = (tag: string) => {
     commitTag(tag);
@@ -73,6 +119,9 @@ export default function TagCombobox({ tags, onChange, availableTags, inputLabell
     } else if (e.key === 'Backspace' && !input && tags.length > 0) {
       removeTag(tags[tags.length - 1]!);
     } else if (e.key === 'Escape') {
+      // Escape means "cancel" — also drop the typed text, otherwise the blur
+      // handler would still commit it as a tag afterwards.
+      setInput('');
       setShowDropdown(false);
       setActiveIndex(-1);
     }
@@ -82,7 +131,9 @@ export default function TagCombobox({ tags, onChange, availableTags, inputLabell
     setShowDropdown(false);
     setActiveIndex(-1);
   }, []);
-  useClickOutside(wrapperRef, closeDropdown);
+  // Only listen while the dropdown is open, so the hook's document-level
+  // Escape handler doesn't swallow Escape presses meant for other UI.
+  useClickOutside(wrapperRef, closeDropdown, showDropdown);
 
   const activeOptionId =
     showDropdown && activeIndex >= 0 ? `tag-combobox-option-${activeIndex}` : undefined;
@@ -100,6 +151,7 @@ export default function TagCombobox({ tags, onChange, availableTags, inputLabell
             setInput(e.target.value);
             setShowDropdown(true);
             setActiveIndex(-1);
+            if (dupWarning) setDupWarning(null);
           }}
           onFocus={() => setShowDropdown(true)}
           onBlur={() => {
@@ -125,6 +177,7 @@ export default function TagCombobox({ tags, onChange, availableTags, inputLabell
           aria-controls="tag-combobox-listbox"
           aria-labelledby={inputLabelledBy}
           aria-activedescendant={activeOptionId}
+          aria-invalid={dupWarning ? true : undefined}
         />
       </div>
       {dropdownVisible && (
@@ -178,6 +231,18 @@ export default function TagCombobox({ tags, onChange, availableTags, inputLabell
           ))}
         </div>
       )}
+      {dupWarning && (
+        <div
+          className="tag-combobox-dup-warning"
+          role="status"
+          aria-live="polite"
+          style={{ color: 'var(--accent-orange)', fontSize: 12, marginTop: 4 }}
+        >
+          {dupWarning}
+        </div>
+      )}
     </div>
   );
-}
+});
+
+export default TagCombobox;

@@ -26,6 +26,10 @@ export default function FileCodeEditor({ file, index, updateFile }: Props) {
     (code: string) => updateFile(index, 'content', code),
     [index, updateFile],
   );
+  // react-simple-code-editor forwards extra props to its outer div, NOT the
+  // textarea — an aria-label prop would never reach it. textareaId + a
+  // visually hidden label give the textarea an accessible name instead.
+  const textareaId = `stash-file-content-${index}`;
 
   // Large files skip highlighting entirely — re-highlighting the whole string
   // on every keystroke lags on multi-MB files. A plain textarea keeps editing
@@ -44,14 +48,20 @@ export default function FileCodeEditor({ file, index, updateFile }: Props) {
   }
 
   return (
-    <Editor
-      value={file.content}
-      onValueChange={handleChange}
-      highlight={highlight}
-      padding={16}
-      placeholder="File content..."
-      className="code-editor"
-      textareaClassName="code-editor-textarea"
-    />
+    <>
+      <label htmlFor={textareaId} className="sr-only">
+        File {index + 1} content
+      </label>
+      <Editor
+        value={file.content}
+        onValueChange={handleChange}
+        highlight={highlight}
+        padding={16}
+        placeholder="File content..."
+        className="code-editor"
+        textareaClassName="code-editor-textarea"
+        textareaId={textareaId}
+      />
+    </>
   );
 }

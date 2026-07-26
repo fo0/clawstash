@@ -102,7 +102,13 @@ export default function BackupTargetCard({ response, onSaved }: Props) {
     // Any change invalidates the previously loaded branch list.
     branchRequestGen.current++;
     setBranches([]);
-    const [owner = '', name = ''] = value.split('/', 2);
+    // Split on the FIRST slash only — split('/', 2) would silently drop
+    // everything after a second slash, saving "owner/repo" while the input
+    // still shows "owner/repo/extra". Extra slashes stay in repoName and are
+    // flagged by the inline hint below instead of being swallowed.
+    const slashIndex = value.indexOf('/');
+    const owner = slashIndex === -1 ? value : value.slice(0, slashIndex);
+    const name = slashIndex === -1 ? '' : value.slice(slashIndex + 1);
     setForm((prev) => ({ ...prev, repoOwner: owner.trim(), repoName: name.trim() }));
     const match = repos.find((r) => r.fullName === value);
     if (match) {
@@ -169,6 +175,12 @@ export default function BackupTargetCard({ response, onSaved }: Props) {
           ))}
         </datalist>
       </div>
+      {repoInput.indexOf('/') !== repoInput.lastIndexOf('/') && (
+        <p className="api-hint" role="status">
+          Use the &ldquo;owner/repository&rdquo; format — repository names cannot contain
+          &ldquo;/&rdquo;.
+        </p>
+      )}
 
       <label className="backup-field-label" htmlFor="backup-branch">
         Branch

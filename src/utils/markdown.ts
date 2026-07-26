@@ -32,15 +32,18 @@ const descriptionParser = new Marked({
   breaks: true,
   gfm: true,
   renderer: {
-    link({ href, title, text }) {
+    link({ href, title, tokens }) {
+      // Parse the label's inline tokens (bold, code, escaped HTML, …) — the
+      // raw `text` field is the unrendered, unescaped source label.
+      const label = this.parser.parseInline(tokens);
       // Strip dangerous schemes at render time as defence-in-depth alongside
       // the post-render sanitiser. Defaults to '#' so the anchor stays valid.
       const safeHref = isUnsafeUrl(href) ? '#' : href;
       const titleAttr = title ? ` title="${escapeHtml(title)}"` : '';
       if (safeHref.startsWith('#')) {
-        return `<a href="${escapeHtml(safeHref)}"${titleAttr}>${text}</a>`;
+        return `<a href="${escapeHtml(safeHref)}"${titleAttr}>${label}</a>`;
       }
-      return `<a href="${escapeHtml(safeHref)}"${titleAttr} target="_blank" rel="noopener noreferrer">${text}</a>`;
+      return `<a href="${escapeHtml(safeHref)}"${titleAttr} target="_blank" rel="noopener noreferrer">${label}</a>`;
     },
   },
 });
