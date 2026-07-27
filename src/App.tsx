@@ -755,6 +755,20 @@ export default function App() {
     pushUrl('/');
   };
 
+  /**
+   * Tag clicked inside the stash viewer: apply the filter and go back to the
+   * dashboard to show the result. Unlike `handleFilterTag` this never toggles
+   * the tag OFF — the viewer shows no active-filter chip, so re-clicking the
+   * already-active tag would look like the click did nothing while silently
+   * clearing the dashboard filter.
+   */
+  const handleViewerFilterTag = (tag: string) => {
+    if (tag !== filterTagRef.current) handleFilterTag(tag);
+    setSelectedStash(null);
+    setView('home');
+    pushUrl('/');
+  };
+
   const handleGraphView = () => {
     if (!confirmDiscardUnsaved()) return;
     setSelectedStash(null);
@@ -921,6 +935,7 @@ export default function App() {
               onArchive={handleArchiveStash}
               onBack={handleGoHome}
               onAnalyzeStash={handleAnalyzeStash}
+              onFilterTag={handleViewerFilterTag}
               onStashUpdated={(stash) => {
                 setSelectedStash(stash);
                 loadStashes();
