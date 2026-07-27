@@ -243,7 +243,9 @@ export function getOpenApiSpec(baseUrl: string): OpenApiSpec {
           properties: {
             current: {
               type: 'object',
-              description: 'Currently running build',
+              nullable: true,
+              description:
+                'Currently running build. Null when auth is enabled and the caller lacks the `read` scope — the build fingerprint is withheld from anonymous callers.',
               properties: {
                 version: {
                   type: 'string',
@@ -807,7 +809,7 @@ export function getOpenApiSpec(baseUrl: string): OpenApiSpec {
           tags: ['System'],
           summary: 'Check current version and available updates',
           description:
-            'Returns the running ClawStash build version (date-based), commit SHA, and build date. Compares against the latest commit on the GitHub main branch to detect available updates. Cached for 1 hour. No authentication required.',
+            'Returns the running ClawStash build version (date-based), commit SHA, and build date. Compares against the latest commit on the GitHub main branch to detect available updates. Cached for 1 hour. Always answers 200 so uptime probes keep working, but when auth is enabled the build details require the `read` scope: unauthorised callers get `current: null` / `latest: null`, and no GitHub update check is performed on their behalf.',
           responses: {
             200: {
               description: 'Version information',

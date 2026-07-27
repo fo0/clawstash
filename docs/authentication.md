@@ -87,3 +87,7 @@ Tokens are stored as SHA-256 hashes in the database — the plain token is only 
 - Use HTTPS in production to protect tokens in transit
 - The `admin` scope implies all other scopes
 - The `write` scope implies `read`
+- `/api/health` and `/api/version` always answer `200` so uptime probes work without
+  credentials, but once auth is enabled they withhold their detail fields from
+  unauthorised callers: `health` omits the stash/file counts, `version` returns
+  `current: null` / `latest: null` and skips the outbound GitHub update check

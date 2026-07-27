@@ -83,6 +83,31 @@ export interface FileInput {
   language: string;
 }
 
+/**
+ * Response of `GET /api/version`.
+ *
+ * `current` and `latest` are null when the caller may not read build details:
+ * with auth enabled the endpoint withholds the build fingerprint (and skips
+ * the GitHub update check) unless the request carries the `read` scope.
+ * Clients must handle the null case — see `Footer`.
+ */
+export interface VersionResponse {
+  current: {
+    version: string;
+    commit_sha: string;
+    build_date: string;
+    branch: string;
+  } | null;
+  latest: {
+    commit_sha: string | null;
+    commit_date: string | null;
+    commit_message: string | null;
+  } | null;
+  update_available: boolean;
+  github_url: string;
+  checked_at: string;
+}
+
 export type ViewMode = 'home' | 'view' | 'edit' | 'new' | 'settings' | 'graph';
 export type LayoutMode = 'grid' | 'list';
 export type SortMode = 'updated' | 'created' | 'name' | 'size';

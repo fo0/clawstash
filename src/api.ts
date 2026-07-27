@@ -24,6 +24,7 @@ import type {
   BackupStatusResponse,
   BackupLogEntry,
   BackupRunResult,
+  VersionResponse,
 } from './types';
 
 const BASE = '/api/stashes';
@@ -339,6 +340,12 @@ export const api = {
     if (params?.stashId) qs.set('stashId', params.stashId);
     if (params?.limit) qs.set('limit', String(params.limit));
     return request(`/api/backup/log${qs.toString() ? `?${qs}` : ''}`, { headers: getHeaders() });
+  },
+
+  // Named `getBuildVersion` to stay distinct from `getVersion(id, version)`,
+  // which fetches a stash's version history entry.
+  getBuildVersion(): Promise<VersionResponse> {
+    return request('/api/version', { headers: getHeaders() });
   },
 
   setStashBackupEnabled(id: string, enabled: boolean): Promise<Stash> {

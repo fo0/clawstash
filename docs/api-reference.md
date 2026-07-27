@@ -107,14 +107,14 @@ Mirror stashes into a GitHub repository — full guide: [backup.md](backup.md).
 
 ### System
 
-| Endpoint              | Method | Description                                                                 |
-| --------------------- | ------ | --------------------------------------------------------------------------- |
-| `/api/health`         | GET    | Health check (no auth required) — returns status, timestamp, database stats |
-| `/api/openapi`        | GET    | OpenAPI 3.0 schema (JSON)                                                   |
-| `/api/mcp-spec`       | GET    | MCP specification (markdown)                                                |
-| `/api/mcp-onboarding` | GET    | MCP onboarding guide for AI agents                                          |
-| `/api/mcp-tools`      | GET    | MCP tool summaries (JSON)                                                   |
-| `/api/version`        | GET    | Current version + latest available                                          |
+| Endpoint              | Method | Description                                                                    |
+| --------------------- | ------ | ------------------------------------------------------------------------------ |
+| `/api/health`         | GET    | Health check (no auth required) — returns status, timestamp, database stats    |
+| `/api/openapi`        | GET    | OpenAPI 3.0 schema (JSON)                                                      |
+| `/api/mcp-spec`       | GET    | MCP specification (markdown)                                                   |
+| `/api/mcp-onboarding` | GET    | MCP onboarding guide for AI agents                                             |
+| `/api/mcp-tools`      | GET    | MCP tool summaries (JSON)                                                      |
+| `/api/version`        | GET    | Current version + latest available (build details need `read` when auth is on) |
 
 ## Examples
 

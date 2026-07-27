@@ -160,6 +160,41 @@ export interface VersionInfo {
   checked_at: string;
 }
 
+/**
+ * `VersionInfo` with the build fingerprint withheld. Structurally identical so
+ * clients can parse one shape and null-check `current`, while `checkVersion()`
+ * keeps its non-nullable `current` contract for the MCP tool and the OpenAPI
+ * schema.
+ */
+export interface PublicVersionInfo extends Omit<VersionInfo, 'current' | 'latest'> {
+  current: null;
+  latest: null;
+}
+
+/**
+ * Reduced payload for callers that are not authorised to read build details.
+ *
+ * Mirrors the `/api/health` posture: the endpoint stays reachable (so the
+ * footer and external probes never see a 401) but the build fingerprint —
+ * branch, commit SHA, build date — is withheld from anonymous callers when
+ * auth is enabled. Returning this shape also means no outbound GitHub commits
+ * request is made on an unauthenticated caller's behalf, which would otherwise
+ * disclose the server's egress IP and burn the shared 60/h unauthenticated
+ * GitHub rate limit.
+ *
+ * `github_url` stays public — it is the project's own repository URL, already
+ * published in the README and the UI.
+ */
+export function getPublicVersionInfo(): PublicVersionInfo {
+  return {
+    current: null,
+    latest: null,
+    update_available: false,
+    github_url: GITHUB_URL,
+    checked_at: new Date().toISOString(),
+  };
+}
+
 export async function checkVersion(): Promise<VersionInfo> {
   const now = Date.now();
 

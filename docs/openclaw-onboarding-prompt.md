@@ -48,7 +48,8 @@ Install ClawStash on my server and set it up as your persistent storage.
    docker compose up -d
    ```
 
-5. **Verify it's running** — fetch `http://<HOST_OR_IP>:<PORT>/api/version`
+5. **Verify it's running** — fetch `http://<HOST_OR_IP>:<PORT>/api/version` (answers `200`
+   either way; with `ADMIN_PASSWORD` set, the build details need a `read`-scoped token)
 
 6. **Create an API token:**
 

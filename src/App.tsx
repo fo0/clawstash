@@ -1021,7 +1021,7 @@ export default function App() {
             />
           )}
         </main>
-        <Footer onShowShortcuts={() => setShortcutsHelpOpen(true)} />
+        <Footer onShowShortcuts={() => setShortcutsHelpOpen(true)} authToken={adminToken} />
       </div>
       <SearchOverlay
         open={searchOpen}

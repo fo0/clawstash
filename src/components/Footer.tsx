@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { formatBuildVersion } from '../utils/format';
+import { api } from '../api';
 
 interface BuildInfo {
   buildDate: string;
@@ -14,23 +15,28 @@ interface FooterProps {
    * shortcuts button is simply omitted in that case.
    */
   onShowShortcuts?: () => void;
+  /**
+   * Current admin token. Not sent from here — the shared `api` client owns the
+   * Authorization header — but kept as a fetch dependency: with auth enabled
+   * `/api/version` withholds build details from unauthorised callers, and on a
+   * fresh login this child effect runs before App's `setAuthToken` effect
+   * (children commit before parents). Re-running on the token keeps the build
+   * info from staying blank until the next reload.
+   */
+  authToken?: string;
 }
 
-export default function Footer({ onShowShortcuts }: FooterProps) {
+export default function Footer({ onShowShortcuts, authToken }: FooterProps) {
   const [showDetails, setShowDetails] = useState(false);
   const [buildInfo, setBuildInfo] = useState<BuildInfo | null>(null);
 
   useEffect(() => {
     let cancelled = false;
-    fetch('/api/version')
-      .then((r) => {
-        // Without an `r.ok` check, a 5xx silently parses an HTML error page
-        // as JSON and the catch swallows the SyntaxError, hiding the failure
-        // entirely. Treat non-2xx as an error so dev sees a console warning.
-        if (!r.ok) throw new Error(`HTTP ${r.status}`);
-        return r.json();
-      })
+    api
+      .getBuildVersion()
       .then((data) => {
+        // `current` is null when the caller lacks the `read` scope — leave the
+        // footer in its default state rather than rendering placeholders.
         if (cancelled || !data.current) return;
         // Validate build_date is a parseable string before storing — an
         // unparseable value would otherwise render as "vNaNNaNNaN-NaNNaN"
@@ -58,7 +64,7 @@ export default function Footer({ onShowShortcuts }: FooterProps) {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [authToken]);
 
   const buildDate = buildInfo ? new Date(buildInfo.buildDate) : null;
   const formattedDate = buildDate?.toLocaleDateString(undefined, {
