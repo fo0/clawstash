@@ -2,6 +2,7 @@ import { useRef, useEffect, useCallback, useState } from 'react';
 import type { StashListItem, TagInfo, TagGraphResult } from '../types';
 import { api } from '../api';
 import { pluralize } from '../utils/format';
+import { watchDevicePixelRatio } from '../utils/dpr';
 import StashGraphCanvas from './StashGraphCanvas';
 
 // --- Physics simulation constants (tag graph) --------------------------------
@@ -806,7 +807,19 @@ export default function GraphViewer({
     resize();
     const observer = new ResizeObserver(resize);
     observer.observe(container);
-    return () => observer.disconnect();
+
+    // devicePixelRatio can change without any layout resize — dragging the
+    // window to a monitor with a different scale factor, or a browser zoom
+    // step. ResizeObserver stays silent for those, leaving the canvas bitmap
+    // scaled for the old DPR and every hit test offset until the next real
+    // resize. A `resolution` media query fires exactly on that transition;
+    // it matches only the current ratio, so re-arm it after each change.
+    const dprCleanup = watchDevicePixelRatio(resize);
+
+    return () => {
+      observer.disconnect();
+      dprCleanup();
+    };
   }, [graphTab]);
 
   // Get connections for a node

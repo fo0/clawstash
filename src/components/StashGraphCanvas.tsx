@@ -2,6 +2,7 @@ import { useRef, useEffect, useCallback, useState } from 'react';
 import type { StashGraphNode, StashGraphEdge, StashGraphResult } from '../types';
 import { api } from '../api';
 import { formatDateTime } from '../utils/format';
+import { watchDevicePixelRatio } from '../utils/dpr';
 
 interface Props {
   onSelectStash: (id: string) => void;
@@ -963,7 +964,17 @@ export default function StashGraphCanvas({
     resize();
     const observer = new ResizeObserver(resize);
     observer.observe(container);
-    return () => observer.disconnect();
+
+    // A devicePixelRatio change (window moved to a monitor with a different
+    // scale factor, browser zoom) does not resize the container, so
+    // ResizeObserver never fires and the bitmap stays scaled for the old
+    // ratio — leaving hit testing offset. Mirrors GraphViewer.
+    const dprCleanup = watchDevicePixelRatio(resize);
+
+    return () => {
+      observer.disconnect();
+      dprCleanup();
+    };
   }, [kickAnimation]);
 
   // Mouse events
