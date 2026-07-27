@@ -7,6 +7,13 @@ interface Props {
   file: FileInput;
   index: number;
   updateFile: (index: number, field: keyof FileInput, value: string) => void;
+  /**
+   * Soft-wrap long lines instead of scrolling horizontally. Mirrors the raw
+   * code view's wrap toggle in `StashViewer`; applied via a class because
+   * react-simple-code-editor sets `white-space` through inline styles that
+   * only a class-scoped `!important` rule can override.
+   */
+  wrap?: boolean;
 }
 
 /**
@@ -17,7 +24,7 @@ interface Props {
  */
 const SYNTAX_HIGHLIGHT_MAX_CHARS = 100_000;
 
-export default function FileCodeEditor({ file, index, updateFile }: Props) {
+export default function FileCodeEditor({ file, index, updateFile, wrap = false }: Props) {
   const highlight = useMemo(
     () => (code: string) => highlightCode(code, resolvePrismLanguage(file.language, file.filename)),
     [file.language, file.filename],
@@ -40,7 +47,9 @@ export default function FileCodeEditor({ file, index, updateFile }: Props) {
         value={file.content}
         onChange={(e) => handleChange(e.target.value)}
         placeholder="File content..."
-        className="code-editor code-editor-textarea code-editor-plain"
+        className={`code-editor code-editor-textarea code-editor-plain${
+          wrap ? ' code-editor-wrap' : ''
+        }`}
         spellCheck={false}
         aria-label="File content (plain editor — syntax highlighting disabled for large file)"
       />
@@ -58,7 +67,7 @@ export default function FileCodeEditor({ file, index, updateFile }: Props) {
         highlight={highlight}
         padding={16}
         placeholder="File content..."
-        className="code-editor"
+        className={`code-editor${wrap ? ' code-editor-wrap' : ''}`}
         textareaClassName="code-editor-textarea"
         textareaId={textareaId}
       />

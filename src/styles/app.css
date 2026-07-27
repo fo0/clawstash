@@ -2579,6 +2579,14 @@ body {
   font-weight: 600;
 }
 
+/* Groups the Wrap + Add File buttons so `.files-header`'s space-between keeps
+   the heading left and both actions together on the right. */
+.files-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
 .editor-file {
   margin-bottom: 16px;
   border: 1px solid var(--border-color);
@@ -2655,6 +2663,18 @@ body {
   white-space: pre !important;
   word-wrap: normal !important;
   overflow-wrap: normal !important;
+}
+
+/* Wrap mode: opt back into soft wrapping. The textarea and the highlighted
+   <pre> are overlaid on top of each other, so BOTH must wrap identically or
+   the caret drifts away from the rendered glyphs. Overrides the `pre` rule
+   above (and the plain-textarea fallback's own `white-space`). */
+.code-editor.code-editor-wrap textarea,
+.code-editor.code-editor-wrap pre,
+textarea.code-editor-plain.code-editor-wrap {
+  white-space: pre-wrap !important;
+  word-wrap: break-word !important;
+  overflow-wrap: break-word !important;
 }
 
 /* PrismJS dark theme tokens (matches ClawStash dark palette) */

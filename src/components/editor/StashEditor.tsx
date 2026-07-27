@@ -20,6 +20,31 @@ interface Props {
   onDirtyChange?: (dirty: boolean) => void;
 }
 
+/**
+ * Soft-wrap preference for the file editors. Kept separate from the viewer's
+ * `clawstash-wrap-lines` key: reading a stash and editing it are different
+ * contexts, and silently flipping one because the other was toggled would be
+ * surprising.
+ */
+const EDITOR_WRAP_PREF_KEY = 'clawstash-editor-wrap-lines';
+
+/** Read the persisted editor wrap preference. Defaults to off (horizontal scroll). */
+function getEditorWrapPreference(): boolean {
+  try {
+    return localStorage.getItem(EDITOR_WRAP_PREF_KEY) === 'true';
+  } catch {
+    return false;
+  }
+}
+
+function setEditorWrapPreference(enabled: boolean): void {
+  try {
+    localStorage.setItem(EDITOR_WRAP_PREF_KEY, String(enabled));
+  } catch {
+    /* Storage disabled / full — the preference stays in memory for this session. */
+  }
+}
+
 function InfoIcon({ tooltip }: { tooltip: string }) {
   return (
     <span className="info-icon" title={tooltip}>
@@ -49,6 +74,9 @@ export default function StashEditor({ stash, onSave, onCancel, onDirtyChange }: 
   // or null. Removing a file destroys its typed content, so it gets the
   // same two-step confirm as every other destructive action in the app.
   const [confirmRemoveIndex, setConfirmRemoveIndex] = useState<number | null>(null);
+  // Soft-wrap long lines in the file editors (persisted, applies to all files
+  // of the stash — same scope as the viewer's wrap toggle).
+  const [wrapLines, setWrapLines] = useState<boolean>(getEditorWrapPreference);
   const [availableTags, setAvailableTags] = useState<TagInfo[]>([]);
   const [availableMetaKeys, setAvailableMetaKeys] = useState<string[]>([]);
   const [firstFileManuallyEdited, setFirstFileManuallyEdited] = useState(!!stash);
@@ -146,6 +174,15 @@ export default function StashEditor({ stash, onSave, onCancel, onDirtyChange }: 
     },
     [firstFileManuallyEdited],
   );
+
+  /** Toggle soft-wrapping in the file editors and persist the choice. */
+  const toggleWrapLines = () => {
+    setWrapLines((prev) => {
+      const next = !prev;
+      setEditorWrapPreference(next);
+      return next;
+    });
+  };
 
   const addFile = () => {
     markDirty();
@@ -457,16 +494,40 @@ export default function StashEditor({ stash, onSave, onCancel, onDirtyChange }: 
               Files
               <InfoIcon tooltip="Each stash can contain one or more files. Files are the actual content you want to store — code snippets, configs, prompts, or any text. The language is auto-detected from the file extension." />
             </h3>
-            <button
-              className="btn btn-sm btn-secondary"
-              onClick={addFile}
-              title="Add another file to this stash"
-            >
-              <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor">
-                <path d="M8 2a.75.75 0 0 1 .75.75v4.5h4.5a.75.75 0 0 1 0 1.5h-4.5v4.5a.75.75 0 0 1-1.5 0v-4.5h-4.5a.75.75 0 0 1 0-1.5h4.5v-4.5A.75.75 0 0 1 8 2Z" />
-              </svg>
-              Add File
-            </button>
+            <div className="files-header-actions">
+              <button
+                className={`btn btn-sm btn-ghost wrap-toggle ${wrapLines ? 'wrap-active' : ''}`}
+                onClick={toggleWrapLines}
+                aria-pressed={wrapLines}
+                title={
+                  wrapLines
+                    ? 'Stop wrapping — scroll long lines horizontally'
+                    : 'Wrap long lines to fit the editor width'
+                }
+                aria-label={wrapLines ? 'Stop wrapping long lines' : 'Wrap long lines'}
+              >
+                <svg
+                  width="12"
+                  height="12"
+                  viewBox="0 0 16 16"
+                  fill="currentColor"
+                  aria-hidden="true"
+                >
+                  <path d="M1.75 3.5a.75.75 0 0 1 0-1.5h12.5a.75.75 0 0 1 0 1.5H1.75Zm0 5a.75.75 0 0 1 0-1.5h9.5a2.75 2.75 0 0 1 0 5.5H8.56l.72.72a.75.75 0 1 1-1.06 1.06l-2-2a.75.75 0 0 1 0-1.06l2-2a.75.75 0 0 1 1.06 1.06l-.72.72h2.69a1.25 1.25 0 0 0 0-2.5h-9.5Zm0 5a.75.75 0 0 1 0-1.5h3.5a.75.75 0 0 1 0 1.5h-3.5Z" />
+                </svg>
+                Wrap
+              </button>
+              <button
+                className="btn btn-sm btn-secondary"
+                onClick={addFile}
+                title="Add another file to this stash"
+              >
+                <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor">
+                  <path d="M8 2a.75.75 0 0 1 .75.75v4.5h4.5a.75.75 0 0 1 0 1.5h-4.5v4.5a.75.75 0 0 1-1.5 0v-4.5h-4.5a.75.75 0 0 1 0-1.5h4.5v-4.5A.75.75 0 0 1 8 2Z" />
+                </svg>
+                Add File
+              </button>
+            </div>
           </div>
 
           {files.map((file, index) => (
@@ -515,7 +576,12 @@ export default function StashEditor({ stash, onSave, onCancel, onDirtyChange }: 
                   ))}
               </div>
               <div className="code-editor-wrapper">
-                <FileCodeEditor file={file} index={index} updateFile={updateFile} />
+                <FileCodeEditor
+                  file={file}
+                  index={index}
+                  updateFile={updateFile}
+                  wrap={wrapLines}
+                />
               </div>
             </div>
           ))}
