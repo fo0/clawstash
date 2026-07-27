@@ -19,6 +19,8 @@ import {
   MAX_TAG_LENGTH,
   MAX_TAGS,
   maxObjectDepth,
+  hasUniqueFilenames,
+  DUPLICATE_FILENAME_MESSAGE,
 } from './validation';
 
 // ---------------------------------------------------------------------------
@@ -116,6 +118,9 @@ Tips:
         .array(FileInputSchema)
         .min(1)
         .max(MAX_FILES)
+        // Mirror of the REST `files` refinement in validation.ts — duplicate
+        // filenames make raw-file lookup ambiguous, so both surfaces reject them.
+        .refine(hasUniqueFilenames, DUPLICATE_FILENAME_MESSAGE)
         .describe('One or more files to store. Each file needs a filename and content.'),
       tags: McpTagsSchema.optional().describe(
         'Tags for categorization and filtering. Use list_tags to see existing tags.',
@@ -220,6 +225,7 @@ Important:
       files: z
         .array(FileInputSchema)
         .max(MAX_FILES)
+        .refine(hasUniqueFilenames, DUPLICATE_FILENAME_MESSAGE)
         .optional()
         .describe(
           'Replacement files — replaces ALL existing files. Omit to keep current files unchanged.',
