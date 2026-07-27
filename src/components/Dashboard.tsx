@@ -20,6 +20,10 @@ interface Props {
    * must show it (filter chip + honest empty state). */
   search: string;
   onClearSearch: () => void;
+  /** True when the server reported more matches than are currently rendered. */
+  hasMore: boolean;
+  /** Widen the list by one more page. */
+  onLoadMore: () => void;
   filterTag: string;
   showArchived: boolean;
   favoriteIds: ReadonlySet<string>;
@@ -42,6 +46,8 @@ export default function Dashboard({
   onRetryLoad,
   search,
   onClearSearch,
+  hasMore,
+  onLoadMore,
   filterTag,
   showArchived,
   favoriteIds,
@@ -74,7 +80,7 @@ export default function Dashboard({
           {stashes.length < total && (
             <span
               className="stash-count"
-              title={`The list is capped — ${stashes.length} of ${total} stashes are shown. Use search or tag filters to narrow down.`}
+              title={`${stashes.length} of ${total} stashes are shown. Use "Load more" at the bottom, or narrow down with search / tag filters.`}
             >
               showing {stashes.length}
             </span>
@@ -257,54 +263,78 @@ export default function Dashboard({
           </button>
         </div>
       ) : (
-        // While `loading` is true but we still have a previous result set we
-        // keep the grid visible and overlay a subtle spinner. This avoids the
-        // "flash to empty" jank every time the user toggles a tag filter or
-        // types in the sidebar search field.
-        <div
-          className={`stash-grid ${layout}${loading ? ' stash-grid-refreshing' : ''}`}
-          aria-busy={loading || undefined}
-        >
-          {/*
+        <>
+          {/* While `loading` is true but we still have a previous result set we
+            keep the grid visible and overlay a subtle spinner. This avoids the
+            "flash to empty" jank every time the user toggles a tag filter or
+            types in the sidebar search field. */}
+          <div
+            className={`stash-grid ${layout}${loading ? ' stash-grid-refreshing' : ''}`}
+            aria-busy={loading || undefined}
+          >
+            {/*
             Keyboard-accessible "new stash" card. Was a bare <div onClick>
             previously, so keyboard-only users (and most assistive tech)
             could not invoke it. role+tabIndex+Enter/Space handler bring it
             in line with the StashCard buttons next to it without changing
             the existing pointer-click behavior.
           */}
-          <div
-            className="new-stash-card"
-            onClick={onNewStash}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' || e.key === ' ') {
-                e.preventDefault();
-                onNewStash();
-              }
-            }}
-            role="button"
-            tabIndex={0}
-            aria-label="Create a new stash"
-            title="Create a new stash"
-          >
-            <div className="new-stash-icon">
-              <svg width="36" height="36" viewBox="0 0 16 16" fill="currentColor">
-                <path d="M8 2a.75.75 0 0 1 .75.75v4.5h4.5a.75.75 0 0 1 0 1.5h-4.5v4.5a.75.75 0 0 1-1.5 0v-4.5h-4.5a.75.75 0 0 1 0-1.5h4.5v-4.5A.75.75 0 0 1 8 2Z" />
-              </svg>
+            <div
+              className="new-stash-card"
+              onClick={onNewStash}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault();
+                  onNewStash();
+                }
+              }}
+              role="button"
+              tabIndex={0}
+              aria-label="Create a new stash"
+              title="Create a new stash"
+            >
+              <div className="new-stash-icon">
+                <svg width="36" height="36" viewBox="0 0 16 16" fill="currentColor">
+                  <path d="M8 2a.75.75 0 0 1 .75.75v4.5h4.5a.75.75 0 0 1 0 1.5h-4.5v4.5a.75.75 0 0 1-1.5 0v-4.5h-4.5a.75.75 0 0 1 0-1.5h4.5v-4.5A.75.75 0 0 1 8 2Z" />
+                </svg>
+              </div>
+              <div className="new-stash-text">New Stash</div>
             </div>
-            <div className="new-stash-text">New Stash</div>
+            {orderedStashes.map((stash) => (
+              <StashCard
+                key={stash.id}
+                stash={stash}
+                layout={layout}
+                isFavorite={favoriteIds.has(stash.id)}
+                onClick={() => onSelectStash(stash.id)}
+                onFilterTag={onFilterTag}
+                onToggleFavorite={onToggleFavorite}
+              />
+            ))}
           </div>
-          {orderedStashes.map((stash) => (
-            <StashCard
-              key={stash.id}
-              stash={stash}
-              layout={layout}
-              isFavorite={favoriteIds.has(stash.id)}
-              onClick={() => onSelectStash(stash.id)}
-              onFilterTag={onFilterTag}
-              onToggleFavorite={onToggleFavorite}
-            />
-          ))}
-        </div>
+          {/* The server caps every list response, so without this the stashes
+            beyond the cap were unreachable from the dashboard entirely — the
+            header admitted "showing 50" and offered no way to see the rest. */}
+          {hasMore && (
+            <div className="dashboard-load-more">
+              <button
+                className="btn btn-secondary"
+                onClick={onLoadMore}
+                disabled={loading}
+                title={`Show more of the ${total} matching stashes`}
+              >
+                {loading ? (
+                  <>
+                    <Spinner size={14} />
+                    Loading...
+                  </>
+                ) : (
+                  `Load more (${stashes.length} of ${total})`
+                )}
+              </button>
+            </div>
+          )}
+        </>
       )}
     </div>
   );

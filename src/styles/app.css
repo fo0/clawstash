@@ -1348,6 +1348,17 @@ body {
 
 /* Soft dim while a refresh is in-flight so the stale rows hint that newer
    data is on the way without yanking the grid out from under the cursor. */
+/* "Load more" row under the dashboard grid. */
+.dashboard-load-more {
+  display: flex;
+  justify-content: center;
+  padding: 24px 0 8px;
+}
+
+.dashboard-load-more .btn {
+  gap: 8px;
+}
+
 .stash-grid-refreshing {
   opacity: 0.6;
   transition: opacity 0.15s ease-out;
