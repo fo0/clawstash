@@ -132,6 +132,20 @@ export default function MetadataEditor({ entries, onChange, availableKeys }: Pro
     setActiveIndex(-1);
   };
 
+  // Commit a typed-but-unconfirmed key when focus truly leaves the add row —
+  // otherwise "purpose" typed without Enter is silently dropped on Save.
+  // Mirrors TagCombobox's blur flush; every button inside this editor
+  // suppresses its own blur (onMouseDown preventDefault) so a click on Add /
+  // a suggestion / Remove can never double-add through this path.
+  const handleKeyInputBlur = () => {
+    if (keyInput.trim()) {
+      addEntry(keyInput);
+    } else {
+      setShowKeyDropdown(false);
+      setActiveIndex(-1);
+    }
+  };
+
   const handleKeyInputKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'ArrowDown') {
       e.preventDefault();
@@ -198,6 +212,8 @@ export default function MetadataEditor({ entries, onChange, availableKeys }: Pro
               />
               <button
                 className="btn btn-sm btn-ghost btn-remove"
+                // Removing a row must not blur-commit a half-typed key.
+                onMouseDown={(e) => e.preventDefault()}
                 onClick={() => removeEntry(index)}
                 title={`Remove metadata entry "${entry.key || `#${index + 1}`}"`}
                 aria-label={`Remove metadata entry "${entry.key || `#${index + 1}`}"`}
@@ -211,6 +227,8 @@ export default function MetadataEditor({ entries, onChange, availableKeys }: Pro
           {hasMore && !showAll && (
             <button
               className="btn btn-sm btn-ghost metadata-show-more"
+              // Expanding the list must not blur-commit a half-typed key.
+              onMouseDown={(e) => e.preventDefault()}
               onClick={() => setShowAll(true)}
             >
               Show {entries.length - PREVIEW_COUNT} more...
@@ -219,6 +237,7 @@ export default function MetadataEditor({ entries, onChange, availableKeys }: Pro
           {hasMore && showAll && (
             <button
               className="btn btn-sm btn-ghost metadata-show-more"
+              onMouseDown={(e) => e.preventDefault()}
               onClick={() => setShowAll(false)}
             >
               Show less
@@ -250,6 +269,7 @@ export default function MetadataEditor({ entries, onChange, availableKeys }: Pro
             if (dupWarning) setDupWarning(null);
           }}
           onFocus={() => setShowKeyDropdown(true)}
+          onBlur={handleKeyInputBlur}
           onKeyDown={handleKeyInputKeyDown}
           placeholder="Add key..."
           className="form-input metadata-add-input"
@@ -265,6 +285,9 @@ export default function MetadataEditor({ entries, onChange, availableKeys }: Pro
         />
         <button
           className="btn btn-sm btn-secondary"
+          // Keep focus in the input: a blur here would commit the typed key
+          // through handleKeyInputBlur and this onClick would then add it twice.
+          onMouseDown={(e) => e.preventDefault()}
           onClick={() => {
             if (keyInput.trim()) addEntry(keyInput);
           }}
@@ -286,6 +309,9 @@ export default function MetadataEditor({ entries, onChange, availableKeys }: Pro
                 key={k}
                 id={`metadata-key-option-${i}`}
                 className={`tag-combobox-option${activeIndex === i ? ' active' : ''}`}
+                // Same reason as the Add button: never blur-commit the filter
+                // text as its own key while picking a suggestion.
+                onMouseDown={(e) => e.preventDefault()}
                 onClick={() => addEntry(k)}
                 onMouseEnter={() => setActiveIndex(i)}
                 role="option"
