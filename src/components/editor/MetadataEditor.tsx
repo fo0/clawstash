@@ -4,6 +4,14 @@ import { useClickOutside } from '../../hooks/useClickOutside';
 export interface MetadataEntry {
   key: string;
   value: string;
+  /**
+   * The value string as produced by `metadataToEntries` — set ONLY when the
+   * source metadata value was already a string. `entriesToMetadata` compares
+   * against it to detect "the user never touched this row" and skip the
+   * JSON re-parse for those. Absent for non-string sources and for rows the
+   * user added, which keep the parse-on-save behaviour.
+   */
+  original?: string;
 }
 
 interface Props {
@@ -13,22 +21,32 @@ interface Props {
 }
 
 export function metadataToEntries(metadata: Record<string, unknown>): MetadataEntry[] {
-  return Object.entries(metadata).map(([key, value]) => ({
-    key,
-    value: typeof value === 'string' ? value : JSON.stringify(value),
-  }));
+  return Object.entries(metadata).map(([key, value]) =>
+    typeof value === 'string'
+      ? { key, value, original: value }
+      : { key, value: JSON.stringify(value) },
+  );
 }
 
 export function entriesToMetadata(entries: MetadataEntry[]): Record<string, unknown> {
   const result: Record<string, unknown> = {};
   for (const entry of entries) {
-    if (!entry.key.trim()) continue;
+    const key = entry.key.trim();
+    if (!key) continue;
+    // A string value the user never edited round-trips verbatim. Running it
+    // through JSON.parse would silently retype it on a save the user never
+    // asked for ("true" -> boolean, "123" -> number, "null" -> null) and the
+    // trim would eat intentional padding. Only edited / newly added rows take
+    // the parse path, where typing `{"a":1}` is a deliberate act.
+    if (entry.original !== undefined && entry.value === entry.original) {
+      result[key] = entry.value;
+      continue;
+    }
     const val = entry.value.trim();
     try {
-      const parsed = JSON.parse(val);
-      result[entry.key.trim()] = parsed;
+      result[key] = JSON.parse(val);
     } catch {
-      result[entry.key.trim()] = val;
+      result[key] = val;
     }
   }
   return result;
