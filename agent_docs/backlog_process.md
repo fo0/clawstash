@@ -11,6 +11,7 @@ Review findings that were not immediately fixed are tracked in `BACKLOG.md` in t
 5. Stale entries — if the referenced function/component changed through other work, check if the finding is still relevant. Update or remove if obsolete.
 6. Source traceability — every entry links back to the task/feature where it was found.
 7. Escalation — P2 findings that block 3+ different features get escalated to P1.
+8. **IDs are globally unique and never reused** — the next `#` is `max(id) + 1` across **both** `## Open` and `## Done`, not `max(id)` of the section you are writing into. An ID keeps its number when the entry moves from Open to Done. Reuse breaks `Closes BACKLOG #N` commit traceability: `#120`, `#121` and `#122` were each handed out twice (June vs. July 2026 review batches) because a batch restarted numbering from the Open section alone.
 
 ## BACKLOG.md Format
 
