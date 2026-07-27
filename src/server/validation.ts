@@ -206,10 +206,23 @@ export const ImportStashRowSchema = z.object({
   updated_at: IsoDateStringSchema.nullable().optional(),
 });
 
+// Filenames from an import archive go through the same `isValidFilename`
+// guard as the write path (`FileSchema`). Without it the import route is the
+// one way a stored filename can carry `/`, `\`, `..` or control bytes — the
+// raw-file route reflects stored filenames into a `Content-Disposition`
+// header, and DB-exact-match storage is the only reason that is not
+// exploitable today. Keeping the two paths symmetric means a future
+// FS-backed store cannot inherit a traversal gap from an old export.
+const ImportFilenameSchema = z
+  .string()
+  .min(1)
+  .max(MAX_FILENAME_LENGTH)
+  .refine(isValidFilename, 'Filename contains invalid characters');
+
 export const ImportStashFileRowSchema = z.object({
   id: z.string().min(1).max(100),
   stash_id: z.string().min(1).max(100),
-  filename: z.string().min(1).max(MAX_FILENAME_LENGTH),
+  filename: ImportFilenameSchema,
   content: z.string().max(MAX_FILE_CONTENT_LENGTH).nullable().optional(),
   language: z.string().max(50).nullable().optional(),
   sort_order: z.number().int().min(0).nullable().optional(),
@@ -231,7 +244,7 @@ export const ImportStashVersionRowSchema = z.object({
 export const ImportStashVersionFileRowSchema = z.object({
   id: z.string().min(1).max(100),
   version_id: z.string().min(1).max(100),
-  filename: z.string().min(1).max(MAX_FILENAME_LENGTH),
+  filename: ImportFilenameSchema,
   content: z.string().max(MAX_FILE_CONTENT_LENGTH).nullable().optional(),
   language: z.string().max(50).nullable().optional(),
   sort_order: z.number().int().min(0).nullable().optional(),
