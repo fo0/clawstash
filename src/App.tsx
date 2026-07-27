@@ -14,7 +14,7 @@ import { loadFavoriteIds, saveFavoriteIds, toggleFavorite } from './utils/favori
 import { loadSortMode, saveSortMode } from './utils/sort';
 import { loadShowArchived, saveShowArchived } from './utils/archived';
 import { recordRecentView } from './utils/recent-views';
-import { SEARCH_DEBOUNCE_MS } from './utils/constants';
+import { SEARCH_DEBOUNCE_MS, STASH_PAGE_SIZE } from './utils/constants';
 import Sidebar from './components/Sidebar';
 import Dashboard from './components/Dashboard';
 import StashViewer from './components/StashViewer';
@@ -121,6 +121,10 @@ export default function App() {
   const [filterTag, setFilterTag] = useState('');
   const [tags, setTags] = useState<TagInfo[]>([]);
   const [recentTags, setRecentTags] = useState<string[]>(getStoredRecentTags);
+  // How many pages' worth of stashes the dashboard currently requests. Bumped
+  // by "Load more", reset to 1 whenever the search / tag / archived filter
+  // changes (the result set is a different one, so the old depth is meaningless).
+  const [loadedPages, setLoadedPages] = useState(1);
   const [loading, setLoading] = useState(true);
   // True after a failed stash list load — lets the dashboard replace the
   // misleading "No stashes yet" empty state with an error state + retry.
@@ -275,6 +279,8 @@ export default function App() {
         // Toggle the "show archived" dashboard filter and persist it (mirrors
         // the click handler). Functional setState keeps the effect dependency-free.
         e.preventDefault();
+        // Mirrors handleToggleShowArchived, including the "Load more" reset.
+        setLoadedPages(1);
         setShowArchived((prev) => {
           const next = !prev;
           saveShowArchived(next);
@@ -530,6 +536,10 @@ export default function App() {
         tag: filterTag || undefined,
         // undefined = show all (active + archived), false = show only active (hide archived)
         archived: showArchived ? undefined : false,
+        // Always send an explicit limit: the server defaults differ between
+        // browse (50) and search (20), which would make "Load more" grow the
+        // list in different steps depending on whether a query is active.
+        limit: STASH_PAGE_SIZE * loadedPages,
       });
       if (gen !== loadStashesGenRef.current) return;
       setStashes(result.stashes);
@@ -545,7 +555,7 @@ export default function App() {
     } finally {
       if (gen === loadStashesGenRef.current) setLoading(false);
     }
-  }, [search, filterTag, showArchived, showError]);
+  }, [search, filterTag, showArchived, loadedPages, showError]);
 
   // Search term used by the previous load — lets the effect below debounce
   // ONLY typed-search changes, not every reload trigger.
@@ -737,9 +747,20 @@ export default function App() {
     filterTagRef.current = filterTag;
   }, [filterTag]);
 
+  /**
+   * Change the stash search term. Resets the "Load more" depth because the
+   * result set is a different one — keeping the old depth would silently
+   * request e.g. 150 rows for a fresh single-keystroke query.
+   */
+  const handleSearchChange = (value: string) => {
+    setSearch(value);
+    setLoadedPages(1);
+  };
+
   const handleFilterTag = (tag: string) => {
     const newTag = tag === filterTagRef.current ? '' : tag;
     setFilterTag(newTag);
+    setLoadedPages(1);
     if (newTag) {
       setRecentTags((prev) => {
         const updated = [newTag, ...prev.filter((t) => t !== newTag)].slice(0, 3);
@@ -751,6 +772,20 @@ export default function App() {
 
   const handleGraphFilterTag = (tag: string) => {
     handleFilterTag(tag);
+    setView('home');
+    pushUrl('/');
+  };
+
+  /**
+   * Tag clicked inside the stash viewer: apply the filter and go back to the
+   * dashboard to show the result. Unlike `handleFilterTag` this never toggles
+   * the tag OFF — the viewer shows no active-filter chip, so re-clicking the
+   * already-active tag would look like the click did nothing while silently
+   * clearing the dashboard filter.
+   */
+  const handleViewerFilterTag = (tag: string) => {
+    if (tag !== filterTagRef.current) handleFilterTag(tag);
+    setSelectedStash(null);
     setView('home');
     pushUrl('/');
   };
@@ -793,11 +828,17 @@ export default function App() {
   // Toggle the "show archived" filter and persist it so the choice survives a
   // reload (mirrors the layout/sort preference handlers above).
   const handleToggleShowArchived = () => {
+    setLoadedPages(1);
     setShowArchived((prev) => {
       const next = !prev;
       saveShowArchived(next);
       return next;
     });
+  };
+
+  /** Widen the dashboard list by one more page (see STASH_PAGE_SIZE). */
+  const handleLoadMore = () => {
+    setLoadedPages((prev) => prev + 1);
   };
 
   // Show login screen if auth is required and user is not authenticated
@@ -818,7 +859,7 @@ export default function App() {
         total={total}
         selectedId={selectedStash?.id || null}
         search={search}
-        onSearch={setSearch}
+        onSearch={handleSearchChange}
         filterTag={filterTag}
         onFilterTag={handleFilterTag}
         tags={tags}
@@ -900,7 +941,9 @@ export default function App() {
               loadError={loadError}
               onRetryLoad={loadStashes}
               search={search}
-              onClearSearch={() => setSearch('')}
+              onClearSearch={() => handleSearchChange('')}
+              hasMore={stashes.length < total}
+              onLoadMore={handleLoadMore}
               filterTag={filterTag}
               showArchived={showArchived}
               favoriteIds={favoriteIds}
@@ -921,6 +964,7 @@ export default function App() {
               onArchive={handleArchiveStash}
               onBack={handleGoHome}
               onAnalyzeStash={handleAnalyzeStash}
+              onFilterTag={handleViewerFilterTag}
               onStashUpdated={(stash) => {
                 setSelectedStash(stash);
                 loadStashes();

@@ -31,6 +31,13 @@ interface Props {
   onArchive: (id: string, archived: boolean) => void;
   onBack: () => void;
   onAnalyzeStash: (id: string) => void;
+  /**
+   * Apply a tag filter and return to the dashboard. The tag chips below the
+   * header carry `.stash-tag`, which is styled with `cursor: pointer` and a
+   * hover state (shared with the clickable chips on `StashCard`) — without a
+   * handler they looked interactive but did nothing.
+   */
+  onFilterTag: (tag: string) => void;
   onStashUpdated?: (stash: Stash) => void;
   // Fired specifically when a previous version is restored from the history
   // tab, so the shell can surface a success toast. Restoring previously gave
@@ -416,6 +423,7 @@ export default function StashViewer({
   onArchive,
   onBack,
   onAnalyzeStash,
+  onFilterTag,
   onStashUpdated,
   onVersionRestored,
 }: Props) {
@@ -879,8 +887,24 @@ export default function StashViewer({
 
       {(stash.tags.length > 0 || Object.keys(stash.metadata).length > 0) && (
         <div className="viewer-meta-bar">
+          {/* Same interaction contract as the tag chips on StashCard: click (or
+              Enter/Space) filters the dashboard by the tag. */}
           {stash.tags.map((tag) => (
-            <span key={tag} className="stash-tag" title={`Tag: ${tag}`}>
+            <span
+              key={tag}
+              className="stash-tag"
+              onClick={() => onFilterTag(tag)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault();
+                  onFilterTag(tag);
+                }
+              }}
+              role="button"
+              tabIndex={0}
+              aria-label={`Filter by tag: ${tag}`}
+              title={`Filter by tag: ${tag}`}
+            >
               {tag}
             </span>
           ))}
