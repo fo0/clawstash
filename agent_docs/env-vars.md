@@ -16,6 +16,15 @@ Full environment-variable reference. CLAUDE.md carries only the 3-5 variables an
 
 > `CLAWSTASH_ENCRYPTION_KEY` is the only variable whose loss is unrecoverable: without it the encrypted GitHub-backup token cannot be read back. Back it up together with the database.
 
+## Build-time variables (CI / Docker only)
+
+Read at **build** time, never at runtime: `scripts/generate-build-info.js` (the `prebuild` npm script) bakes them into `build-info.json`, which `src/server/version.ts` serves via `/api/version`. Unset locally, both fall back to the working tree's git information — the image has no `.git` directory, so CI passes them explicitly (`Dockerfile` `ARG`/`ENV`, set from `github.sha` / `github.ref_name` in `docker-publish.yml`).
+
+| Variable           | Description                                                             | Default                           | Required |
+| ------------------ | ----------------------------------------------------------------------- | --------------------------------- | -------- |
+| `BUILD_COMMIT_SHA` | Commit the build came from; truncated to a 7-char short hash on display | `git rev-parse --short HEAD`      | No       |
+| `BUILD_BRANCH`     | Branch name reported by the running container                           | `git rev-parse --abbrev-ref HEAD` | No       |
+
 ## Secrets Locations
 
 | Secret class       | Where it lives                                                                     | Never commit |
