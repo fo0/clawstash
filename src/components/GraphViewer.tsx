@@ -2,6 +2,7 @@ import { useRef, useEffect, useCallback, useState } from 'react';
 import type { StashListItem, TagInfo, TagGraphResult } from '../types';
 import { api } from '../api';
 import { pluralize } from '../utils/format';
+import { watchDevicePixelRatio } from '../utils/dpr';
 import StashGraphCanvas from './StashGraphCanvas';
 
 // --- Physics simulation constants (tag graph) --------------------------------
@@ -14,6 +15,10 @@ const REPULSION_FORCE = 40; // ForceAtlas2-style degree-proportional repulsion
 const EDGE_IDEAL_DIST_BASE = 80; // base ideal edge length (px), shrinks with weight
 const EDGE_ATTRACTION = 0.008; // edge spring coefficient
 // -----------------------------------------------------------------------------
+
+// Frame interval used while the ONLY thing left to animate is the highlight
+// pulse. Its sine has a ~1.9s period, so ~10fps looks identical to 60fps here.
+const HIGHLIGHT_PULSE_FRAME_MS = 100;
 
 interface Props {
   // Accepted for App compatibility; the graph itself is fetched from the
@@ -317,6 +322,8 @@ export default function GraphViewer({
   const nodesRef = useRef<GraphNode[]>([]);
   const edgesRef = useRef<GraphEdge[]>([]);
   const animRef = useRef<number>(0);
+  // Pending timer for the throttled highlight-pulse frames (see startLoop).
+  const pulseTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const alphaRef = useRef(1);
   const panRef = useRef({ x: 0, y: 0 });
   const zoomRef = useRef(1);
@@ -717,6 +724,14 @@ export default function GraphViewer({
     // No canvas → the tag graph is not mounted (Stashes tab active); running
     // the O(n²) simulation would be invisible wasted work.
     if (!canvasRef.current) return;
+    // A pending pulse timer means the loop is idling between throttled
+    // highlight frames. Any real interaction must resume at full rate
+    // immediately instead of waiting out the remaining delay.
+    if (pulseTimerRef.current !== null) {
+      clearTimeout(pulseTimerRef.current);
+      pulseTimerRef.current = null;
+      loopRunningRef.current = false;
+    }
     if (loopRunningRef.current) return;
     loopRunningRef.current = true;
 
@@ -761,13 +776,21 @@ export default function GraphViewer({
         }
       }
 
-      // Highlighted node has pulsing animation
-      if (highlightTagRef.current) needsFrame = true;
+      // A located node keeps pulsing after the layout settles. The pulse runs
+      // on a ~1.9s sine, so it does not need 60fps — driving it from the rAF
+      // loop kept a full-rate frame budget burning for as long as the
+      // highlight stayed on screen. Schedule those frames on a timer instead.
+      const pulseOnly = !needsFrame && highlightTagRef.current !== null;
 
       draw();
 
       if (needsFrame) {
         animRef.current = requestAnimationFrame(tick);
+      } else if (pulseOnly) {
+        pulseTimerRef.current = setTimeout(() => {
+          pulseTimerRef.current = null;
+          animRef.current = requestAnimationFrame(tick);
+        }, HIGHLIGHT_PULSE_FRAME_MS);
       } else {
         loopRunningRef.current = false;
       }
@@ -783,6 +806,10 @@ export default function GraphViewer({
     startLoop();
     return () => {
       cancelAnimationFrame(animRef.current);
+      if (pulseTimerRef.current !== null) {
+        clearTimeout(pulseTimerRef.current);
+        pulseTimerRef.current = null;
+      }
       loopRunningRef.current = false;
     };
   }, [startLoop, graphTab]);
@@ -806,7 +833,19 @@ export default function GraphViewer({
     resize();
     const observer = new ResizeObserver(resize);
     observer.observe(container);
-    return () => observer.disconnect();
+
+    // devicePixelRatio can change without any layout resize — dragging the
+    // window to a monitor with a different scale factor, or a browser zoom
+    // step. ResizeObserver stays silent for those, leaving the canvas bitmap
+    // scaled for the old DPR and every hit test offset until the next real
+    // resize. A `resolution` media query fires exactly on that transition;
+    // it matches only the current ratio, so re-arm it after each change.
+    const dprCleanup = watchDevicePixelRatio(resize);
+
+    return () => {
+      observer.disconnect();
+      dprCleanup();
+    };
   }, [graphTab]);
 
   // Get connections for a node

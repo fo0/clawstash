@@ -46,4 +46,20 @@ describe('splitHighlight', () => {
       .join('');
     expect(joined).toBe(text);
   });
+  it('bails out to a single segment when lowercasing changes the length', () => {
+    // 'İ' (U+0130) lowercases to two code units, so match indices computed on
+    // the folded string no longer line up with the source.
+    const text = 'İstanbul config';
+    expect(splitHighlight(text, 'config')).toEqual([{ text, match: false }]);
+  });
+
+  it('never mangles text whose lowercase form differs in length', () => {
+    const text = 'aİa';
+    for (const query of ['a', 'i', 'İ']) {
+      const joined = splitHighlight(text, query)
+        .map((s) => s.text)
+        .join('');
+      expect(joined).toBe(text);
+    }
+  });
 });

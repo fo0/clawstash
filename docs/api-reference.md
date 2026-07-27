@@ -35,6 +35,8 @@ See [authentication.md](authentication.md) for token creation and scopes.
 
 > **Raw file route response header**: `/api/stashes/:id/files/:filename/raw` returns `Content-Disposition: inline; filename*=UTF-8''…` so non-ASCII filenames are preserved when downloaded.
 
+> **Unique filenames**: `files[]` must not contain two entries with the same filename (compared after trimming). Duplicates are rejected with `400 Bad Request` on both `POST /api/stashes` and `PATCH /api/stashes/:id` — and identically on the MCP `create_stash` / `update_stash` tools — because raw-file lookup resolves a name to exactly one file.
+
 ### Versions
 
 | Endpoint                                     | Method | Scope | Description                                                       |

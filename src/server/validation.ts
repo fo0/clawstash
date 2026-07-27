@@ -96,6 +96,30 @@ const FileSchema = z.object({
   language: z.string().max(50).optional(),
 });
 
+/**
+ * True when no two entries share a filename (compared after trimming).
+ *
+ * Raw-file lookup (`GET /api/stashes/:id/files/:filename/raw`) resolves a
+ * filename to a single row, so a stash holding two files with the same name is
+ * ambiguous: only the first match is ever reachable. The editor blocks
+ * duplicates client-side, but REST and MCP callers could still create such a
+ * stash — reject it at the trust boundary instead.
+ *
+ * Trimmed comparison also catches the visually identical `"a.txt"` /
+ * `"a.txt "` pair, which SQL exact-match would happily store side by side.
+ */
+export function hasUniqueFilenames(files: { filename: string }[]): boolean {
+  const seen = new Set<string>();
+  for (const file of files) {
+    const key = file.filename.trim();
+    if (seen.has(key)) return false;
+    seen.add(key);
+  }
+  return true;
+}
+
+export const DUPLICATE_FILENAME_MESSAGE = 'Filenames must be unique within a stash';
+
 // Reject empty-string tags. `z.string()` accepts "" by default, so without
 // `.min(1)` callers could silently push `["", "python"]` into the tag list,
 // which then renders as a blank pill in the UI and matches everything in tag
@@ -135,7 +159,11 @@ export const CreateStashSchema = z.object({
   description: z.string().max(MAX_DESCRIPTION_LENGTH).optional(),
   tags: TagsSchema.optional(),
   metadata: MetadataSchema.optional(),
-  files: z.array(FileSchema).min(1, 'At least one file is required').max(MAX_FILES),
+  files: z
+    .array(FileSchema)
+    .min(1, 'At least one file is required')
+    .max(MAX_FILES)
+    .refine(hasUniqueFilenames, DUPLICATE_FILENAME_MESSAGE),
 });
 
 export const UpdateStashSchema = z.object({
@@ -143,7 +171,11 @@ export const UpdateStashSchema = z.object({
   description: z.string().max(MAX_DESCRIPTION_LENGTH).optional(),
   tags: TagsSchema.optional(),
   metadata: MetadataSchema.optional(),
-  files: z.array(FileSchema).max(MAX_FILES).optional(),
+  files: z
+    .array(FileSchema)
+    .max(MAX_FILES)
+    .refine(hasUniqueFilenames, DUPLICATE_FILENAME_MESSAGE)
+    .optional(),
   archived: z.boolean().optional(),
   backup_enabled: z.boolean().optional(),
 });

@@ -285,98 +285,109 @@ export default function SearchOverlay({ open, onClose, onSelectStash }: Props) {
         )}
 
         {results.length > 0 && (
-          <div
-            className="search-overlay-results"
-            ref={listRef}
-            role="listbox"
-            id="search-overlay-results"
-            aria-label={`${results.length} result${results.length !== 1 ? 's' : ''}`}
-          >
+          <>
+            {/* Outside the listbox on purpose: the listbox content model only
+                permits `option` (and grouping) children, and a live-region
+                status row nested inside made assistive tech announce it as
+                one of the results. Keeping it above also stops the count from
+                scrolling out of view with the list. */}
             <div className="search-overlay-results-count" aria-live="polite" role="status">
               {total > results.length
                 ? `Showing first ${results.length} of ${total} matches — refine to narrow`
                 : `${results.length} result${results.length !== 1 ? 's' : ''}`}
             </div>
-            {results.map((stash, idx) => (
-              <button
-                type="button"
-                key={stash.id}
-                id={`search-overlay-option-${idx}`}
-                className={`search-overlay-item ${idx === activeIndex ? 'active' : ''}`}
-                role="option"
-                aria-selected={idx === activeIndex}
-                // onMouseMove (not onMouseEnter): keyboard-nav's scrollIntoView
-                // shifts the list under a stationary cursor, which would fire
-                // enter events and yank the highlight back to the hovered row.
-                onMouseMove={() => setActiveIndex(idx)}
-                onClick={() => handleSelect(stash.id)}
-              >
-                <div className="search-overlay-item-main">
-                  <span className="search-overlay-item-name">
-                    {renderHighlighted(stash.name || stash.files[0]?.filename || 'Untitled')}
-                  </span>
-                  {stash.files.length > 0 && (
-                    <span className="search-overlay-item-files">
-                      {stash.files.length} file{stash.files.length !== 1 ? 's' : ''}
+            <div
+              className="search-overlay-results"
+              ref={listRef}
+              role="listbox"
+              id="search-overlay-results"
+              aria-label={`${results.length} result${results.length !== 1 ? 's' : ''}`}
+            >
+              {results.map((stash, idx) => (
+                <button
+                  type="button"
+                  key={stash.id}
+                  id={`search-overlay-option-${idx}`}
+                  className={`search-overlay-item ${idx === activeIndex ? 'active' : ''}`}
+                  role="option"
+                  aria-selected={idx === activeIndex}
+                  // onMouseMove (not onMouseEnter): keyboard-nav's scrollIntoView
+                  // shifts the list under a stationary cursor, which would fire
+                  // enter events and yank the highlight back to the hovered row.
+                  onMouseMove={() => setActiveIndex(idx)}
+                  onClick={() => handleSelect(stash.id)}
+                >
+                  <div className="search-overlay-item-main">
+                    <span className="search-overlay-item-name">
+                      {renderHighlighted(stash.name || stash.files[0]?.filename || 'Untitled')}
                     </span>
-                  )}
-                </div>
-                {stash.description && (
-                  <div className="search-overlay-item-desc">
-                    {renderHighlighted(
-                      stash.description.length > 100
-                        ? stash.description.slice(0, 100) + '...'
-                        : stash.description,
+                    {stash.files.length > 0 && (
+                      <span className="search-overlay-item-files">
+                        {stash.files.length} file{stash.files.length !== 1 ? 's' : ''}
+                      </span>
                     )}
                   </div>
-                )}
-                <div className="search-overlay-item-meta">
-                  {stash.tags.length > 0 && (
-                    <span className="search-overlay-item-tags">
-                      {stash.tags.slice(0, 3).map((tag) => (
-                        <span key={tag} className="search-overlay-tag">
-                          {tag}
-                        </span>
-                      ))}
-                      {stash.tags.length > 3 && (
-                        <span className="search-overlay-tag-more">+{stash.tags.length - 3}</span>
+                  {stash.description && (
+                    <div className="search-overlay-item-desc">
+                      {renderHighlighted(
+                        stash.description.length > 100
+                          ? stash.description.slice(0, 100) + '...'
+                          : stash.description,
                       )}
-                    </span>
+                    </div>
                   )}
-                  <span className="search-overlay-item-date">
-                    {formatRelativeTime(stash.updated_at)}
-                  </span>
-                </div>
-              </button>
-            ))}
-          </div>
+                  <div className="search-overlay-item-meta">
+                    {stash.tags.length > 0 && (
+                      <span className="search-overlay-item-tags">
+                        {stash.tags.slice(0, 3).map((tag) => (
+                          <span key={tag} className="search-overlay-tag">
+                            {tag}
+                          </span>
+                        ))}
+                        {stash.tags.length > 3 && (
+                          <span className="search-overlay-tag-more">+{stash.tags.length - 3}</span>
+                        )}
+                      </span>
+                    )}
+                    <span className="search-overlay-item-date">
+                      {formatRelativeTime(stash.updated_at)}
+                    </span>
+                  </div>
+                </button>
+              ))}
+            </div>
+          </>
         )}
 
         {!query.trim() && recent.length > 0 && (
-          <div
-            className="search-overlay-results"
-            role="listbox"
-            id="search-overlay-recent"
-            aria-label={`${recent.length} recently viewed stash${recent.length !== 1 ? 'es' : ''}`}
-          >
+          <>
+            {/* Section heading, not an option — kept outside the listbox for
+                the same content-model reason as the result count above. */}
             <div className="search-overlay-results-count">Recently viewed</div>
-            {recent.map((item, idx) => (
-              <button
-                type="button"
-                key={item.id}
-                id={`search-overlay-option-${idx}`}
-                className={`search-overlay-item ${idx === activeIndex ? 'active' : ''}`}
-                role="option"
-                aria-selected={idx === activeIndex}
-                onMouseMove={() => setActiveIndex(idx)}
-                onClick={() => handleSelect(item.id)}
-              >
-                <div className="search-overlay-item-main">
-                  <span className="search-overlay-item-name">{item.title}</span>
-                </div>
-              </button>
-            ))}
-          </div>
+            <div
+              className="search-overlay-results"
+              role="listbox"
+              id="search-overlay-recent"
+              aria-label={`${recent.length} recently viewed stash${recent.length !== 1 ? 'es' : ''}`}
+            >
+              {recent.map((item, idx) => (
+                <button
+                  type="button"
+                  key={item.id}
+                  id={`search-overlay-option-${idx}`}
+                  className={`search-overlay-item ${idx === activeIndex ? 'active' : ''}`}
+                  role="option"
+                  aria-selected={idx === activeIndex}
+                  onMouseMove={() => setActiveIndex(idx)}
+                  onClick={() => handleSelect(item.id)}
+                >
+                  <div className="search-overlay-item-main">
+                    <span className="search-overlay-item-name">{item.title}</span>
+                  </div>
+                </button>
+              ))}
+            </div>
+          </>
         )}
 
         {!query.trim() && recent.length === 0 && (

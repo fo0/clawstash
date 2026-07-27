@@ -4,6 +4,8 @@ import {
   UpdateStashSchema,
   MAX_METADATA_DEPTH,
   maxObjectDepth,
+  hasUniqueFilenames,
+  DUPLICATE_FILENAME_MESSAGE,
 } from '../validation';
 
 describe('maxObjectDepth', () => {
@@ -84,5 +86,49 @@ describe('UpdateStashSchema metadata depth', () => {
     for (let i = 0; i < MAX_METADATA_DEPTH + 1; i++) nested = { a: nested };
     const parsed = UpdateStashSchema.safeParse({ metadata: { a: nested } });
     expect(parsed.success).toBe(false);
+  });
+});
+
+describe('unique filenames', () => {
+  const file = (filename: string) => ({ filename, content: 'x' });
+
+  it('accepts distinct filenames', () => {
+    expect(CreateStashSchema.safeParse({ files: [file('a.txt'), file('b.txt')] }).success).toBe(
+      true,
+    );
+  });
+
+  it('rejects duplicate filenames on create', () => {
+    const parsed = CreateStashSchema.safeParse({ files: [file('a.txt'), file('a.txt')] });
+    expect(parsed.success).toBe(false);
+    if (!parsed.success) {
+      expect(parsed.error.issues[0].message).toBe(DUPLICATE_FILENAME_MESSAGE);
+    }
+  });
+
+  it('rejects filenames that only differ by surrounding whitespace', () => {
+    expect(CreateStashSchema.safeParse({ files: [file('a.txt'), file(' a.txt ')] }).success).toBe(
+      false,
+    );
+  });
+
+  it('stays case-sensitive (raw lookup matches exactly)', () => {
+    expect(CreateStashSchema.safeParse({ files: [file('a.txt'), file('A.txt')] }).success).toBe(
+      true,
+    );
+  });
+
+  it('rejects duplicate filenames on update', () => {
+    expect(UpdateStashSchema.safeParse({ files: [file('a.txt'), file('a.txt')] }).success).toBe(
+      false,
+    );
+  });
+
+  it('leaves an omitted files array on update untouched', () => {
+    expect(UpdateStashSchema.safeParse({ name: 'renamed' }).success).toBe(true);
+  });
+
+  it('hasUniqueFilenames handles the empty list', () => {
+    expect(hasUniqueFilenames([])).toBe(true);
   });
 });

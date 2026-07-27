@@ -6,6 +6,13 @@ import {
   type ReactZoomPanPinchRef,
 } from 'react-zoom-pan-pinch';
 import { renderMermaid } from '../utils/mermaid';
+import {
+  MIN_SCALE,
+  MAX_SCALE,
+  loadStoredScale,
+  saveScale,
+  clearStoredScale,
+} from '../utils/mermaid-zoom';
 
 interface Props {
   code: string;
@@ -24,39 +31,8 @@ interface RenderState {
   error?: string;
 }
 
-const STORAGE_PREFIX = 'clawstash_mermaid_zoom_';
-const MIN_SCALE = 0.1;
-const MAX_SCALE = 10;
 const ANIMATION_MS = 200;
 const PERSIST_DEBOUNCE_MS = 300;
-
-function loadStoredScale(key: string | undefined): number | null {
-  if (!key || typeof window === 'undefined') return null;
-  try {
-    const raw = window.localStorage.getItem(STORAGE_PREFIX + key);
-    if (!raw) return null;
-    const n = Number.parseFloat(raw);
-    return Number.isFinite(n) && n >= MIN_SCALE && n <= MAX_SCALE ? n : null;
-  } catch {
-    return null;
-  }
-}
-
-function saveScale(key: string, scale: number): void {
-  try {
-    window.localStorage.setItem(STORAGE_PREFIX + key, String(scale));
-  } catch {
-    /* ignore quota / disabled storage */
-  }
-}
-
-function clearStoredScale(key: string): void {
-  try {
-    window.localStorage.removeItem(STORAGE_PREFIX + key);
-  } catch {
-    /* ignore */
-  }
-}
 
 /**
  * Renders a Mermaid diagram from a source string with a zoom/pan toolbar,

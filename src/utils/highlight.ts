@@ -18,8 +18,18 @@ export function splitHighlight(text: string, query: string): HighlightSegment[] 
   const needle = query.trim().toLowerCase();
   if (!needle) return [{ text, match: false }];
 
-  const segments: HighlightSegment[] = [];
   const haystack = text.toLowerCase();
+  // `toLowerCase()` is not length-preserving for every code point — `İ`
+  // (U+0130) folds to two code units, for example. Match indices computed on
+  // the folded string would then be shifted relative to `text`, and every
+  // segment after the first such character would be sliced at the wrong
+  // boundary. Lowercase mappings only ever grow (1 -> 1 or 1 -> 2), so equal
+  // lengths guarantee a 1:1 index alignment; unequal lengths mean we cannot
+  // trust the indices, so bail out to a single unhighlighted segment rather
+  // than render mangled text.
+  if (haystack.length !== text.length) return [{ text, match: false }];
+
+  const segments: HighlightSegment[] = [];
   let start = 0;
   let idx = haystack.indexOf(needle, start);
   while (idx !== -1) {
