@@ -7,7 +7,7 @@
  * Results are cached for 1 hour to avoid excessive API calls.
  */
 import { readFileSync, existsSync } from 'fs';
-import { execSync } from 'child_process';
+import { execFileSync } from 'child_process';
 import path from 'path';
 import { formatBuildVersion } from '../utils/format';
 
@@ -41,9 +41,22 @@ interface BuildInfo {
 // `new Date().toISOString()`, so the null branch is unreachable.
 const UNKNOWN_VERSION = 'unknown';
 
-function git(cmd: string): string {
+/**
+ * Run a git command and return its trimmed stdout, or '' when git is
+ * unavailable / the command fails.
+ *
+ * `execFileSync` with an argv array — NOT `execSync` with a command string,
+ * which spawns `/bin/sh -c` and would interpret shell metacharacters. The
+ * arguments here are compile-time constants, so this is defense-in-depth:
+ * it removes the shell from the process tree entirely (no quoting rules to
+ * get wrong on a future argument, and no `sh` dependency in slim images).
+ */
+function git(...args: string[]): string {
   try {
-    return execSync(cmd, { encoding: 'utf-8', stdio: ['pipe', 'pipe', 'pipe'] }).trim();
+    return execFileSync('git', args, {
+      encoding: 'utf-8',
+      stdio: ['pipe', 'pipe', 'pipe'],
+    }).trim();
   } catch {
     return '';
   }
@@ -61,8 +74,8 @@ function loadBuildInfo(): BuildInfo {
   }
 
   // Development: read directly from git
-  const branch = process.env.BUILD_BRANCH || git('git rev-parse --abbrev-ref HEAD');
-  let commitHash = process.env.BUILD_COMMIT_SHA || git('git rev-parse --short HEAD');
+  const branch = process.env.BUILD_BRANCH || git('rev-parse', '--abbrev-ref', 'HEAD');
+  let commitHash = process.env.BUILD_COMMIT_SHA || git('rev-parse', '--short', 'HEAD');
 
   // Normalize to 7-char short hash (git may return more for uniqueness)
   if (commitHash.length > 7) {
@@ -70,7 +83,7 @@ function loadBuildInfo(): BuildInfo {
   }
 
   // Use git commit date so the version is stable across server restarts
-  const buildDate = git('git log -1 --format=%cI') || new Date().toISOString();
+  const buildDate = git('log', '-1', '--format=%cI') || new Date().toISOString();
 
   return { branch, commitHash, buildDate };
 }

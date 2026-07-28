@@ -8,20 +8,25 @@
  * over local git information.
  */
 
-import { execSync } from 'child_process';
+import { execFileSync } from 'child_process';
 import { writeFileSync } from 'fs';
 
-function git(cmd) {
+/**
+ * Run a git command via `execFileSync` with an argv array, so no shell is
+ * spawned (mirrors `git()` in src/server/version.ts). Returns '' when git is
+ * unavailable or the command fails.
+ */
+function git(...args) {
   try {
-    return execSync(cmd, { encoding: 'utf-8', stdio: ['pipe', 'pipe', 'pipe'] }).trim();
+    return execFileSync('git', args, { encoding: 'utf-8', stdio: ['pipe', 'pipe', 'pipe'] }).trim();
   } catch {
     return '';
   }
 }
 
-const branch = process.env.BUILD_BRANCH || git('git rev-parse --abbrev-ref HEAD');
+const branch = process.env.BUILD_BRANCH || git('rev-parse', '--abbrev-ref', 'HEAD');
 
-let commitHash = process.env.BUILD_COMMIT_SHA || git('git rev-parse --short HEAD');
+let commitHash = process.env.BUILD_COMMIT_SHA || git('rev-parse', '--short', 'HEAD');
 if (commitHash.length > 7) commitHash = commitHash.substring(0, 7);
 
 const buildDate = new Date().toISOString();
