@@ -83,6 +83,10 @@ const SECURITY_HEADERS: Record<string, string> = {
 // received over plain HTTP anyway, so the gate costs nothing.
 const STRICT_TRANSPORT_SECURITY = 'max-age=31536000'; // 1 year
 
+// Applied to API/MCP responses only. Page responses keep Next.js's own
+// caching headers so the static shell and `_next` assets stay cacheable.
+const CACHE_CONTROL_API = 'no-store';
+
 function isHttpsRequest(req: NextRequest): boolean {
   if (req.nextUrl.protocol === 'https:') return true;
   // Mirrors isTrustedProxy() in src/server/auth-rate-limit.ts. That module
@@ -120,6 +124,13 @@ export function middleware(req: NextRequest) {
     for (const [key, value] of Object.entries(CORS_HEADERS)) {
       response.headers.set(key, value);
     }
+    // API/MCP responses carry stash content, token metadata and backup
+    // configuration. Mark them non-storable so neither the browser cache nor
+    // an intermediary keeps a copy. `Authorization` alone is not enough here:
+    // ClawStash also accepts `?token=` (see server/auth.ts), and a response to
+    // a request WITHOUT an Authorization header is storable by a shared cache
+    // under RFC 9111 — so a proxy could serve one caller's stash to the next.
+    response.headers.set('Cache-Control', CACHE_CONTROL_API);
   }
 
   // Security headers on all routes
