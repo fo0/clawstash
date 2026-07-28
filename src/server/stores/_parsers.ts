@@ -57,9 +57,22 @@ export function safeParseMetadata(raw: unknown): Record<string, unknown> {
 }
 
 /**
+ * Hard upper bound on rows returned by one page.
+ *
+ * The clamp had no maximum, so `?limit=99999` was passed straight to SQLite.
+ * The row IDs of a page are then fed back as bound parameters — `WHERE
+ * stash_id IN (?, ?, …)` in the batched file loads — and SQLite caps a
+ * statement at SQLITE_MAX_VARIABLE_NUMBER (32766) bound parameters, so a
+ * large enough page turned a listing into a 500 instead of a page of rows.
+ * 1000 is ten times the "max recommended: 100" the tool schema documents, so
+ * no realistic caller notices the cap.
+ */
+export const MAX_PAGE_LIMIT = 1000;
+
+/**
  * Clamp pagination params at the DB layer so callers that bypass the REST
  * route's parsePositiveInt (MCP tool layer, direct DB consumers) cannot
- * produce SQLite OFFSET errors or empty `LIMIT 0` pages.
+ * produce SQLite OFFSET errors, empty `LIMIT 0` pages, or oversized pages.
  */
 export function clampPagination(
   page: unknown,
@@ -67,7 +80,8 @@ export function clampPagination(
   defaultLimit: number,
 ): { page: number; limit: number; offset: number } {
   const safePage = typeof page === 'number' && Number.isInteger(page) && page > 0 ? page : 1;
-  const safeLimit =
+  const requestedLimit =
     typeof limit === 'number' && Number.isInteger(limit) && limit > 0 ? limit : defaultLimit;
+  const safeLimit = Math.min(requestedLimit, MAX_PAGE_LIMIT);
   return { page: safePage, limit: safeLimit, offset: (safePage - 1) * safeLimit };
 }
