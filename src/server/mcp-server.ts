@@ -21,6 +21,11 @@ export function createMcpServer(db: ClawStashDB, baseUrl?: string): McpServer {
 ${TOKEN_EFFICIENT_GUIDE}`,
   });
 
+  // Convention: a tool result that reports a failure MUST carry
+  // `isError: true`. Without it the MCP spec says the call succeeded, so a
+  // client has to string-match the text to notice — and an agent will happily
+  // treat `Error: Stash "…" not found.` as a valid answer.
+
   // Create a new stash
   const createDef = getToolDef('create_stash');
   server.registerTool(
@@ -60,7 +65,10 @@ ${TOKEN_EFFICIENT_GUIDE}`,
       if (include_content) {
         const stash = db.getStash(id);
         if (!stash) {
-          return { content: [{ type: 'text', text: `Error: Stash "${id}" not found.` }] };
+          return {
+            content: [{ type: 'text', text: `Error: Stash "${id}" not found.` }],
+            isError: true,
+          };
         }
         db.logAccess(stash.id, 'mcp', 'read');
         const result = {
@@ -87,7 +95,10 @@ ${TOKEN_EFFICIENT_GUIDE}`,
 
       const meta = db.getStashMeta(id);
       if (!meta) {
-        return { content: [{ type: 'text', text: `Error: Stash "${id}" not found.` }] };
+        return {
+          content: [{ type: 'text', text: `Error: Stash "${id}" not found.` }],
+          isError: true,
+        };
       }
       db.logAccess(meta.id, 'mcp', 'read');
       return {
@@ -126,7 +137,10 @@ ${TOKEN_EFFICIENT_GUIDE}`,
       // File not found — check if stash exists to provide the right error
       const stashMeta = db.getStashMeta(id);
       if (!stashMeta) {
-        return { content: [{ type: 'text', text: `Error: Stash "${id}" not found.` }] };
+        return {
+          content: [{ type: 'text', text: `Error: Stash "${id}" not found.` }],
+          isError: true,
+        };
       }
       const available = stashMeta.files.map((f) => f.filename).join(', ');
       return {
@@ -136,6 +150,7 @@ ${TOKEN_EFFICIENT_GUIDE}`,
             text: `Error: File "${filename}" not found in stash "${id}". Available files: ${available}`,
           },
         ],
+        isError: true,
       };
     },
   );
@@ -166,7 +181,10 @@ ${TOKEN_EFFICIENT_GUIDE}`,
     async ({ id, name, description, files, tags, metadata }) => {
       const stash = db.updateStash(id, { name, description, files, tags, metadata }, 'mcp');
       if (!stash) {
-        return { content: [{ type: 'text', text: `Error: Stash "${id}" not found.` }] };
+        return {
+          content: [{ type: 'text', text: `Error: Stash "${id}" not found.` }],
+          isError: true,
+        };
       }
       db.logAccess(stash.id, 'mcp', 'update');
       const fileInfos = stash.files.map((f) => ({
@@ -202,7 +220,10 @@ ${TOKEN_EFFICIENT_GUIDE}`,
     async ({ id }) => {
       const deleted = db.deleteStash(id, { source: 'mcp' });
       if (!deleted) {
-        return { content: [{ type: 'text', text: `Error: Stash "${id}" not found.` }] };
+        return {
+          content: [{ type: 'text', text: `Error: Stash "${id}" not found.` }],
+          isError: true,
+        };
       }
       return { content: [{ type: 'text', text: `Stash "${id}" deleted successfully.` }] };
     },
@@ -216,7 +237,10 @@ ${TOKEN_EFFICIENT_GUIDE}`,
     async ({ id, archived }) => {
       const stash = db.archiveStash(id, archived);
       if (!stash) {
-        return { content: [{ type: 'text', text: `Error: Stash "${id}" not found.` }] };
+        return {
+          content: [{ type: 'text', text: `Error: Stash "${id}" not found.` }],
+          isError: true,
+        };
       }
       db.logAccess(stash.id, 'mcp', archived ? 'archive' : 'unarchive');
       const summary = {

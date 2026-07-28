@@ -87,6 +87,15 @@ export type {
   StashGraphResult,
 } from './db-types';
 
+/** Stash-graph rows fetched when the caller does not pass a `limit`. */
+const DEFAULT_GRAPH_STASHES = 200;
+/**
+ * Hard upper bound on stash-graph rows. `getStashGraph` builds edges with
+ * nested loops over the fetched rows, so this cap is what keeps the endpoint's
+ * cost bounded regardless of the requested `limit`.
+ */
+const MAX_GRAPH_STASHES = 1000;
+
 export class ClawStashDB {
   private db: Database.Database;
   private tokens: TokenStore;
@@ -987,10 +996,20 @@ export class ClawStashDB {
       since,
       until,
       tag,
-      limit = 200,
+      limit = DEFAULT_GRAPH_STASHES,
       include_versions = false,
       min_shared_tags = 1,
     } = options;
+
+    // Edge building below is O(n^2) over the fetched rows (shared-tag pairs +
+    // temporal-proximity pairs), so the row cap is the only thing bounding the
+    // work this endpoint can be made to do. An uncapped `limit` — or the
+    // previous `limit <= 0` meaning "no LIMIT clause at all" — let a single
+    // `read`-scope request (unauthenticated in open mode) pull every stash and
+    // burn quadratic CPU. Clamp instead: the graph is a visualisation surface
+    // where thousands of nodes are unreadable anyway, and the UI never sends a
+    // limit (it uses the 200 default).
+    const rowLimit = limit > 0 ? Math.min(limit, MAX_GRAPH_STASHES) : MAX_GRAPH_STASHES;
 
     // Fetch stashes with optional filters
     let query =
@@ -1015,11 +1034,8 @@ export class ClawStashDB {
     if (conditions.length > 0) {
       query += ' WHERE ' + conditions.join(' AND ');
     }
-    query += ' GROUP BY s.id ORDER BY s.updated_at DESC';
-    if (limit > 0) {
-      query += ' LIMIT ?';
-      params.push(limit);
-    }
+    query += ' GROUP BY s.id ORDER BY s.updated_at DESC LIMIT ?';
+    params.push(rowLimit);
 
     const stashRows = this.db.prepare(query).all(...params) as {
       id: string;
