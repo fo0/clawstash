@@ -71,10 +71,10 @@ export default function BackupLogCard({ repoFullName, refreshToken }: Props) {
           <table className="backup-table">
             <thead>
               <tr>
-                <th>Time</th>
-                <th>Trigger</th>
-                <th>Status</th>
-                <th>Details</th>
+                <th scope="col">Time</th>
+                <th scope="col">Trigger</th>
+                <th scope="col">Status</th>
+                <th scope="col">Details</th>
               </tr>
             </thead>
             <tbody>
