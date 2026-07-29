@@ -2340,16 +2340,20 @@ body {
   border-collapse: collapse;
 }
 
-.metadata-table td {
+/* The label column is a <th scope="row">, so every cell rule has to match
+   both element types — a bare `td` selector would drop the padding/border
+   off the labels and let the <th> defaults (bold, centered) through. */
+.metadata-table :is(td, th) {
   padding: 8px 12px;
   border-bottom: 1px solid var(--border-color);
   font-size: 13px;
 }
 
-.metadata-table td:first-child {
+.metadata-table :is(td, th):first-child {
   color: var(--text-secondary);
   width: 120px;
   font-weight: 500;
+  text-align: left;
 }
 
 .metadata-table code {
