@@ -110,15 +110,16 @@ Both serve on port 3000 (configurable via `PORT` env variable).
 
 ## Environment Variables
 
-| Variable                   | Description                                                                                                                            | Default               |
-| -------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- | --------------------- |
-| `PORT`                     | Server port                                                                                                                            | `3000`                |
-| `DATABASE_PATH`            | SQLite database path                                                                                                                   | `./data/clawstash.db` |
-| `NODE_ENV`                 | Environment mode — set to `production` when serving a built image (the Dockerfile and both compose snippets above already do)          | `development`         |
-| `ADMIN_PASSWORD`           | Admin password (unset = open access)                                                                                                   | —                     |
-| `ADMIN_SESSION_HOURS`      | Session duration in hours (0 = unlimited)                                                                                              | `24`                  |
-| `TRUST_PROXY`              | Trust `X-Forwarded-*` headers (set behind nginx/Traefik/Cloudflare); also enables HSTS for HTTPS requests (`x-forwarded-proto: https`) | off                   |
-| `CLAWSTASH_ENCRYPTION_KEY` | Key for secrets at rest (64 hex chars); unset = auto-generated key file `data/.clawstash-key`                                          | auto-generated        |
+| Variable                   | Description                                                                                                                                                                                                                                         | Default               |
+| -------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------- |
+| `PORT`                     | Server port                                                                                                                                                                                                                                         | `3000`                |
+| `HOSTNAME`                 | Bind address (the standalone `server.js` reads `HOSTNAME` and falls back to `0.0.0.0`). Docker sets it to the container id, so the image overrides it back to `0.0.0.0`; set it to e.g. `127.0.0.1` to expose the app only to a local reverse proxy | `0.0.0.0`             |
+| `DATABASE_PATH`            | SQLite database path                                                                                                                                                                                                                                | `./data/clawstash.db` |
+| `NODE_ENV`                 | Environment mode — set to `production` when serving a built image (the Dockerfile and both compose snippets above already do)                                                                                                                       | `development`         |
+| `ADMIN_PASSWORD`           | Admin password (unset = open access)                                                                                                                                                                                                                | —                     |
+| `ADMIN_SESSION_HOURS`      | Session duration in hours (0 = unlimited)                                                                                                                                                                                                           | `24`                  |
+| `TRUST_PROXY`              | Trust `X-Forwarded-*` headers (set behind nginx/Traefik/Cloudflare); also enables HSTS for HTTPS requests (`x-forwarded-proto: https`)                                                                                                              | off                   |
+| `CLAWSTASH_ENCRYPTION_KEY` | Key for secrets at rest (64 hex chars); unset = auto-generated key file `data/.clawstash-key`                                                                                                                                                       | auto-generated        |
 
 Copy `.env.example` and adjust as needed:
 

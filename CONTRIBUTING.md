@@ -10,10 +10,11 @@ Thanks for your interest in contributing to ClawStash! Here's how to get started
 git clone https://github.com/fo0/clawstash.git
 cd clawstash
 npm install
+cp .env.example .env   # optional — every variable has a working default
 npm run dev
 ```
 
-This starts the Next.js development server on port 3000 with both the frontend and API routes.
+This starts the Next.js development server on port 3000 with both the frontend and API routes. Without a `.env` the app falls back to port 3000, `./data/clawstash.db` and open admin access; see [`.env.example`](.env.example) for what you can change.
 
 ## Making Changes
 
