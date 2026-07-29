@@ -1,6 +1,7 @@
 export function BookIcon() {
   return (
     <svg
+      aria-hidden="true"
       width="24"
       height="24"
       viewBox="0 0 24 24"
@@ -18,6 +19,7 @@ export function BookIcon() {
 export function KeyIcon() {
   return (
     <svg
+      aria-hidden="true"
       width="20"
       height="20"
       viewBox="0 0 24 24"
@@ -38,6 +40,7 @@ export function KeyIcon() {
 export function ServerIcon() {
   return (
     <svg
+      aria-hidden="true"
       width="20"
       height="20"
       viewBox="0 0 24 24"
@@ -58,6 +61,7 @@ export function ServerIcon() {
 export function WifiIcon() {
   return (
     <svg
+      aria-hidden="true"
       width="20"
       height="20"
       viewBox="0 0 24 24"
@@ -81,7 +85,7 @@ export { CopyIcon } from '../shared/icons';
 
 export function PlusIcon() {
   return (
-    <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
+    <svg aria-hidden="true" width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
       <path d="M8 2a.75.75 0 0 1 .75.75v4.5h4.5a.75.75 0 0 1 0 1.5h-4.5v4.5a.75.75 0 0 1-1.5 0v-4.5h-4.5a.75.75 0 0 1 0-1.5h4.5v-4.5A.75.75 0 0 1 8 2Z" />
     </svg>
   );
@@ -90,6 +94,7 @@ export function PlusIcon() {
 export function TrashIcon() {
   return (
     <svg
+      aria-hidden="true"
       width="14"
       height="14"
       viewBox="0 0 24 24"
@@ -109,6 +114,7 @@ export function TrashIcon() {
 export function WarningIcon() {
   return (
     <svg
+      aria-hidden="true"
       width="16"
       height="16"
       viewBox="0 0 24 24"
@@ -128,6 +134,7 @@ export function WarningIcon() {
 export function ChevronIcon({ expanded }: { expanded: boolean }) {
   return (
     <svg
+      aria-hidden="true"
       width="14"
       height="14"
       viewBox="0 0 24 24"
@@ -149,6 +156,7 @@ export function ChevronIcon({ expanded }: { expanded: boolean }) {
 export function CheckIcon() {
   return (
     <svg
+      aria-hidden="true"
       width="14"
       height="14"
       viewBox="0 0 24 24"
