@@ -20,8 +20,13 @@ export default function BackupLogCard({ repoFullName, refreshToken }: Props) {
   const [log, setLog] = useState<BackupLogEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadFailed, setLoadFailed] = useState(false);
+  // Separate from `loading`: the initial load swaps the whole card for a
+  // spinner, whereas a manual refresh keeps the table on screen and only
+  // needs to mark the button busy.
+  const [refreshing, setRefreshing] = useState(false);
 
   const refresh = useCallback(async () => {
+    setRefreshing(true);
     try {
       const data = await api.getBackupLog({ limit: 50 });
       setLog(data.entries);
@@ -31,6 +36,7 @@ export default function BackupLogCard({ repoFullName, refreshToken }: Props) {
       setLoadFailed(true);
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
   }, []);
 
@@ -60,8 +66,13 @@ export default function BackupLogCard({ repoFullName, refreshToken }: Props) {
       )}
 
       <div className="settings-option-group">
-        <button className="btn btn-secondary btn-sm" onClick={refresh}>
-          Refresh
+        <button
+          className="btn btn-secondary btn-sm"
+          onClick={refresh}
+          disabled={refreshing}
+          aria-busy={refreshing}
+        >
+          {refreshing ? 'Refreshing…' : 'Refresh'}
         </button>
       </div>
 
