@@ -1632,6 +1632,7 @@ body {
   gap: 8px;
 }
 
+/* Real <button> (the card's primary action) reset back to plain text. */
 .stash-card-title {
   font-size: 14px;
   font-weight: 500;
@@ -1640,6 +1641,21 @@ body {
   text-overflow: ellipsis;
   white-space: nowrap;
   flex: 1;
+  min-width: 0;
+  background: none;
+  border: none;
+  padding: 0;
+  margin: 0;
+  font-family: inherit;
+  line-height: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.stash-card-title:focus-visible {
+  outline: 2px solid var(--accent-blue);
+  outline-offset: 2px;
+  border-radius: 3px;
 }
 
 .stash-card-files {
@@ -6424,6 +6440,11 @@ textarea.code-editor-plain.code-editor-wrap {
   bottom: 12px;
   left: 12px;
   display: flex;
+  /* Edge-type rows were added (BACKLOG #142) — wrap instead of running off
+     the canvas on narrow viewports. */
+  flex-wrap: wrap;
+  max-width: calc(100% - 24px);
+  row-gap: 4px;
   gap: 12px;
   padding: 6px 12px;
   background: rgba(22, 27, 34, 0.85);
@@ -6460,6 +6481,20 @@ textarea.code-editor-plain.code-editor-wrap {
   height: 10px;
   transform: rotate(45deg);
   border-radius: 1px;
+}
+
+/* Edge-type swatch: a short bar in the edge's stroke colour. */
+.stash-graph-legend-line {
+  display: inline-block;
+  width: 14px;
+  height: 3px;
+  border-radius: 2px;
+}
+
+/* Matches the dashed gray circle drawn for ignored tag nodes. */
+.stash-graph-legend-ignored {
+  background: rgba(110, 118, 129, 0.25);
+  border: 1px dashed rgba(110, 118, 129, 0.6);
 }
 
 /* === Stash Graph Popup Meta === */

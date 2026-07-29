@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import type { BackupLogEntry } from '../../types';
 import { api } from '../../api';
 import { formatDateTime } from '../../utils/format';
@@ -24,19 +24,28 @@ export default function BackupLogCard({ repoFullName, refreshToken }: Props) {
   // spinner, whereas a manual refresh keeps the table on screen and only
   // needs to mark the button busy.
   const [refreshing, setRefreshing] = useState(false);
+  // A manual refresh and a `refreshToken` bump (parent ran a sync) can be in
+  // flight at the same time — order of resolution is not guaranteed, so the
+  // older one must not overwrite the newer. BACKLOG #139.
+  const logRequestGen = useRef(0);
 
   const refresh = useCallback(async () => {
+    const gen = ++logRequestGen.current;
     setRefreshing(true);
     try {
       const data = await api.getBackupLog({ limit: 50 });
+      if (gen !== logRequestGen.current) return;
       setLog(data.entries);
       setLoadFailed(false);
     } catch (err) {
+      if (gen !== logRequestGen.current) return;
       console.error('Failed to load backup log:', err);
       setLoadFailed(true);
     } finally {
-      setLoading(false);
-      setRefreshing(false);
+      if (gen === logRequestGen.current) {
+        setLoading(false);
+        setRefreshing(false);
+      }
     }
   }, []);
 

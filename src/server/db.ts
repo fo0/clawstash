@@ -999,6 +999,7 @@ export class ClawStashDB {
       limit = DEFAULT_GRAPH_STASHES,
       include_versions = false,
       min_shared_tags = 1,
+      include_archived = false,
     } = options;
 
     // Edge building below is O(n^2) over the fetched rows (shared-tag pairs +
@@ -1017,6 +1018,14 @@ export class ClawStashDB {
     const conditions: string[] = [];
     const params: unknown[] = [];
 
+    // Default: exclude archived so the graph matches the default stash list
+    // and the tag list (listStashes / getAllTags both hide archived unless
+    // asked). Archived stashes used to appear here with no visual distinction
+    // and no way to filter them out, so node counts disagreed with the
+    // sidebar. Opt back in with { include_archived: true }. BACKLOG #140.
+    if (!include_archived) {
+      conditions.push('s.archived = 0');
+    }
     if (since) {
       conditions.push('s.created_at >= ?');
       params.push(since);
@@ -1233,8 +1242,16 @@ export class ClawStashDB {
       }
     }
 
+    // Count over the same population the nodes were drawn from, otherwise the
+    // "N of TOTAL" truncation hint counts stashes the graph deliberately hides.
     const totalStashes = (
-      this.db.prepare('SELECT COUNT(*) as c FROM stashes').get() as { c: number }
+      this.db
+        .prepare(
+          include_archived
+            ? 'SELECT COUNT(*) as c FROM stashes'
+            : 'SELECT COUNT(*) as c FROM stashes WHERE archived = 0',
+        )
+        .get() as { c: number }
     ).c;
 
     return { nodes, edges, time_range: timeRange, total_stashes: totalStashes };

@@ -3,6 +3,7 @@ import type { StashGraphNode, StashGraphEdge, StashGraphResult } from '../types'
 import { api } from '../api';
 import { formatDateTime } from '../utils/format';
 import { watchDevicePixelRatio } from '../utils/dpr';
+import { badgeTextColor } from '../utils/contrast';
 
 interface Props {
   onSelectStash: (id: string) => void;
@@ -48,6 +49,15 @@ const COLORS = {
 function edgeColor(type: string): string {
   return COLORS[type as keyof typeof COLORS] || 'rgba(139, 148, 158, 0.3)';
 }
+
+// Legend swatches for the edge types. Edges are painted faint on the canvas
+// (they overlap heavily), but a 14x3 px swatch at 0.25 alpha would be
+// invisible — same hue, readable alpha. BACKLOG #142.
+const LEGEND_EDGE_COLORS = {
+  shared_tags: 'rgba(88, 166, 255, 0.85)',
+  has_tag: 'rgba(35, 134, 54, 0.85)',
+  temporal_proximity: 'rgba(188, 140, 255, 0.75)',
+};
 
 function computeRadius(node: StashGraphNode): number {
   if (node.type === 'stash')
@@ -256,7 +266,13 @@ function drawTagNode(
     ctx.font = `700 ${Math.max(7, node.radius * 0.65)}px -apple-system, BlinkMacSystemFont, sans-serif`;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.fillStyle = isIgnored ? 'rgba(255,255,255,0.35)' : 'rgba(255,255,255,0.9)';
+    // Text colour follows the fill so the count stays legible on the bright
+    // "active" green as well as the dim/base ones. BACKLOG #142.
+    ctx.fillStyle = isIgnored
+      ? 'rgba(255,255,255,0.35)'
+      : isActive
+        ? badgeTextColor('#3fb950')
+        : badgeTextColor(COLORS.tag, isConnected ? 0.7 : dimmed ? 0.2 : 1);
     ctx.fillText(String(node.count), node.x, node.y);
   }
 }
@@ -1569,6 +1585,8 @@ export default function StashGraphCanvas({
 
         {/* Legend */}
         {!loading && nodeCount > 0 && (
+          // The legend used to name node types only, leaving the three edge
+          // colours and the gray "ignored" styling unexplained. BACKLOG #142.
           <div className="stash-graph-legend">
             <div className="stash-graph-legend-item">
               <span className="stash-graph-legend-rect" style={{ background: COLORS.stash }} />
@@ -1578,6 +1596,41 @@ export default function StashGraphCanvas({
               <div className="stash-graph-legend-item">
                 <span className="stash-graph-legend-circle" style={{ background: COLORS.tag }} />
                 <span>Tag</span>
+              </div>
+            )}
+            <div className="stash-graph-legend-item" title="Stashes that share at least one tag">
+              <span
+                className="stash-graph-legend-line"
+                style={{ background: LEGEND_EDGE_COLORS.shared_tags }}
+              />
+              <span>Shared tags</span>
+            </div>
+            {analysedStashes.size > 0 && (
+              <div className="stash-graph-legend-item" title="Stash to one of its tags">
+                <span
+                  className="stash-graph-legend-line"
+                  style={{ background: LEGEND_EDGE_COLORS.has_tag }}
+                />
+                <span>Has tag</span>
+              </div>
+            )}
+            <div
+              className="stash-graph-legend-item"
+              title="Stashes created within 24 hours of each other"
+            >
+              <span
+                className="stash-graph-legend-line"
+                style={{ background: LEGEND_EDGE_COLORS.temporal_proximity }}
+              />
+              <span>Created together</span>
+            </div>
+            {ignoredTags.size > 0 && (
+              <div
+                className="stash-graph-legend-item"
+                title="Ignored tags stay visible in gray but no longer expand the analysis"
+              >
+                <span className="stash-graph-legend-circle stash-graph-legend-ignored" />
+                <span>Ignored tag</span>
               </div>
             )}
           </div>

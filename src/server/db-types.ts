@@ -205,6 +205,11 @@ export interface StashGraphOptions {
   limit?: number;
   include_versions?: boolean;
   min_shared_tags?: number;
+  /**
+   * Include archived stashes. Defaults to false so the graph matches the
+   * default stash list / tag list (both exclude archived). BACKLOG #140.
+   */
+  include_archived?: boolean;
 }
 
 export interface StashGraphNode {

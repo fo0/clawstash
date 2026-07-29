@@ -290,6 +290,45 @@ describe('ClawStashDB stash CRUD + FTS sync', () => {
     });
   });
 
+  describe('getStashGraph archived handling (#140)', () => {
+    function seedActiveAndArchived(): { active: string; archived: string } {
+      const active = db.createStash({
+        name: 'active-graph',
+        tags: ['shared'],
+        files: [{ filename: 'a.txt', content: 'a' }],
+      });
+      const archived = db.createStash({
+        name: 'archived-graph',
+        tags: ['shared'],
+        files: [{ filename: 'b.txt', content: 'b' }],
+      });
+      db.archiveStash(archived.id, true);
+      return { active: active.id, archived: archived.id };
+    }
+
+    it('excludes archived stashes by default', () => {
+      const { active, archived } = seedActiveAndArchived();
+      const graph = db.getStashGraph();
+      const ids = graph.nodes.filter((n) => n.type === 'stash').map((n) => n.id);
+      expect(ids).toContain(active);
+      expect(ids).not.toContain(archived);
+    });
+
+    it('includes archived stashes with include_archived', () => {
+      const { active, archived } = seedActiveAndArchived();
+      const graph = db.getStashGraph({ include_archived: true });
+      const ids = graph.nodes.filter((n) => n.type === 'stash').map((n) => n.id);
+      expect(ids).toContain(active);
+      expect(ids).toContain(archived);
+    });
+
+    it('counts total_stashes over the same population as the nodes', () => {
+      seedActiveAndArchived();
+      expect(db.getStashGraph().total_stashes).toBe(1);
+      expect(db.getStashGraph({ include_archived: true }).total_stashes).toBe(2);
+    });
+  });
+
   describe('stash files multi-file behaviour', () => {
     it('replaces full file list on update when files key is provided', () => {
       const s = db.createStash({

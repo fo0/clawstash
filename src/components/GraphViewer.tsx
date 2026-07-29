@@ -3,6 +3,7 @@ import type { StashListItem, TagInfo, TagGraphResult } from '../types';
 import { api } from '../api';
 import { pluralize } from '../utils/format';
 import { watchDevicePixelRatio } from '../utils/dpr';
+import { badgeTextColor } from '../utils/contrast';
 import StashGraphCanvas from './StashGraphCanvas';
 
 // --- Physics simulation constants (tag graph) --------------------------------
@@ -677,13 +678,21 @@ export default function GraphViewer({
       ctx.lineWidth = isFocusNode ? 2 : 1;
       ctx.stroke();
 
-      // Count badge inside node (when big enough)
+      // Count badge inside node (when big enough). The text colour follows the
+      // fill's luminance — hardcoded white sat at ~1.9:1 on the light cluster
+      // colours (#79c0ff, #ffa657). BACKLOG #142.
       if (node.radius >= 10) {
         const badgeFontSize = Math.max(8, Math.min(12, node.radius * 0.7));
         ctx.font = `700 ${badgeFontSize}px -apple-system, BlinkMacSystemFont, sans-serif`;
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
-        ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
+        ctx.fillStyle = isFocusNode
+          ? badgeTextColor('#58a6ff')
+          : isConnected
+            ? badgeTextColor(CLUSTER_COLORS[node.cluster % CLUSTER_COLORS.length], 0.7)
+            : activeNode
+              ? badgeTextColor(CLUSTER_COLORS[node.cluster % CLUSTER_COLORS.length], 0.2)
+              : badgeTextColor(baseColor);
         ctx.fillText(String(node.count), node.x, node.y);
       }
 

@@ -1,4 +1,4 @@
-import { useMemo, useCallback } from 'react';
+import { useMemo, useCallback, useState } from 'react';
 import Editor from 'react-simple-code-editor';
 import type { FileInput } from '../../types';
 import { highlightCode, resolvePrismLanguage } from '../../languages';
@@ -25,6 +25,22 @@ interface Props {
 const SYNTAX_HIGHLIGHT_MAX_CHARS = 100_000;
 
 export default function FileCodeEditor({ file, index, updateFile, wrap = false }: Props) {
+  // Latched, never un-latched for the lifetime of this file. Swapping
+  // <Editor> <-> <textarea> unmounts the live text field, so every swap
+  // costs the caret position, scroll offset, focus and the browser's native
+  // undo history. Deriving the mode from the current length alone made that
+  // happen on EVERY keystroke that crossed the threshold: type one char past
+  // 100k, delete it, type it again. Once plain mode is warranted it stays —
+  // the only remaining swap is the first up-crossing, which is the price of
+  // keeping large files editable. The file list is keyed by a stable file id
+  // (StashEditor `fileIds`), so this state cannot leak into another file.
+  const [plainMode, setPlainMode] = useState(
+    () => file.content.length > SYNTAX_HIGHLIGHT_MAX_CHARS,
+  );
+  if (!plainMode && file.content.length > SYNTAX_HIGHLIGHT_MAX_CHARS) {
+    setPlainMode(true);
+  }
+
   const highlight = useMemo(
     () => (code: string) => highlightCode(code, resolvePrismLanguage(file.language, file.filename)),
     [file.language, file.filename],
@@ -41,7 +57,7 @@ export default function FileCodeEditor({ file, index, updateFile, wrap = false }
   // Large files skip highlighting entirely — re-highlighting the whole string
   // on every keystroke lags on multi-MB files. A plain textarea keeps editing
   // responsive; the styling classes keep it visually consistent.
-  if (file.content.length > SYNTAX_HIGHLIGHT_MAX_CHARS) {
+  if (plainMode) {
     return (
       <textarea
         value={file.content}

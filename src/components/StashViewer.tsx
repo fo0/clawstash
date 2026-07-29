@@ -437,7 +437,14 @@ export default function StashViewer({
   // button re-run the fetch effect without leaving the tab.
   const [logError, setLogError] = useState(false);
   const [logReloadKey, setLogReloadKey] = useState(0);
-  const [renderPreview, setRenderPreview] = useState(getRenderPreference);
+  // Raw/Preview is presented as a per-file button, so it behaves like one:
+  // `renderOverrides` holds the explicit per-file choices (keyed by file id),
+  // and files without one fall back to the persisted default. That default is
+  // captured in a ref — deliberately non-reactive — so toggling one file
+  // cannot move the other renderable files in the same stash, which is what
+  // the single global flag used to do. BACKLOG #126.
+  const renderDefaultRef = useRef(getRenderPreference());
+  const [renderOverrides, setRenderOverrides] = useState<Record<string, boolean>>({});
   const [wrapLines, setWrapLines] = useState(getWrapPreference);
   const [tocExpanded, setTocExpanded] = useState(getTocPreference);
   const [collapsedFiles, setCollapsedFiles] = useState<Set<string>>(new Set());
@@ -491,6 +498,19 @@ export default function StashViewer({
     return { renderedContent: contentMap, tocEntries: entries };
   }, [stash.files, resolvedLanguages]);
 
+  // The multi-file table of contents is built from rendered markdown, so it
+  // is shown while at least one markdown file is in preview mode — the flag
+  // is per file now, not global.
+  const anyMarkdownRendered = useMemo(
+    () =>
+      stash.files.some(
+        (f) =>
+          resolvedLanguages.get(f.id) === 'markdown' &&
+          (renderOverrides[f.id] ?? renderDefaultRef.current),
+      ),
+    [stash.files, resolvedLanguages, renderOverrides],
+  );
+
   // Memoize Prism-highlighted HTML per file. Without this, every state-driven
   // re-render (collapse toggles, clipboard feedback, …) would re-run
   // highlightCode over all expanded files — noticeable on large stashes.
@@ -505,13 +525,23 @@ export default function StashViewer({
     [stash.files, resolvedLanguages],
   );
 
-  const toggleRenderPreview = useCallback(() => {
-    setRenderPreview((prev) => {
-      const next = !prev;
-      setRenderPreference(next);
-      return next;
-    });
+  /**
+   * Switch ONE file between rendered preview and raw source. The choice is
+   * also persisted as the default for the next stash you open (the previous
+   * behaviour of the global flag) — `renderDefaultRef` stays frozen for the
+   * current stash, so the files already on screen keep their mode.
+   */
+  const toggleRenderPreview = useCallback((fileId: string, next: boolean) => {
+    setRenderOverrides((prev) => ({ ...prev, [fileId]: next }));
+    setRenderPreference(next);
   }, []);
+
+  // File ids are per stash, so overrides must not survive a stash switch;
+  // re-read the persisted default at the same time.
+  useEffect(() => {
+    renderDefaultRef.current = getRenderPreference();
+    setRenderOverrides((prev) => (Object.keys(prev).length === 0 ? prev : {}));
+  }, [stash.id]);
 
   /** Toggle raw-code line wrapping and persist the choice (global preference). */
   const toggleWrapLines = useCallback(() => {
@@ -684,13 +714,15 @@ export default function StashViewer({
   // re-render during page boot cannot orphan an in-flight render — the bug that
   // left diagrams blank on a full page load / F5 (#286). See mermaid-hydrate.ts.
   useEffect(() => {
-    if (activeTab !== 'content' || !renderPreview) return;
+    if (activeTab !== 'content') return;
     const root = filesContainerRef.current;
     if (!root) return;
+    // No-op when nothing is rendered — there are no placeholders to claim.
     hydrateMermaidPlaceholders(root);
     // `collapsedFiles` is a dep because re-expanding a collapsed markdown file
-    // mounts pristine placeholders that need a hydration pass.
-  }, [renderedContent, renderPreview, activeTab, collapsedFiles]);
+    // mounts pristine placeholders that need a hydration pass; `renderOverrides`
+    // because switching a single file to preview mounts them too.
+  }, [renderedContent, renderOverrides, activeTab, collapsedFiles]);
 
   const copyAllFiles = () => {
     const allContent = stash.files
@@ -1026,7 +1058,7 @@ export default function StashViewer({
         </button>
       </div>
 
-      {activeTab === 'content' && tocEntries.length > 0 && renderPreview && (
+      {activeTab === 'content' && tocEntries.length > 0 && anyMarkdownRendered && (
         <div className="viewer-toc">
           <button
             className="viewer-toc-toggle"
@@ -1115,7 +1147,8 @@ export default function StashViewer({
           {stash.files.map((file, fileIndex) => {
             const lang = resolvedLanguages.get(file.id) || 'text';
             const renderable = isRenderableLanguage(lang);
-            const showRendered = renderable && renderPreview;
+            const showRendered =
+              renderable && (renderOverrides[file.id] ?? renderDefaultRef.current);
             const langLabel =
               file.language || (lang !== 'text' ? `auto:${getLanguageDisplayName(lang)}` : '');
 
@@ -1165,7 +1198,7 @@ export default function StashViewer({
                     {renderable && (
                       <button
                         className={`btn btn-sm btn-ghost render-toggle ${showRendered ? 'render-active' : ''}`}
-                        onClick={toggleRenderPreview}
+                        onClick={() => toggleRenderPreview(file.id, !showRendered)}
                         aria-pressed={showRendered}
                         title={showRendered ? 'Show raw source code' : 'Show rendered preview'}
                         aria-label={showRendered ? 'Show raw source code' : 'Show rendered preview'}
