@@ -77,8 +77,9 @@ export default function BackupActivityCard({ onSyncRan, onUnhealthyChange }: Pro
 
   if (loading) {
     return (
-      <div className="settings-card">
+      <div className="settings-card" role="status" aria-live="polite">
         <Spinner />
+        <span className="sr-only">Loading sync activity…</span>
       </div>
     );
   }
@@ -165,10 +166,10 @@ export default function BackupActivityCard({ onSyncRan, onUnhealthyChange }: Pro
           <table className="backup-table">
             <thead>
               <tr>
-                <th>Stash</th>
-                <th>State</th>
-                <th>Last sync</th>
-                <th>Commit</th>
+                <th scope="col">Stash</th>
+                <th scope="col">State</th>
+                <th scope="col">Last sync</th>
+                <th scope="col">Commit</th>
               </tr>
             </thead>
             <tbody>

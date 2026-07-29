@@ -1278,7 +1278,7 @@ export default function StashViewer({
             <table className="metadata-table">
               <tbody>
                 <tr>
-                  <td>ID</td>
+                  <th scope="row">ID</th>
                   <td>
                     <span className="stash-id-cell">
                       <code>{stash.id}</code>
@@ -1303,24 +1303,24 @@ export default function StashViewer({
                   </td>
                 </tr>
                 <tr>
-                  <td>Files</td>
+                  <th scope="row">Files</th>
                   <td>{stash.files.length}</td>
                 </tr>
                 <tr>
-                  <td>Size</td>
+                  <th scope="row">Size</th>
                   <td>{formatBytes(totalBytes)}</td>
                 </tr>
                 <tr>
-                  <td>Created</td>
+                  <th scope="row">Created</th>
                   <td>{new Date(stash.created_at).toLocaleString()}</td>
                 </tr>
                 <tr>
-                  <td>Updated</td>
+                  <th scope="row">Updated</th>
                   <td>{new Date(stash.updated_at).toLocaleString()}</td>
                 </tr>
                 {stash.tags.length > 0 && (
                   <tr>
-                    <td>Tags</td>
+                    <th scope="row">Tags</th>
                     <td>{stash.tags.join(', ')}</td>
                   </tr>
                 )}
@@ -1372,7 +1372,7 @@ export default function StashViewer({
                     const copyKey = `meta-${key}`;
                     return (
                       <tr key={key}>
-                        <td>{key}</td>
+                        <th scope="row">{key}</th>
                         <td className="metadata-value-cell">
                           <code>{display}</code>
                           <button

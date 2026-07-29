@@ -1,6 +1,13 @@
 export default function Spinner({ size = 16 }: { size?: number }) {
   return (
-    <svg className="api-spinner" width={size} height={size} viewBox="0 0 24 24" fill="none">
+    <svg
+      aria-hidden="true"
+      className="api-spinner"
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+    >
       <circle
         style={{ opacity: 0.25 }}
         cx="12"
