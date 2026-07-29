@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import type { BackupStatusResponse, BackupSyncState } from '../../types';
 import { api } from '../../api';
 import { formatDateTime } from '../../utils/format';
@@ -37,18 +37,32 @@ export default function BackupActivityCard({ onSyncRan, onUnhealthyChange }: Pro
   const [syncing, setSyncing] = useState(false);
   const [result, setResult] = useState<{ ok: boolean; message: string } | null>(null);
   const [showAllStates, setShowAllStates] = useState(false);
+  // Separate from `loading`: the initial load swaps the card for a spinner,
+  // a refresh keeps the table on screen and only marks the button busy.
+  const [refreshing, setRefreshing] = useState(false);
+  // Drops out-of-order responses from rapid refreshes (same pattern as
+  // BackupTargetCard.branchRequestGen). BACKLOG #139.
+  const statusRequestGen = useRef(0);
 
   const refresh = useCallback(async () => {
+    const gen = ++statusRequestGen.current;
+    setRefreshing(true);
     try {
       const statusData = await api.getBackupStatus();
+      if (gen !== statusRequestGen.current) return;
       setStatus(statusData);
       setLoadFailed(false);
       onUnhealthyChange?.(statusData.unhealthy);
     } catch (err) {
+      if (gen !== statusRequestGen.current) return;
       console.error('Failed to load backup status:', err);
       setLoadFailed(true);
     } finally {
-      setLoading(false);
+      // A superseded response must not clear the busy state of the newer one.
+      if (gen === statusRequestGen.current) {
+        setLoading(false);
+        setRefreshing(false);
+      }
     }
   }, [onUnhealthyChange]);
 
@@ -94,8 +108,13 @@ export default function BackupActivityCard({ onSyncRan, onUnhealthyChange }: Pro
         </div>
         <div className="settings-import-error">Could not load the backup status.</div>
         <div className="settings-option-group">
-          <button className="btn btn-secondary btn-sm" onClick={refresh}>
-            Retry
+          <button
+            className="btn btn-secondary btn-sm"
+            onClick={refresh}
+            disabled={refreshing}
+            aria-busy={refreshing}
+          >
+            {refreshing ? 'Retrying…' : 'Retry'}
           </button>
         </div>
       </div>
@@ -144,8 +163,13 @@ export default function BackupActivityCard({ onSyncRan, onUnhealthyChange }: Pro
         >
           {syncing ? 'Backing up…' : 'Back up all now'}
         </button>
-        <button className="btn btn-secondary" onClick={refresh} disabled={syncing}>
-          Refresh
+        <button
+          className="btn btn-secondary"
+          onClick={refresh}
+          disabled={syncing || refreshing}
+          aria-busy={refreshing}
+        >
+          {refreshing ? 'Refreshing…' : 'Refresh'}
         </button>
       </div>
       {result && (
