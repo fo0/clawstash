@@ -33,6 +33,8 @@ See [authentication.md](authentication.md) for token creation and scopes.
 
 > **`?archived=` query param**: only the literal strings `true` and `false` are honored. Any other value (e.g. `?archived=1`, `?archived=yes`) is rejected with `400 Bad Request` and `{ "error": "Invalid 'archived' value. Use 'true' or 'false'." }`. Omit the parameter entirely to use the default (active stashes only).
 
+> **Archived stashes in listings**: `/api/stashes/tags` and `/api/stashes/graph/stashes` exclude archived stashes by default, matching the default `/api/stashes` behaviour. Pass `?include_archived=true` to either one to get the legacy "count everything" result. On the stash graph this also applies to `total_stashes`, so the returned total always describes the same population as `nodes`.
+
 > **Raw file route response header**: `/api/stashes/:id/files/:filename/raw` returns `Content-Disposition: inline; filename*=UTF-8''…` so non-ASCII filenames are preserved when downloaded.
 
 > **Unique filenames**: `files[]` must not contain two entries with the same filename (compared after trimming). Duplicates are rejected with `400 Bad Request` on both `POST /api/stashes` and `PATCH /api/stashes/:id` — and identically on the MCP `create_stash` / `update_stash` tools — because raw-file lookup resolves a name to exactly one file.

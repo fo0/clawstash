@@ -20,8 +20,20 @@ export async function GET(req: NextRequest) {
   const limit = parsePositiveInt(searchParams.get('limit'));
   const include_versions = searchParams.get('include_versions') === 'true';
   const min_shared_tags = parsePositiveInt(searchParams.get('min_shared_tags'));
+  // Mirrors ?include_archived=true on /api/stashes/tags: archived stashes are
+  // hidden by default so the graph agrees with the default listings.
+  const include_archived = searchParams.get('include_archived') === 'true';
 
   return NextResponse.json(
-    getDb().getStashGraph({ mode, since, until, tag, limit, include_versions, min_shared_tags }),
+    getDb().getStashGraph({
+      mode,
+      since,
+      until,
+      tag,
+      limit,
+      include_versions,
+      min_shared_tags,
+      include_archived,
+    }),
   );
 }
