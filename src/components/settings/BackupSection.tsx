@@ -124,8 +124,9 @@ export default function BackupSection() {
       )}
 
       {!loadError && !response && (
-        <div className="settings-card">
+        <div className="settings-card" role="status" aria-live="polite">
           <Spinner />
+          <span className="sr-only">Loading backup settings…</span>
         </div>
       )}
 

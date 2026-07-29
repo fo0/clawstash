@@ -77,8 +77,9 @@ export default function BackupActivityCard({ onSyncRan, onUnhealthyChange }: Pro
 
   if (loading) {
     return (
-      <div className="settings-card">
+      <div className="settings-card" role="status" aria-live="polite">
         <Spinner />
+        <span className="sr-only">Loading sync activity…</span>
       </div>
     );
   }
