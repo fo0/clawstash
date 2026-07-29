@@ -1632,6 +1632,7 @@ body {
   gap: 8px;
 }
 
+/* Real <button> (the card's primary action) reset back to plain text. */
 .stash-card-title {
   font-size: 14px;
   font-weight: 500;
@@ -1640,6 +1641,21 @@ body {
   text-overflow: ellipsis;
   white-space: nowrap;
   flex: 1;
+  min-width: 0;
+  background: none;
+  border: none;
+  padding: 0;
+  margin: 0;
+  font-family: inherit;
+  line-height: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.stash-card-title:focus-visible {
+  outline: 2px solid var(--accent-blue);
+  outline-offset: 2px;
+  border-radius: 3px;
 }
 
 .stash-card-files {

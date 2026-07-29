@@ -46,22 +46,31 @@ export default function StashCard({
   );
 
   return (
+    // Deliberately NOT role="button"/tabIndex: the card holds interactive
+    // descendants (favorite toggle, tag chips, description links), and a
+    // button is not allowed to contain interactive content — assistive tech
+    // may flatten the inner controls away. The title below is the real,
+    // keyboard-reachable primary action; the container keeps its click
+    // handler purely as a pointer convenience, which needs no ARIA role.
     <div
       className={`stash-card ${layout}${stash.archived ? ' stash-card-archived' : ''}`}
       onClick={onClick}
-      onKeyDown={(e) => {
-        if (e.key === 'Enter' || e.key === ' ') {
-          e.preventDefault();
-          onClick();
-        }
-      }}
-      role="button"
-      tabIndex={0}
-      aria-label={`Open stash: ${title}`}
       title={`Open stash: ${title}`}
     >
       <div className="stash-card-header">
-        <span className="stash-card-title">{title}</span>
+        <button
+          type="button"
+          className="stash-card-title"
+          onClick={(e) => {
+            // The container's own handler would otherwise open the stash a
+            // second time (same target, but it also fires on Enter/Space).
+            e.stopPropagation();
+            onClick();
+          }}
+          aria-label={`Open stash: ${title}`}
+        >
+          {title}
+        </button>
         {stash.archived && <span className="stash-card-archived-badge">Archived</span>}
         <button
           type="button"
@@ -70,10 +79,6 @@ export default function StashCard({
             e.stopPropagation();
             onToggleFavorite(stash.id);
           }}
-          // Enter/Space on the star must not bubble to the card's own
-          // keydown handler, which would ALSO open the stash (the tag chips
-          // below already stop propagation the same way).
-          onKeyDown={(e) => e.stopPropagation()}
           aria-pressed={isFavorite}
           aria-label={isFavorite ? `Unpin "${title}" from top` : `Pin "${title}" to top`}
           title={isFavorite ? 'Unpin from top' : 'Pin to top'}
