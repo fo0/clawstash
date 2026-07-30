@@ -57,23 +57,33 @@ User-facing feature list: `README.md`. Backup semantics: `docs/backup.md`.
 
 ## Tech Stack
 
-| Component       | Technology                            | Version   |
-| --------------- | ------------------------------------- | --------- |
-| Language        | TypeScript (strict)                   | 6         |
-| Framework       | Next.js (App Router) + React          | 16 / 19   |
-| Database        | SQLite (better-sqlite3)               | 12        |
-| MCP Server      | @modelcontextprotocol/sdk             | 1.27      |
-| Validation      | Zod                                   | 3.24      |
-| Rendering       | marked, mermaid (lazy), diff, PrismJS | 18, 11, 9 |
-| Module System   | ESM (`"type": "module"`)              | --        |
-| Container / CI  | Docker (standalone) -> GHCR Actions   | --        |
-| Package Manager | npm (`package-lock.json`)             | --        |
-| Formatter       | Prettier                              | 3.9       |
-| Test Framework  | vitest                                | 4.x       |
+| Component       | Technology                            | Version         |
+| --------------- | ------------------------------------- | --------------- |
+| Language        | TypeScript (strict)                   | 6               |
+| Runtime         | Node.js (CI + Docker run 26)          | >= 20.9         |
+| Framework       | Next.js (App Router) + React          | 16 / 19         |
+| Database        | SQLite (better-sqlite3)               | 12              |
+| MCP Server      | @modelcontextprotocol/sdk             | 1.27            |
+| Validation      | Zod                                   | 3.24            |
+| Rendering       | marked, mermaid (lazy), diff, PrismJS | 18, 11, 9, 1.30 |
+| Module System   | ESM (`"type": "module"`)              | --              |
+| Container / CI  | Docker (standalone) -> GHCR Actions   | --              |
+| Package Manager | npm (`package-lock.json`)             | --              |
+| Formatter       | Prettier                              | 3.9             |
+| Test Framework  | vitest                                | 4.x             |
 
 Exact versions: `package.json`.
 
 ## Project Structure
+
+```
+src/
+  app/          # App Router: pages, /api handlers, /mcp endpoint
+  components/   # React UI (+ editor/ settings/ api/ shared/)
+  server/       # DB, auth, validation, MCP, OpenAPI (+ stores/ backup/)
+  hooks/ utils/ styles/
+docs/ (user docs + ARCHITECTURE.mmd + adr/), agent_docs/, .claude/skills/, scripts/, public/
+```
 
 Full directory tree: `agent_docs/project-structure.md`.
 
@@ -151,7 +161,7 @@ Significant decisions are recorded as ADRs under `docs/adr/`. Triggers + format:
 - **Branch Naming:** `claude/<description>-<shortId>` for agent branches, `feature/<name>` for manual
 - **Commit Messages:** Conventional Commits `type(scope): description #issue` (feat, fix, chore, refactor, docs)
 - **Merge Strategy:** Squash merge for PRs
-- **CI/CD:** GitHub Actions type-check -> build -> Docker push to GHCR (`docker-publish.yml`)
+- **CI/CD:** `docker-publish.yml` (manual dispatch, Node 26): format:check -> `tsc --noEmit` -> lint/test when those scripts exist -> build, then Docker build + push to GHCR
 - **Formatting guard (optional):** husky + lint-staged auto-format on commit -- `agent_docs/ci_formatting_guard.md`. Never bypass with `--no-verify`.
 
 ## Dependency Management
@@ -190,7 +200,7 @@ Full reference: `docs/api-reference.md` - MCP tools: `docs/mcp.md` - auth/scopes
 ## Testing
 
 - **Framework:** vitest 4.x - **Run:** `npm test` (`npm run test:watch` for watch mode)
-- **Structure:** next to source as `*.test.ts` / `*.spec.ts`, or under `tests/`
+- **Structure:** colocated `__tests__/` folders under `src/`; vitest collects `src/**/*.{test,spec}.{ts,tsx}` (`vitest.config.ts`: node env, `@/*` alias, typecheck off)
 - **Patterns:** unit tests with mocked DB / fetch; no real network or paid-API calls
 - **Constraints:** agent-runnable, zero-cost, deterministic -- no real API calls, cloud resources or prod DB writes; mock external boundaries. Real-service E2E only on explicit request. Details: `agent_docs/review_process.md -> Test execution constraints`.
 
@@ -223,8 +233,8 @@ Full notes: `agent_docs/development-notes.md`.
 
 Refactoring does NOT happen automatically -- only on explicit request, on repeated review smells, or when structure blocks a feature. Principles: `agent_docs/refactoring_guidelines.md`.
 
-- **`GraphViewer.tsx` / `StashGraphCanvas.tsx` (~1600 lines each)** -- layout/draw/physics mixed with React (BACKLOG #102 / #103).
-- **`src/server/db.ts` (~1150)**, **`StashViewer.tsx` (~1090)** -- stores extracted already; further splits optional (BACKLOG #106).
+- **`StashGraphCanvas.tsx` (~1850) / `GraphViewer.tsx` (~1780)** -- layout/draw/physics mixed with React (BACKLOG #102 / #103).
+- **`StashViewer.tsx` (~1600)**, **`src/server/db.ts` (~1580)**, **`src/server/openapi.ts` (~1155)**, **`src/App.tsx` (~1060)** -- stores already split out of `db.ts`; further extraction optional (BACKLOG #105 / #106).
 - **No linter** -- adding ESLint would materially improve quality assurance.
 
 Full list: `agent_docs/development-notes.md -> Refactoring candidates`.

@@ -1,6 +1,6 @@
 # Project Structure
 
-Extracted from `CLAUDE.md` (size budget 40k chars). Update this file when files are added, moved, or removed.
+Offloaded from `CLAUDE.md`, which keeps only the top-level skeleton (budgets: `agent_docs/context_budget.md`). Update this file when files are added, moved, or removed.
 
 ````
 clawstash/
@@ -31,11 +31,15 @@ clawstash/
 │       ├── 0001-record-architecture-decisions.md
 │       └── 0002-github-backup-architecture.md
 ├── .claude/
+│   ├── settings.json           # Tier-1 hooks (session start, context budget, GitNexus commit guard) + trigger allowlist
 │   └── skills/                 # Agent workflow skills: done, pr, review, security-review, rollback, ci, stuck, verify
-│       └── gitnexus/           # GitNexus code intelligence skills (explore, debug, refactor, review, impact, query)
+│       └── gitnexus/           # Read-only GitNexus skills: guide, cli, exploring, impact-analysis, debugging, refactoring (+ older explore/debug/impact/query/review aliases)
 ├── .github/
+│   ├── dependabot.yml          # Weekly npm + github-actions update PRs
+│   ├── ISSUE_TEMPLATE/         # Bug report + feature request templates
+│   ├── pull_request_template.md
 │   └── workflows/
-│       └── docker-publish.yml  # CI: Type-check, build, push to GHCR
+│       └── docker-publish.yml  # CI (manual dispatch): format:check, tsc, tests, build, push to GHCR
 ├── scripts/
 │   └── generate-build-info.js  # Prebuild script: generates build metadata (git branch, commit, date)
 ├── public/                     # Next.js static assets
