@@ -22,7 +22,11 @@ export default function VersionHistory({ stashId, currentVersion, onRestore }: P
   const [loading, setLoading] = useState(true);
   const [subView, setSubView] = useState<SubView>('list');
   const [selectedVersion, setSelectedVersion] = useState<StashVersion | null>(null);
-  const [detailLoading, setDetailLoading] = useState(false);
+  // Version number whose detail fetch is in flight, or null. Every View button
+  // was disabled while loading with no indication of WHICH row was opening —
+  // on a slow fetch the click read as "nothing happened".
+  const [loadingVersion, setLoadingVersion] = useState<number | null>(null);
+  const detailLoading = loadingVersion !== null;
   const [restoring, setRestoring] = useState(false);
   const [confirmRestore, setConfirmRestore] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -68,7 +72,7 @@ export default function VersionHistory({ stashId, currentVersion, onRestore }: P
   }, [stashId, currentVersion]);
 
   const handleViewVersion = async (version: number) => {
-    setDetailLoading(true);
+    setLoadingVersion(version);
     try {
       const data = await api.getVersion(stashId, version);
       setSelectedVersion(data);
@@ -77,7 +81,7 @@ export default function VersionHistory({ stashId, currentVersion, onRestore }: P
     } catch {
       setError('Failed to load version details');
     } finally {
-      setDetailLoading(false);
+      setLoadingVersion(null);
     }
   };
 
@@ -440,8 +444,15 @@ export default function VersionHistory({ stashId, currentVersion, onRestore }: P
                   className="btn btn-sm btn-ghost"
                   onClick={() => handleViewVersion(v.version)}
                   disabled={detailLoading}
+                  aria-busy={loadingVersion === v.version || undefined}
                 >
-                  View
+                  {loadingVersion === v.version ? (
+                    <>
+                      <Spinner size={12} /> Opening...
+                    </>
+                  ) : (
+                    'View'
+                  )}
                 </button>
                 {!isCurrent && (
                   <button

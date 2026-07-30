@@ -966,7 +966,10 @@ body {
   margin-bottom: 4px;
 }
 
-.search-overlay-mark {
+/* Shared search-match highlight: quick-search results and the sidebar stash
+   list are driven by the same query, so they share one visual language. */
+.search-overlay-mark,
+.sidebar-item-mark {
   /* Accent-orange tint keeps the match visible on the dark surface without the
      browser default black-on-yellow. `color: inherit` preserves item colors. */
   background: rgba(210, 153, 34, 0.28);

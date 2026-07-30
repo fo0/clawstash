@@ -390,18 +390,27 @@ function StorageSection() {
   const [importing, setImporting] = useState(false);
   const [importResult, setImportResult] = useState<string | null>(null);
   const [importError, setImportError] = useState<string | null>(null);
+  // True after a failed stats/tags load. Without it the section fell through to
+  // "No storage data available." — the same misleading empty state the
+  // dashboard already replaced with an error + retry (see Dashboard loadError).
+  const [loadFailed, setLoadFailed] = useState(false);
+  // Bumped by the Retry button to re-run the load effect.
+  const [reloadKey, setReloadKey] = useState(0);
 
   useEffect(() => {
     let cancelled = false;
     async function load() {
+      setLoading(true);
       try {
         const [statsData, tagsData] = await Promise.all([api.getStats(), api.getTags()]);
         if (!cancelled) {
           setStats(statsData);
           setTags(tagsData);
+          setLoadFailed(false);
         }
       } catch (err) {
         console.error('Failed to load storage stats:', err);
+        if (!cancelled) setLoadFailed(true);
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -410,7 +419,7 @@ function StorageSection() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [reloadKey]);
 
   // Tracks whether the storage section is still mounted, so async ops launched
   // from event handlers don't trigger setState-after-unmount warnings if the
@@ -630,7 +639,24 @@ function StorageSection() {
         )}
       </div>
 
-      {!stats && (
+      {!stats && loadFailed && (
+        // Honest failure state: "No storage data available." reads like an
+        // empty database, so a failed fetch used to look like a valid result.
+        <div className="settings-card">
+          <div role="alert" className="settings-import-error">
+            Failed to load storage statistics. Check your connection and try again.
+          </div>
+          <div className="settings-export-import-actions">
+            {/* No own busy label: the retry flips `loading`, and the early
+                return above swaps the whole section for the load spinner. */}
+            <button className="settings-option-btn" onClick={() => setReloadKey((k) => k + 1)}>
+              Retry
+            </button>
+          </div>
+        </div>
+      )}
+
+      {!stats && !loadFailed && (
         <div className="settings-card">
           <p className="api-hint">No storage data available.</p>
         </div>

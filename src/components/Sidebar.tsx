@@ -3,6 +3,7 @@ import { useClickOutside } from '../hooks/useClickOutside';
 import type { JSX } from 'react';
 import type { StashListItem, SettingsSection, TagInfo } from '../types';
 import { formatDate } from '../utils/format';
+import { splitHighlight } from '../utils/highlight';
 
 interface Props {
   stashes: StashListItem[];
@@ -195,6 +196,29 @@ export default function Sidebar({
   const filteredTags = tagSearch
     ? tags.filter((t) => t.tag.toLowerCase().includes(tagSearch.toLowerCase()))
     : tags;
+
+  /**
+   * Wrap the parts of `text` matching the active stash search in <mark>, so a
+   * filtered list row shows *why* it matched — the quick-search overlay has
+   * done this since it shipped, while the sidebar (driven by the very same
+   * search term) rendered plain text.
+   *
+   * Segments render as React text nodes, so this stays XSS-safe. With no
+   * active search the helper short-circuits to the raw string, which keeps the
+   * common unfiltered render allocation-free.
+   */
+  const renderHighlighted = (text: string) => {
+    if (!search.trim()) return text;
+    return splitHighlight(text, search).map((seg, i) =>
+      seg.match ? (
+        <mark key={i} className="sidebar-item-mark">
+          {seg.text}
+        </mark>
+      ) : (
+        seg.text
+      ),
+    );
+  };
 
   return (
     <aside className={`sidebar${isOpen ? ' sidebar-open' : ''}`}>
@@ -495,11 +519,13 @@ export default function Sidebar({
                 title={`${stash.name || stash.files[0]?.filename || 'Untitled'} — ${stash.files.length} file${stash.files.length !== 1 ? 's' : ''}`}
               >
                 <div className="sidebar-item-title">
-                  {stash.name || stash.files[0]?.filename || 'Untitled'}
+                  {renderHighlighted(stash.name || stash.files[0]?.filename || 'Untitled')}
                   {stash.archived && <span className="sidebar-item-archived-badge">Archived</span>}
                 </div>
                 <div className="sidebar-item-meta">
-                  <span className="sidebar-item-filename">{stash.files[0]?.filename}</span>
+                  <span className="sidebar-item-filename">
+                    {stash.files[0]?.filename && renderHighlighted(stash.files[0].filename)}
+                  </span>
                 </div>
                 <div className="sidebar-item-footer">
                   <span className="sidebar-item-date">{formatDate(stash.updated_at)}</span>
