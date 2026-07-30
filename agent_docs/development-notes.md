@@ -32,10 +32,15 @@ Setup hints, runtime quirks and operational details for ClawStash. CLAUDE.md kee
 
 Refactoring does NOT happen automatically -- only on explicit user request, when repeated code smells emerge across multiple files in review, or when a feature implementation is significantly harder than expected due to code structure. Principles: `agent_docs/refactoring_guidelines.md`.
 
-- **`src/server/db.ts` (~1150 lines)** -- Largest server file. Token/session, version history and FTS logic have already been split into `src/server/stores/` (`TokenStore`, `SessionStore`, `VersionStore`, `SearchStore`); `ClawStashDB` now delegates to them. Further extraction (e.g. tag-graph / relations) is optional and low priority.
-- **`src/server/openapi.ts` (~830 lines)** -- Large schema definition (one big function). Could adopt `@asteasolutions/zod-to-openapi` to generate from the Zod schemas in `tool-defs.ts` (BACKLOG #105).
-- **`src/components/StashViewer.tsx` (~1090 lines)** -- Largest frontend component. File display, TOC, access-log tab and metadata display could be extracted into sub-components (BACKLOG #106).
-- **`src/components/Settings.tsx` (~680 lines)** -- Could extract the Welcome Dashboard and Storage Stats sections into dedicated sub-components within a `settings/` directory (BACKLOG #106).
-- **`src/components/GraphViewer.tsx` / `StashGraphCanvas.tsx` (~1600 lines each)** -- Pure layout/draw/physics helpers mixed with the React components; extract-module candidates (BACKLOG #102 / #103).
-- **`src/languages.ts` (~340 lines)** -- Extension map and content-based detection heuristics are large but stable. Low priority.
+> Line counts below are refreshed on each optimizer run. Regenerate with:
+> `find src -name '*.ts' -o -name '*.tsx' | xargs wc -l | sort -rn | head -15`
+
+- **`src/components/StashGraphCanvas.tsx` (~1850) / `src/components/GraphViewer.tsx` (~1780)** -- Pure layout/draw/physics helpers mixed with the React components; extract-module candidates (BACKLOG #102 / #103).
+- **`src/components/StashViewer.tsx` (~1600 lines)** -- Largest frontend component. File display, TOC, access-log tab and metadata display could be extracted into sub-components (BACKLOG #106).
+- **`src/server/db.ts` (~1580 lines)** -- Largest server file. Token/session, version history and FTS logic have already been split into `src/server/stores/` (`TokenStore`, `SessionStore`, `VersionStore`, `SearchStore`, `BackupStore`); `ClawStashDB` now delegates to them. Further extraction (e.g. tag-graph / relations) is optional and low priority.
+- **`src/server/openapi.ts` (~1155 lines)** -- Large schema definition (one big function). Could adopt `@asteasolutions/zod-to-openapi` to generate from the Zod schemas in `tool-defs.ts` (BACKLOG #105).
+- **`src/App.tsx` (~1060 lines)** -- App shell: routing, global hotkeys, modal/dirty-state contracts (see MEMORY.md). Splitting it is risky -- the hotkey/overlay contract lives here; only with an explicit request.
+- **`src/components/Settings.tsx` (~800 lines)** -- Could extract the Welcome Dashboard and Storage Stats sections into dedicated sub-components within the existing `settings/` directory (BACKLOG #106).
+- **`src/components/Sidebar.tsx` (~660 lines)** / **`src/server/backup/backup-service.ts` (~615 lines)** -- Over the ~500-line mark but cohesive; low priority.
+- **`src/languages.ts` (~350 lines)** -- Extension map and content-based detection heuristics are large but stable. Low priority.
 - **No linter** -- Adding ESLint would significantly improve code-quality assurance. Prettier is already configured for formatting (`.prettierrc.json`).
