@@ -495,6 +495,11 @@ export default function GraphViewer({
     if (!focusTag) return;
     let cancelled = false;
     setLoadError(false);
+    // Entering focus mode or stepping the depth re-fetches the subgraph. Until
+    // this resolves the canvas still shows the *previous* graph under the new
+    // focus chip / depth label, which reads as "this is your result" — so the
+    // fetch owns the loading overlay just like the initial full-graph load.
+    setLoading(true);
     api
       .getTagGraph({ tag: focusTag, depth: focusDepth })
       .then((data) => {
@@ -510,6 +515,7 @@ export default function GraphViewer({
         defaultGraphBuiltRef.current = false; // nodesRef now holds the focus graph
         // Close the popup if its node was dropped by the focus/depth change
         setPopup((prev) => (prev && !nodes.some((n) => n.id === prev.tag) ? null : prev));
+        setLoading(false);
         startLoop();
       })
       .catch((err) => {
@@ -518,6 +524,7 @@ export default function GraphViewer({
         // Surface the failure (error overlay + Retry) instead of silently
         // keeping the previous graph under the new focus chip
         setLoadError(true);
+        setLoading(false);
       });
     return () => {
       cancelled = true;

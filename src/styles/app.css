@@ -3232,6 +3232,15 @@ textarea.code-editor-plain.code-editor-wrap {
   border-radius: 4px;
 }
 
+/* Replaces the copy button on stored tokens — the full secret exists only in
+   the create response, so there is nothing useful left to copy (BACKLOG #129). */
+.api-token-prefix-hint {
+  font-size: 11px;
+  color: var(--text-muted);
+  font-style: italic;
+  white-space: nowrap;
+}
+
 .api-delete-btn:hover {
   color: var(--accent-red) !important;
 }

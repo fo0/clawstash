@@ -6,6 +6,7 @@ import { splitHighlight } from '../utils/highlight';
 import { SEARCH_DEBOUNCE_MS } from '../utils/constants';
 import { loadRecentViews, type RecentView } from '../utils/recent-views';
 import { useFocusTrap } from '../hooks/useFocusTrap';
+import { useBodyScrollLock } from '../hooks/useBodyScrollLock';
 import Spinner from './shared/Spinner';
 
 interface Props {
@@ -132,6 +133,9 @@ export default function SearchOverlay({ open, onClose, onSelectStash }: Props) {
   // without it Tab walked into the dashboard behind the backdrop and closing
   // dropped focus to <body>.
   useFocusTrap(dialogRef, open);
+
+  // The dashboard behind the backdrop still scrolled under the wheel.
+  useBodyScrollLock(open);
 
   // Global Escape listener so closing works even when focus has moved off
   // the dialog (e.g. user clicked into something else briefly). The inner

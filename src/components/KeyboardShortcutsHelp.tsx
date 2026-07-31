@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { useFocusTrap } from '../hooks/useFocusTrap';
+import { useBodyScrollLock } from '../hooks/useBodyScrollLock';
 
 interface Props {
   open: boolean;
@@ -77,6 +78,9 @@ export default function KeyboardShortcutsHelp({ open, onClose }: Props) {
   // a single Tab left the dialog for the page behind the backdrop, and closing
   // dropped focus to <body> instead of the trigger.
   useFocusTrap(dialogRef, open);
+
+  // The page behind the backdrop still scrolled under the wheel.
+  useBodyScrollLock(open);
 
   if (!open) return null;
 
