@@ -127,11 +127,15 @@ cp .env.example .env   # adjust DATABASE_PATH / ADMIN_PASSWORD as needed
 
 npm run dev            # Next.js dev server at http://localhost:3000
 npm run format         # auto-format with Prettier (CI verifies formatting via format:check)
-npm test               # vitest test suite
+npx tsc --noEmit       # TypeScript type check (no npm script — CI runs this exact command)
+npm test               # vitest test suite (npm run test:watch for watch mode)
 npm run build          # production build
 npm start              # serve the production build
 npm run mcp            # MCP server (stdio transport, for local MCP client testing)
 ```
+
+CI (`docker-publish.yml`) gates on `format:check` → `tsc --noEmit` → `test` → `build`, in that
+order — run the same chain locally before pushing.
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for code-style rules and the PR workflow.
 
