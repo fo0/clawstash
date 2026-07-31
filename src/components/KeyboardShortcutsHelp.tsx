@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react';
+import { useFocusTrap } from '../hooks/useFocusTrap';
 
 interface Props {
   open: boolean;
@@ -45,6 +46,7 @@ const SHORTCUT_GROUPS: ShortcutGroup[] = [
 
 export default function KeyboardShortcutsHelp({ open, onClose }: Props) {
   const closeBtnRef = useRef<HTMLButtonElement>(null);
+  const dialogRef = useRef<HTMLDivElement>(null);
 
   // Close on Escape
   useEffect(() => {
@@ -71,6 +73,11 @@ export default function KeyboardShortcutsHelp({ open, onClose }: Props) {
     if (open) closeBtnRef.current?.focus();
   }, [open]);
 
+  // The dialog's only focusable control is the close button, so without a trap
+  // a single Tab left the dialog for the page behind the backdrop, and closing
+  // dropped focus to <body> instead of the trigger.
+  useFocusTrap(dialogRef, open);
+
   if (!open) return null;
 
   return (
@@ -78,6 +85,7 @@ export default function KeyboardShortcutsHelp({ open, onClose }: Props) {
     // aria-hidden on an ancestor would remove it from the accessibility tree.
     <div className="search-overlay-backdrop" role="presentation" onMouseDown={onClose}>
       <div
+        ref={dialogRef}
         className="shortcuts-help-dialog"
         role="dialog"
         aria-modal="true"

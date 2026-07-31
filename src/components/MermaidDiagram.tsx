@@ -6,6 +6,7 @@ import {
   type ReactZoomPanPinchRef,
 } from 'react-zoom-pan-pinch';
 import { renderMermaid } from '../utils/mermaid';
+import { useFocusTrap } from '../hooks/useFocusTrap';
 import {
   MIN_SCALE,
   MAX_SCALE,
@@ -57,6 +58,8 @@ export default function MermaidDiagram({ code, className, storageKey }: Props) {
 
   const wrapperRef = useRef<ReactZoomPanPinchContentRef | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
+  // Outermost element — the fullscreen dialog box that the focus trap fences.
+  const shellRef = useRef<HTMLDivElement | null>(null);
   const contentRef = useRef<HTMLDivElement | null>(null);
   const persistTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const pendingScaleRef = useRef<number | null>(null);
@@ -212,6 +215,11 @@ export default function MermaidDiagram({ code, className, storageKey }: Props) {
       previousFocusRef.current = null;
     };
   }, [isFullscreen]);
+
+  // Trap only — the effect above already captures and restores focus itself,
+  // so the hook must not also restore (it would fire a second, redundant
+  // focus() at the same element).
+  useFocusTrap(shellRef, isFullscreen, false);
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent<HTMLDivElement>) => {
@@ -383,6 +391,7 @@ export default function MermaidDiagram({ code, className, storageKey }: Props) {
   // no layout impact) and the fullscreen backdrop when fullscreen.
   return (
     <div
+      ref={shellRef}
       className={isFullscreen ? 'mermaid-fullscreen-backdrop' : 'mermaid-viewer-shell'}
       role={isFullscreen ? 'dialog' : undefined}
       aria-modal={isFullscreen ? true : undefined}
