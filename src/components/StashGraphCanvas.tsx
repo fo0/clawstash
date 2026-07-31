@@ -1,7 +1,7 @@
 import { useRef, useEffect, useCallback, useState } from 'react';
 import type { StashGraphNode, StashGraphEdge, StashGraphResult } from '../types';
 import { api } from '../api';
-import { formatDateTime } from '../utils/format';
+import { formatDateTime, pluralize } from '../utils/format';
 import { watchDevicePixelRatio } from '../utils/dpr';
 import { badgeTextColor } from '../utils/contrast';
 
@@ -336,6 +336,15 @@ export default function StashGraphCanvas({
   const [loadError, setLoadError] = useState(false);
   // Bumped by the error-state Retry button to re-run the fetch effect.
   const [reloadNonce, setReloadNonce] = useState(0);
+  // The API caps the graph at the most recently updated stashes, so the graph
+  // can describe fewer stashes than the database holds. `total_stashes` is the
+  // full population; `graphStashCount` is what actually made it into the graph.
+  const [totalStashes, setTotalStashes] = useState(0);
+  const [graphStashCount, setGraphStashCount] = useState(0);
+  // True when a `/stash/{id}/graph` deep link named a stash that is not in the
+  // graph window. Analysing it silently no-opped before, which is
+  // indistinguishable from "analysis found nothing".
+  const [deepLinkMissed, setDeepLinkMissed] = useState(false);
   const [hoveredLabel, setHoveredLabel] = useState<string | null>(null);
   const [analysedStashes, setAnalysedStashes] = useState<Set<string>>(new Set());
   const [defaultDepth, setDefaultDepth] = useState(1);
@@ -531,12 +540,16 @@ export default function StashGraphCanvas({
         (n) => n.id === analyzeStashId && n.type === 'stash',
       );
       if (stashNode) {
+        setDeepLinkMissed(false);
         setAnalysedStashes((prev) => {
           const next = new Set(prev);
           next.add(analyzeStashId);
           analysedStashesRef.current = next;
           return next;
         });
+      } else {
+        // Outside the graph window — say so instead of doing nothing.
+        setDeepLinkMissed(true);
       }
       onAnalyzeStashConsumed?.();
     }
@@ -565,6 +578,12 @@ export default function StashGraphCanvas({
         allNodesRef.current = nodes;
         allEdgesRef.current = edges;
 
+        // Truncation bookkeeping: the graph API returns the full stash count
+        // alongside the capped node set, so the header can admit when it is
+        // only showing part of the database.
+        setTotalStashes(data.total_stashes);
+        setGraphStashCount(nodes.filter((n) => n.type === 'stash').length);
+
         // If there's a pending analyzeStashId, apply it now
         let initialAnalysed = analysedStashes;
         if (analyzeStashId) {
@@ -573,6 +592,9 @@ export default function StashGraphCanvas({
             initialAnalysed = new Set([analyzeStashId]);
             analysedStashesRef.current = initialAnalysed;
             setAnalysedStashes(initialAnalysed);
+            setDeepLinkMissed(false);
+          } else {
+            setDeepLinkMissed(true);
           }
           onAnalyzeStashConsumed?.();
         }
@@ -1466,11 +1488,27 @@ export default function StashGraphCanvas({
     });
   };
 
+  // `total_stashes` counts the same population the graph draws from (archived
+  // rows are excluded on both sides since #140), so a shortfall really is the
+  // server-side cap and not an apples-to-oranges comparison.
+  const isTruncated = totalStashes > graphStashCount;
+
   return (
     <>
       <div className="graph-actions" style={{ marginBottom: 12 }}>
         <span className="graph-stats">
           {nodeCount} nodes · {edgeCount} edges
+          {isTruncated && (
+            <>
+              {' · '}
+              <span
+                className="graph-stats-truncated"
+                title={`The graph is capped at the ${graphStashCount} most recently updated stashes. ${totalStashes - graphStashCount} older ${totalStashes - graphStashCount === 1 ? 'stash is' : 'stashes are'} not shown.`}
+              >
+                {graphStashCount} of {pluralize(totalStashes, 'stash', 'stashes')}
+              </span>
+            </>
+          )}
         </span>
         <div className="stash-graph-depth-control">
           <label>Depth:</label>
@@ -1570,6 +1608,26 @@ export default function StashGraphCanvas({
               onClick={() => setReloadNonce((n) => n + 1)}
             >
               Retry
+            </button>
+          </div>
+        )}
+
+        {!loading && !loadError && deepLinkMissed && (
+          // A "/stash/{id}/graph" deep link for a stash outside the graph
+          // window used to do nothing at all. Say what happened and why.
+          <div className="graph-deeplink-notice" role="status">
+            <span>
+              That stash is not in this graph
+              {isTruncated
+                ? `, which is capped at the ${graphStashCount} most recently updated stashes.`
+                : '.'}
+            </span>
+            <button
+              className="btn btn-ghost btn-sm"
+              onClick={() => setDeepLinkMissed(false)}
+              aria-label="Dismiss notice"
+            >
+              Dismiss
             </button>
           </div>
         )}

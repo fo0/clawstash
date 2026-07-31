@@ -5,6 +5,8 @@ import { formatRelativeTime } from '../utils/format';
 import { splitHighlight } from '../utils/highlight';
 import { SEARCH_DEBOUNCE_MS } from '../utils/constants';
 import { loadRecentViews, type RecentView } from '../utils/recent-views';
+import { useFocusTrap } from '../hooks/useFocusTrap';
+import { useBodyScrollLock } from '../hooks/useBodyScrollLock';
 import Spinner from './shared/Spinner';
 
 interface Props {
@@ -25,6 +27,7 @@ export default function SearchOverlay({ open, onClose, onSelectStash }: Props) {
   const [activeIndex, setActiveIndex] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
+  const dialogRef = useRef<HTMLDivElement>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout>>(undefined);
   // Each search bumps this; only the latest search may write results.
   // Prevents an in-flight request from a previous query (or a previous
@@ -126,6 +129,14 @@ export default function SearchOverlay({ open, onClose, onSelectStash }: Props) {
     };
   }, []);
 
+  // Keep Tab inside the dialog and hand focus back to the trigger on close —
+  // without it Tab walked into the dashboard behind the backdrop and closing
+  // dropped focus to <body>.
+  useFocusTrap(dialogRef, open);
+
+  // The dashboard behind the backdrop still scrolled under the wheel.
+  useBodyScrollLock(open);
+
   // Global Escape listener so closing works even when focus has moved off
   // the dialog (e.g. user clicked into something else briefly). The inner
   // dialog handler still catches Escape when the dialog itself has focus;
@@ -208,6 +219,7 @@ export default function SearchOverlay({ open, onClose, onSelectStash }: Props) {
     // the focused input) from the accessibility tree.
     <div className="search-overlay-backdrop" role="presentation" onMouseDown={onClose}>
       <div
+        ref={dialogRef}
         className="search-overlay"
         role="dialog"
         aria-modal="true"
