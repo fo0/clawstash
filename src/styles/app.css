@@ -3774,6 +3774,36 @@ textarea.code-editor-plain.code-editor-wrap {
   margin-bottom: 12px;
 }
 
+/* Truncation hint in the graph header — the graph is capped at the most
+   recently updated stashes, so the node count can undercount the database
+   (BACKLOG #141). Dotted underline marks the `title` explanation. */
+.graph-stats-truncated {
+  color: var(--accent-orange);
+  border-bottom: 1px dotted currentColor;
+  cursor: help;
+}
+
+/* Deep-link miss notice: "/stash/{id}/graph" for a stash outside the graph
+   window (BACKLOG #141). Sits at the top of the canvas so it does not cover
+   the centred empty/error states. */
+.graph-deeplink-notice {
+  position: absolute;
+  top: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  max-width: calc(100% - 24px);
+  padding: 6px 10px;
+  font-size: 13px;
+  color: var(--accent-orange);
+  background: var(--bg-secondary);
+  border: 1px solid rgba(210, 153, 34, 0.35);
+  border-radius: var(--radius);
+}
+
 /* Graph Focus Indicator */
 .graph-focus-indicator {
   display: flex;
