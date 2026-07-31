@@ -347,19 +347,28 @@ export default function TokensTab({
                 <div className="api-token-actions">
                   <div className="api-token-prefix">
                     <code>{token.tokenPrefix}••••••••••••</code>
-                    <button
-                      className="btn btn-ghost btn-sm"
-                      onClick={() =>
-                        handleCopy(
-                          newlyCreated?.id === token.id ? newlyCreated.token : token.tokenPrefix,
-                          token.label || 'Unnamed Token',
-                        )
-                      }
-                      title={newlyCreated?.id === token.id ? 'Copy full token' : 'Copy prefix'}
-                      aria-label={newlyCreated?.id === token.id ? 'Copy full token' : 'Copy prefix'}
-                    >
-                      <CopyIcon size={12} />
-                    </button>
+                    {/* The copy button only appears for the token that was just
+                        created, i.e. the only row where the full secret is still
+                        in memory. It used to be offered for every row and copied
+                        the bare prefix — a value that authenticates nothing, so
+                        the success toast promised a working token that wasn't.
+                        Stored tokens are hashed and cannot be re-shown. */}
+                    {newlyCreated?.id === token.id ? (
+                      <button
+                        className="btn btn-ghost btn-sm"
+                        onClick={() =>
+                          handleCopy(newlyCreated.token, token.label || 'Unnamed Token')
+                        }
+                        title="Copy full token"
+                        aria-label="Copy full token"
+                      >
+                        <CopyIcon size={12} />
+                      </button>
+                    ) : (
+                      <span className="api-token-prefix-hint" title="Shown once at creation time">
+                        shown once
+                      </span>
+                    )}
                   </div>
                   <button
                     className={`btn btn-sm api-delete-btn${
