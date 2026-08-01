@@ -1,4 +1,5 @@
 import type { DeviceSession } from './device-sessions';
+import { redactSecrets } from './backup-crypto';
 
 /**
  * Testable core of the device-flow poll route (refs #108, #111).
@@ -83,9 +84,16 @@ export async function processDevicePoll(
     try {
       ({ login } = await deps.getAuthenticatedUser(result.token));
     } catch (lookupErr) {
+      // This lookup is the one call in the flow that carries the freshly
+      // exchanged access token, so its failure message is routed through
+      // redactSecrets before it reaches stdout — the same treatment
+      // /api/backup/token gives its GitHub errors. Matches the module-wide
+      // rule that a GitHub secret never lands in a log line.
       console.warn(
         '[backup] token stored but account lookup failed:',
-        lookupErr instanceof Error ? lookupErr.message : lookupErr,
+        redactSecrets(lookupErr instanceof Error ? lookupErr.message : String(lookupErr), [
+          result.token,
+        ]),
       );
     }
     deps.storeToken(result.token, login);
@@ -94,8 +102,13 @@ export async function processDevicePoll(
     return { status: 'connected', login };
   } catch (err) {
     // Transient upstream/network failure: keep the session alive and let
-    // the browser retry until the device code expires.
-    console.warn('[backup] device poll failed:', err instanceof Error ? err.message : err);
+    // the browser retry until the device code expires. The failing call is
+    // the device-code exchange, so redact the device code (the secret half
+    // of the flow) plus anything token-shaped before logging.
+    console.warn(
+      '[backup] device poll failed:',
+      redactSecrets(err instanceof Error ? err.message : String(err), [session.deviceCode]),
+    );
     return { status: 'pending' };
   }
 }
