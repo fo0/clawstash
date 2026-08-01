@@ -20,6 +20,7 @@ import {
   MAX_TAGS,
   maxObjectDepth,
   hasUniqueFilenames,
+  isValidFilename,
   DUPLICATE_FILENAME_MESSAGE,
 } from './validation';
 
@@ -29,14 +30,20 @@ import {
 // ---------------------------------------------------------------------------
 
 export const FileInputSchema = z.object({
+  // Uses the SHARED `isValidFilename` guard rather than an inline check so the
+  // MCP write path cannot drift from the REST one (`FileSchema` in
+  // validation.ts) or from the read-side raw-file route. The previous inline
+  // predicate only rejected `/`, `\`, `..` and NUL, so an MCP caller could
+  // store a filename containing other C0/C1 control characters (CR/LF, ESC, …)
+  // that every other surface rejects. Those bytes are reflected into the
+  // `Content-Disposition` header by the raw-file route and into git paths by
+  // the GitHub backup, so keeping the guards symmetric closes the drift at the
+  // one boundary that was still permissive.
   filename: z
     .string()
     .min(1)
     .max(MAX_FILENAME_LENGTH)
-    .refine(
-      (f) => !/[/\\]/.test(f) && !f.includes('..') && !f.includes('\0'),
-      'Filename contains invalid characters',
-    )
+    .refine(isValidFilename, 'Filename contains invalid characters')
     .describe(
       'Filename with extension (e.g. "main.py", "config.json"). Extension is used for language detection.',
     ),
