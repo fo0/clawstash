@@ -227,8 +227,13 @@ Important:
 - To update only name/description, omit files/tags/metadata.`,
     schema: z.object({
       id: z.string().describe('The stash ID to update'),
-      name: z.string().optional().describe('New name/title'),
-      description: z.string().optional().describe('New description'),
+      // Same caps as create_stash and the REST `UpdateStashSchema`. Without
+      // them this tool was the one write path with no bound on name /
+      // description size, so an MCP caller could persist an arbitrarily large
+      // value that every other surface rejects (and that then flows into
+      // listings, FTS indexing, exports and the GitHub backup).
+      name: z.string().max(MAX_NAME_LENGTH).optional().describe('New name/title'),
+      description: z.string().max(MAX_DESCRIPTION_LENGTH).optional().describe('New description'),
       files: z
         .array(FileInputSchema)
         .max(MAX_FILES)
