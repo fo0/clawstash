@@ -180,6 +180,21 @@ const languageNameToPrism: Record<string, string> = {
 };
 
 /**
+ * Own-property lookup on a plain string map.
+ *
+ * `language` and `filename` are user-controlled (stored per file, free text
+ * on the write path), so a bare `map[key]` is a prototype-chain lookup with
+ * an attacker-chosen key: `map['constructor']`, `map['toString']` and
+ * `map['__proto__']` all resolve to truthy `Object.prototype` members and
+ * would be handed on as if they were a real grammar name. Restricting every
+ * lookup to own properties keeps the maps closed sets — the value returned
+ * is always one the module actually declares, never something inherited.
+ */
+function lookupOwn(map: Record<string, string>, key: string): string | undefined {
+  return Object.prototype.hasOwnProperty.call(map, key) ? map[key] : undefined;
+}
+
+/**
  * Detect PrismJS language from a filename.
  */
 export function detectLanguageFromFilename(filename: string): string {
@@ -190,7 +205,7 @@ export function detectLanguageFromFilename(filename: string): string {
   if (lower === 'makefile' || lower === 'gnumakefile') return 'makefile';
 
   const ext = lower.split('.').pop() || '';
-  return extensionToLanguage[ext] || 'text';
+  return lookupOwn(extensionToLanguage, ext) || 'text';
 }
 
 /**
@@ -199,12 +214,12 @@ export function detectLanguageFromFilename(filename: string): string {
 export function resolvePrismLanguage(language: string, filename?: string): string {
   if (language) {
     const lower = language.toLowerCase();
-    const mapped = languageNameToPrism[lower];
+    const mapped = lookupOwn(languageNameToPrism, lower);
     if (mapped) return mapped;
     // The editor's language field is free text — users often type
     // extension-style shorthands ("js", "py", "yml", "md"), so fall back to
     // the extension map before ignoring the explicit language entirely.
-    const fromExtension = extensionToLanguage[lower];
+    const fromExtension = lookupOwn(extensionToLanguage, lower);
     if (fromExtension) return fromExtension;
   }
   if (filename) {
@@ -218,7 +233,15 @@ export function resolvePrismLanguage(language: string, filename?: string): strin
  * Returns HTML string with syntax tokens.
  */
 export function highlightCode(code: string, language: string): string {
-  const prismLang = Prism.languages[language];
+  // Own-property check for the same reason as `lookupOwn` above: `language`
+  // is user-controlled, and `Prism.languages['constructor']` is a truthy
+  // inherited function that would be passed to `Prism.highlight` as a
+  // "grammar". Prism escapes its output either way, so this is not a live
+  // XSS — but an inherited value must never reach the highlighter, and the
+  // escaping fallback below is the correct outcome for any unknown language.
+  const prismLang = Object.prototype.hasOwnProperty.call(Prism.languages, language)
+    ? Prism.languages[language]
+    : undefined;
   if (!prismLang) {
     // Fallback: escape HTML entities for plain text
     return escapeHtml(code);
