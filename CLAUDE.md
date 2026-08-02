@@ -216,7 +216,7 @@ Project-intended and common MCPs: `agent_docs/mcp_catalog.md`. Never auto-detect
 
 CI failure handling: `.claude/skills/ci/SKILL.md`. Triggered by `/ci`, "fix CI", "check the build". Auto-routes by run state (none / running / passed / failed / stale). Never auto-reruns; always verifies fixes locally before pushing.
 
-`docker-publish.yml` is the only workflow and it is `workflow_dispatch`-only -- nothing runs on push or PR, so a pushed branch legitimately has **zero** runs and `/ci` reporting "no runs" is configuration, not breakage. The local Automated Checks above are the real gate.
+`docker-publish.yml` is the only workflow **file** and it is `workflow_dispatch`-only, so a pushed branch legitimately has zero runs of it and `/ci` reporting "no runs" for it is configuration, not breakage. Two GitHub-managed workflows do run without a file in the repo: **CodeQL** (default setup -- `Analyze (actions)` / `Analyze (javascript-typescript)`, runs on every PR and gates merge) and **Dependabot Updates**. The local Automated Checks above remain the real gate for correctness.
 
 ## Subagents
 
