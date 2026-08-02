@@ -12,16 +12,6 @@ updates:
       # electron major: needs manual migration
       - dependency-name: 'electron'
         update-types: ['version-update:semver-major']
-  - package-ecosystem: 'npm'
-    directory: '/server'
-    schedule:
-      interval: 'weekly'
-    open-pull-requests-limit: 10
-    ignore:
-      - dependency-name: 'eslint'
-        update-types: ['version-update:semver-major']
-      - dependency-name: 'electron'
-        update-types: ['version-update:semver-major']
   - package-ecosystem: 'docker'
     directory: '/'
     schedule:
