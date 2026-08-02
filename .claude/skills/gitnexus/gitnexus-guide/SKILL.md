@@ -27,6 +27,8 @@ For any task involving code understanding, debugging, impact analysis, or refact
 | Blast radius / "What breaks if I change X?"  | `gitnexus-impact-analysis`   |
 | Trace bugs / "Why is X failing?"             | `gitnexus-debugging`         |
 | Plan a refactor (read-only impact/refs)      | `gitnexus-refactoring`       |
+| Verify a diff / PR — what did I affect?      | `gitnexus-review`            |
+| Custom graph queries (cycles, metrics)       | `gitnexus-query`             |
 | Tools, resources, schema reference           | `gitnexus-guide` (this file) |
 | Index status / list / register (read-only)   | `gitnexus-cli`               |
 

@@ -11,7 +11,7 @@ description: 'Use when reviewing code changes, pull requests, or verifying the i
 - "What did my changes affect?"
 - "Check if this change is safe"
 - "Verify no regressions"
-- During the mandatory review process after every implementation
+- During a review run via the `review` skill (on demand — reviews are never auto-run)
 
 ## Workflow
 
@@ -20,7 +20,7 @@ description: 'Use when reviewing code changes, pull requests, or verifying the i
 3. `gitnexus_context({name: "changedSymbol"})` -> Verify all callers are updated
 4. Cross-reference affected processes with test coverage
 
-> If "Index is stale" -> run `npx gitnexus analyze` in terminal.
+> If the index is reported stale, rebuilding is **not routine** — run `npx gitnexus analyze --skip-agents-md` only if the task needs a fresh index, then `git status` + `git checkout --` any tracked file it touched (read-only policy).
 
 ## Review Checklist
 

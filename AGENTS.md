@@ -1,8 +1,9 @@
 # AGENTS.md — Agent Guide
 
 > **Primary guide:** read **`CLAUDE.md`** first. It is the single source of truth for project
-> structure, commands, conventions, workflows, and skills. This file mirrors only the
-> non-negotiable GitNexus guardrail.
+> structure, commands, conventions, workflows, and skills. This file carries the **canonical,
+> verbatim** text of the non-negotiable GitNexus guardrail — CLAUDE.md keeps a condensed
+> version and `agent_docs/gitnexus.md` only points here.
 
 ## GitNexus — Read-Only Analysis Policy (non-negotiable)
 

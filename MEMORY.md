@@ -7,6 +7,10 @@ Session-spanning project knowledge. **Read at session start, update during work.
 - **GitHub backup (#108, 2026-06-12)** — full rationale in ADR-0002. Key choices: OAuth **device flow** (user's own OAuth app, client ID only) + PAT fallback — user explicitly wanted "login via GitHub, then pick a repo"; NO admin SSO (separate issue if ever). Sync via **Git Data API over fetch** (no git binary, no new deps). One commit per changed stash, SHA-256 hash idempotence, last-writer-wins with 422 retry. Token AES-256-GCM at rest (`CLAWSTASH_ENCRYPTION_KEY` env or auto-generated `data/.clawstash-key`). Mutation events via `ClawStashDB.setMutationListener` (stdio MCP process has no listener — caught up by scheduled runs). Scheduler boots from `src/instrumentation.ts`.
 - **Mermaid viewer zoom/pan/fullscreen (#100, 2026-04-26)** — chose `react-zoom-pan-pinch` over `panzoom` (anvaka) and `svg-pan-zoom`: React 19 compatible, native pinch + Ctrl/Cmd-modifier wheel zoom, programmatic API via wrapper ref (`zoomIn`/`zoomOut`/`setTransform`). Enhanced standalone `MermaidDiagram` component only; inline ` ```mermaid ` markdown blocks stay as static SVG (separate DOM hydration path; small diagrams in practice). Persistent zoom via `localStorage["clawstash_mermaid_zoom_${stash.id}:${filename}"]`. Initial render auto-fits to width unless a stored zoom exists.
 
+- **Agent-config canonical locations (2026-08-02)** — three rules had drifted into conflicting copies. **Do not reintroduce any of them.** (1) GitNexus policy: canonical verbatim in `AGENTS.md`; CLAUDE.md condensed; `agent_docs/gitnexus.md` pointer only — don't re-paste the full text there. (2) Reviews are on demand via the `review` skill; `review_process.md` no longer claims "every implementation triggers a full review / never commit without a review" (it contradicted CLAUDE.md and the skill). (3) `.claude/skills/gitnexus/` holds exactly eight skills — `gitnexus-debug` / `-explore` / `-impact` were deleted as near-duplicates that told the agent to run `npx gitnexus analyze` **without** `--skip-agents-md`. `analyze` regenerates them; delete them again, never commit them back.
+
+- **Allowlist is glob-only (2026-08-02, owner decision)** — `.claude/settings.json` → `permissions.allow` keeps one `mcp__<server>__*` glob per Claude Code Remote spelling plus `mcp__github__(un)subscribe_pr_activity` (no `mcp__github__*` glob exists). The 16 per-tool `claude-code-remote` / `Claude_Code_Remote` entries a glob already matched were pruned. **Do not reintroduce the per-tool entries** — self-heal only by appending a missing `mcp__<server>__*` glob, and never write `deny`/`ask`. Rule: `agent_docs/mcp_catalog.md → Allowlist shape`.
+
 - **Settled security-sweep decisions (2026-07-27, from #274/#325/#356/#372/#395)** — five sweeps re-flagged the same handful of items. These are decided; re-flagging them is noise unless the premise changes. (1) **`?token=` query auth stays** (`server/auth.ts`) — needed for no-header clients (plain `<img>` loads of `/raw`); the dev-only one-shot `console.warn` is the guard rail, an env flag or `/raw`-only restriction would break existing raw links. (2) **DOMPurify stays out** — `sanitizeHtml` (`utils/markdown.ts`) is a denylist by choice: it removes SVG/MathML/SMIL foreign content wholesale, strips inline `style`, scheme-checks `href`/`src`/`xlink:href`/`action`/`formaction`, and every branch is pinned by `utils/__tests__/markdown.test.ts`. A new runtime dep no longer buys enough; revisit via BACKLOG #54. (3) **`/api/health` + `/api/version` always answer 200** and withhold detail instead of 401-ing, so uptime probes work without credentials — health omits counts, version returns `current: null` and skips the GitHub check. Don't "fix" either into a 401. (4) Permissive CORS is architecture (CLAUDE.md), not a finding.
 
 ## Gotchas & Pitfalls
@@ -19,18 +23,6 @@ Session-spanning project knowledge. **Read at session start, update during work.
   - The orphan-proof hydration helper `hydrateMermaidPlaceholders` (`src/utils/mermaid-hydrate.ts`, claims nodes synchronously, write guarded only by `document.contains`) and the `renderMermaid` serialization (`renderChain`) stay — both correct and complementary — but neither was the real cause; the **re-render churn was**. Earlier wrong theories (don't revisit): "orphaned write gated by `cancelled`" (shipped in #287/#288, did NOT fix it); and React-portals into the placeholder nodes (React re-creates the `dangerouslySetInnerHTML` subtree → portal detaches; proven in a test).
   - Debugging lesson: this took 3 tries because I reasoned instead of reproducing. A `dangerouslySetInnerHTML` blob that React re-applies under a re-render storm is invisible to pure reasoning — the headless-browser MutationObserver on `.mermaid-placeholder` add/remove was what exposed it. Reproduce timing/lifecycle bugs in a real browser before theorising.
 
-## Working Context
-
-_(No entries yet)_
-
-## Failed Approaches
-
-_(No entries yet)_
-
 ## External Dependencies
 
 - **@modelcontextprotocol/sdk v1.x + Zod 4** — MCP SDK v1 uses `zod-to-json-schema` which is incompatible with Zod v4. Blocks Zod upgrade until MCP SDK v2 ships. (2026-02-15)
-
-## User Preferences
-
-_(No entries yet)_
