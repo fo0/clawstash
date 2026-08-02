@@ -8,14 +8,6 @@ Temporary working context. **Clean up aggressively -- delete when resolved.**
 
 - Backlog sweep (2026-07-29): closed #140, #136, #132, #142, #126, #139. Everything still open was re-checked against the code and is current — nothing was obsolete. #54 (DOMPurify) stays closed by the settled decision in MEMORY.md; #119 needs a `next` bump, which is a dependency change.
 
-## Open Questions
-
-_(None)_
-
-## Research Notes
-
-_(None)_
-
 ## Temporary Notes
 
 - #108 follow-ups deliberately out of scope (per issue): restore-from-repo, multi-repo targets, pull-based sync, at-rest encryption inside the backup repo, GitHub App auth.

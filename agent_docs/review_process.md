@@ -1,11 +1,11 @@
 # Review Process
 
-This file defines the mandatory review process executed after every implementation.
+This file defines the review process. It runs **on demand**, via the `review` skill -- the done-skill never auto-runs it (see CLAUDE.md and `.claude/skills/review/SKILL.md`). Everything below applies once a review has been invoked.
 
 ## Core Rules
 
-1. **Every implementation triggers a full review** -- no exceptions, no user prompt needed.
-2. **Never commit without completed review** -- all P0/P1 findings must be fixed first.
+1. **A review, once started, is a full review** -- every category below, no cherry-picking. Scope may narrow (diff vs. full read), coverage may not.
+2. **Never commit with unfixed P0/P1 findings from a review that ran** -- fix them first, or defer explicitly per the Fixing Rules.
 3. **Deterministic checks run first** -- linter/types/tests catch what they catch. The review covers what tools cannot.
 4. **Fix, don't list** -- when a finding is actionable, fix it immediately. Don't just document it.
 5. **Re-review after fixes** -- if fixes touched code, re-run automated checks and re-review affected categories only.
@@ -44,16 +44,13 @@ Run in this order before the review:
 
 ```bash
 npm install              # Dependencies current
+npm run format           # Prettier write -- FIRST, or CI's format:check fails on drift
 npx tsc --noEmit         # Types pass
 npm test                 # Tests (vitest)
 npm run build            # Build succeeds
 ```
 
-> **Note:** No linter is configured yet. When added, insert between install and typecheck:
->
-> ```bash
-> npm run lint           # No lint errors (when configured)
-> ```
+> No linter is configured -- see the note in CLAUDE.md "Commands". Insert `npm run lint` after `format` if one lands.
 
 ### Test execution constraints (autonomy + zero-cost)
 

@@ -30,7 +30,7 @@ Setup hints, runtime quirks and operational details for ClawStash. CLAUDE.md kee
 
 ## Refactoring candidates
 
-Refactoring does NOT happen automatically -- only on explicit user request, when repeated code smells emerge across multiple files in review, or when a feature implementation is significantly harder than expected due to code structure. Principles: `agent_docs/refactoring_guidelines.md`.
+When refactoring is allowed to happen at all, plus the principles: `agent_docs/refactoring_guidelines.md`. This section is only the candidate list -- it is not a work queue.
 
 > Line counts below are refreshed on each optimizer run. Regenerate with:
 > `find src -name '*.ts' -o -name '*.tsx' | xargs wc -l | sort -rn | head -15`

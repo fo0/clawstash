@@ -18,7 +18,7 @@ clawstash/
 ├── MEMORY.md                   # Session-spanning project knowledge (long-term)
 ├── SCRATCHPAD.md               # Temporary working context (short-term)
 ├── agent_docs/                 # Agent process documentation
-│   ├── review_process.md       # Mandatory review process after every implementation
+│   ├── review_process.md       # Review process (on demand via the `review` skill, never auto-run)
 │   ├── backlog_process.md      # Backlog tracking rules and format
 │   ├── memory_process.md       # Memory tracking rules and format
 │   ├── refactoring_guidelines.md  # Refactoring principles and rules
@@ -31,7 +31,7 @@ clawstash/
 │   ├── ci_formatting_guard.md  # Optional husky + lint-staged pre-commit formatting guard
 │   ├── hooks_catalog.md        # Claude Code hook catalog (Tier-1 hooks in .claude/settings.json)
 │   ├── mcp_catalog.md          # Project-intended and common MCP servers
-│   ├── gitnexus.md             # GitNexus read-only policy (verbatim), CLI reference, skill map
+│   ├── gitnexus.md             # GitNexus CLI reference + skill map (policy itself: AGENTS.md)
 │   ├── diagram_prompt.md       # Architecture diagram generation instructions
 │   └── project-structure.md    # This file
 ├── docs/                       # User-facing documentation (split from README)
@@ -46,8 +46,8 @@ clawstash/
 │       └── 0002-github-backup-architecture.md
 ├── .claude/
 │   ├── settings.json           # Tier-1 hooks (session start, context budget, GitNexus commit guard) + trigger allowlist
-│   └── skills/                 # Agent workflow skills: done, pr, review, security-review, rollback, ci, stuck, verify
-│       └── gitnexus/           # Read-only GitNexus skills: guide, cli, exploring, impact-analysis, debugging, refactoring (+ older explore/debug/impact/query/review aliases)
+│   └── skills/                 # Agent workflow skills: done, pr, review, security-review, rollback, ci, stuck, beacon, verify
+│       └── gitnexus/           # Read-only GitNexus skills (exactly 8): guide, cli, exploring, impact-analysis, debugging, refactoring, review, query
 ├── .github/
 │   ├── dependabot.yml          # Weekly npm + github-actions update PRs
 │   ├── ISSUE_TEMPLATE/         # Bug report + feature request templates

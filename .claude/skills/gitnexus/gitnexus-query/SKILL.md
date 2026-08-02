@@ -84,4 +84,4 @@ RETURN c.name, r.name, c.filePath, r.filePath
 - Use `gitnexus_query` first for discovery, then `gitnexus_cypher` for precise queries
 - If Cypher query returns empty: check node/relationship type names with a broad query first
 
-> If "Index is stale" -> run `npx gitnexus analyze` in terminal.
+> If the index is reported stale, rebuilding is **not routine** — run `npx gitnexus analyze --skip-agents-md` only if the task needs a fresh index, then `git status` + `git checkout --` any tracked file it touched (read-only policy).

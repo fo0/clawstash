@@ -24,6 +24,8 @@ When a session begins, read in this order. Stop early if a file is missing.
 | "rollback" / "revert" / "undo" / "/rollback"     | `.claude/skills/rollback/SKILL.md`        |
 | "CI" / "fix CI" / "check the build" / "/ci"      | `.claude/skills/ci/SKILL.md`              |
 | "stuck" / "loop" / "going in circles" / "/stuck" | `.claude/skills/stuck/SKILL.md`           |
+| "check dependencies" / "update deps" / "/beacon" | `.claude/skills/beacon/SKILL.md`          |
+| Verify a UI change in a real browser             | `.claude/skills/verify/SKILL.md`          |
 | Diagram request                                  | `agent_docs/diagram_prompt.md`            |
 
 > Review runs via the `review` skill -- done-skill does NOT auto-run it. Findings -> `BACKLOG.md` (`agent_docs/backlog_process.md`). Knowledge -> `MEMORY.md` / `SCRATCHPAD.md` (`agent_docs/memory_process.md`).
@@ -214,6 +216,8 @@ Project-intended and common MCPs: `agent_docs/mcp_catalog.md`. Never auto-detect
 
 CI failure handling: `.claude/skills/ci/SKILL.md`. Triggered by `/ci`, "fix CI", "check the build". Auto-routes by run state (none / running / passed / failed / stale). Never auto-reruns; always verifies fixes locally before pushing.
 
+`docker-publish.yml` is the only workflow and it is `workflow_dispatch`-only -- nothing runs on push or PR, so a pushed branch legitimately has **zero** runs and `/ci` reporting "no runs" is configuration, not breakage. The local Automated Checks above are the real gate.
+
 ## Subagents
 
 Delegate complex / parallel / read-heavy work: `Explore` (read-only search), `Plan` (implementation strategy), `general-purpose` (write+execute, tests, docs, refactor), `claude-code-guide` (Claude Code itself -- hooks, MCP, SDK).
@@ -233,11 +237,7 @@ Full notes: `agent_docs/development-notes.md`.
 
 Refactoring does NOT happen automatically -- only on explicit request, on repeated review smells, or when structure blocks a feature. Principles: `agent_docs/refactoring_guidelines.md`.
 
-- **`StashGraphCanvas.tsx` (~1850) / `GraphViewer.tsx` (~1780)** -- layout/draw/physics mixed with React (BACKLOG #102 / #103).
-- **`StashViewer.tsx` (~1600)**, **`src/server/db.ts` (~1580)**, **`src/server/openapi.ts` (~1155)**, **`src/App.tsx` (~1060)** -- stores already split out of `db.ts`; further extraction optional (BACKLOG #105 / #106).
-- **No linter** -- adding ESLint would materially improve quality assurance.
-
-Full list: `agent_docs/development-notes.md -> Refactoring candidates`.
+Candidate list with line counts and BACKLOG refs: `agent_docs/development-notes.md -> Refactoring candidates`.
 
 ## Documentation Rules
 
@@ -267,7 +267,7 @@ Over budget -> **move** content out and leave a one-line pointer (never delete t
 
 GitNexus is **analysis/read-only** and must never write to the repository: read-only tools only (`gitnexus_query`, `gitnexus_impact`, `gitnexus_context`, `gitnexus_detect_changes`, `status`/`list`) -- never `gitnexus_rename`, `wiki`, or skill/doc generation. Run `analyze`/`index` only when the index is genuinely missing or stale AND the task needs it, always with `--skip-agents-md`, then `git status` + `git checkout --` any tracked file it touched. Before every commit verify no unexpected `.claude/**`, `CLAUDE.md`, `AGENTS.md` or agent-doc changes are staged.
 
-Full policy (verbatim), CLI reference, Always/Never-Do rules and skill map: `agent_docs/gitnexus.md` -- also mirrored in root `AGENTS.md`.
+Full policy verbatim: root `AGENTS.md` (canonical). CLI reference, Always/Never-Do rules and skill map: `agent_docs/gitnexus.md`.
 
 <!-- gitnexus:start -->
 
