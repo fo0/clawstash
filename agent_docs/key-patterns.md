@@ -211,12 +211,14 @@ Detailed pattern descriptions for clawstash internals. CLAUDE.md keeps a short i
   - `useClipboard()`: Single copy button -- returns `{ status, copied, copy }`
   - `useClipboardWithKey()`: Multiple copy buttons in lists -- returns `{ copy, isCopied(key), isFailed(key) }`
 - **useClickOutside.ts**: `useClickOutside(ref, callback, enabled?)` -- closes dropdowns on outside clicks. Used by Sidebar (tag filter), TagCombobox, MetadataEditor.
+- **useCodeBlockCopy.ts**: One delegated click handler for the copy buttons inside rendered-Markdown blobs -- returns `{ handleClick, announcement }`. `handleClick` is referentially stable (state in refs) so it can be passed into the `MarkdownBody` memo. See "Markdown Code Copy" below.
 
 ## Shared Utilities (src/utils/)
 
 - `clipboard.ts`: `copyToClipboard()` with modern Clipboard API + fallback for non-HTTPS
 - `format.ts`: `formatDate()`, `formatDateTime()`, `formatRelativeTime()` -- centralized date formatting used by Sidebar, StashViewer, StashCard, TokensTab
-- `markdown.ts`: `renderDescriptionMarkdown()` -- renders stash descriptions as sanitized Markdown HTML (Marked + DOMParser sanitization, external links in new tab). Used by StashViewer and StashCard.
+- `code-copy.ts`: Copy-button scaffold for fenced code blocks in rendered Markdown -- `wrapCodeBlockWithCopy()` (markup), `findCodeCopyTarget()` (click resolver), `setCodeCopyState()` (transient feedback). See "Markdown Code Copy" below.
+- `markdown.ts`: `renderDescriptionMarkdown(content, { codeCopyButtons? })` -- renders stash descriptions as sanitized Markdown HTML (Marked + DOMParser sanitization, external links in new tab). Used by StashViewer (with copy buttons) and StashCard (without -- the card is a clamped teaser with no handler attached).
 - `mermaid.ts`: `renderMermaid(code)` -- lazy-loads the `mermaid` lib via dynamic `import()`, initializes once with `theme: 'dark'` + `securityLevel: 'strict'`, returns `{svg?, error?}` (no throw). Shared by `<MermaidDiagram>` (`.mmd` files) and the inline ` ```mermaid ` markdown hydration effect in StashViewer.
 
 ## Mermaid Rendering (src/utils/mermaid.ts, src/utils/mermaid-hydrate.ts, src/components/MermaidDiagram.tsx, src/components/MarkdownBody.tsx)
@@ -234,6 +236,15 @@ Detailed pattern descriptions for clawstash internals. CLAUDE.md keeps a short i
 - Toggle Raw / Preview reuses the existing `renderPreview` toggle (Mermaid is part of `RENDERABLE_LANGUAGES`)
 - Theme: ClawStash is dark-only today; `mermaid.initialize` is called once with `theme: 'dark'`. Re-render hook is in place (deps include `renderedContent`/`renderPreview`/`activeTab`) so future theme switching can re-init + force re-hydration trivially.
 - **Zoom/pan toolbar** for the standalone `.mmd` viewer (`MermaidDiagram` component): + / - / Fit / 1:1 / Reset / Fullscreen buttons, current zoom % display, mouse-wheel zoom with Ctrl/Cmd modifier, pinch zoom on touch, drag to pan. Keyboard shortcuts (`+` / `-` / `0` / `f` / `Esc`) when the viewer has focus or is fullscreen. Initial render auto-fits to width; persistent zoom per stash file via `localStorage["clawstash_mermaid_zoom_${stash.id}:${filename}"]`. Powered by `react-zoom-pan-pinch`. Inline ` ```mermaid ` blocks in Markdown intentionally stay as static SVGs (separate DOM hydration path; small diagrams in practice).
+
+## Markdown Code Copy (src/utils/code-copy.ts, src/hooks/useCodeBlockCopy.ts)
+
+- Every fenced code block in rendered Markdown carries a hover/focus copy button. Surfaces: file Markdown preview (`MarkdownBody`) and the stash description in `StashViewer` (top + Details tab). Dashboard cards deliberately opt out (`renderDescriptionMarkdown` without `codeCopyButtons`) -- two-line clamped teaser, no handler attached, a button there would be dead.
+- **The button markup is part of the HTML blob, not hydrated afterwards.** The `code` renderer wraps its `<pre>` via `wrapCodeBlockWithCopy()`. Nodes _added_ to a `dangerouslySetInnerHTML` subtree by an effect are torn down whenever React re-applies the blob (#286) -- emitting the button with the block makes them inseparable. (Mermaid must hydrate because an SVG cannot be produced synchronously at render time; a static button can.)
+- **Clicks run through ONE delegated React handler** per container (`useCodeBlockCopy`), resolved by `findCodeCopyTarget()`: the buttons carry no `on*` handler (the sanitiser strips those anyway) and there is no React element per button to attach to. Copy text comes from the block's `pre code` `textContent` (trailing newline stripped), so highlighting markup never affects fidelity.
+- **The icon is a CSS mask** (`--icon-copy` / `--icon-check` / `--icon-x` in `:root`, applied via `.code-copy-icon`), not an inline `<svg>`: `sanitizeHtml` strips SVG/foreign content from Markdown output. Glyphs mirror `components/shared/icons.tsx`.
+- Feedback (`data-copy-state="copied|failed"` + title swap) is written straight to the DOM -- the button is not React-owned and the state is transient (`COPY_TOAST_DURATION_MS`). Status is announced through an `aria-live` region that lives OUTSIDE the memoised blob, so status updates cannot re-apply it.
+- UX contract: hidden at rest, revealed on block hover / `:focus-visible` / while showing feedback; permanently visible under `@media (hover: none)`; `.code-block > pre` reserves `padding-right` so the button never covers code, including at max horizontal scroll. Empty fences get no button.
 
 ## Language Utility (src/languages.ts)
 

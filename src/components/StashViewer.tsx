@@ -15,6 +15,8 @@ import VersionHistory from './VersionHistory';
 import { Marked } from 'marked';
 import { renderDescriptionMarkdown, isUnsafeUrl, sanitizeHtml } from '../utils/markdown';
 import { hydrateMermaidPlaceholders, encodeMermaidSource } from '../utils/mermaid-hydrate';
+import { wrapCodeBlockWithCopy } from '../utils/code-copy';
+import { useCodeBlockCopy } from '../hooks/useCodeBlockCopy';
 import { DELETE_CONFIRM_TIMEOUT_MS } from '../utils/constants';
 import { formatBytes } from '../utils/format';
 import { escapeHtml } from '../utils/html';
@@ -274,9 +276,12 @@ function createMdParser(headingIdPrefix: string): Marked {
           const resolved = resolvePrismLanguage(language);
           const grammarKey = resolved !== 'text' ? resolved : lower;
           const body = highlightCode(source, grammarKey) + '\n';
-          return `<pre><code class="language-${escapeHtml(language)}">${body}</code></pre>\n`;
+          const pre = `<pre><code class="language-${escapeHtml(language)}">${body}</code></pre>`;
+          return wrapCodeBlockWithCopy(pre, source) + '\n';
         }
-        return `<pre><code>${escapeHtml(source)}\n</code></pre>\n`;
+        return (
+          wrapCodeBlockWithCopy(`<pre><code>${escapeHtml(source)}\n</code></pre>`, source) + '\n'
+        );
       },
     },
   });
@@ -460,6 +465,9 @@ export default function StashViewer({
   const linkClipboard = useClipboard();
   const fileClipboard = useClipboardWithKey();
   const apiClipboard = useClipboardWithKey();
+  // Copy buttons on fenced code blocks inside the (Markdown) description.
+  // File Markdown carries its own handler inside `MarkdownBody`.
+  const descriptionCodeCopy = useCodeBlockCopy();
 
   // Memoize resolved languages for all files
   const resolvedLanguages = useMemo(
@@ -762,7 +770,10 @@ export default function StashViewer({
   // on every call, so cache by description content for consistency with
   // StashCard. (Stash content may render long markdown.)
   const descriptionHtml = useMemo(
-    () => (stash.description ? renderDescriptionMarkdown(stash.description) : ''),
+    () =>
+      stash.description
+        ? renderDescriptionMarkdown(stash.description, { codeCopyButtons: true })
+        : '',
     [stash.description],
   );
 
@@ -797,6 +808,7 @@ export default function StashViewer({
         {fileClipboard.failedKey && 'Copy failed'}
         {apiClipboard.copiedKey && 'API endpoint copied to clipboard'}
         {apiClipboard.failedKey && 'Copy failed'}
+        {descriptionCodeCopy.announcement}
       </div>
 
       <div className="viewer-header">
@@ -913,6 +925,7 @@ export default function StashViewer({
       {stash.description && (
         <div
           className="viewer-description markdown-description"
+          onClick={descriptionCodeCopy.handleClick}
           dangerouslySetInnerHTML={{ __html: descriptionHtml }}
         />
       )}
@@ -1367,6 +1380,7 @@ export default function StashViewer({
               <div
                 className="markdown-description"
                 style={{ fontSize: '13px', color: 'var(--text-secondary)', lineHeight: 1.6 }}
+                onClick={descriptionCodeCopy.handleClick}
                 dangerouslySetInnerHTML={{ __html: descriptionHtml }}
               />
             </div>
