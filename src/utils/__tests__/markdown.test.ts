@@ -195,4 +195,26 @@ describe('renderDescriptionMarkdown', () => {
     const out = renderDescriptionMarkdown('[x](https://example.com "a\\"onmouseover=\\"b")');
     expect(out.toLowerCase()).not.toContain('" onmouseover');
   });
+
+  it('renders fenced code without a copy button by default (dashboard cards)', () => {
+    const out = renderDescriptionMarkdown('```sh\nnpm test\n```');
+    expect(out).toContain('<pre><code class="language-sh">');
+    expect(out).not.toContain('code-copy-btn');
+  });
+
+  it('emits a copy button when asked (viewer surface)', () => {
+    const out = renderDescriptionMarkdown('```sh\nnpm test\n```', { codeCopyButtons: true });
+    expect(out).toContain('class="code-block"');
+    expect(out).toContain('code-copy-btn');
+    // The scaffold must survive sanitisation — it is added before sanitizeHtml.
+    expect(tagsIn(out)).toContain('button');
+  });
+
+  it('escapes code content in fenced blocks', () => {
+    const out = renderDescriptionMarkdown('```\n<img src=x onerror=alert(1)>\n```', {
+      codeCopyButtons: true,
+    });
+    expect(tagsIn(out)).not.toContain('img');
+    expect(out).toContain('&lt;img');
+  });
 });

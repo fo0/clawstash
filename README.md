@@ -15,6 +15,7 @@ AI agents lose context between sessions. ClawStash gives them a persistent memor
 - **Version history** — every change is tracked, diffable, and restorable
 - **GitHub backup** — mirror all stashes into a GitHub repo (scheduled, on change, or manual) with "Sign in with GitHub" or a PAT — see [docs/backup.md](docs/backup.md)
 - **Mermaid diagrams** — `.mmd` files and inline ` ```mermaid ` blocks in Markdown render as diagrams (lazy-loaded, no bundle bloat)
+- **One-click code copy** — every fenced code block in rendered Markdown gets a copy button (keyboard reachable, always visible on touch)
 - **Web GUI included** — dark-themed dashboard to browse, search, and manage stashes manually
 
 ## Get Started

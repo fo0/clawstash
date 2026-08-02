@@ -1,5 +1,6 @@
 import { Marked } from 'marked';
 import { escapeHtml } from './html';
+import { wrapCodeBlockWithCopy } from './code-copy';
 
 /**
  * Test whether an attribute value carries a script-bearing URL scheme.
@@ -28,25 +29,48 @@ export function isUnsafeUrl(value: string): boolean {
   );
 }
 
-const descriptionParser = new Marked({
-  breaks: true,
-  gfm: true,
-  renderer: {
-    link({ href, title, tokens }) {
-      // Parse the label's inline tokens (bold, code, escaped HTML, …) — the
-      // raw `text` field is the unrendered, unescaped source label.
-      const label = this.parser.parseInline(tokens);
-      // Strip dangerous schemes at render time as defence-in-depth alongside
-      // the post-render sanitiser. Defaults to '#' so the anchor stays valid.
-      const safeHref = isUnsafeUrl(href) ? '#' : href;
-      const titleAttr = title ? ` title="${escapeHtml(title)}"` : '';
-      if (safeHref.startsWith('#')) {
-        return `<a href="${escapeHtml(safeHref)}"${titleAttr}>${label}</a>`;
-      }
-      return `<a href="${escapeHtml(safeHref)}"${titleAttr} target="_blank" rel="noopener noreferrer">${label}</a>`;
+/**
+ * Build the description-Markdown parser.
+ *
+ * Two instances exist because the same description HTML is rendered on two
+ * very different surfaces: the stash viewer (full width, worth a copy button
+ * on fenced code) and the dashboard cards (a two-line clamped teaser, where a
+ * hover button would be noise — and where nothing wires up the delegated
+ * click handler, so the button would be dead).
+ */
+function createDescriptionParser(codeCopyButtons: boolean): Marked {
+  return new Marked({
+    breaks: true,
+    gfm: true,
+    renderer: {
+      link({ href, title, tokens }) {
+        // Parse the label's inline tokens (bold, code, escaped HTML, …) — the
+        // raw `text` field is the unrendered, unescaped source label.
+        const label = this.parser.parseInline(tokens);
+        // Strip dangerous schemes at render time as defence-in-depth alongside
+        // the post-render sanitiser. Defaults to '#' so the anchor stays valid.
+        const safeHref = isUnsafeUrl(href) ? '#' : href;
+        const titleAttr = title ? ` title="${escapeHtml(title)}"` : '';
+        if (safeHref.startsWith('#')) {
+          return `<a href="${escapeHtml(safeHref)}"${titleAttr}>${label}</a>`;
+        }
+        return `<a href="${escapeHtml(safeHref)}"${titleAttr} target="_blank" rel="noopener noreferrer">${label}</a>`;
+      },
+      // Mirrors marked's default fenced-code output (no syntax highlighting on
+      // this surface), optionally wrapped in the copy-button scaffold.
+      code({ text, lang }) {
+        const language = (lang || '').trim().split(/\s+/)[0] || '';
+        const source = text.replace(/\n$/, '');
+        const classAttr = language ? ` class="language-${escapeHtml(language)}"` : '';
+        const pre = `<pre><code${classAttr}>${escapeHtml(source)}\n</code></pre>`;
+        return (codeCopyButtons ? wrapCodeBlockWithCopy(pre, source) : pre) + '\n';
+      },
     },
-  },
-});
+  });
+}
+
+const descriptionParser = createDescriptionParser(false);
+const descriptionParserWithCopy = createDescriptionParser(true);
 
 /**
  * Strip dangerous elements + attributes from arbitrary HTML.
@@ -104,7 +128,20 @@ export function sanitizeHtml(html: string): string {
   return doc.body.innerHTML;
 }
 
-export function renderDescriptionMarkdown(content: string): string {
-  const raw = descriptionParser.parse(content, { async: false }) as string;
+interface DescriptionMarkdownOptions {
+  /**
+   * Emit a copy button on fenced code blocks. Only enable it where a
+   * `useCodeBlockCopy` handler is attached to the container — see
+   * `createDescriptionParser`.
+   */
+  codeCopyButtons?: boolean;
+}
+
+export function renderDescriptionMarkdown(
+  content: string,
+  options: DescriptionMarkdownOptions = {},
+): string {
+  const parser = options.codeCopyButtons ? descriptionParserWithCopy : descriptionParser;
+  const raw = parser.parse(content, { async: false }) as string;
   return sanitizeHtml(raw);
 }
