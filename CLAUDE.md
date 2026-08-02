@@ -210,7 +210,7 @@ Full reference: `docs/api-reference.md` - MCP tools: `docs/mcp.md` - auth/scopes
 
 Project-intended and common MCPs: `agent_docs/mcp_catalog.md`. Never auto-detect host MCP availability -- fall back to standard tools (`Read`, `Bash`, `WebFetch`) when an MCP is absent. Workflows must never hard-require an MCP.
 
-**Trigger tools never prompt.** `.claude/settings.json` -> `permissions.allow` pre-approves every Claude Code Remote trigger tool (one `mcp__<server>__*` glob per spelling) plus the two `mcp__github__(un)subscribe_pr_activity` entries. **Self-heal:** a tool that still prompts means its spelling is missing -- append `mcp__<that server>__*` and commit it on the current branch/PR (additive only, never `deny`/`ask`). Rationale, trust-gate caveat and the user-level fallback: `agent_docs/mcp_catalog.md`.
+**Trigger tools never prompt.** `.claude/settings.json` -> `permissions.allow` holds exactly one `mcp__<server>__*` glob per Claude Code Remote spelling, plus the two `mcp__github__(un)subscribe_pr_activity` entries (there is no `mcp__github__*` glob). A per-tool entry that a glob in the same list already matches is redundant -- those were pruned; do not re-add them. **Self-heal:** a tool that still prompts means its server spelling is missing -- append `mcp__<that server>__*` and commit it on the current branch/PR. **Never write `deny`/`ask`.** Rationale, trust-gate caveat and the user-level fallback: `agent_docs/mcp_catalog.md`.
 
 ## CI
 
