@@ -12,6 +12,16 @@ Open http://localhost:3000.
 
 The `docker-compose.yml` uses a named volume (`clawstash-data`) for database persistence.
 
+> **`.env` is not handed to the container automatically.** Compose reads it for `${...}` interpolation inside `docker-compose.yml` — that is how `${PORT:-3000}` picks the published host port — but only the keys listed under the service's `environment:` block actually reach the app. The committed file forwards `NODE_ENV`, `PORT` and `DATABASE_PATH` only, so `ADMIN_PASSWORD` (and `ADMIN_SESSION_HOURS`, `TRUST_PROXY`, `CLAWSTASH_ENCRYPTION_KEY`) stay unset — the instance comes up in open mode. Add them to the service, or point it at the file:
+>
+> ```yaml
+> services:
+>   clawstash:
+>     env_file: .env # everything in .env, or:
+>     environment:
+>       - ADMIN_PASSWORD=your-secret-password
+> ```
+
 ### Using the GHCR Image
 
 To use the pre-built image instead of building locally, edit `docker-compose.yml`:
