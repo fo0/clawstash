@@ -1,5 +1,6 @@
 import { useState, useRef, useCallback } from 'react';
 import { useClickOutside } from '../hooks/useClickOutside';
+import { useQuickSearchHint } from '../hooks/useQuickSearchHint';
 import type { JSX } from 'react';
 import type { StashListItem, SettingsSection, TagInfo } from '../types';
 import { formatDate } from '../utils/format';
@@ -186,6 +187,9 @@ export default function Sidebar({
   const [tagDropdownOpen, setTagDropdownOpen] = useState(false);
   const [tagSearch, setTagSearch] = useState('');
   const tagFilterRef = useRef<HTMLDivElement>(null);
+  // "⌘K" on Apple platforms, "Ctrl+K" elsewhere. Alt+K still works and stays
+  // in the tooltip, but the hint shows the accelerator users reach for.
+  const quickSearchKey = useQuickSearchHint();
 
   const closeTagDropdown = useCallback(() => {
     setTagDropdownOpen(false);
@@ -302,7 +306,7 @@ export default function Sidebar({
                   }
                 }}
                 className="search-input"
-                title="Search by name, filename, or content — / to focus, Esc to clear, Alt+K for quick search"
+                title={`Search by name, filename, or content — / to focus, Esc to clear, ${quickSearchKey} (or Alt+K) for quick search`}
                 aria-label="Search stashes"
               />
               {search ? (
@@ -318,8 +322,11 @@ export default function Sidebar({
                   </svg>
                 </button>
               ) : (
-                <kbd className="search-input-kbd" title="Alt+K for quick search overlay">
-                  Alt+K
+                <kbd
+                  className="search-input-kbd"
+                  title={`${quickSearchKey} (or Alt+K) for the quick search overlay`}
+                >
+                  {quickSearchKey}
                 </kbd>
               )}
             </div>

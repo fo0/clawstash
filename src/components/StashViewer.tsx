@@ -10,7 +10,7 @@ import {
 } from '../languages';
 import RelativeTime from './shared/RelativeTime';
 import { useClipboard, useClipboardWithKey } from '../hooks/useClipboard';
-import { CopyIcon, CheckIcon, XIcon } from './shared/icons';
+import { CopyIcon, CheckIcon, XIcon, StarIcon } from './shared/icons';
 import VersionHistory from './VersionHistory';
 import { Marked } from 'marked';
 import { renderDescriptionMarkdown, isUnsafeUrl, sanitizeHtml } from '../utils/markdown';
@@ -40,6 +40,14 @@ interface Props {
    * handler they looked interactive but did nothing.
    */
   onFilterTag: (tag: string) => void;
+  /**
+   * Whether this stash is pinned to the top of the dashboard. Favoriting was
+   * previously reachable only from the dashboard card, so the moment a stash
+   * turns out to be worth keeping — while reading it — the user had to go
+   * back and hunt for its card. Same localStorage-backed state as the card.
+   */
+  isFavorite: boolean;
+  onToggleFavorite: (id: string) => void;
   onStashUpdated?: (stash: Stash) => void;
   // Fired specifically when a previous version is restored from the history
   // tab, so the shell can surface a success toast. Restoring previously gave
@@ -429,6 +437,8 @@ export default function StashViewer({
   onBack,
   onAnalyzeStash,
   onFilterTag,
+  isFavorite,
+  onToggleFavorite,
   onStashUpdated,
   onVersionRestored,
 }: Props) {
@@ -842,6 +852,19 @@ export default function StashViewer({
               labelCopied=""
               labelFailed=""
             />
+          </button>
+          {/* Mirrors the dashboard card's star: same state, same wording, so
+              a stash can be pinned while it is being read. */}
+          <button
+            type="button"
+            className={`stash-card-favorite-btn viewer-favorite-btn${isFavorite ? ' is-favorite' : ''}`}
+            onClick={() => onToggleFavorite(stash.id)}
+            aria-pressed={isFavorite}
+            aria-label={isFavorite ? `Unpin "${title}" from top` : `Pin "${title}" to top`}
+            title={isFavorite ? 'Unpin from top' : 'Pin to top'}
+            data-testid="viewer-favorite-toggle"
+          >
+            <StarIcon filled={isFavorite} />
           </button>
         </h2>
         <div className="viewer-actions">

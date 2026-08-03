@@ -214,7 +214,7 @@ body {
   pointer-events: none;
 }
 
-/* Inline clear button that replaces the Alt+K hint when the field has a
+/* Inline clear button that replaces the quick-search hint when the field has a
    value — saves users a sidebar-tag-toggle round-trip just to reset search. */
 .search-input-clear {
   position: absolute;
@@ -776,7 +776,7 @@ body {
   justify-content: center;
 }
 
-/* === Search Overlay (Alt+K) === */
+/* === Search Overlay (Ctrl+K / Cmd+K, Alt+K) === */
 .search-overlay-backdrop {
   position: fixed;
   inset: 0;
@@ -914,11 +914,41 @@ body {
 }
 
 .search-overlay-results-count {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
   padding: 4px 16px 2px;
   font-size: 11px;
   color: var(--text-muted);
   border-bottom: 1px solid var(--border-color);
   margin-bottom: 2px;
+}
+
+/* "Show all N" — the way out of a capped result list, into the dashboard
+   search which pages up to the full total. */
+.search-overlay-show-all {
+  flex-shrink: 0;
+  padding: 1px 6px;
+  border: none;
+  border-radius: var(--radius);
+  background: transparent;
+  color: var(--accent-blue);
+  font-size: 11px;
+  font-family: inherit;
+  cursor: pointer;
+  transition:
+    color 0.12s,
+    background 0.12s;
+}
+
+.search-overlay-show-all:hover {
+  background: rgba(88, 166, 255, 0.12);
+}
+
+.search-overlay-show-all:focus-visible {
+  outline: 2px solid var(--accent-blue);
+  outline-offset: 1px;
 }
 
 .search-overlay-item {
@@ -1830,6 +1860,14 @@ body {
 
 .viewer-title-copy-btn:hover {
   color: var(--text-secondary);
+}
+
+/* Favorite toggle in the viewer title. Inherits look + interaction states from
+   `.stash-card-favorite-btn`; unlike the copy button next to it, it is never
+   hover-revealed — a pinned star has to be readable at a glance. */
+.viewer-favorite-btn {
+  margin-left: 2px;
+  vertical-align: middle;
 }
 
 .viewer-archived-badge {
