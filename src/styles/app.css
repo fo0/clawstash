@@ -1832,6 +1832,14 @@ body {
   color: var(--text-secondary);
 }
 
+/* Favorite toggle in the viewer title. Inherits look + interaction states from
+   `.stash-card-favorite-btn`; unlike the copy button next to it, it is never
+   hover-revealed — a pinned star has to be readable at a glance. */
+.viewer-favorite-btn {
+  margin-left: 2px;
+  vertical-align: middle;
+}
+
 .viewer-archived-badge {
   display: inline-block;
   margin-left: 8px;

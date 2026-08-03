@@ -965,6 +965,8 @@ export default function App() {
               onBack={handleGoHome}
               onAnalyzeStash={handleAnalyzeStash}
               onFilterTag={handleViewerFilterTag}
+              isFavorite={favoriteIds.has(selectedStash.id)}
+              onToggleFavorite={handleToggleFavorite}
               onStashUpdated={(stash) => {
                 setSelectedStash(stash);
                 loadStashes();
