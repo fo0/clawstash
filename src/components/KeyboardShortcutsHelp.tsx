@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { useFocusTrap } from '../hooks/useFocusTrap';
 import { useBodyScrollLock } from '../hooks/useBodyScrollLock';
+import { useQuickSearchHint } from '../hooks/useQuickSearchHint';
 
 interface Props {
   open: boolean;
@@ -12,7 +13,12 @@ interface ShortcutGroup {
   shortcuts: { keys: string[]; description: string }[];
 }
 
-const SHORTCUT_GROUPS: ShortcutGroup[] = [
+/**
+ * Groups that do not depend on the platform. The Search group is built at
+ * render time because its primary accelerator is labelled per platform
+ * ("⌘K" vs "Ctrl+K").
+ */
+const STATIC_SHORTCUT_GROUPS: ShortcutGroup[] = [
   {
     label: 'Navigation',
     shortcuts: [
@@ -21,13 +27,6 @@ const SHORTCUT_GROUPS: ShortcutGroup[] = [
       { keys: ['a'], description: 'Toggle archived stashes on the dashboard' },
       { keys: ['Esc'], description: 'Back to dashboard / close overlay' },
       { keys: ['?'], description: 'Show / hide keyboard shortcuts' },
-    ],
-  },
-  {
-    label: 'Search',
-    shortcuts: [
-      { keys: ['Alt', 'K'], description: 'Open quick search' },
-      { keys: ['/'], description: 'Focus sidebar search' },
     ],
   },
   {
@@ -45,9 +44,27 @@ const SHORTCUT_GROUPS: ShortcutGroup[] = [
   },
 ];
 
+/**
+ * Insert the Search group after Navigation, with the platform's own quick-search
+ * accelerator first and the original Alt+K binding listed as the alternative.
+ */
+function buildShortcutGroups(quickSearchKey: string): ShortcutGroup[] {
+  const search: ShortcutGroup = {
+    label: 'Search',
+    shortcuts: [
+      { keys: [quickSearchKey], description: 'Open quick search' },
+      { keys: ['Alt', 'K'], description: 'Open quick search (alternative)' },
+      { keys: ['/'], description: 'Focus sidebar search' },
+    ],
+  };
+  return [STATIC_SHORTCUT_GROUPS[0], search, ...STATIC_SHORTCUT_GROUPS.slice(1)];
+}
+
 export default function KeyboardShortcutsHelp({ open, onClose }: Props) {
   const closeBtnRef = useRef<HTMLButtonElement>(null);
   const dialogRef = useRef<HTMLDivElement>(null);
+  const quickSearchKey = useQuickSearchHint();
+  const groups = buildShortcutGroups(quickSearchKey);
 
   // Close on Escape
   useEffect(() => {
@@ -111,7 +128,7 @@ export default function KeyboardShortcutsHelp({ open, onClose }: Props) {
           </button>
         </div>
         <div className="shortcuts-help-body">
-          {SHORTCUT_GROUPS.map((group) => (
+          {groups.map((group) => (
             <div key={group.label} className="shortcuts-group">
               <div className="shortcuts-group-label">{group.label}</div>
               <table className="shortcuts-table">

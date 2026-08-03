@@ -214,7 +214,7 @@ body {
   pointer-events: none;
 }
 
-/* Inline clear button that replaces the Alt+K hint when the field has a
+/* Inline clear button that replaces the quick-search hint when the field has a
    value — saves users a sidebar-tag-toggle round-trip just to reset search. */
 .search-input-clear {
   position: absolute;
@@ -776,7 +776,7 @@ body {
   justify-content: center;
 }
 
-/* === Search Overlay (Alt+K) === */
+/* === Search Overlay (Ctrl+K / Cmd+K, Alt+K) === */
 .search-overlay-backdrop {
   position: fixed;
   inset: 0;

@@ -159,18 +159,29 @@ export default function App() {
 
   // Mirror auth state for the dependency-free hotkey handlers. Without this
   // guard, hotkeys fire on the login screen — 'n' mutates view state + URL,
-  // 'a' toggles + persists showArchived, ?/Alt+K open modals — all pre-auth.
+  // 'a' toggles + persists showArchived, ? / quick-search open modals — all pre-auth.
   const isAuthedRef = useRef(false);
   useEffect(() => {
     isAuthedRef.current =
       adminSession !== null && (adminSession.authenticated || !adminSession.authRequired);
   }, [adminSession]);
 
-  // Global Alt+K shortcut for quick search
+  // Global quick-search shortcut. Ctrl+K / Cmd+K is the accelerator every
+  // comparable tool uses (GitHub, Linear, Slack, VS Code), so it is what users
+  // reach for first; Alt+K stays as the original binding. Both are handled
+  // here rather than in the hotkey effect below, which deliberately ignores
+  // every modified keystroke.
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.altKey && e.key.toLowerCase() === 'k') {
+      if (e.key.toLowerCase() !== 'k') return;
+      // Ctrl+K and Cmd+K only when they are the ONLY modifier — Ctrl+Shift+K
+      // and friends belong to the browser (and to any future binding).
+      const accelerator =
+        (e.altKey && !e.ctrlKey && !e.metaKey) || ((e.ctrlKey || e.metaKey) && !e.altKey);
+      if (accelerator && !e.shiftKey) {
         if (!isAuthedRef.current) return;
+        // Ctrl+K focuses the browser's search bar in Firefox/Chrome, so this
+        // has to be claimed explicitly.
         e.preventDefault();
         // No-op while the shortcuts help dialog is open — toggling search on
         // top would stack both modals (double-Escape needed to get out).
