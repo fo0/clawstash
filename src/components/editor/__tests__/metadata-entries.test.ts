@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { metadataToEntries, entriesToMetadata } from '../MetadataEditor';
+import { metadataToEntries, entriesToMetadata, metadataValueType } from '../MetadataEditor';
 
 describe('metadataToEntries', () => {
   it('marks string values as original so they can round-trip untouched', () => {
@@ -65,5 +65,35 @@ describe('entriesToMetadata', () => {
 
   it('skips rows with a blank key', () => {
     expect(entriesToMetadata([{ key: '   ', value: 'x' }])).toEqual({});
+  });
+});
+
+describe('metadataValueType', () => {
+  it('reports the JSON type a newly typed value will be saved as', () => {
+    expect(metadataValueType({ key: 'a', value: '123' })).toBe('number');
+    expect(metadataValueType({ key: 'a', value: 'true' })).toBe('boolean');
+    expect(metadataValueType({ key: 'a', value: 'null' })).toBe('null');
+    expect(metadataValueType({ key: 'a', value: '[1,2]' })).toBe('array');
+    expect(metadataValueType({ key: 'a', value: '{"a":1}' })).toBe('object');
+  });
+
+  it('stays silent for values that are saved as plain text', () => {
+    expect(metadataValueType({ key: 'a', value: 'hello' })).toBeNull();
+    expect(metadataValueType({ key: 'a', value: '' })).toBeNull();
+    expect(metadataValueType({ key: 'a', value: '"quoted"' })).toBeNull();
+  });
+
+  it('stays silent for untouched string rows, which never get re-parsed', () => {
+    const [entry] = metadataToEntries({ count: '123' });
+    expect(metadataValueType(entry)).toBeNull();
+    expect(metadataValueType({ ...entry, value: '456' })).toBe('number');
+  });
+
+  it('flags exactly the values entriesToMetadata stores as non-strings', () => {
+    for (const value of ['123', 'true', 'null', '[1,2]', '{"a":1}', 'hello', '"quoted"', ' ']) {
+      const stored = entriesToMetadata([{ key: 'k', value }]).k;
+      const flagged = metadataValueType({ key: 'k', value }) !== null;
+      expect(flagged).toBe(typeof stored !== 'string' && stored !== undefined);
+    }
   });
 });

@@ -21,6 +21,17 @@ interface Props {
 }
 
 /**
+ * Client-side mirrors of the server's payload limits
+ * (`MAX_NAME_LENGTH` / `MAX_FILENAME_LENGTH` in `src/server/validation.ts`).
+ * Duplicated as plain numbers on purpose: importing the server module into a
+ * client component would pull Zod into the browser bundle for two integers.
+ * The server stays the enforcing boundary — these only stop the user from
+ * typing past a limit they could not see.
+ */
+const MAX_NAME_LENGTH = 500;
+const MAX_FILENAME_LENGTH = 255;
+
+/**
  * Soft-wrap preference for the file editors. Kept separate from the viewer's
  * `clawstash-wrap-lines` key: reading a stash and editing it are different
  * contexts, and silently flipping one because the other was toggled would be
@@ -423,6 +434,9 @@ export default function StashEditor({ stash, onSave, onCancel, onDirtyChange }: 
             onChange={(e) => handleNameChange(e.target.value)}
             placeholder="e.g. Docker Compose Setup, API Keys, Prompt Template..."
             className="form-input"
+            // Mirrors MAX_NAME_LENGTH in server/validation.ts. Without it the
+            // limit was only discoverable by hitting a raw Zod error on save.
+            maxLength={MAX_NAME_LENGTH}
             autoFocus={!stash}
           />
         </div>
@@ -540,6 +554,8 @@ export default function StashEditor({ stash, onSave, onCancel, onDirtyChange }: 
                   onChange={(e) => updateFile(index, 'filename', e.target.value)}
                   placeholder="filename.ext"
                   className="form-input file-name-input"
+                  // Mirrors MAX_FILENAME_LENGTH in server/validation.ts.
+                  maxLength={MAX_FILENAME_LENGTH}
                   aria-label={`File ${index + 1} filename`}
                   title="Filename with extension (e.g. config.yml, main.py). The language is auto-detected from the extension."
                 />
