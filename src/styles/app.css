@@ -1917,6 +1917,15 @@ body {
   margin-bottom: 20px;
 }
 
+/* Inner wrapper carrying `role="tablist"`. It exists so the sibling "Analyze"
+   action button can share the tab bar's flex row without being an invalid
+   child of the tablist. `flex-shrink: 0` keeps the mobile overflow-x scroll on
+   `.viewer-tabs` behaving as it did when the tabs were direct children. */
+.viewer-tablist {
+  display: flex;
+  flex-shrink: 0;
+}
+
 .tab {
   padding: 10px 20px;
   background: transparent;
