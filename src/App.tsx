@@ -768,6 +768,24 @@ export default function App() {
     setLoadedPages(1);
   };
 
+  /**
+   * "Show all N" from the quick-search overlay: run the same query as the
+   * dashboard's own search and go there. The overlay counts matches without a
+   * tag filter, so an active tag filter is cleared — leaving it on would land
+   * the user on a handful of rows right after promising N matches.
+   * `showArchived` is left alone: it only ever widens the result set, and it
+   * is a persisted, deliberate preference.
+   */
+  const handleSearchAll = (query: string) => {
+    if (!confirmDiscardUnsaved()) return;
+    handleSearchChange(query);
+    setFilterTag('');
+    setSelectedStash(null);
+    setView('home');
+    pushUrl('/');
+    setSidebarOpen(false);
+  };
+
   const handleFilterTag = (tag: string) => {
     const newTag = tag === filterTagRef.current ? '' : tag;
     setFilterTag(newTag);
@@ -1040,6 +1058,7 @@ export default function App() {
         open={searchOpen}
         onClose={() => setSearchOpen(false)}
         onSelectStash={handleSelectStash}
+        onSearchAll={handleSearchAll}
       />
       <KeyboardShortcutsHelp open={shortcutsHelpOpen} onClose={() => setShortcutsHelpOpen(false)} />
       {successToast && (

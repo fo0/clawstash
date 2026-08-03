@@ -13,9 +13,16 @@ interface Props {
   open: boolean;
   onClose: () => void;
   onSelectStash: (id: string) => void;
+  /**
+   * Hand the current query to the dashboard's own search. The overlay caps its
+   * result list, so a query matching more stashes than fit used to dead-end at
+   * "refine to narrow" — the dashboard is capped too, but offers "Load more"
+   * up to the full total.
+   */
+  onSearchAll: (query: string) => void;
 }
 
-export default function SearchOverlay({ open, onClose, onSelectStash }: Props) {
+export default function SearchOverlay({ open, onClose, onSelectStash, onSearchAll }: Props) {
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<StashListItem[]>([]);
   // Full server-side match count. The result list is capped (see the `limit`
@@ -173,6 +180,15 @@ export default function SearchOverlay({ open, onClose, onSelectStash }: Props) {
     onClose();
   };
 
+  // Escape hatch for a capped result list: push the query into the dashboard
+  // search, which pages up to the full match count, and close the overlay.
+  const handleShowAll = () => {
+    const q = query.trim();
+    if (!q) return;
+    onSearchAll(q);
+    onClose();
+  };
+
   // Arrow/Enter navigation targets whichever list is on screen: search results
   // when a query is present, otherwise the "Recently viewed" shortcuts. Both
   // item shapes expose an `id`, so selection is uniform.
@@ -303,10 +319,25 @@ export default function SearchOverlay({ open, onClose, onSelectStash }: Props) {
                 status row nested inside made assistive tech announce it as
                 one of the results. Keeping it above also stops the count from
                 scrolling out of view with the list. */}
-            <div className="search-overlay-results-count" aria-live="polite" role="status">
-              {total > results.length
-                ? `Showing first ${results.length} of ${total} matches — refine to narrow`
-                : `${results.length} result${results.length !== 1 ? 's' : ''}`}
+            {/* The row is a plain flex container; only the text carries the
+                live region. An interactive control inside `aria-live` would be
+                re-announced on every keystroke that changes the count. */}
+            <div className="search-overlay-results-count">
+              <span aria-live="polite" role="status">
+                {total > results.length
+                  ? `Showing first ${results.length} of ${total} matches`
+                  : `${results.length} result${results.length !== 1 ? 's' : ''}`}
+              </span>
+              {total > results.length && (
+                <button
+                  type="button"
+                  className="search-overlay-show-all"
+                  onClick={handleShowAll}
+                  title={`Search the dashboard for "${query.trim()}" to page through all ${total} matches`}
+                >
+                  Show all {total}
+                </button>
+              )}
             </div>
             <div
               className="search-overlay-results"
