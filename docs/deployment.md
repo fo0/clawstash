@@ -127,6 +127,22 @@ Copy `.env.example` and adjust as needed:
 cp .env.example .env
 ```
 
+### Build-time variables (Docker build only)
+
+Two more variables are read at **build** time and never at runtime. The `prebuild` script (`scripts/generate-build-info.js`) bakes them into `build-info.json`, which `/api/version` then serves as the running build's identity.
+
+- `BUILD_COMMIT_SHA` — commit the build came from; truncated to a 7-char short hash on display. Falls back to `git rev-parse --short HEAD` of the working tree.
+- `BUILD_BRANCH` — branch name reported by the running container. Falls back to `git rev-parse --abbrev-ref HEAD` of the working tree.
+
+Both are declared as `ARG` in the `Dockerfile`, and `docker-publish.yml` passes them from `github.sha` / `github.ref_name`. An image has no `.git` directory (`.dockerignore` excludes it), so the git fallback yields empty strings — a locally built image reports a blank branch/commit on `/api/version` unless you pass them explicitly:
+
+```bash
+docker build \
+  --build-arg BUILD_COMMIT_SHA="$(git rev-parse HEAD)" \
+  --build-arg BUILD_BRANCH="$(git rev-parse --abbrev-ref HEAD)" \
+  -t clawstash .
+```
+
 ## Data & Backup
 
 - Database: single SQLite file at `DATABASE_PATH` (default `./data/clawstash.db`)
