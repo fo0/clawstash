@@ -1,15 +1,21 @@
-import { useState, useRef, useCallback } from 'react';
+import { useState, useRef, useCallback, useMemo } from 'react';
 import { useClickOutside } from '../hooks/useClickOutside';
 import { useQuickSearchHint } from '../hooks/useQuickSearchHint';
 import type { JSX } from 'react';
-import type { StashListItem, SettingsSection, TagInfo } from '../types';
+import type { SortMode, StashListItem, SettingsSection, TagInfo } from '../types';
 import { formatDate } from '../utils/format';
 import { splitHighlight } from '../utils/highlight';
+import { sortStashes } from '../utils/sort';
+import { sortStashesWithFavorites } from '../utils/favorites';
 
 interface Props {
   stashes: StashListItem[];
   /** Full result count from the server — the list itself is capped. */
   total: number;
+  /** Dashboard sort order — the sidebar list mirrors it. */
+  sortMode: SortMode;
+  /** Pinned stashes — sorted to the top, same as on the dashboard. */
+  favoriteIds: ReadonlySet<string>;
   selectedId: string | null;
   search: string;
   onSearch: (query: string) => void;
@@ -163,6 +169,8 @@ const SETTINGS_SECTIONS: { id: SettingsSection; label: string; icon: JSX.Element
 export default function Sidebar({
   stashes,
   total,
+  sortMode,
+  favoriteIds,
   selectedId,
   search,
   onSearch,
@@ -187,6 +195,14 @@ export default function Sidebar({
   const [tagDropdownOpen, setTagDropdownOpen] = useState(false);
   const [tagSearch, setTagSearch] = useState('');
   const tagFilterRef = useRef<HTMLDivElement>(null);
+
+  // Same ordering pipeline as Dashboard: sort first, then lift favorites to
+  // the top. Without it the sidebar kept the server's `updated_at DESC` order
+  // and disagreed with the dashboard the user just picked an order in.
+  const orderedStashes = useMemo(
+    () => sortStashesWithFavorites(sortStashes(stashes, sortMode), favoriteIds),
+    [stashes, sortMode, favoriteIds],
+  );
   // "⌘K" on Apple platforms, "Ctrl+K" elsewhere. Alt+K still works and stays
   // in the tooltip, but the hint shows the accelerator users reach for.
   const quickSearchKey = useQuickSearchHint();
@@ -509,7 +525,7 @@ export default function Sidebar({
           )}
 
           <div className="sidebar-list">
-            {stashes.map((stash) => (
+            {orderedStashes.map((stash) => (
               <div
                 key={stash.id}
                 className={`sidebar-item ${selectedId === stash.id ? 'active' : ''}`}
