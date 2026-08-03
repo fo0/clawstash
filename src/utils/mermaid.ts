@@ -7,6 +7,7 @@
  * The lib is initialized exactly once on first use.
  */
 import type { default as MermaidApi } from 'mermaid';
+import { sanitizeSvg } from './svg-sanitize';
 
 let mermaidPromise: Promise<typeof MermaidApi> | null = null;
 
@@ -69,6 +70,11 @@ let renderChain: Promise<unknown> = Promise.resolve();
  *
  * Calls are serialized globally: a render only starts once the previous one
  * has settled, so concurrent callers cannot corrupt Mermaid's shared state.
+ *
+ * Every result passes through `sanitizeSvg()` before it reaches a caller: this
+ * is the single funnel in front of all `dangerouslySetInnerHTML` sites for
+ * diagrams, so the defense-in-depth pass belongs here rather than in each
+ * component.
  */
 export async function renderMermaid(code: string): Promise<MermaidRenderResult> {
   const trimmed = code.trim();
@@ -77,7 +83,7 @@ export async function renderMermaid(code: string): Promise<MermaidRenderResult> 
     try {
       const mermaid = await loadMermaid();
       const { svg } = await mermaid.render(uniqueId(), trimmed);
-      return { svg };
+      return { svg: sanitizeSvg(svg) };
     } catch (err) {
       return { error: err instanceof Error ? err.message : String(err) };
     }
