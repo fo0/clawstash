@@ -52,6 +52,30 @@ export function entriesToMetadata(entries: MetadataEntry[]): Record<string, unkn
   return result;
 }
 
+/**
+ * The JSON type `entriesToMetadata` would store for this row, or `null` when it
+ * is saved as a plain string (the common case) — see the parse rules there.
+ *
+ * Rendered next to the input so the retyping is visible BEFORE saving: typing
+ * `123` or `true` in a value field silently produced a number/boolean, which
+ * only surfaced later in the API payload.
+ */
+export function metadataValueType(entry: MetadataEntry): string | null {
+  if (entry.original !== undefined && entry.value === entry.original) return null;
+  const val = entry.value.trim();
+  if (!val) return null;
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(val);
+  } catch {
+    return null;
+  }
+  if (parsed === null) return 'null';
+  if (Array.isArray(parsed)) return 'array';
+  if (typeof parsed === 'string') return null;
+  return typeof parsed;
+}
+
 const PREVIEW_COUNT = 3;
 
 export default function MetadataEditor({ entries, onChange, availableKeys }: Props) {
@@ -210,6 +234,17 @@ export default function MetadataEditor({ entries, onChange, availableKeys }: Pro
                 className="form-input metadata-value-input"
                 aria-label={`Metadata value for "${entry.key || `entry ${index + 1}`}"`}
               />
+              {(() => {
+                const type = metadataValueType(entry);
+                return type ? (
+                  <span
+                    className="metadata-value-type"
+                    title={`Saved as JSON ${type}, not as text. Wrap it in quotes to keep it a string.`}
+                  >
+                    {type}
+                  </span>
+                ) : null;
+              })()}
               <button
                 className="btn btn-sm btn-ghost btn-remove"
                 // Removing a row must not blur-commit a half-typed key.

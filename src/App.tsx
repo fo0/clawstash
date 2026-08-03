@@ -886,6 +886,8 @@ export default function App() {
       <Sidebar
         stashes={stashes}
         total={total}
+        sortMode={sortMode}
+        favoriteIds={favoriteIds}
         selectedId={selectedStash?.id || null}
         search={search}
         onSearch={handleSearchChange}
