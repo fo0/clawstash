@@ -1299,6 +1299,22 @@ export default function GraphViewer({
     setSearchQuery('');
   }, [graphTab]);
 
+  // On-screen counterpart of the wheel/pinch zoom, anchored on the viewport
+  // centre instead of the pointer: with `screen = centre + pan + world * zoom`,
+  // holding the centre world point fixed means scaling the pan by the same
+  // factor. Wheel and pinch remain the only zoom paths on touch/trackpad, but
+  // they are invisible affordances — these buttons make zooming discoverable.
+  const handleZoomStep = (factor: number) => {
+    targetZoomRef.current = null;
+    targetPanRef.current = null;
+    const next = Math.max(0.2, Math.min(5, zoomRef.current * factor));
+    const ratio = next / zoomRef.current;
+    panRef.current.x *= ratio;
+    panRef.current.y *= ratio;
+    zoomRef.current = next;
+    startLoopRef.current();
+  };
+
   const handleResetView = () => {
     targetZoomRef.current = null;
     targetPanRef.current = null;
@@ -1634,6 +1650,24 @@ export default function GraphViewer({
                 )}
               </div>
             )}
+          </div>
+          <div className="graph-zoom-control" role="group" aria-label="Zoom">
+            <button
+              className="graph-depth-btn"
+              onClick={() => handleZoomStep(1 / 1.2)}
+              title="Zoom out"
+              aria-label="Zoom out"
+            >
+              -
+            </button>
+            <button
+              className="graph-depth-btn"
+              onClick={() => handleZoomStep(1.2)}
+              title="Zoom in"
+              aria-label="Zoom in"
+            >
+              +
+            </button>
           </div>
           <button
             className="btn graph-reset-btn"

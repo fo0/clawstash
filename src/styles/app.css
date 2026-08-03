@@ -6602,6 +6602,15 @@ textarea.code-editor-plain.code-editor-wrap {
   user-select: none;
 }
 
+/* On-screen zoom affordance for both graph canvases (wheel/pinch stay the
+   fast path). Reuses .graph-depth-btn for the button chrome. */
+.graph-zoom-control {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  user-select: none;
+}
+
 .stash-graph-depth-control label {
   font-weight: 500;
   color: var(--text-secondary);

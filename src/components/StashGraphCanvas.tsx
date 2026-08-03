@@ -1436,6 +1436,22 @@ export default function StashGraphCanvas({
     setPopup(null);
   };
 
+  // Centre-anchored counterpart of the wheel/pinch zoom: with
+  // `screen = centre + pan + world * zoom`, keeping the world point under the
+  // viewport centre fixed means scaling the pan by the same factor. Zoom was
+  // otherwise reachable only through wheel/pinch, which nothing on screen hints
+  // at.
+  const handleZoomStep = (factor: number) => {
+    targetZoomRef.current = null;
+    targetPanRef.current = null;
+    const next = Math.max(0.2, Math.min(5, zoomRef.current * factor));
+    const ratio = next / zoomRef.current;
+    panRef.current.x *= ratio;
+    panRef.current.y *= ratio;
+    zoomRef.current = next;
+    kickAnimation();
+  };
+
   const handleClearAnalysis = () => {
     const empty = new Set<string>();
     analysedStashesRef.current = empty;
@@ -1526,6 +1542,24 @@ export default function StashGraphCanvas({
             onClick={() => setDefaultDepth((d) => Math.min(5, d + 1))}
             disabled={defaultDepth >= 5}
             title="Increase depth"
+          >
+            +
+          </button>
+        </div>
+        <div className="graph-zoom-control" role="group" aria-label="Zoom">
+          <button
+            className="graph-depth-btn"
+            onClick={() => handleZoomStep(1 / 1.2)}
+            title="Zoom out"
+            aria-label="Zoom out"
+          >
+            -
+          </button>
+          <button
+            className="graph-depth-btn"
+            onClick={() => handleZoomStep(1.2)}
+            title="Zoom in"
+            aria-label="Zoom in"
           >
             +
           </button>
