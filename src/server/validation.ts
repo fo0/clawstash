@@ -20,6 +20,15 @@ export const MAX_FILES = 100;
 export const MAX_FILENAME_LENGTH = 255;
 export const MAX_FILE_CONTENT_LENGTH = 10 * 1024 * 1024; // 10MB per file
 export const MAX_IMPORT_SIZE = 100 * 1024 * 1024; // 100MB for ZIP import
+/**
+ * Cap on the COMBINED uncompressed size of the JSON entries read out of an
+ * import ZIP. `MAX_IMPORT_SIZE` only bounds the compressed upload; a
+ * decompression bomb (a few MB of zeros inflating to many GB) would sail past
+ * it and OOM the process inside `entry.getData()`. 1GB comfortably exceeds any
+ * real export — a full stash DB at the 10MB-per-file / 100-files-per-stash
+ * ceiling still compresses far below the upload limit.
+ */
+export const MAX_IMPORT_UNCOMPRESSED_SIZE = 1024 * 1024 * 1024; // 1GB inflated
 
 /**
  * Compute the maximum nesting depth of a JSON-like value.

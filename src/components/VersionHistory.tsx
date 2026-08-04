@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import type { Stash, StashVersionListItem, StashVersion } from '../types';
 import { api } from '../api';
 import { formatRelativeTime } from '../utils/format';
@@ -159,6 +159,22 @@ export default function VersionHistory({ stashId, currentVersion, onRestore }: P
     }
   };
 
+  // Memoize the Prism-highlighted HTML per file of the opened version, keyed by
+  // filename. Without this, every state-driven re-render of the detail view —
+  // and `useClipboardWithKey` produces two per copy click — re-ran
+  // `highlightCode` over every file in the version. Mirrors the same memo in
+  // StashViewer, which already carries this cost note.
+  const highlightedFiles = useMemo(
+    () =>
+      new Map(
+        (selectedVersion?.files ?? []).map((file) => [
+          file.filename,
+          highlightCode(file.content, resolvePrismLanguage(file.language, file.filename)),
+        ]),
+      ),
+    [selectedVersion],
+  );
+
   if (loading)
     return (
       <div className="loading">
@@ -261,7 +277,6 @@ export default function VersionHistory({ stashId, currentVersion, onRestore }: P
         )}
         <div className="version-detail-files">
           {selectedVersion.files.map((file) => {
-            const lang = resolvePrismLanguage(file.language, file.filename);
             return (
               // Filename is unique per version (enforced by server validation),
               // so it's a stable React key. The previous `key={i}` would
@@ -298,7 +313,11 @@ export default function VersionHistory({ stashId, currentVersion, onRestore }: P
                   </button>
                 </div>
                 <pre className="file-content">
-                  <code dangerouslySetInnerHTML={{ __html: highlightCode(file.content, lang) }} />
+                  <code
+                    dangerouslySetInnerHTML={{
+                      __html: highlightedFiles.get(file.filename) ?? '',
+                    }}
+                  />
                 </pre>
               </div>
             );
