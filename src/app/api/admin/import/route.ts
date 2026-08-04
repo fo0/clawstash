@@ -5,6 +5,7 @@ import { checkAdmin, getRequestInfo } from '@/app/api/_helpers';
 import { sanitizeLogValue, quoteLogValue } from '@/server/log-sanitize';
 import {
   MAX_IMPORT_SIZE,
+  MAX_IMPORT_UNCOMPRESSED_SIZE,
   ImportStashRowSchema,
   ImportStashFileRowSchema,
   ImportStashVersionRowSchema,
@@ -70,9 +71,22 @@ export async function POST(req: NextRequest) {
     const zip = new AdmZip(buffer);
     const entries = zip.getEntries();
 
+    // Running total of already-inflated bytes. `MAX_IMPORT_SIZE` bounds only
+    // the COMPRESSED upload, so a decompression bomb (a few MB of zeros
+    // inflating to many GB) passes every check above and then OOMs the process
+    // inside `entry.getData()`. Refuse before inflating, using the entry's
+    // declared uncompressed size from the central directory.
+    let inflatedBytes = 0;
+
     const readJson = (name: string): Record<string, unknown>[] => {
       const entry = entries.find((e) => e.entryName === name);
       if (!entry) return [];
+      inflatedBytes += entry.header.size;
+      if (inflatedBytes > MAX_IMPORT_UNCOMPRESSED_SIZE) {
+        throw new Error(
+          `Uncompressed import data exceeds the ${MAX_IMPORT_UNCOMPRESSED_SIZE}-byte limit`,
+        );
+      }
       const parsed: unknown = JSON.parse(entry.getData().toString('utf8'));
       if (!Array.isArray(parsed)) {
         throw new Error(`Expected ${name} to contain a JSON array`);
