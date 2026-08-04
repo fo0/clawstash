@@ -41,11 +41,24 @@ export async function GET(req: NextRequest) {
     // output avoids a second full-ZIP copy in the `chunks` buffer.
     const archive = archiver('zip', { zlib: { level: 9 } });
 
+    // Set once the consumer is gone (client disconnect / `stream.cancel()`).
+    // Without it the archiver kept zipping the whole DB into a controller that
+    // no longer accepts writes, and `enqueue()` threw out of archiver's `data`
+    // listener on every remaining chunk.
+    let aborted = false;
+
     const stream = new ReadableStream({
       start(controller) {
-        archive.on('data', (chunk: Buffer) => controller.enqueue(chunk));
-        archive.on('end', () => controller.close());
-        archive.on('error', (err: Error) => controller.error(err));
+        archive.on('data', (chunk: Buffer) => {
+          if (aborted) return;
+          controller.enqueue(chunk);
+        });
+        archive.on('end', () => {
+          if (!aborted) controller.close();
+        });
+        archive.on('error', (err: Error) => {
+          if (!aborted) controller.error(err);
+        });
 
         archive.append(JSON.stringify(data.stashes, null, 2), { name: 'stashes.json' });
         archive.append(JSON.stringify(data.stash_files, null, 2), { name: 'stash_files.json' });
@@ -59,6 +72,12 @@ export async function GET(req: NextRequest) {
           name: 'manifest.json',
         });
         archive.finalize();
+      },
+      cancel() {
+        // Stop compressing the rest of the database for a client that already
+        // hung up, and release the archiver's buffers.
+        aborted = true;
+        archive.destroy();
       },
     });
 
