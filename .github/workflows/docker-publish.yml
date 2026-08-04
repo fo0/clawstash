@@ -34,11 +34,20 @@ jobs:
       - name: Run Type Check
         run: npx tsc --noEmit
 
+      # `npm run` prints script names UNQUOTED, so the previous
+      # `grep -q '"lint"'` / `grep -q '"test"'` guards never matched and both
+      # steps silently no-op'd — the image was published without ever running
+      # the test suite. Probe package.json directly instead.
       - name: Run Linter
-        run: if npm run 2>/dev/null | grep -q '"lint"'; then npm run lint; fi
+        run: |
+          if node -e "process.exit(require('./package.json').scripts?.lint ? 0 : 1)"; then
+            npm run lint
+          else
+            echo "No lint script defined - skipping."
+          fi
 
       - name: Run Tests
-        run: if npm run 2>/dev/null | grep -q '"test"'; then npm run test:run || npm test; fi
+        run: npm run test:run
 
       - name: Build Frontend
         run: npm run build
