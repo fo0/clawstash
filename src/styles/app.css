@@ -19,7 +19,10 @@
   --border-light: #353d4a;
   --text-primary: #e6edf3;
   --text-secondary: #9198a1;
-  --text-muted: #656d76;
+  /* #656d76 measured 2.99-3.61:1 against bg-primary/secondary/tertiary — below
+     WCAG AA's 4.5:1 minimum for normal text (1.4.3). This tone clears 4.5:1+
+     on all three while keeping the same muted-gray role. */
+  --text-muted: #838c95;
   --accent-green: #238636;
   --accent-green-hover: #2ea043;
   --accent-blue: #58a6ff;
