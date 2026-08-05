@@ -352,11 +352,24 @@ export const BackupSyncSchema = z.object({
 
 // --- Helpers ---
 
+/**
+ * Render a Zod issue path readably: keys joined with `.`, array indices in
+ * brackets — `files[0].content`, not `files.0.content` (BACKLOG #127).
+ */
+export function formatZodPath(path: readonly (string | number | symbol)[]): string {
+  let out = '';
+  for (const segment of path) {
+    if (typeof segment === 'number') out += `[${segment}]`;
+    else out += out.length > 0 ? `.${String(segment)}` : String(segment);
+  }
+  return out;
+}
+
 export function formatZodError(error: z.ZodError): string {
   return error.issues
     .map((i) => {
-      const path = i.path.length > 0 ? `${i.path.join('.')}: ` : '';
-      return `${path}${i.message}`;
+      const path = formatZodPath(i.path);
+      return path.length > 0 ? `${path}: ${i.message}` : i.message;
     })
     .join('; ');
 }

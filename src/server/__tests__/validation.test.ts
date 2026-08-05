@@ -9,6 +9,8 @@ import {
   hasUniqueFilenames,
   isValidFilename,
   DUPLICATE_FILENAME_MESSAGE,
+  formatZodPath,
+  formatZodError,
 } from '../validation';
 
 describe('maxObjectDepth', () => {
@@ -203,5 +205,21 @@ describe('import file-row filename validation', () => {
   it('still rejects an empty filename', () => {
     expect(ImportStashFileRowSchema.safeParse(fileRow('')).success).toBe(false);
     expect(ImportStashVersionFileRowSchema.safeParse(versionFileRow('')).success).toBe(false);
+  });
+});
+
+describe('formatZodPath / formatZodError', () => {
+  it('renders array indices in bracket form', () => {
+    expect(formatZodPath(['files', 0, 'content'])).toBe('files[0].content');
+    expect(formatZodPath(['metadata', 'a', 'b'])).toBe('metadata.a.b');
+    expect(formatZodPath([])).toBe('');
+  });
+
+  it('prefixes each issue with its readable path', () => {
+    const parsed = CreateStashSchema.safeParse({ files: [{ filename: '', content: 'x' }] });
+    expect(parsed.success).toBe(false);
+    if (!parsed.success) {
+      expect(formatZodError(parsed.error)).toContain('files[0].filename');
+    }
   });
 });

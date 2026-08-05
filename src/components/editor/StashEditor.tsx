@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import type { Stash, TagInfo, FileInput } from '../../types';
 import { api } from '../../api';
 import { DELETE_CONFIRM_TIMEOUT_MS } from '../../utils/constants';
+import { formatBytes } from '../../utils/format';
 import FileCodeEditor from './FileCodeEditor';
 import TagCombobox from './TagCombobox';
 import type { TagComboboxHandle } from './TagCombobox';
@@ -30,6 +31,12 @@ interface Props {
  */
 const MAX_NAME_LENGTH = 500;
 const MAX_FILENAME_LENGTH = 255;
+/**
+ * Mirror of `MAX_FILE_CONTENT_LENGTH`. The server caps `content` via Zod
+ * `.max()`, which counts string length, so the pre-submit check compares
+ * `content.length` — not a byte count — and stays exactly as strict.
+ */
+const MAX_FILE_CONTENT_LENGTH = 10 * 1024 * 1024;
 
 /**
  * Soft-wrap preference for the file editors. Kept separate from the viewer's
@@ -274,6 +281,16 @@ export default function StashEditor({ stash, onSave, onCancel, onDirtyChange }: 
         return;
       }
       seenFilenames.add(trimmedName);
+    }
+    // Oversize content: without this a multi-MB payload is uploaded only to
+    // come back as a raw Zod path string. Name the file and its size instead.
+    const oversized = validFiles.find((f) => f.content.length > MAX_FILE_CONTENT_LENGTH);
+    if (oversized) {
+      setError(
+        `File "${oversized.filename.trim()}" is ${formatBytes(oversized.content.length)} — over the ` +
+          `${formatBytes(MAX_FILE_CONTENT_LENGTH)} per-file limit. Split it into several files.`,
+      );
+      return;
     }
 
     savingRef.current = true;
