@@ -19,12 +19,21 @@
   --border-light: #353d4a;
   --text-primary: #e6edf3;
   --text-secondary: #9198a1;
-  --text-muted: #656d76;
+  /* #656d76 measured 2.99-3.61:1 against bg-primary/secondary/tertiary — below
+     WCAG AA's 4.5:1 minimum for normal text (1.4.3). This tone clears 4.5:1+
+     on all three while keeping the same muted-gray role. */
+  --text-muted: #838c95;
   --accent-green: #238636;
   --accent-green-hover: #2ea043;
   --accent-blue: #58a6ff;
   --accent-orange: #d29922;
   --accent-red: #da3633;
+  /* Text-only variant of accent-red: #da3633 as text measured 3.56-4.11:1 on
+     its own tinted panels (.login-error, .mermaid-error-title), below WCAG
+     AA's 4.5:1 (1.4.3). accent-red itself stays untouched — it also serves as
+     the .btn-danger background, where white button text needs the darker red
+     to stay >= 4.5:1. */
+  --accent-red-text: #e25f5c;
   --radius: 6px;
   --radius-lg: 10px;
   --shadow-card: 0 1px 3px rgba(0, 0, 0, 0.3);
@@ -669,7 +678,7 @@ body {
 
 .sidebar-footer-logout-btn:hover {
   background: var(--bg-tertiary);
-  color: var(--accent-red);
+  color: var(--accent-red-text);
 }
 
 /* === Login Screen === */
@@ -717,7 +726,7 @@ body {
 }
 
 .login-error {
-  color: var(--accent-red);
+  color: var(--accent-red-text);
   font-size: 13px;
   padding: 8px 12px;
   background: rgba(218, 54, 51, 0.1);
@@ -1297,7 +1306,7 @@ body {
 }
 
 .btn-remove:hover {
-  color: var(--accent-red);
+  color: var(--accent-red-text);
 }
 
 /* === Tags === */
@@ -3298,7 +3307,7 @@ textarea.code-editor-plain.code-editor-wrap {
 }
 
 .api-delete-btn:hover {
-  color: var(--accent-red) !important;
+  color: var(--accent-red-text) !important;
 }
 
 .api-copy-notice {
@@ -6802,7 +6811,7 @@ textarea.code-editor-plain.code-editor-wrap {
 
 .mermaid-error-title {
   margin-bottom: 4px;
-  color: var(--accent-red);
+  color: var(--accent-red-text);
 }
 
 .mermaid-error-message {
