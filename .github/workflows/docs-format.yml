@@ -1,0 +1,58 @@
+name: Docs Format
+
+# The only automatic Markdown gate in this repository.
+#
+# `npm run format:check` is `prettier --check .`, which covers Markdown — but
+# `docker-publish.yml` is `workflow_dispatch`-only and the two GitHub-managed
+# workflows (CodeQL, Dependabot) do not run Prettier. Nothing verifies Markdown
+# formatting unless a human remembers to, so a docs-only PR could merge a red
+# `format:check` onto main and stay red indefinitely.
+#
+# Deliberately narrow: Markdown only, no `npm ci`, no build. It does not change
+# `docker-publish.yml`, which stays dispatch-only.
+
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, synchronize, reopened, ready_for_review]
+    paths:
+      - '**.md'
+  push:
+    branches: [main]
+    paths:
+      - '**.md'
+
+concurrency:
+  group: docs-format-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+# Least privilege: this job only checks out the repository and runs Prettier.
+permissions:
+  contents: read
+
+jobs:
+  format:
+    name: Prettier (Markdown)
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' || github.event.pull_request.draft == false
+    timeout-minutes: 5
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: '26'
+
+      # Read the pinned version out of package.json rather than hardcoding it,
+      # so this job can never drift from the Prettier `npm run format` applies.
+      # `.prettierignore` still applies, so the `.claude/` exclusion holds.
+      - name: Resolve pinned Prettier version
+        id: prettier
+        run: echo "version=$(node -p "require('./package.json').devDependencies.prettier.replace(/^[^0-9]*/,'')")" >> "$GITHUB_OUTPUT"
+
+      # Markdown only: the wider docs tree holds files Prettier has no parser
+      # for (`.mmd` and friends), which would fail the run outright.
+      - name: Check Markdown formatting
+        run: npx --yes prettier@${{ steps.prettier.outputs.version }} --check "**/*.md"
