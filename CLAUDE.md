@@ -216,7 +216,7 @@ Project-intended and common MCPs: `agent_docs/mcp_catalog.md`. Never auto-detect
 
 CI failure handling: `.claude/skills/ci/SKILL.md`. Triggered by `/ci`, "fix CI", "check the build". Auto-routes by run state (none / running / passed / failed / stale). Never auto-reruns; always verifies fixes locally before pushing.
 
-`docker-publish.yml` is the only workflow **file** and it is `workflow_dispatch`-only, so a pushed branch legitimately has zero runs of it and `/ci` reporting "no runs" for it is configuration, not breakage. Two GitHub-managed workflows do run without a file in the repo: **CodeQL** (default setup -- `Analyze (actions)` / `Analyze (javascript-typescript)`, runs on every PR and gates merge) and **Dependabot Updates**. The local Automated Checks above remain the real gate for correctness.
+`docker-publish.yml` is `workflow_dispatch`-only, so a pushed branch legitimately has zero runs of it and `/ci` reporting "no runs" for it is configuration, not breakage. `docs-format.yml` is the one workflow that runs automatically: PRs and pushes to `main` touching `**.md`, Prettier-Markdown only (no `npm ci`, no build) — without it nothing would verify Markdown, even though `format:check` is `prettier --check .` and includes it. `.prettierignore` still applies, so the `.claude/` exclusion holds. Two GitHub-managed workflows also run without a file in the repo: **CodeQL** (default setup -- `Analyze (actions)` / `Analyze (javascript-typescript)`, runs on every PR and gates merge) and **Dependabot Updates**. The local Automated Checks above remain the real gate for correctness.
 
 ## Subagents
 
