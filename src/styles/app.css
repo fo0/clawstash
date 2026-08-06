@@ -2587,7 +2587,11 @@ body {
   gap: 6px;
 }
 
-.form-group label {
+/* `.form-label` is the non-<label> variant, used when a group of controls
+   (e.g. the API-token scope toggles) is captioned by a heading rather than by
+   a single labelled input — a bare <label> with no `for` labels nothing. */
+.form-group label,
+.form-group .form-label {
   font-size: 13px;
   font-weight: 500;
   color: var(--text-secondary);
