@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback, useMemo } from 'react';
+import { useState, useRef, useCallback, useMemo, useEffect } from 'react';
 import { useClickOutside } from '../hooks/useClickOutside';
 import { useQuickSearchHint } from '../hooks/useQuickSearchHint';
 import type { JSX } from 'react';
@@ -194,7 +194,12 @@ export default function Sidebar({
 }: Props) {
   const [tagDropdownOpen, setTagDropdownOpen] = useState(false);
   const [tagSearch, setTagSearch] = useState('');
+  // Index of the keyboard-highlighted tag option. The dropdown's search field
+  // filtered the list but offered no way to act on it without the mouse —
+  // typing "back" then still required Tab-ing down into the options.
+  const [tagHighlight, setTagHighlight] = useState(0);
   const tagFilterRef = useRef<HTMLDivElement>(null);
+  const tagOptionsRef = useRef<HTMLDivElement>(null);
 
   // Same ordering pipeline as Dashboard: sort first, then lift favorites to
   // the top. Without it the sidebar kept the server's `updated_at DESC` order
@@ -210,12 +215,58 @@ export default function Sidebar({
   const closeTagDropdown = useCallback(() => {
     setTagDropdownOpen(false);
     setTagSearch('');
+    setTagHighlight(0);
   }, []);
   useClickOutside(tagFilterRef, closeTagDropdown, tagDropdownOpen);
+
+  const openTagDropdown = useCallback(() => {
+    setTagDropdownOpen(true);
+    setTagSearch('');
+    setTagHighlight(0);
+  }, []);
 
   const filteredTags = tagSearch
     ? tags.filter((t) => t.tag.toLowerCase().includes(tagSearch.toLowerCase()))
     : tags;
+
+  /** Apply a tag filter from the dropdown and close it (shared by click + Enter). */
+  const applyTagFilter = useCallback(
+    (tag: string) => {
+      onFilterTag(tag);
+      closeTagDropdown();
+      onClose?.();
+    },
+    [onFilterTag, closeTagDropdown, onClose],
+  );
+
+  /**
+   * Keyboard navigation for the tag-search field: Down/Up move the highlight,
+   * Enter applies the highlighted tag. Focus deliberately stays in the input
+   * (combobox pattern, mirroring the quick-search overlay) — the option
+   * buttons stay clickable and Tab-reachable as before.
+   */
+  const handleTagSearchKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      setTagHighlight((i) => (i < filteredTags.length - 1 ? i + 1 : i));
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      setTagHighlight((i) => (i > 0 ? i - 1 : 0));
+    } else if (e.key === 'Enter') {
+      const target = filteredTags[tagHighlight];
+      if (!target) return;
+      e.preventDefault();
+      applyTagFilter(target.tag);
+    }
+  };
+
+  // Keep the highlighted option in view while arrowing through a long list.
+  useEffect(() => {
+    if (!tagDropdownOpen) return;
+    tagOptionsRef.current
+      ?.querySelector('.sidebar-tag-option.highlighted')
+      ?.scrollIntoView({ block: 'nearest' });
+  }, [tagHighlight, tagDropdownOpen]);
 
   /**
    * Wrap the parts of `text` matching the active stash search in <mark>, so a
@@ -363,21 +414,23 @@ export default function Sidebar({
                   </svg>
                   <span
                     className="sidebar-active-tag-name"
-                    onClick={() => {
-                      setTagDropdownOpen(!tagDropdownOpen);
-                      setTagSearch('');
-                    }}
+                    onClick={() => (tagDropdownOpen ? closeTagDropdown() : openTagDropdown())}
                     onKeyDown={(e) => {
                       if (e.key === 'Enter' || e.key === ' ') {
                         e.preventDefault();
-                        setTagDropdownOpen(!tagDropdownOpen);
-                        setTagSearch('');
+                        if (tagDropdownOpen) closeTagDropdown();
+                        else openTagDropdown();
+                      } else if (e.key === 'ArrowDown' && !tagDropdownOpen) {
+                        // Down opens the list — the accelerator every native
+                        // select and combobox offers.
+                        e.preventDefault();
+                        openTagDropdown();
                       }
                     }}
                     role="button"
                     tabIndex={0}
                     aria-expanded={tagDropdownOpen}
-                    aria-haspopup="true"
+                    aria-haspopup="listbox"
                     aria-label={`Change tag filter, currently "${filterTag}"`}
                     title="Click to change tag filter"
                   >
@@ -400,14 +453,18 @@ export default function Sidebar({
                 </div>
               ) : (
                 <button
+                  type="button"
                   className="sidebar-tag-filter-btn"
-                  onClick={() => {
-                    setTagDropdownOpen(!tagDropdownOpen);
-                    setTagSearch('');
+                  onClick={() => (tagDropdownOpen ? closeTagDropdown() : openTagDropdown())}
+                  onKeyDown={(e) => {
+                    if (e.key === 'ArrowDown' && !tagDropdownOpen) {
+                      e.preventDefault();
+                      openTagDropdown();
+                    }
                   }}
                   title="Filter stashes by tag"
                   aria-expanded={tagDropdownOpen}
-                  aria-haspopup="true"
+                  aria-haspopup="listbox"
                 >
                   <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
                     <path d="M1 7.775V2.75C1 1.784 1.784 1 2.75 1h5.025c.464 0 .91.184 1.238.513l6.25 6.25a1.75 1.75 0 0 1 0 2.474l-5.026 5.026a1.75 1.75 0 0 1-2.474 0l-6.25-6.25A1.752 1.752 0 0 1 1 7.775Zm1.5 0c0 .066.026.13.073.177l6.25 6.25a.25.25 0 0 0 .354 0l5.025-5.025a.25.25 0 0 0 0-.354l-6.25-6.25a.25.25 0 0 0-.177-.073H2.75a.25.25 0 0 0-.25.25ZM6 5a1 1 0 1 1 0 2 1 1 0 0 1 0-2Z" />
@@ -438,24 +495,46 @@ export default function Sidebar({
                         type="text"
                         placeholder="Search tags..."
                         value={tagSearch}
-                        onChange={(e) => setTagSearch(e.target.value)}
+                        onChange={(e) => {
+                          setTagSearch(e.target.value);
+                          // Re-home the highlight on every keystroke — the
+                          // filtered list changes under it otherwise.
+                          setTagHighlight(0);
+                        }}
+                        onKeyDown={handleTagSearchKeyDown}
                         className="sidebar-tag-search-input"
                         aria-label="Search tags"
+                        // Only point at a listbox that actually has options.
+                        aria-controls={filteredTags.length > 0 ? 'sidebar-tag-options' : undefined}
+                        aria-activedescendant={
+                          filteredTags.length > 0 ? `sidebar-tag-option-${tagHighlight}` : undefined
+                        }
                         autoFocus
                       />
                     </div>
                   )}
-                  <div className="sidebar-tag-options">
-                    {filteredTags.map((t) => (
+                  <div
+                    className="sidebar-tag-options"
+                    id="sidebar-tag-options"
+                    ref={tagOptionsRef}
+                    role="listbox"
+                    aria-label="Tags"
+                  >
+                    {filteredTags.map((t, idx) => (
                       <button
                         key={t.tag}
-                        className={`sidebar-tag-option ${filterTag === t.tag ? 'active' : ''}`}
-                        onClick={() => {
-                          onFilterTag(t.tag);
-                          setTagDropdownOpen(false);
-                          setTagSearch('');
-                          onClose?.();
-                        }}
+                        type="button"
+                        id={`sidebar-tag-option-${idx}`}
+                        role="option"
+                        aria-selected={filterTag === t.tag}
+                        className={`sidebar-tag-option ${filterTag === t.tag ? 'active' : ''}${
+                          idx === tagHighlight ? ' highlighted' : ''
+                        }`}
+                        // onMouseMove, not onMouseEnter: arrow-key scrolling
+                        // shifts the list under a stationary cursor, which
+                        // would otherwise yank the highlight back.
+                        onMouseMove={() => setTagHighlight(idx)}
+                        onClick={() => applyTagFilter(t.tag)}
                       >
                         <span className="sidebar-tag-option-name">{t.tag}</span>
                         <span className="sidebar-tag-option-count">{t.count}</span>

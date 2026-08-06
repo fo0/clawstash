@@ -576,6 +576,36 @@ export default function StashViewer({
     setTabPreference(tab);
   }, []);
 
+  /**
+   * Arrow-key navigation inside the tablist (WAI-ARIA Tabs pattern, automatic
+   * activation). Combined with the roving tabindex on the buttons this makes
+   * the bar a single tab stop: Tab reaches the selected tab, then Left/Right
+   * (plus Home/End) move between tabs. Previously every tab was its own tab
+   * stop and the arrow keys did nothing, so a keyboard user had to Tab through
+   * all four buttons to reach the panel.
+   */
+  const handleTablistKeyDown = useCallback(
+    (e: React.KeyboardEvent<HTMLDivElement>) => {
+      const current = VALID_TABS.indexOf(activeTab);
+      let nextIndex: number | null = null;
+      if (e.key === 'ArrowRight') nextIndex = (current + 1) % VALID_TABS.length;
+      else if (e.key === 'ArrowLeft')
+        nextIndex = (current - 1 + VALID_TABS.length) % VALID_TABS.length;
+      else if (e.key === 'Home') nextIndex = 0;
+      else if (e.key === 'End') nextIndex = VALID_TABS.length - 1;
+      if (nextIndex === null) return;
+      e.preventDefault();
+      const next = VALID_TABS[nextIndex];
+      switchTab(next);
+      // The roving tabindex only updates after the re-render, so move focus on
+      // the next frame — otherwise focus would land on a tabindex={-1} button.
+      requestAnimationFrame(() => {
+        document.getElementById(`viewer-tab-${next}`)?.focus();
+      });
+    },
+    [activeTab, switchTab],
+  );
+
   // Hotkeys 1-4 to switch viewer tabs. Skipped when focus is inside an
   // editable element so the keys are not stolen from inline text inputs.
   useEffect(() => {
@@ -998,10 +1028,19 @@ export default function StashViewer({
           an invalid tablist child and AT may skip or mis-count the tabs). It
           stays a sibling inside the same flex row so the bar looks unchanged. */}
       <div className="viewer-tabs">
-        <div className="viewer-tablist" role="tablist" aria-label="Stash view tabs">
+        <div
+          className="viewer-tablist"
+          role="tablist"
+          aria-label="Stash view tabs"
+          onKeyDown={handleTablistKeyDown}
+        >
           <button
+            type="button"
+            id="viewer-tab-content"
             role="tab"
             aria-selected={activeTab === 'content'}
+            aria-controls="viewer-panel-content"
+            tabIndex={activeTab === 'content' ? 0 : -1}
             className={`tab ${activeTab === 'content' ? 'active' : ''}`}
             onClick={() => switchTab('content')}
             title="View file contents (key: 1)"
@@ -1020,8 +1059,12 @@ export default function StashViewer({
             <kbd className="tab-kbd">1</kbd>
           </button>
           <button
+            type="button"
+            id="viewer-tab-metadata"
             role="tab"
             aria-selected={activeTab === 'metadata'}
+            aria-controls="viewer-panel-metadata"
+            tabIndex={activeTab === 'metadata' ? 0 : -1}
             className={`tab ${activeTab === 'metadata' ? 'active' : ''}`}
             onClick={() => switchTab('metadata')}
             title="View stash details, metadata, and API endpoints (key: 2)"
@@ -1040,8 +1083,12 @@ export default function StashViewer({
             <kbd className="tab-kbd">2</kbd>
           </button>
           <button
+            type="button"
+            id="viewer-tab-access-log"
             role="tab"
             aria-selected={activeTab === 'access-log'}
+            aria-controls="viewer-panel-access-log"
+            tabIndex={activeTab === 'access-log' ? 0 : -1}
             className={`tab ${activeTab === 'access-log' ? 'active' : ''}`}
             onClick={() => switchTab('access-log')}
             title="View when and how this stash was accessed (API, MCP, UI) (key: 3)"
@@ -1060,8 +1107,12 @@ export default function StashViewer({
             <kbd className="tab-kbd">3</kbd>
           </button>
           <button
+            type="button"
+            id="viewer-tab-history"
             role="tab"
             aria-selected={activeTab === 'history'}
+            aria-controls="viewer-panel-history"
+            tabIndex={activeTab === 'history' ? 0 : -1}
             className={`tab ${activeTab === 'history' ? 'active' : ''}`}
             onClick={() => switchTab('history')}
             title="View version history and compare changes (key: 4)"
@@ -1160,8 +1211,20 @@ export default function StashViewer({
         </div>
       )}
 
+      {/* Each tab's content is a real `tabpanel` owned by its tab button, so
+          assistive tech announces which panel it landed in and can jump
+          between tab and panel. `tabIndex={0}` keeps the panel itself
+          reachable — the Access Log panel in particular is a scrollable region
+          with no focusable child of its own. */}
       {activeTab === 'content' && (
-        <div className="viewer-files" ref={filesContainerRef}>
+        <div
+          className="viewer-files"
+          ref={filesContainerRef}
+          role="tabpanel"
+          id="viewer-panel-content"
+          aria-labelledby="viewer-tab-content"
+          tabIndex={0}
+        >
           {stash.files.length > 1 && (
             <div className="viewer-files-toolbar">
               <button
@@ -1347,7 +1410,13 @@ export default function StashViewer({
       )}
 
       {activeTab === 'metadata' && (
-        <div className="viewer-metadata">
+        <div
+          className="viewer-metadata"
+          role="tabpanel"
+          id="viewer-panel-metadata"
+          aria-labelledby="viewer-tab-metadata"
+          tabIndex={0}
+        >
           <div className="metadata-section">
             <h3>Details</h3>
             <table className="metadata-table">
@@ -1544,7 +1613,13 @@ export default function StashViewer({
       )}
 
       {activeTab === 'access-log' && (
-        <div className="viewer-access-log">
+        <div
+          className="viewer-access-log"
+          role="tabpanel"
+          id="viewer-panel-access-log"
+          aria-labelledby="viewer-tab-access-log"
+          tabIndex={0}
+        >
           <div className="access-log-header">
             <h3>
               <svg
@@ -1623,18 +1698,28 @@ export default function StashViewer({
       )}
 
       {activeTab === 'history' && (
-        <VersionHistory
-          // Remount on stash switch: the internal sub-view (version detail /
-          // diff panel) would otherwise keep showing the PREVIOUS stash's
-          // version content under the new stash's header.
-          key={stash.id}
-          stashId={stash.id}
-          currentVersion={stash.version}
-          onRestore={(restored) => {
-            onStashUpdated?.(restored);
-            onVersionRestored?.(restored);
-          }}
-        />
+        // Wrapper only exists to carry the tabpanel semantics — VersionHistory
+        // renders several different roots (list / detail / diff), so the role
+        // cannot live on the component itself.
+        <div
+          role="tabpanel"
+          id="viewer-panel-history"
+          aria-labelledby="viewer-tab-history"
+          tabIndex={0}
+        >
+          <VersionHistory
+            // Remount on stash switch: the internal sub-view (version detail /
+            // diff panel) would otherwise keep showing the PREVIOUS stash's
+            // version content under the new stash's header.
+            key={stash.id}
+            stashId={stash.id}
+            currentVersion={stash.version}
+            onRestore={(restored) => {
+              onStashUpdated?.(restored);
+              onVersionRestored?.(restored);
+            }}
+          />
+        </div>
       )}
     </div>
   );

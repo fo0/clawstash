@@ -389,7 +389,10 @@ body {
   transition: background 0.1s;
 }
 
-.sidebar-tag-option:hover {
+.sidebar-tag-option:hover,
+/* Keyboard highlight while arrowing through the list from the search field —
+   focus stays in the input, so hover styling alone would never show. */
+.sidebar-tag-option.highlighted {
   background: var(--bg-tertiary);
 }
 
@@ -1955,6 +1958,18 @@ body {
   outline-offset: -2px;
 }
 
+/* The viewer tab panels are focusable (tabindex="0") so keyboard users can
+   reach and scroll them straight from the tab bar. Without an explicit ring
+   that focus move would be invisible. */
+.viewer-files:focus-visible,
+.viewer-metadata:focus-visible,
+.viewer-access-log:focus-visible,
+[role='tabpanel']:focus-visible {
+  outline: 2px solid var(--accent-blue);
+  outline-offset: -2px;
+  border-radius: 4px;
+}
+
 .tab.active {
   color: var(--text-primary);
   border-bottom-color: var(--accent-green);
@@ -2575,7 +2590,11 @@ body {
   gap: 6px;
 }
 
-.form-group label {
+/* `.form-label` is the non-<label> variant, used when a group of controls
+   (e.g. the API-token scope toggles) is captioned by a heading rather than by
+   a single labelled input — a bare <label> with no `for` labels nothing. */
+.form-group label,
+.form-group .form-label {
   font-size: 13px;
   font-weight: 500;
   color: var(--text-secondary);

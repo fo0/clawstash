@@ -245,11 +245,23 @@ export default function TokensTab({
             />
           </div>
           <div className="form-group">
-            <label>Scopes</label>
-            <div className="api-scope-buttons">
+            {/* Was a bare <label> — with no `for` and no wrapped control it
+                labelled nothing, so the four scope toggles were announced as
+                unrelated buttons. A caption + role="group" ties them together
+                and names the group ("Scopes"). */}
+            <span className="form-label" id="token-scopes-label">
+              Scopes
+            </span>
+            <div
+              className="api-scope-buttons"
+              role="group"
+              aria-labelledby="token-scopes-label"
+              aria-describedby="token-scopes-hint"
+            >
               {SCOPE_OPTIONS.map((scope) => (
                 <button
                   key={scope}
+                  type="button"
                   className={`api-scope-btn ${selectedScopes.includes(scope) ? 'active' : ''}`}
                   onClick={() => toggleScope(scope)}
                   aria-pressed={selectedScopes.includes(scope)}
@@ -258,7 +270,7 @@ export default function TokensTab({
                 </button>
               ))}
             </div>
-            <div className="api-scope-hierarchy">
+            <div className="api-scope-hierarchy" id="token-scopes-hint">
               <div className="api-scope-hierarchy-item">
                 <strong>Read</strong> &mdash; Read-only access (GET requests)
               </div>
@@ -280,20 +292,26 @@ export default function TokensTab({
             </p>
           )}
           <button
+            type="button"
             className="btn btn-primary api-create-token-btn"
             onClick={handleCreateToken}
             // Block creation with no scope selected — previously the form
             // silently fell back to a read-only token, which surprised users.
             disabled={creating || selectedScopes.length === 0}
+            aria-busy={creating || undefined}
           >
             <PlusIcon />
             {creating ? 'Creating...' : 'Create Token'}
           </button>
         </div>
 
-        {/* Newly Created Token */}
+        {/* Newly Created Token. The secret is shown exactly once, so the banner
+            appearing has to be announced — previously it rendered silently
+            below the button that created it and a screen-reader user got no
+            signal that the one and only chance to copy the token was on
+            screen. `role="status"` keeps it polite (no focus steal). */}
         {newlyCreated && (
-          <div className="api-new-token-banner">
+          <div className="api-new-token-banner" role="status" aria-live="polite">
             <div className="api-new-token-header">
               <WarningIcon />
               <span>Token created - copy it now!</span>
@@ -325,7 +343,7 @@ export default function TokensTab({
         {/* Token List */}
         <div className="api-token-list">
           {tokensLoading ? (
-            <div className="api-token-empty">
+            <div className="api-token-empty" role="status" aria-live="polite">
               <Spinner /> Loading tokens...
             </div>
           ) : tokens.length === 0 ? (
