@@ -1955,6 +1955,18 @@ body {
   outline-offset: -2px;
 }
 
+/* The viewer tab panels are focusable (tabindex="0") so keyboard users can
+   reach and scroll them straight from the tab bar. Without an explicit ring
+   that focus move would be invisible. */
+.viewer-files:focus-visible,
+.viewer-metadata:focus-visible,
+.viewer-access-log:focus-visible,
+[role='tabpanel']:focus-visible {
+  outline: 2px solid var(--accent-blue);
+  outline-offset: -2px;
+  border-radius: 4px;
+}
+
 .tab.active {
   color: var(--text-primary);
   border-bottom-color: var(--accent-green);
