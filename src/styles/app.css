@@ -389,7 +389,10 @@ body {
   transition: background 0.1s;
 }
 
-.sidebar-tag-option:hover {
+.sidebar-tag-option:hover,
+/* Keyboard highlight while arrowing through the list from the search field —
+   focus stays in the input, so hover styling alone would never show. */
+.sidebar-tag-option.highlighted {
   background: var(--bg-tertiary);
 }
 
