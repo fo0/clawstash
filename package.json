@@ -30,7 +30,7 @@
     "format:check": "prettier --check ."
   },
   "dependencies": {
-    "@modelcontextprotocol/sdk": "^1.27.1",
+    "@modelcontextprotocol/sdk": "^1.30.0",
     "adm-zip": "^0.6.0",
     "archiver": "^7.0.1",
     "better-sqlite3": "^12.11.1",
