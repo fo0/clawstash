@@ -118,7 +118,7 @@ Create API tokens in the web GUI under **Settings > API & Tokens** (scopes: `rea
 
 ## Development
 
-**Prerequisites:** Node.js 20+ (project pins Node 26 in Docker)
+**Prerequisites:** Node.js 20.9+ — the floor declared in `package.json` (`engines: { "node": ">=20.9.0" }`), so `npm install` prints an `EBADENGINE` warning on 20.0–20.8. Docker and CI run Node 26.
 
 ```bash
 git clone https://github.com/fo0/clawstash.git
