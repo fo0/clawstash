@@ -4,7 +4,7 @@ Thanks for your interest in contributing to ClawStash! Here's how to get started
 
 ## Development Setup
 
-**Prerequisites:** Node.js 20+ (project pins Node 26 in Docker/CI; `next` requires ≥ 20.9, `better-sqlite3` 12.x supports 20.x–26.x — no dependency needs 26+ for local dev)
+**Prerequisites:** Node.js 20.9+ — the floor `package.json` declares in `engines` (`>=20.9.0`), matching `next`'s own requirement; below it `npm install` prints an `EBADENGINE` warning. Docker/CI pin Node 26, and `better-sqlite3` 12.x supports 20.x–26.x, so no dependency needs 26+ for local dev.
 
 ```bash
 git clone https://github.com/fo0/clawstash.git
@@ -20,7 +20,9 @@ This starts the Next.js development server on port 3000 with both the frontend a
 
 1. Fork the repository and create a feature branch from `main`
 2. Make your changes
-3. Run the automated checks before pushing:
+3. Run the automated checks before pushing — **no workflow runs them on your PR**, so this chain is
+   the real gate (`docker-publish.yml` runs the same steps but is `workflow_dispatch`-only; only
+   `docs-format.yml` and CodeQL are triggered automatically):
    - `npm run format:check` — Prettier formatting
    - `npx tsc --noEmit` — TypeScript type check
    - `npm test` — vitest test suite

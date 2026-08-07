@@ -118,7 +118,7 @@ Create API tokens in the web GUI under **Settings > API & Tokens** (scopes: `rea
 
 ## Development
 
-**Prerequisites:** Node.js 20+ (project pins Node 26 in Docker)
+**Prerequisites:** Node.js 20.9+ — the floor declared in `package.json` (`engines: { "node": ">=20.9.0" }`), so `npm install` prints an `EBADENGINE` warning on 20.0–20.8. Docker and CI run Node 26.
 
 ```bash
 git clone https://github.com/fo0/clawstash.git
@@ -135,8 +135,11 @@ npm start              # serve the production build
 npm run mcp            # MCP server (stdio transport, for local MCP client testing)
 ```
 
-CI (`docker-publish.yml`) gates on `format:check` → `tsc --noEmit` → `test` → `build`, in that
-order — run the same chain locally before pushing.
+`docker-publish.yml` runs that same chain (`format:check` → `tsc --noEmit` → `test` → `build`, in
+that order) before it builds the image — but it is `workflow_dispatch`-only, so it does **not** run
+on a push or a pull request. The only checks that run automatically on a PR are `docs-format.yml`
+(Prettier on `**.md`) and GitHub's CodeQL analysis. The local chain above is therefore the real gate
+for correctness: run it before every push.
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for code-style rules and the PR workflow.
 
