@@ -32,10 +32,38 @@ describe('sanitizeSvg', () => {
     );
   });
 
+  it('drops script schemes obfuscated with control chars or whitespace', () => {
+    // The HTML parser decodes the entity into a literal TAB inside the
+    // scheme; browsers ignore it when resolving the URL, so the sanitiser
+    // must too. Leading whitespace alone was already handled.
+    expect(sanitizeSvg('<svg><a href="jav&#9;ascript:alert(1)"><rect /></a></svg>')).not.toContain(
+      'alert(1)',
+    );
+    expect(sanitizeSvg('<svg><a href="  JaVaScRiPt:alert(1)"><rect /></a></svg>')).not.toContain(
+      'alert(1)',
+    );
+    expect(sanitizeSvg('<svg><use xlink:href="java\nscript:alert(1)" /></svg>')).not.toContain(
+      'alert(1)',
+    );
+  });
+
   it('removes embedded document elements', () => {
     const out = sanitizeSvg('<svg><foreignObject><iframe src="/x"></iframe></foreignObject></svg>');
     expect(out).not.toContain('iframe');
     expect(out.toLowerCase()).toContain('foreignobject');
+  });
+
+  it('removes SMIL animation elements that could rewrite attributes post-sanitise', () => {
+    const out = sanitizeSvg(
+      '<svg><a href="#ok"><animate attributeName="href" values="javascript:alert(1)" /><rect /></a></svg>',
+    );
+    expect(out.toLowerCase()).not.toContain('<animate');
+    expect(out).not.toContain('javascript:');
+    expect(out).toContain('<rect');
+    // camelCase spellings and <set> are covered too.
+    expect(
+      sanitizeSvg('<svg><animateTransform /><animateMotion /><set attributeName="onload" /></svg>'),
+    ).not.toMatch(/animatetransform|animatemotion|<set/i);
   });
 
   it('keeps benign diagram markup intact', () => {
