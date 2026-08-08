@@ -26,10 +26,30 @@
 const FORBIDDEN_ELEMENTS = 'script, iframe, object, embed, base, link, meta';
 
 /** URL schemes that execute instead of addressing a resource. */
-const UNSAFE_URL = /^\s*(?:javascript|vbscript|data:text\/html)/i;
+const UNSAFE_URL = /^(?:javascript|vbscript|data:text\/html)/;
 
 /** Attributes carrying a URL that must not be a script URL. */
 const URL_ATTRS = new Set(['href', 'xlink:href', 'src', 'action', 'formaction']);
+
+/**
+ * True when an attribute value carries a script-bearing URL scheme.
+ *
+ * Browsers ignore ASCII control characters and whitespace while resolving a
+ * URL, so `jav&#9;ascript:alert(1)` — which the HTML parser decodes into a
+ * literal TAB *inside* the scheme — still executes. A pattern anchored on the
+ * raw value only catches LEADING whitespace and lets that through, so strip
+ * every control char and space first and match the lowercased remainder. This
+ * is the same normalisation `isUnsafeUrl()` in `utils/markdown.ts` applies to
+ * the Markdown surface; keeping the two in step means an obfuscated scheme
+ * cannot survive on one surface after being blocked on the other.
+ *
+ * Only a copy is inspected — the attribute value itself is never rewritten.
+ */
+function isUnsafeUrlValue(value: string): boolean {
+  // Strip ASCII control chars + whitespace (0x00-0x20) and DEL (0x7F).
+  // eslint-disable-next-line no-control-regex
+  return UNSAFE_URL.test(value.replace(/[\x00-\x20\x7f]/g, '').toLowerCase());
+}
 
 /**
  * Strip script elements, inline event handlers (`on*`) and script URLs from an
@@ -51,7 +71,7 @@ export function sanitizeSvg(svg: string): string {
   for (const el of Array.from(root.querySelectorAll('*'))) {
     for (const attr of Array.from(el.attributes)) {
       const name = attr.name.toLowerCase();
-      if (name.startsWith('on') || (URL_ATTRS.has(name) && UNSAFE_URL.test(attr.value))) {
+      if (name.startsWith('on') || (URL_ATTRS.has(name) && isUnsafeUrlValue(attr.value))) {
         el.removeAttribute(attr.name);
       }
     }
