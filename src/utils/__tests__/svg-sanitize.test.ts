@@ -53,6 +53,19 @@ describe('sanitizeSvg', () => {
     expect(out.toLowerCase()).toContain('foreignobject');
   });
 
+  it('removes SMIL animation elements that could rewrite attributes post-sanitise', () => {
+    const out = sanitizeSvg(
+      '<svg><a href="#ok"><animate attributeName="href" values="javascript:alert(1)" /><rect /></a></svg>',
+    );
+    expect(out.toLowerCase()).not.toContain('<animate');
+    expect(out).not.toContain('javascript:');
+    expect(out).toContain('<rect');
+    // camelCase spellings and <set> are covered too.
+    expect(
+      sanitizeSvg('<svg><animateTransform /><animateMotion /><set attributeName="onload" /></svg>'),
+    ).not.toMatch(/animatetransform|animatemotion|<set/i);
+  });
+
   it('keeps benign diagram markup intact', () => {
     const svg =
       '<svg viewBox="0 0 10 10"><style>.n{fill:#fff}</style><marker markerWidth="6" /><g class="n"><text>label</text></g></svg>';

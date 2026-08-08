@@ -25,6 +25,25 @@
 /** Elements that can execute code or load an unrelated document. */
 const FORBIDDEN_ELEMENTS = 'script, iframe, object, embed, base, link, meta';
 
+/**
+ * SMIL animation elements, removed wholesale rather than attribute-filtered.
+ *
+ * `<animate attributeName="href" values="javascript:alert(1)" />` rewrites its
+ * target's attribute AFTER this sanitiser has inspected it, so the `on*` and
+ * URL-scheme checks below cannot see the payload — the same bypass that
+ * `sanitizeHtml()` in `utils/markdown.ts` already strips for the Markdown
+ * surface. SMIL is native to SVG (unlike the HTML fragments Markdown emits),
+ * which makes this the surface where the vector actually works.
+ *
+ * Mermaid animates edges through CSS classes and emits no SMIL, so removing
+ * these elements does not change any diagram this app renders.
+ *
+ * Matched on the lowercased tag name so the camelCase SVG spellings
+ * (`animateTransform`, `animateMotion`) are caught however the parser
+ * normalised them.
+ */
+const ANIMATION_ELEMENTS = new Set(['animate', 'animatetransform', 'animatemotion', 'set']);
+
 /** URL schemes that execute instead of addressing a resource. */
 const UNSAFE_URL = /^(?:javascript|vbscript|data:text\/html)/;
 
@@ -69,6 +88,10 @@ export function sanitizeSvg(svg: string): string {
   root.querySelectorAll(FORBIDDEN_ELEMENTS).forEach((el) => el.remove());
 
   for (const el of Array.from(root.querySelectorAll('*'))) {
+    if (ANIMATION_ELEMENTS.has(el.tagName.toLowerCase())) {
+      el.remove();
+      continue;
+    }
     for (const attr of Array.from(el.attributes)) {
       const name = attr.name.toLowerCase();
       if (name.startsWith('on') || (URL_ATTRS.has(name) && isUnsafeUrlValue(attr.value))) {
