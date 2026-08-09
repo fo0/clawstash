@@ -65,7 +65,7 @@ User-facing feature list: `README.md`. Backup semantics: `docs/backup.md`.
 | Runtime         | Node.js (CI + Docker run 26)          | >= 20.9         |
 | Framework       | Next.js (App Router) + React          | 16 / 19         |
 | Database        | SQLite (better-sqlite3)               | 12              |
-| MCP Server      | @modelcontextprotocol/sdk             | 1.27            |
+| MCP Server      | @modelcontextprotocol/sdk             | 1.30            |
 | Validation      | Zod                                   | 3.24            |
 | Rendering       | marked, mermaid (lazy), diff, PrismJS | 18, 11, 9, 1.30 |
 | Module System   | ESM (`"type": "module"`)              | --              |
