@@ -14,7 +14,9 @@ clawstash/
 ├── .env.example                # Environment variables template
 ├── .prettierignore             # Prettier excludes (`.claude/` is excluded on purpose -- see MEMORY.md)
 ├── test-data.http              # Manual REST scratch file: 20 sample stashes against localhost:3000
+├── AGENTS.md                   # Canonical verbatim GitNexus read-only policy (CLAUDE.md keeps the condensed copy)
 ├── BACKLOG.md                  # Deferred review findings tracker
+├── CHANGELOG.md                # Keep-a-Changelog release notes
 ├── MEMORY.md                   # Session-spanning project knowledge (long-term)
 ├── SCRATCHPAD.md               # Temporary working context (short-term)
 ├── agent_docs/                 # Agent process documentation
@@ -41,6 +43,7 @@ clawstash/
 │   ├── authentication.md       # Admin login, API tokens, scopes, security
 │   ├── backup.md               # GitHub backup feature: setup, sync semantics, security
 │   ├── openclaw-onboarding-prompt.md  # Copy-paste onboarding prompt for OpenClaw agents
+│   ├── ARCHITECTURE.mmd        # Mermaid source of the architecture diagram
 │   └── adr/                    # Architecture Decision Records
 │       ├── 0001-record-architecture-decisions.md
 │       └── 0002-github-backup-architecture.md
@@ -53,7 +56,8 @@ clawstash/
 │   ├── ISSUE_TEMPLATE/         # Bug report + feature request templates
 │   ├── pull_request_template.md
 │   └── workflows/
-│       └── docker-publish.yml  # CI (manual dispatch): format:check, tsc, tests, build, push to GHCR
+│       ├── docker-publish.yml  # CI (manual dispatch): format:check, tsc, tests, build, push to GHCR
+│       └── docs-format.yml     # Prettier-Markdown check on `**.md` (PRs + pushes to main)
 ├── scripts/
 │   └── generate-build-info.js  # Prebuild script: generates build metadata (git branch, commit, date)
 ├── public/                     # Next.js static assets
@@ -161,11 +165,14 @@ clawstash/
 │   │   ├── useClipboard.ts     # useClipboard + useClipboardWithKey hooks
 │   │   ├── useClickOutside.ts  # Click-outside detection hook (used by Sidebar, TagCombobox, MetadataEditor)
 │   │   ├── useBodyScrollLock.ts # Lock background scrolling while a modal/overlay is open
+│   │   ├── useCodeBlockCopy.ts # Delegated click handler + copy state for Markdown code-block copy buttons
 │   │   ├── useFocusTrap.ts     # Keep Tab focus inside an open dialog and restore it on close
+│   │   ├── useQuickSearchHint.ts # Platform-aware quick-search shortcut label (Ctrl+K / ⌘K), resolved after mount
 │   │   └── __tests__/          # Hook unit tests (vitest + @testing-library/react)
 │   ├── utils/
 │   │   ├── archived.ts         # localStorage persistence for the "show archived" dashboard toggle
 │   │   ├── clipboard.ts        # Copy-to-clipboard with fallback for non-HTTPS
+│   │   ├── code-copy.ts        # Copy-button markup emitted into the Markdown blob + shared click-target resolver
 │   │   ├── constants.ts        # Shared client/server constants
 │   │   ├── contrast.ts         # Pick a readable label colour for text drawn onto canvas node shapes
 │   │   ├── dpr.ts              # Watch `devicePixelRatio` changes so canvas bitmaps stay crisp
@@ -177,9 +184,11 @@ clawstash/
 │   │   ├── mermaid.ts          # Lazy-loaded Mermaid renderer (shared util for .mmd files + inline ```mermaid blocks)
 │   │   ├── mermaid-hydrate.ts  # Hydrate inline ```mermaid placeholders inside rendered Markdown HTML
 │   │   ├── mermaid-zoom.ts     # Per-diagram zoom persistence in localStorage (LRU-capped)
+│   │   ├── platform.ts         # SSR-safe platform detection for keyboard-shortcut labels
 │   │   ├── recent-views.ts     # Recently-viewed stashes MRU list (localStorage) for the search overlay
 │   │   ├── sort.ts             # Dashboard sort-order state + pure sort helper
 │   │   ├── stash-url.ts        # Build a shareable deep-link URL for a stash
+│   │   ├── svg-sanitize.ts     # Defense-in-depth sanitizer for rendered Mermaid SVG before innerHTML
 │   │   └── __tests__/          # Util unit tests (vitest)
 │   ├── components/
 │   │   ├── Sidebar.tsx         # Left sidebar with search, tag filter, stash list, settings nav
@@ -195,8 +204,8 @@ clawstash/
 │   │   ├── VersionHistory.tsx  # Version history list, Confluence-style inline comparison radios, restore button
 │   │   ├── VersionDiff.tsx     # GitHub-style diff view (green/red) using jsdiff
 │   │   ├── version-diff-utils.ts # Pure diff utilities extracted from VersionDiff (unit-tested)
-│   │   ├── __tests__/          # Component unit tests (vitest: version-diff-utils, MarkdownBody, StashCard)
-│   │   ├── SearchOverlay.tsx   # Alt+K quick search overlay with keyboard navigation
+│   │   ├── __tests__/          # Component unit tests (vitest: version-diff-utils, MarkdownBody, StashCard, SearchOverlay, StashViewer)
+│   │   ├── SearchOverlay.tsx   # Ctrl/Cmd+K (also Alt+K) quick search overlay with keyboard navigation
 │   │   ├── LoginScreen.tsx     # Password login gate
 │   │   ├── MermaidDiagram.tsx  # React wrapper around renderMermaid() for .mmd files
 │   │   ├── Settings.tsx        # Settings/admin area (general, API, storage, about)
