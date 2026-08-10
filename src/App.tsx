@@ -149,6 +149,12 @@ export default function App() {
   const errorToastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   // Global success toast for positive feedback (save, archive, restore).
   const [successToast, setSuccessToast] = useState<string | null>(null);
+  // Optional one-click follow-up rendered inside the success toast (e.g. the
+  // "Undo" for an accidental archive). Cleared together with the toast.
+  const [successAction, setSuccessAction] = useState<{
+    label: string;
+    onClick: () => void;
+  } | null>(null);
   const successToastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Mirror modal-open state into a ref so the dependency-free global hotkey
@@ -523,20 +529,42 @@ export default function App() {
    */
   const showError = useCallback((message: string) => {
     setSuccessToast(null);
+    setSuccessAction(null);
     if (successToastTimerRef.current) clearTimeout(successToastTimerRef.current);
     setErrorToast(message);
     if (errorToastTimerRef.current) clearTimeout(errorToastTimerRef.current);
     errorToastTimerRef.current = setTimeout(() => setErrorToast(null), 4000);
   }, []);
 
-  /** Show a transient success toast that auto-dismisses after 3 s. */
-  const showSuccess = useCallback((message: string) => {
-    setErrorToast(null);
-    if (errorToastTimerRef.current) clearTimeout(errorToastTimerRef.current);
-    setSuccessToast(message);
+  /** Dismiss the success toast and drop any follow-up action it carried. */
+  const dismissSuccess = useCallback(() => {
     if (successToastTimerRef.current) clearTimeout(successToastTimerRef.current);
-    successToastTimerRef.current = setTimeout(() => setSuccessToast(null), 3000);
+    setSuccessToast(null);
+    setSuccessAction(null);
   }, []);
+
+  /**
+   * Show a transient success toast that auto-dismisses after 3 s. With an
+   * `action` (e.g. "Undo") it stays up for 6 s — 3 s is not enough time to
+   * notice a toast, read it and click it.
+   */
+  const showSuccess = useCallback(
+    (message: string, action?: { label: string; onClick: () => void }) => {
+      setErrorToast(null);
+      if (errorToastTimerRef.current) clearTimeout(errorToastTimerRef.current);
+      setSuccessToast(message);
+      setSuccessAction(action ?? null);
+      if (successToastTimerRef.current) clearTimeout(successToastTimerRef.current);
+      successToastTimerRef.current = setTimeout(
+        () => {
+          setSuccessToast(null);
+          setSuccessAction(null);
+        },
+        action ? 6000 : 3000,
+      );
+    },
+    [],
+  );
 
   // Generation counter so an older in-flight listStashes() resolution
   // cannot overwrite results from a newer typed-search. Without this, a
@@ -695,7 +723,13 @@ export default function App() {
         setSelectedStash(updated);
       }
       loadStashes();
-      showSuccess(archived ? 'Stash archived.' : 'Stash unarchived.');
+      // Archiving hides the stash from the default listing, so an accidental
+      // click used to mean hunting it down behind the "show archived" filter.
+      // Offer the reverse operation right in the confirmation.
+      showSuccess(archived ? 'Stash archived.' : 'Stash unarchived.', {
+        label: 'Undo',
+        onClick: () => handleArchiveStash(id, !archived),
+      });
     } catch (err) {
       console.error('Failed to archive stash:', err);
       showError(archived ? 'Failed to archive stash.' : 'Failed to unarchive stash.');
@@ -1106,13 +1140,30 @@ export default function App() {
           className="app-success-toast"
           role="status"
           aria-live="polite"
-          onClick={() => setSuccessToast(null)}
+          onClick={dismissSuccess}
           title="Click to dismiss"
         >
           <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
             <path d="M13.78 4.22a.75.75 0 0 1 0 1.06l-7.25 7.25a.75.75 0 0 1-1.06 0L2.22 9.28a.751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018L6 10.94l6.72-6.72a.75.75 0 0 1 1.06 0Z" />
           </svg>
-          {successToast}
+          <span className="app-toast-message">{successToast}</span>
+          {successAction && (
+            <button
+              type="button"
+              className="app-toast-action"
+              onClick={(e) => {
+                // The toast itself dismisses on click — without this the
+                // action would fire and immediately be undone visually.
+                e.stopPropagation();
+                const run = successAction.onClick;
+                dismissSuccess();
+                run();
+              }}
+              title={`${successAction.label} — reverses the action just confirmed`}
+            >
+              {successAction.label}
+            </button>
+          )}
         </div>
       )}
       {errorToast && (

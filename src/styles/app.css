@@ -7027,6 +7027,35 @@ textarea.code-editor-plain.code-editor-wrap {
   max-width: min(360px, calc(100vw - 48px));
 }
 
+/* Message column of a toast — keeps a long text from squeezing the action. */
+.app-toast-message {
+  flex: 1;
+  min-width: 0;
+}
+
+/* One-click follow-up inside the success toast (e.g. "Undo" after archiving). */
+.app-toast-action {
+  flex-shrink: 0;
+  padding: 3px 10px;
+  border: 1px solid currentColor;
+  border-radius: var(--radius);
+  background: transparent;
+  color: inherit;
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.app-toast-action:hover {
+  background: rgba(63, 185, 80, 0.15);
+}
+
+.app-toast-action:focus-visible {
+  outline: 2px solid var(--accent-blue);
+  outline-offset: 2px;
+}
+
 /* === Global Error Toast === */
 .app-error-toast {
   position: fixed;
