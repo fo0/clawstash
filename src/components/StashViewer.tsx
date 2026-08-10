@@ -29,6 +29,11 @@ import StashBackupControls from './StashBackupControls';
 interface Props {
   stash: Stash;
   onEdit: () => void;
+  /**
+   * Open the editor pre-filled with a copy of this stash. Reusing an existing
+   * stash as a template previously meant copying every file by hand.
+   */
+  onDuplicate: () => void;
   onDelete: (id: string) => void;
   onArchive: (id: string, archived: boolean) => void;
   onBack: () => void;
@@ -432,6 +437,7 @@ function ApiOpenLink({ path, label }: { path: string; label: string }) {
 export default function StashViewer({
   stash,
   onEdit,
+  onDuplicate,
   onDelete,
   onArchive,
   onBack,
@@ -941,6 +947,17 @@ export default function StashViewer({
               <path d="M11.013 1.427a1.75 1.75 0 0 1 2.474 0l1.086 1.086a1.75 1.75 0 0 1 0 2.474l-8.61 8.61c-.21.21-.47.364-.756.445l-3.251.93a.75.75 0 0 1-.927-.928l.929-3.25c.081-.286.235-.547.445-.758ZM11.189 4l1.811 1.811 1.72-1.72a.25.25 0 0 0 0-.354l-1.086-1.086a.25.25 0 0 0-.354 0Zm.528 3.283L9.906 5.472l-6.1 6.1a.25.25 0 0 0-.063.108l-.558 1.953 1.953-.558a.249.249 0 0 0 .108-.063Z" />
             </svg>
             Edit
+          </button>
+          <button
+            className="btn btn-secondary"
+            onClick={onDuplicate}
+            title="Duplicate this stash — opens a new stash pre-filled with its content"
+          >
+            <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
+              <path d="M0 6.75C0 5.784.784 5 1.75 5h1.5a.75.75 0 0 1 0 1.5h-1.5a.25.25 0 0 0-.25.25v7.5c0 .138.112.25.25.25h7.5a.25.25 0 0 0 .25-.25v-1.5a.75.75 0 0 1 1.5 0v1.5A1.75 1.75 0 0 1 9.25 16h-7.5A1.75 1.75 0 0 1 0 14.25Z" />
+              <path d="M5 1.75C5 .784 5.784 0 6.75 0h7.5C15.216 0 16 .784 16 1.75v7.5A1.75 1.75 0 0 1 14.25 11h-7.5A1.75 1.75 0 0 1 5 9.25Zm1.75-.25a.25.25 0 0 0-.25.25v7.5c0 .138.112.25.25.25h7.5a.25.25 0 0 0 .25-.25v-7.5a.25.25 0 0 0-.25-.25Z" />
+            </svg>
+            Duplicate
           </button>
           <button
             className="btn btn-secondary"

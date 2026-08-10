@@ -2,6 +2,8 @@ import { useMemo } from 'react';
 import type { StashListItem, LayoutMode } from '../types';
 import { renderDescriptionMarkdown } from '../utils/markdown';
 import { formatBytes } from '../utils/format';
+import { buildStashUrl } from '../utils/stash-url';
+import { isModifiedClick } from '../utils/link-click';
 import RelativeTime from './shared/RelativeTime';
 import { StarIcon } from './shared/icons';
 
@@ -37,6 +39,9 @@ export default function StashCard({
 }: Props) {
   const languages = getUniqueLanguages(stash);
   const title = stash.name || stash.files[0]?.filename || 'Untitled';
+  // Same deep link the viewer's "Copy Link" produces — as a real href so the
+  // card can be opened in a new tab (Ctrl/Cmd+click, middle-click, context menu).
+  const href = buildStashUrl('', stash.id);
   const fileCount = stash.files.length;
   const sizeLabel = formatBytes(stash.total_size);
   // Memoize the rendered markdown — `renderDescriptionMarkdown` runs a DOMParser
@@ -55,23 +60,32 @@ export default function StashCard({
     // handler purely as a pointer convenience, which needs no ARIA role.
     <div
       className={`stash-card ${layout}${stash.archived ? ' stash-card-archived' : ''}`}
-      onClick={onClick}
+      onClick={(e) => {
+        // A modified click means "open in a new tab" — the title link handles
+        // it natively; navigating in place here would defeat it.
+        if (isModifiedClick(e)) return;
+        onClick();
+      }}
       title={`Open stash: ${title}`}
     >
       <div className="stash-card-header">
-        <button
-          type="button"
+        <a
           className="stash-card-title"
+          href={href}
           onClick={(e) => {
             // The container's own handler would otherwise open the stash a
             // second time (same target, but it also fires on Enter/Space).
             e.stopPropagation();
+            // Ctrl/Cmd/Shift-click and middle-click stay with the browser so
+            // the stash opens in a new tab / window.
+            if (isModifiedClick(e)) return;
+            e.preventDefault();
             onClick();
           }}
           aria-label={`Open stash: ${title}`}
         >
           {title}
-        </button>
+        </a>
         {stash.archived && <span className="stash-card-archived-badge">Archived</span>}
         <button
           type="button"

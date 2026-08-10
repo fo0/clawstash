@@ -117,6 +117,10 @@ export default function App() {
   );
   const [sortMode, setSortMode] = useState<SortMode>(loadSortMode);
   const [selectedStash, setSelectedStash] = useState<Stash | null>(null);
+  // Source stash for "Duplicate": pre-fills the NEW-stash editor with a copy
+  // of an existing stash. Cleared whenever the editor is left or a plain new
+  // stash is started, so a later "New Stash" never resurrects the template.
+  const [duplicateSource, setDuplicateSource] = useState<Stash | null>(null);
   const [search, setSearch] = useState('');
   const [filterTag, setFilterTag] = useState('');
   const [tags, setTags] = useState<TagInfo[]>([]);
@@ -145,6 +149,12 @@ export default function App() {
   const errorToastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   // Global success toast for positive feedback (save, archive, restore).
   const [successToast, setSuccessToast] = useState<string | null>(null);
+  // Optional one-click follow-up rendered inside the success toast (e.g. the
+  // "Undo" for an accidental archive). Cleared together with the toast.
+  const [successAction, setSuccessAction] = useState<{
+    label: string;
+    onClick: () => void;
+  } | null>(null);
   const successToastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Mirror modal-open state into a ref so the dependency-free global hotkey
@@ -283,6 +293,7 @@ export default function App() {
         e.preventDefault();
         if (!confirmDiscardUnsaved()) return;
         setSelectedStash(null);
+        setDuplicateSource(null);
         setView('new');
         pushUrl('/new');
         setSidebarOpen(false);
@@ -317,6 +328,7 @@ export default function App() {
             // Shortcuts help documents "Esc — back to dashboard"; a dirty
             // new-stash form still asks before discarding (mirrors 'n').
             if (!confirmDiscardUnsaved()) return currentView;
+            setDuplicateSource(null);
             pushUrl('/');
             setSidebarOpen(false);
             return 'home';
@@ -517,20 +529,42 @@ export default function App() {
    */
   const showError = useCallback((message: string) => {
     setSuccessToast(null);
+    setSuccessAction(null);
     if (successToastTimerRef.current) clearTimeout(successToastTimerRef.current);
     setErrorToast(message);
     if (errorToastTimerRef.current) clearTimeout(errorToastTimerRef.current);
     errorToastTimerRef.current = setTimeout(() => setErrorToast(null), 4000);
   }, []);
 
-  /** Show a transient success toast that auto-dismisses after 3 s. */
-  const showSuccess = useCallback((message: string) => {
-    setErrorToast(null);
-    if (errorToastTimerRef.current) clearTimeout(errorToastTimerRef.current);
-    setSuccessToast(message);
+  /** Dismiss the success toast and drop any follow-up action it carried. */
+  const dismissSuccess = useCallback(() => {
     if (successToastTimerRef.current) clearTimeout(successToastTimerRef.current);
-    successToastTimerRef.current = setTimeout(() => setSuccessToast(null), 3000);
+    setSuccessToast(null);
+    setSuccessAction(null);
   }, []);
+
+  /**
+   * Show a transient success toast that auto-dismisses after 3 s. With an
+   * `action` (e.g. "Undo") it stays up for 6 s — 3 s is not enough time to
+   * notice a toast, read it and click it.
+   */
+  const showSuccess = useCallback(
+    (message: string, action?: { label: string; onClick: () => void }) => {
+      setErrorToast(null);
+      if (errorToastTimerRef.current) clearTimeout(errorToastTimerRef.current);
+      setSuccessToast(message);
+      setSuccessAction(action ?? null);
+      if (successToastTimerRef.current) clearTimeout(successToastTimerRef.current);
+      successToastTimerRef.current = setTimeout(
+        () => {
+          setSuccessToast(null);
+          setSuccessAction(null);
+        },
+        action ? 6000 : 3000,
+      );
+    },
+    [],
+  );
 
   // Generation counter so an older in-flight listStashes() resolution
   // cannot overwrite results from a newer typed-search. Without this, a
@@ -652,6 +686,7 @@ export default function App() {
   const handleNewStash = () => {
     if (!confirmDiscardUnsaved()) return;
     setSelectedStash(null);
+    setDuplicateSource(null);
     setView('new');
     pushUrl('/new');
     setSidebarOpen(false);
@@ -662,6 +697,25 @@ export default function App() {
     if (selectedStash) pushUrl(`/stash/${selectedStash.id}/edit`);
   };
 
+  /**
+   * Duplicate the stash currently open in the viewer: the original stays
+   * untouched and the NEW-stash editor opens pre-filled with its content.
+   * The name gets a " (copy)" suffix so both are distinguishable in listings;
+   * the suffix is dropped when it would exceed the server's 500-char limit.
+   */
+  const handleDuplicateStash = () => {
+    if (!selectedStash) return;
+    const suffixed = `${selectedStash.name} (copy)`;
+    setDuplicateSource({
+      ...selectedStash,
+      name: suffixed.length > 500 ? selectedStash.name : suffixed,
+    });
+    setSelectedStash(null);
+    setView('new');
+    pushUrl('/new');
+    setSidebarOpen(false);
+  };
+
   const handleArchiveStash = async (id: string, archived: boolean) => {
     try {
       const updated = await api.archiveStash(id, archived);
@@ -669,7 +723,13 @@ export default function App() {
         setSelectedStash(updated);
       }
       loadStashes();
-      showSuccess(archived ? 'Stash archived.' : 'Stash unarchived.');
+      // Archiving hides the stash from the default listing, so an accidental
+      // click used to mean hunting it down behind the "show archived" filter.
+      // Offer the reverse operation right in the confirmation.
+      showSuccess(archived ? 'Stash archived.' : 'Stash unarchived.', {
+        label: 'Undo',
+        onClick: () => handleArchiveStash(id, !archived),
+      });
     } catch (err) {
       console.error('Failed to archive stash:', err);
       showError(archived ? 'Failed to archive stash.' : 'Failed to unarchive stash.');
@@ -715,6 +775,9 @@ export default function App() {
   };
 
   const handleSaveStash = async (savedId?: string) => {
+    // The editor is done with the template either way — keeping it would
+    // re-seed the next "New Stash" with the duplicated content.
+    setDuplicateSource(null);
     try {
       const stashId = savedId || selectedStash?.id;
       const isNew = !selectedStash;
@@ -745,6 +808,7 @@ export default function App() {
   const handleGoHome = () => {
     if (!confirmDiscardUnsaved()) return;
     setSelectedStash(null);
+    setDuplicateSource(null);
     setView('home');
     pushUrl('/');
     setSidebarOpen(false);
@@ -991,6 +1055,7 @@ export default function App() {
             <StashViewer
               stash={selectedStash}
               onEdit={handleEditStash}
+              onDuplicate={handleDuplicateStash}
               onDelete={handleDeleteStash}
               onArchive={handleArchiveStash}
               onBack={handleGoHome}
@@ -1012,8 +1077,15 @@ export default function App() {
               // the instance: the form keeps the edited stash's content while
               // the save branch flips to createStash — saving would create a
               // duplicate of the stash being edited.
-              key={view === 'edit' ? `edit-${selectedStash?.id ?? 'none'}` : 'new'}
+              key={
+                view === 'edit'
+                  ? `edit-${selectedStash?.id ?? 'none'}`
+                  : // A duplicate seeds different initial state than a blank
+                    // form, so it needs its own key to force a remount.
+                    `new-${duplicateSource?.id ?? 'blank'}`
+              }
               stash={view === 'edit' ? selectedStash : null}
+              template={view === 'new' ? duplicateSource : null}
               onSave={handleSaveStash}
               onDirtyChange={(dirty) => {
                 editorDirtyRef.current = dirty;
@@ -1068,13 +1140,30 @@ export default function App() {
           className="app-success-toast"
           role="status"
           aria-live="polite"
-          onClick={() => setSuccessToast(null)}
+          onClick={dismissSuccess}
           title="Click to dismiss"
         >
           <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
             <path d="M13.78 4.22a.75.75 0 0 1 0 1.06l-7.25 7.25a.75.75 0 0 1-1.06 0L2.22 9.28a.751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018L6 10.94l6.72-6.72a.75.75 0 0 1 1.06 0Z" />
           </svg>
-          {successToast}
+          <span className="app-toast-message">{successToast}</span>
+          {successAction && (
+            <button
+              type="button"
+              className="app-toast-action"
+              onClick={(e) => {
+                // The toast itself dismisses on click — without this the
+                // action would fire and immediately be undone visually.
+                e.stopPropagation();
+                const run = successAction.onClick;
+                dismissSuccess();
+                run();
+              }}
+              title={`${successAction.label} — reverses the action just confirmed`}
+            >
+              {successAction.label}
+            </button>
+          )}
         </div>
       )}
       {errorToast && (

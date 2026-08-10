@@ -34,6 +34,7 @@ function renderViewer(isFavorite: boolean, onToggleFavorite = vi.fn()) {
     <StashViewer
       stash={STASH}
       onEdit={vi.fn()}
+      onDuplicate={vi.fn()}
       onDelete={vi.fn()}
       onArchive={vi.fn()}
       onBack={vi.fn()}

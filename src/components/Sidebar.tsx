@@ -7,6 +7,8 @@ import { formatDate } from '../utils/format';
 import { splitHighlight } from '../utils/highlight';
 import { sortStashes } from '../utils/sort';
 import { sortStashesWithFavorites } from '../utils/favorites';
+import { buildStashUrl } from '../utils/stash-url';
+import { isModifiedClick } from '../utils/link-click';
 
 interface Props {
   stashes: StashListItem[];
@@ -605,18 +607,26 @@ export default function Sidebar({
 
           <div className="sidebar-list">
             {orderedStashes.map((stash) => (
-              <div
+              // A real link, so a row can be opened in a new tab the way every
+              // other list on the web can (Ctrl/Cmd+click, middle-click,
+              // context menu) — plain clicks still navigate inside the SPA.
+              <a
                 key={stash.id}
                 className={`sidebar-item ${selectedId === stash.id ? 'active' : ''}`}
-                onClick={() => onSelectStash(stash.id)}
+                href={buildStashUrl('', stash.id)}
+                onClick={(e) => {
+                  if (isModifiedClick(e)) return;
+                  e.preventDefault();
+                  onSelectStash(stash.id);
+                }}
                 onKeyDown={(e) => {
-                  if (e.key === 'Enter' || e.key === ' ') {
+                  // Enter activates the link natively; Space would scroll the
+                  // list instead, so keep the explicit handler for it.
+                  if (e.key === ' ') {
                     e.preventDefault();
                     onSelectStash(stash.id);
                   }
                 }}
-                role="button"
-                tabIndex={0}
                 aria-current={selectedId === stash.id ? 'true' : undefined}
                 title={`${stash.name || stash.files[0]?.filename || 'Untitled'} — ${stash.files.length} file${stash.files.length !== 1 ? 's' : ''}`}
               >
@@ -632,7 +642,7 @@ export default function Sidebar({
                 <div className="sidebar-item-footer">
                   <span className="sidebar-item-date">{formatDate(stash.updated_at)}</span>
                 </div>
-              </div>
+              </a>
             ))}
             {stashes.length === 0 && <div className="sidebar-empty">No stashes found</div>}
           </div>

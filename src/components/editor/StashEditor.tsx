@@ -11,6 +11,12 @@ import type { MetadataEntry } from './MetadataEditor';
 
 interface Props {
   stash: Stash | null;
+  /**
+   * Pre-fill a NEW stash from an existing one ("Duplicate"). Only read when
+   * `stash` is null — the save branch keys on `stash`, so a template always
+   * creates a new stash instead of overwriting the one it was copied from.
+   */
+  template?: Stash | null;
   onSave: (savedId?: string) => void;
   onCancel: () => void;
   /**
@@ -73,16 +79,24 @@ function InfoIcon({ tooltip }: { tooltip: string }) {
   );
 }
 
-export default function StashEditor({ stash, onSave, onCancel, onDirtyChange }: Props) {
-  const [name, setName] = useState(stash?.name || '');
-  const [description, setDescription] = useState(stash?.description || '');
-  const [tags, setTags] = useState<string[]>(stash?.tags || []);
+export default function StashEditor({ stash, template, onSave, onCancel, onDirtyChange }: Props) {
+  // The stash the form is seeded from: the edited stash, or — when creating —
+  // the optional duplicate template. Everything below reads `source` for its
+  // INITIAL value only; `stash` alone still decides create vs. update.
+  const source = stash ?? template ?? null;
+  const [name, setName] = useState(source?.name || '');
+  const [description, setDescription] = useState(source?.description || '');
+  const [tags, setTags] = useState<string[]>(source?.tags || []);
   const [metadataEntries, setMetadataEntries] = useState<MetadataEntry[]>(
-    stash && Object.keys(stash.metadata).length > 0 ? metadataToEntries(stash.metadata) : [],
+    source && Object.keys(source.metadata).length > 0 ? metadataToEntries(source.metadata) : [],
   );
   const [files, setFiles] = useState<FileInput[]>(
-    stash
-      ? stash.files.map((f) => ({ filename: f.filename, content: f.content, language: f.language }))
+    source
+      ? source.files.map((f) => ({
+          filename: f.filename,
+          content: f.content,
+          language: f.language,
+        }))
       : [{ filename: '', content: '', language: '' }],
   );
   const [saving, setSaving] = useState(false);
@@ -97,7 +111,9 @@ export default function StashEditor({ stash, onSave, onCancel, onDirtyChange }: 
   const [wrapLines, setWrapLines] = useState<boolean>(getEditorWrapPreference);
   const [availableTags, setAvailableTags] = useState<TagInfo[]>([]);
   const [availableMetaKeys, setAvailableMetaKeys] = useState<string[]>([]);
-  const [firstFileManuallyEdited, setFirstFileManuallyEdited] = useState(!!stash);
+  // A duplicate arrives with real filenames too, so the name→filename
+  // auto-fill must stay off for it as well.
+  const [firstFileManuallyEdited, setFirstFileManuallyEdited] = useState(!!source);
   // Keep a ref to handleSave so the Ctrl/Cmd+S listener always calls the
   // latest version without being recreated on every render.
   const handleSaveRef = useRef<() => void>(() => {});
@@ -143,7 +159,7 @@ export default function StashEditor({ stash, onSave, onCancel, onDirtyChange }: 
   const fileIdsInitialized = useRef(false);
   if (!fileIdsInitialized.current) {
     fileIdsInitialized.current = true;
-    const initialFiles = stash ? stash.files : [{ filename: '', content: '', language: '' }];
+    const initialFiles = source ? source.files : [{ filename: '', content: '', language: '' }];
     fileIds.current = initialFiles.map(() => fileIdCounter.current++);
   }
 
@@ -380,7 +396,7 @@ export default function StashEditor({ stash, onSave, onCancel, onDirtyChange }: 
   return (
     <div className="stash-editor">
       <div className="editor-header">
-        <h2>{stash ? 'Edit Stash' : 'New Stash'}</h2>
+        <h2>{stash ? 'Edit Stash' : template ? 'Duplicate Stash' : 'New Stash'}</h2>
         <div className="editor-header-actions">
           {confirmCancel ? (
             <span className="cancel-confirm-inline">

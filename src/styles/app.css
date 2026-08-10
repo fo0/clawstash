@@ -575,7 +575,12 @@ body {
   padding: 0 8px;
 }
 
+/* Rendered as an <a href="/stash/:id"> so rows can be opened in a new tab;
+   the link resets keep the original row look. */
 .sidebar-item {
+  display: block;
+  color: inherit;
+  text-decoration: none;
   padding: 10px 12px;
   border-radius: var(--radius);
   cursor: pointer;
@@ -1687,7 +1692,10 @@ body {
 }
 
 /* Real <button> (the card's primary action) reset back to plain text. */
+/* An <a href="/stash/:id"> (new-tab support) styled as the plain card title. */
 .stash-card-title {
+  display: block;
+  text-decoration: none;
   font-size: 14px;
   font-weight: 500;
   color: var(--text-primary);
@@ -7017,6 +7025,35 @@ textarea.code-editor-plain.code-editor-wrap {
   z-index: 2000;
   cursor: pointer;
   max-width: min(360px, calc(100vw - 48px));
+}
+
+/* Message column of a toast — keeps a long text from squeezing the action. */
+.app-toast-message {
+  flex: 1;
+  min-width: 0;
+}
+
+/* One-click follow-up inside the success toast (e.g. "Undo" after archiving). */
+.app-toast-action {
+  flex-shrink: 0;
+  padding: 3px 10px;
+  border: 1px solid currentColor;
+  border-radius: var(--radius);
+  background: transparent;
+  color: inherit;
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.app-toast-action:hover {
+  background: rgba(63, 185, 80, 0.15);
+}
+
+.app-toast-action:focus-visible {
+  outline: 2px solid var(--accent-blue);
+  outline-offset: 2px;
 }
 
 /* === Global Error Toast === */
