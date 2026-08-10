@@ -44,13 +44,53 @@ describe('StashCard ARIA structure (#132)', () => {
 
   it('exposes the title as the keyboard-reachable primary action', () => {
     const { container, onClick } = renderCard();
-    const title = container.querySelector('button.stash-card-title') as HTMLButtonElement;
+    const title = container.querySelector('a.stash-card-title') as HTMLAnchorElement;
     expect(title).not.toBeNull();
     expect(title.textContent).toBe('My stash');
 
     title.click();
-    // Exactly once: the title button stops the click from also reaching the
+    // Exactly once: the title link stops the click from also reaching the
     // container's pointer-convenience handler.
     expect(onClick).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('StashCard new-tab support', () => {
+  it('renders the title as a link to the stash deep link', () => {
+    const { container } = renderCard();
+    const title = container.querySelector('a.stash-card-title') as HTMLAnchorElement;
+    expect(title.getAttribute('href')).toBe('/stash/abc');
+  });
+
+  it('navigates in-app on a plain click and prevents the default navigation', () => {
+    const { container, onClick } = renderCard();
+    const title = container.querySelector('a.stash-card-title') as HTMLAnchorElement;
+    const event = new MouseEvent('click', { bubbles: true, cancelable: true });
+    title.dispatchEvent(event);
+    expect(onClick).toHaveBeenCalledTimes(1);
+    expect(event.defaultPrevented).toBe(true);
+  });
+
+  it('leaves a Ctrl/Cmd-click to the browser so the stash opens in a new tab', () => {
+    const { container, onClick } = renderCard();
+    const title = container.querySelector('a.stash-card-title') as HTMLAnchorElement;
+    // Capture-phase cancel: jsdom cannot follow a link and would log
+    // "Not implemented: navigation". The component's own handler ignores
+    // defaultPrevented, so this only suppresses the (unimplemented) navigation.
+    const stopNavigation = (e: Event) => e.preventDefault();
+    document.addEventListener('click', stopNavigation, true);
+    title.dispatchEvent(
+      new MouseEvent('click', { bubbles: true, cancelable: true, ctrlKey: true }),
+    );
+    document.removeEventListener('click', stopNavigation, true);
+    // No in-app navigation: the browser gets to open the href in a new tab.
+    expect(onClick).not.toHaveBeenCalled();
+  });
+
+  it('does not navigate in-app when the card body is Ctrl/Cmd-clicked', () => {
+    const { container, onClick } = renderCard();
+    const card = container.querySelector('.stash-card') as HTMLElement;
+    card.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, metaKey: true }));
+    expect(onClick).not.toHaveBeenCalled();
   });
 });

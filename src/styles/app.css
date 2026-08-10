@@ -575,7 +575,12 @@ body {
   padding: 0 8px;
 }
 
+/* Rendered as an <a href="/stash/:id"> so rows can be opened in a new tab;
+   the link resets keep the original row look. */
 .sidebar-item {
+  display: block;
+  color: inherit;
+  text-decoration: none;
   padding: 10px 12px;
   border-radius: var(--radius);
   cursor: pointer;
@@ -1687,7 +1692,10 @@ body {
 }
 
 /* Real <button> (the card's primary action) reset back to plain text. */
+/* An <a href="/stash/:id"> (new-tab support) styled as the plain card title. */
 .stash-card-title {
+  display: block;
+  text-decoration: none;
   font-size: 14px;
   font-weight: 500;
   color: var(--text-primary);
