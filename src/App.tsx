@@ -117,6 +117,10 @@ export default function App() {
   );
   const [sortMode, setSortMode] = useState<SortMode>(loadSortMode);
   const [selectedStash, setSelectedStash] = useState<Stash | null>(null);
+  // Source stash for "Duplicate": pre-fills the NEW-stash editor with a copy
+  // of an existing stash. Cleared whenever the editor is left or a plain new
+  // stash is started, so a later "New Stash" never resurrects the template.
+  const [duplicateSource, setDuplicateSource] = useState<Stash | null>(null);
   const [search, setSearch] = useState('');
   const [filterTag, setFilterTag] = useState('');
   const [tags, setTags] = useState<TagInfo[]>([]);
@@ -283,6 +287,7 @@ export default function App() {
         e.preventDefault();
         if (!confirmDiscardUnsaved()) return;
         setSelectedStash(null);
+        setDuplicateSource(null);
         setView('new');
         pushUrl('/new');
         setSidebarOpen(false);
@@ -317,6 +322,7 @@ export default function App() {
             // Shortcuts help documents "Esc — back to dashboard"; a dirty
             // new-stash form still asks before discarding (mirrors 'n').
             if (!confirmDiscardUnsaved()) return currentView;
+            setDuplicateSource(null);
             pushUrl('/');
             setSidebarOpen(false);
             return 'home';
@@ -652,6 +658,7 @@ export default function App() {
   const handleNewStash = () => {
     if (!confirmDiscardUnsaved()) return;
     setSelectedStash(null);
+    setDuplicateSource(null);
     setView('new');
     pushUrl('/new');
     setSidebarOpen(false);
@@ -660,6 +667,25 @@ export default function App() {
   const handleEditStash = () => {
     setView('edit');
     if (selectedStash) pushUrl(`/stash/${selectedStash.id}/edit`);
+  };
+
+  /**
+   * Duplicate the stash currently open in the viewer: the original stays
+   * untouched and the NEW-stash editor opens pre-filled with its content.
+   * The name gets a " (copy)" suffix so both are distinguishable in listings;
+   * the suffix is dropped when it would exceed the server's 500-char limit.
+   */
+  const handleDuplicateStash = () => {
+    if (!selectedStash) return;
+    const suffixed = `${selectedStash.name} (copy)`;
+    setDuplicateSource({
+      ...selectedStash,
+      name: suffixed.length > 500 ? selectedStash.name : suffixed,
+    });
+    setSelectedStash(null);
+    setView('new');
+    pushUrl('/new');
+    setSidebarOpen(false);
   };
 
   const handleArchiveStash = async (id: string, archived: boolean) => {
@@ -715,6 +741,9 @@ export default function App() {
   };
 
   const handleSaveStash = async (savedId?: string) => {
+    // The editor is done with the template either way — keeping it would
+    // re-seed the next "New Stash" with the duplicated content.
+    setDuplicateSource(null);
     try {
       const stashId = savedId || selectedStash?.id;
       const isNew = !selectedStash;
@@ -745,6 +774,7 @@ export default function App() {
   const handleGoHome = () => {
     if (!confirmDiscardUnsaved()) return;
     setSelectedStash(null);
+    setDuplicateSource(null);
     setView('home');
     pushUrl('/');
     setSidebarOpen(false);
@@ -991,6 +1021,7 @@ export default function App() {
             <StashViewer
               stash={selectedStash}
               onEdit={handleEditStash}
+              onDuplicate={handleDuplicateStash}
               onDelete={handleDeleteStash}
               onArchive={handleArchiveStash}
               onBack={handleGoHome}
@@ -1012,8 +1043,15 @@ export default function App() {
               // the instance: the form keeps the edited stash's content while
               // the save branch flips to createStash — saving would create a
               // duplicate of the stash being edited.
-              key={view === 'edit' ? `edit-${selectedStash?.id ?? 'none'}` : 'new'}
+              key={
+                view === 'edit'
+                  ? `edit-${selectedStash?.id ?? 'none'}`
+                  : // A duplicate seeds different initial state than a blank
+                    // form, so it needs its own key to force a remount.
+                    `new-${duplicateSource?.id ?? 'blank'}`
+              }
               stash={view === 'edit' ? selectedStash : null}
+              template={view === 'new' ? duplicateSource : null}
               onSave={handleSaveStash}
               onDirtyChange={(dirty) => {
                 editorDirtyRef.current = dirty;
