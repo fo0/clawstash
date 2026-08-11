@@ -71,7 +71,9 @@ export async function GET(req: NextRequest) {
         archive.append(JSON.stringify({ exportedAt: exportedAt.toISOString(), version: '1.0' }), {
           name: 'manifest.json',
         });
-        archive.finalize();
+        // Rejections surface through the 'error' listener above, so the
+        // returned promise is intentionally not awaited here.
+        void archive.finalize();
       },
       cancel() {
         // Stop compressing the rest of the database for a client that already

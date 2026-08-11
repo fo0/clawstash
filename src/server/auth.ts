@@ -68,7 +68,6 @@ export function extractToken(req: NextRequest): string | null {
     if (token.length > 0) {
       if (process.env.NODE_ENV !== 'production' && !warnedAboutQueryTokenAuth) {
         warnedAboutQueryTokenAuth = true;
-        // eslint-disable-next-line no-console
         console.warn(
           '[auth] Token received via ?token= query parameter. Prefer ' +
             '`Authorization: Bearer …` header — query strings leak into ' +

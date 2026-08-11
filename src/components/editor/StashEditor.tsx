@@ -353,7 +353,9 @@ export default function StashEditor({ stash, template, onSave, onCancel, onDirty
   // Keep ref in sync so the keyboard listener below always invokes the
   // latest handleSave closure (which closes over fresh `files`, `name`, etc.)
   // without needing to re-register the listener on every render.
-  handleSaveRef.current = handleSave;
+  handleSaveRef.current = () => {
+    void handleSave();
+  };
 
   // Ctrl+S / Cmd+S — save the stash from anywhere inside the editor.
   useEffect(() => {

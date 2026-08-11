@@ -66,7 +66,7 @@ npx prettier --check .
 ## Customization
 
 - Different formatter → change step 4, e.g. `"*": "biome format --write --no-errors-on-unmatched"`.
-- Want type-check on commit too → add a targeted entry like `"*.{ts,tsx}": "tsc --noEmit"` — but note `tsc --noEmit` checks the whole project, not just staged files, so this can be slow; keep pre-commit **fast**. ClawStash currently has no ESLint configured (Prettier-only), so there is no `eslint --fix` entry to add yet.
+- Want type-check on commit too → add a targeted entry like `"*.{ts,tsx}": "tsc --noEmit"` — but note `tsc --noEmit` checks the whole project, not just staged files, so this can be slow; keep pre-commit **fast**. ClawStash does have ESLint (`eslint.config.js`), so `"*.{ts,tsx}": "eslint --fix"` is an option — but it is a type-aware config, which makes it slower than a formatter; prefer leaving lint to `npm run lint` / CI.
 
 ## CLAUDE.md pointer (one-liner)
 

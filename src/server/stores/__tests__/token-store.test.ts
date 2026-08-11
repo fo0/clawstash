@@ -1,4 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest';
+import crypto from 'crypto';
 import Database from 'better-sqlite3';
 import { TokenStore } from '../token-store';
 
@@ -130,7 +131,6 @@ describe('TokenStore', () => {
   it('validateApiToken applies the same scope filter as listApiTokens', () => {
     // Manually insert a token with a known raw value so we can validate it
     // and confirm scope filtering matches list behaviour.
-    const crypto = require('crypto') as typeof import('crypto');
     const raw = 'cs_' + 'a'.repeat(48);
     const hash = crypto.createHash('sha256').update(raw).digest('hex');
     db.prepare(

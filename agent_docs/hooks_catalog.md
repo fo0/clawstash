@@ -89,7 +89,7 @@ Trigger: `Stop`. User-facing (same reasoning as the cleanup reminder above).
 }
 ```
 
-Trigger: `PreToolUse`. Project commands inserted from CLAUDE.md (no ESLint configured yet; typecheck is `npx tsc --noEmit`, tests are vitest via `npm test`). Requires `jq` -- without it the guard never fires (see Notes). Heuristic and **err-safe**: a bare `git push` is resolved via the currently checked-out branch, and a false positive merely runs the checks -- it only blocks when they are red.
+Trigger: `PreToolUse`. Project commands inserted from CLAUDE.md (lint is `npm run lint`, typecheck is `npx tsc --noEmit`, tests are vitest via `npm test`). Requires `jq` -- without it the guard never fires (see Notes). Heuristic and **err-safe**: a bare `git push` is resolved via the currently checked-out branch, and a false positive merely runs the checks -- it only blocks when they are red.
 
 ### Block force-push without confirmation
 

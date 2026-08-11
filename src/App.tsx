@@ -346,6 +346,10 @@ export default function App() {
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
+    // Registered once on mount: the handler reads live state through the
+    // setState updater, so re-binding it on every dependency change would
+    // only churn the listener.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Keep api module in sync with current token
@@ -728,7 +732,9 @@ export default function App() {
       // Offer the reverse operation right in the confirmation.
       showSuccess(archived ? 'Stash archived.' : 'Stash unarchived.', {
         label: 'Undo',
-        onClick: () => handleArchiveStash(id, !archived),
+        onClick: () => {
+          void handleArchiveStash(id, !archived);
+        },
       });
     } catch (err) {
       console.error('Failed to archive stash:', err);

@@ -24,6 +24,7 @@ This starts the Next.js development server on port 3000 with both the frontend a
    the real gate (`docker-publish.yml` runs the same steps but is `workflow_dispatch`-only; only
    `docs-format.yml` and CodeQL are triggered automatically):
    - `npm run format:check` — Prettier formatting
+   - `npm run lint` — ESLint (correctness rules only)
    - `npx tsc --noEmit` — TypeScript type check
    - `npm test` — vitest test suite
    - `npm run build` — production build
@@ -44,6 +45,7 @@ See `CLAUDE.md` for detailed architecture documentation.
 
 - TypeScript with strict mode
 - Formatting enforced by Prettier (`npm run format` to auto-fix, `npm run format:check` to verify)
+- Correctness linted by ESLint 9 flat config (`eslint.config.js`) — no formatting rules there, so it never fights Prettier
 - 2-space indentation, single quotes
 - Functional React components with TypeScript interfaces for props
 - Global CSS with CSS custom properties (no CSS-in-JS)
