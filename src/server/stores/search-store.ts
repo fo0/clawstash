@@ -309,8 +309,16 @@ export class SearchStore {
       }
     }
 
-    const stashes: SearchStashItem[] = rows.map((row) => {
-      const stashRow = stashRowsById.get(row.stash_id) as Record<string, unknown>;
+    const stashes: SearchStashItem[] = rows.flatMap((row) => {
+      const stashRow = stashRowsById.get(row.stash_id);
+      // The FTS hit and the batched `stashes` fetch are two separate
+      // statements. A stash deleted between them (the stdio MCP server runs in
+      // its own process against the same file) leaves a hit with no row, and
+      // the previous unchecked `as Record<string, unknown>` cast hid that from
+      // the compiler: `rowToStashListItem(undefined)` then threw a TypeError
+      // and turned the whole search into a 500. Drop the stale hit instead —
+      // `total` still reports the count the JOINed COUNT(*) saw.
+      if (!stashRow) return [];
       const item = rowToStashListItem(stashRow);
       const files = filesByStash.get(item.id) ?? [];
       const total_size = files.reduce((sum, f) => sum + f.size, 0);
@@ -330,13 +338,15 @@ export class SearchStore {
       if (row.content_snippet && row.content_snippet.includes(FTS_SNIPPET_OPEN))
         snippets.file_content = formatSnippet(row.content_snippet);
 
-      return {
-        ...item,
-        total_size,
-        files,
-        relevance: Math.abs(row.rank),
-        snippets: Object.keys(snippets).length > 0 ? snippets : undefined,
-      };
+      return [
+        {
+          ...item,
+          total_size,
+          files,
+          relevance: Math.abs(row.rank),
+          snippets: Object.keys(snippets).length > 0 ? snippets : undefined,
+        },
+      ];
     });
 
     return { stashes, total: countRow.count, query };

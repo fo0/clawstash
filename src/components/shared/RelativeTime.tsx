@@ -10,6 +10,36 @@ interface Props {
 const RELATIVE_TICK_MS = 60 * 1000;
 
 /**
+ * One shared interval for every mounted `<RelativeTime>`.
+ *
+ * The dashboard renders one instance per stash card (STASH_PAGE_SIZE = 50, more
+ * after "Load more") and the viewer's access-log tab adds one per entry, so a
+ * per-instance `setInterval` meant dozens of independent timers waking the main
+ * thread at staggered offsets — dozens of separate re-render passes per minute
+ * instead of one. A single module-level timer notifies all subscribers together
+ * and stops itself when the last instance unmounts.
+ */
+const tickSubscribers = new Set<() => void>();
+let tickTimer: ReturnType<typeof setInterval> | null = null;
+
+function subscribeToTick(listener: () => void): () => void {
+  tickSubscribers.add(listener);
+  if (tickTimer === null) {
+    tickTimer = setInterval(() => {
+      // Iterate a copy: a listener may unsubscribe while being notified.
+      for (const notify of [...tickSubscribers]) notify();
+    }, RELATIVE_TICK_MS);
+  }
+  return () => {
+    tickSubscribers.delete(listener);
+    if (tickSubscribers.size === 0 && tickTimer !== null) {
+      clearInterval(tickTimer);
+      tickTimer = null;
+    }
+  };
+}
+
+/**
  * Displays a relative timestamp ("3d ago") that toggles to the full locale
  * date-time on click. Click again to switch back. The full date is always
  * visible as a tooltip regardless of toggle state.
@@ -23,10 +53,7 @@ export default function RelativeTime({ dateStr, className }: Props) {
   // forever — the state value is unused, only the re-render matters.
   const [, setTick] = useState(0);
 
-  useEffect(() => {
-    const interval = setInterval(() => setTick((t) => t + 1), RELATIVE_TICK_MS);
-    return () => clearInterval(interval);
-  }, []);
+  useEffect(() => subscribeToTick(() => setTick((t) => t + 1)), []);
 
   const toggle = useCallback((e: React.MouseEvent) => {
     e.stopPropagation();

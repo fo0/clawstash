@@ -29,6 +29,17 @@ import type {
 
 const BASE = '/api/stashes';
 
+/**
+ * Encode a value for use as a single URL path segment.
+ *
+ * Stash and token ids are server-generated UUIDs and versions are numbers, so
+ * this is a no-op for every call the app makes today. It is here because
+ * interpolating an unescaped value into a path is a latent bug the moment an
+ * id can carry `/`, `?` or `#` — and because `getBackupStatus` already encodes
+ * its query parameter, so the path segments were the one inconsistent surface.
+ */
+const seg = (value: string | number): string => encodeURIComponent(String(value));
+
 let _authToken = '';
 
 export function setAuthToken(token: string) {
@@ -75,7 +86,7 @@ export const api = {
   },
 
   getStash(id: string): Promise<Stash> {
-    return request(`${BASE}/${id}`, { headers: getHeaders() });
+    return request(`${BASE}/${seg(id)}`, { headers: getHeaders() });
   },
 
   createStash(input: CreateStashInput): Promise<Stash> {
@@ -83,7 +94,7 @@ export const api = {
   },
 
   updateStash(id: string, input: UpdateStashInput): Promise<Stash> {
-    return request(`${BASE}/${id}`, {
+    return request(`${BASE}/${seg(id)}`, {
       method: 'PATCH',
       headers: getHeaders(),
       body: JSON.stringify(input),
@@ -91,11 +102,11 @@ export const api = {
   },
 
   deleteStash(id: string): Promise<void> {
-    return request(`${BASE}/${id}`, { method: 'DELETE', headers: getHeaders() });
+    return request(`${BASE}/${seg(id)}`, { method: 'DELETE', headers: getHeaders() });
   },
 
   archiveStash(id: string, archived: boolean): Promise<Stash> {
-    return request(`${BASE}/${id}`, {
+    return request(`${BASE}/${seg(id)}`, {
       method: 'PATCH',
       headers: getHeaders(),
       body: JSON.stringify({ archived }),
@@ -116,15 +127,15 @@ export const api = {
 
   getAccessLog(id: string, limit?: number): Promise<AccessLogEntry[]> {
     const qs = limit ? `?limit=${limit}` : '';
-    return request(`${BASE}/${id}/access-log${qs}`, { headers: getHeaders() });
+    return request(`${BASE}/${seg(id)}/access-log${qs}`, { headers: getHeaders() });
   },
 
   getVersions(id: string): Promise<StashVersionListItem[]> {
-    return request(`${BASE}/${id}/versions`, { headers: getHeaders() });
+    return request(`${BASE}/${seg(id)}/versions`, { headers: getHeaders() });
   },
 
   getVersion(id: string, version: number): Promise<StashVersion> {
-    return request(`${BASE}/${id}/versions/${version}`, { headers: getHeaders() });
+    return request(`${BASE}/${seg(id)}/versions/${seg(version)}`, { headers: getHeaders() });
   },
 
   getVersionDiff(
@@ -132,11 +143,13 @@ export const api = {
     v1: number,
     v2: number,
   ): Promise<{ v1: StashVersion; v2: StashVersion }> {
-    return request(`${BASE}/${id}/versions/diff?v1=${v1}&v2=${v2}`, { headers: getHeaders() });
+    return request(`${BASE}/${seg(id)}/versions/diff?v1=${seg(v1)}&v2=${seg(v2)}`, {
+      headers: getHeaders(),
+    });
   },
 
   restoreVersion(id: string, version: number): Promise<Stash> {
-    return request(`${BASE}/${id}/versions/${version}/restore`, {
+    return request(`${BASE}/${seg(id)}/versions/${seg(version)}/restore`, {
       method: 'POST',
       headers: getHeaders(),
     });
@@ -196,7 +209,7 @@ export const api = {
   },
 
   deleteToken(id: string): Promise<void> {
-    return request(`/api/tokens/${id}`, { method: 'DELETE', headers: getHeaders() });
+    return request(`/api/tokens/${seg(id)}`, { method: 'DELETE', headers: getHeaders() });
   },
 
   // Admin auth
@@ -329,7 +342,7 @@ export const api = {
   },
 
   getBackupStatus(stashId?: string): Promise<BackupStatusResponse> {
-    const qs = stashId ? `?stashId=${encodeURIComponent(stashId)}` : '';
+    const qs = stashId ? `?stashId=${seg(stashId)}` : '';
     return request(`/api/backup/status${qs}`, { headers: getHeaders() });
   },
 
@@ -349,7 +362,7 @@ export const api = {
   },
 
   setStashBackupEnabled(id: string, enabled: boolean): Promise<Stash> {
-    return request(`${BASE}/${id}`, {
+    return request(`${BASE}/${seg(id)}`, {
       method: 'PATCH',
       headers: getHeaders(),
       body: JSON.stringify({ backup_enabled: enabled }),
