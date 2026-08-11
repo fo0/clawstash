@@ -21,7 +21,7 @@ Detailed pattern descriptions for clawstash internals. CLAUDE.md keeps a short i
 - `stashExists(id)` lightweight existence check (SELECT 1, no data loaded)
 - `getAllMetadataKeys()` aggregates unique keys across all stashes
 - `getTagGraph(options?)` returns tag nodes with counts + co-occurrence edges; supports focus tag with BFS depth traversal, min_weight, min_count, and limit filters
-- `access_log` table tracks all read/write access per stash (source: api/mcp/ui)
+- `access_log` table tracks all read/write access per stash (source: api/mcp/ui); bounded by `MAX_ACCESS_LOG_ROWS = 20_000` (oldest rows pruned, same `id NOT IN (… ORDER BY … LIMIT n)` shape as `backup_log`). Because it is written on every request the prune is amortised over `ACCESS_LOG_PRUNE_INTERVAL = 500` inserts instead of running per insert, so the table stays ≤ cap + interval
 - `api_tokens` table stores API tokens (SHA-256 hashed, with scopes and prefix)
 - **Version History**: `stash_versions` + `stash_version_files` tables track every version of a stash
 - `stashes` table has `version` column (integer, starts at 1, incremented on every update)

@@ -45,12 +45,13 @@ Run in this order before the review:
 ```bash
 npm install              # Dependencies current
 npm run format           # Prettier write -- FIRST, or CI's format:check fails on drift
+npm run lint             # ESLint (correctness rules; Prettier owns formatting)
 npx tsc --noEmit         # Types pass
 npm test                 # Tests (vitest)
 npm run build            # Build succeeds
 ```
 
-> No linter is configured -- see the note in CLAUDE.md "Commands". Insert `npm run lint` after `format` if one lands.
+> ESLint runs correctness rules only (`eslint.config.js`); formatting stays with Prettier. Scope + the deliberately disabled rule families: the ESLint note under CLAUDE.md "Commands".
 
 ### Test execution constraints (autonomy + zero-cost)
 

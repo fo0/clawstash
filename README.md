@@ -129,6 +129,7 @@ cp .env.example .env   # adjust DATABASE_PATH / ADMIN_PASSWORD as needed
 
 npm run dev            # Next.js dev server at http://localhost:3000
 npm run format         # auto-format with Prettier (CI verifies formatting via format:check)
+npm run lint           # ESLint (correctness rules; formatting stays with Prettier)
 npx tsc --noEmit       # TypeScript type check (no npm script — CI runs this exact command)
 npm test               # vitest test suite (npm run test:watch for watch mode)
 npm run build          # production build
@@ -136,7 +137,7 @@ npm start              # serve the production build
 npm run mcp            # MCP server (stdio transport, for local MCP client testing)
 ```
 
-`docker-publish.yml` runs that same chain (`format:check` → `tsc --noEmit` → `test` → `build`, in
+`docker-publish.yml` runs that same chain (`format:check` → `tsc --noEmit` → `lint` → `test` → `build`, in
 that order) before it builds the image — but it is `workflow_dispatch`-only, so it does **not** run
 on a push or a pull request. The only checks that run automatically on a PR are `docs-format.yml`
 (Prettier on `**.md`) and GitHub's CodeQL analysis. The local chain above is therefore the real gate

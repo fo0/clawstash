@@ -59,20 +59,21 @@ User-facing feature list: `README.md`. Backup semantics: `docs/backup.md`.
 
 ## Tech Stack
 
-| Component       | Technology                            | Version         |
-| --------------- | ------------------------------------- | --------------- |
-| Language        | TypeScript (strict)                   | 6               |
-| Runtime         | Node.js (CI + Docker run 26)          | >= 20.9         |
-| Framework       | Next.js (App Router) + React          | 16 / 19         |
-| Database        | SQLite (better-sqlite3)               | 12              |
-| MCP Server      | @modelcontextprotocol/sdk             | 1.30            |
-| Validation      | Zod                                   | 3.24            |
-| Rendering       | marked, mermaid (lazy), diff, PrismJS | 18, 11, 9, 1.30 |
-| Module System   | ESM (`"type": "module"`)              | --              |
-| Container / CI  | Docker (standalone) -> GHCR Actions   | --              |
-| Package Manager | npm (`package-lock.json`)             | --              |
-| Formatter       | Prettier                              | 3.9             |
-| Test Framework  | vitest                                | 4.x             |
+| Component       | Technology                               | Version         |
+| --------------- | ---------------------------------------- | --------------- |
+| Language        | TypeScript (strict)                      | 6               |
+| Runtime         | Node.js (CI + Docker run 26)             | >= 20.9         |
+| Framework       | Next.js (App Router) + React             | 16 / 19         |
+| Database        | SQLite (better-sqlite3)                  | 12              |
+| MCP Server      | @modelcontextprotocol/sdk                | 1.30            |
+| Validation      | Zod                                      | 3.24            |
+| Rendering       | marked, mermaid (lazy), diff, PrismJS    | 18, 11, 9, 1.30 |
+| Module System   | ESM (`"type": "module"`)                 | --              |
+| Container / CI  | Docker (standalone) -> GHCR Actions      | --              |
+| Package Manager | npm (`package-lock.json`)                | --              |
+| Formatter       | Prettier                                 | 3.9             |
+| Linter          | ESLint (flat config) + typescript-eslint | 9 / 8           |
+| Test Framework  | vitest                                   | 4.x             |
 
 Exact versions: `package.json`.
 
@@ -101,6 +102,7 @@ npm run dev                # Next.js dev server (frontend + API, port 3000)
 # Automated Checks (run in this order -- format FIRST to avoid CI surprises)
 npm run format             # Prettier write (done-skill auto-invokes before commit)
 npm run format:check       # Prettier check (matches CI; read-only)
+npm run lint               # ESLint (flat config, correctness rules only)
 npx tsc --noEmit           # Type checking
 npm test                   # Tests (vitest)
 npm run build              # Production build
@@ -116,7 +118,7 @@ npm run mcp                # MCP server (stdio transport)
 npx @mermaid-js/mermaid-cli mmdc -i docs/ARCHITECTURE.mmd -o docs/ARCHITECTURE.svg
 ```
 
-> **No linter (ESLint) configured yet.** Formatting is enforced by Prettier. When ESLint lands, add `npm run lint` above.
+> **ESLint is a correctness gate, not a style one** (`eslint.config.js`, flat config): formatting stays entirely with Prettier, so no rule there may overlap it, and `.claude/` is ignored just like in `.prettierignore`. Scope, the type-aware rules and the deliberately disabled families: `agent_docs/development-notes.md -> Linter scope`.
 > GitNexus CLI (read-only): `agent_docs/gitnexus.md`.
 
 ## Key Patterns
@@ -163,7 +165,7 @@ Significant decisions are recorded as ADRs under `docs/adr/`. Triggers + format:
 - **Branch Naming:** `claude/<description>-<shortId>` for agent branches, `feature/<name>` for manual
 - **Commit Messages:** Conventional Commits `type(scope): description #issue` (feat, fix, chore, refactor, docs)
 - **Merge Strategy:** Squash merge for PRs
-- **CI/CD:** `docker-publish.yml` (manual dispatch, Node 26): format:check -> `tsc --noEmit` -> lint/test when those scripts exist -> build, then Docker build + push to GHCR
+- **CI/CD:** `docker-publish.yml` (manual dispatch, Node 26): format:check -> `tsc --noEmit` -> lint -> test -> build, then Docker build + push to GHCR. The lint step probes `package.json` for the script, so `npm run lint` is picked up without a workflow change.
 - **Formatting guard (optional):** husky + lint-staged auto-format on commit -- `agent_docs/ci_formatting_guard.md`. Never bypass with `--no-verify`.
 
 ## Dependency Management

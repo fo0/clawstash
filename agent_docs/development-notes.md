@@ -43,4 +43,9 @@ When refactoring is allowed to happen at all, plus the principles: `agent_docs/r
 - **`src/components/Settings.tsx` (~800 lines)** -- Could extract the Welcome Dashboard and Storage Stats sections into dedicated sub-components within the existing `settings/` directory (BACKLOG #106).
 - **`src/components/Sidebar.tsx` (~660 lines)** / **`src/server/backup/backup-service.ts` (~615 lines)** -- Over the ~500-line mark but cohesive; low priority.
 - **`src/languages.ts` (~350 lines)** -- Extension map and content-based detection heuristics are large but stable. Low priority.
-- **No linter** -- Adding ESLint would significantly improve code-quality assurance. Prettier is already configured for formatting (`.prettierrc.json`).
+- **Linter scope** -- ESLint 9 (flat config, `eslint.config.js`) runs correctness rules only; Prettier keeps formatting (`.prettierrc.json`), and no ESLint rule may overlap it.
+  - Base: `@eslint/js` recommended + `typescript-eslint` recommended everywhere, `recommendedTypeChecked` on `src/**` (project service), plus `react-hooks` `rules-of-hooks` + `exhaustive-deps`.
+  - `no-floating-promises` is enforced on `src/server/**` and `src/app/api/**` only: on the server an unawaited promise is a lost write, inside components it is the normal fire-and-forget handler call.
+  - `no-misused-promises` runs with `checksVoidReturn.attributes: false` so `onClick={async () => …}` stays idiomatic.
+  - Off in tests: `unbound-method`, `no-base-to-string` (vitest mock/assert idioms).
+  - Deliberately deferred, each with a reason in the config: the `no-unsafe-*` family + `no-explicit-any` + `restrict-template-expressions` (the `as`-cast style around better-sqlite3 rows would produce hundreds of hits), `require-await` (the MCP SDK types every tool handler as async), `no-unnecessary-type-assertion` (13 auto-fixable but purely cosmetic hits at the time of introduction). Revisit one family at a time.

@@ -26,7 +26,6 @@ import type {
   Stash,
   StashFile,
   StashVersion,
-  StashVersionFile,
   StashVersionListItem,
   StashFileInfo,
   StashListItem,
@@ -34,12 +33,10 @@ import type {
   AccessLogEntry,
   DeletionAuditEntry,
   TokenScope,
-  ApiToken,
   ApiTokenListItem,
   CreateStashInput,
   UpdateStashInput,
   ListStashesOptions,
-  SearchStashItem,
   SearchStashesResult,
   TagGraphOptions,
   TagGraphResult,
@@ -96,6 +93,24 @@ const DEFAULT_GRAPH_STASHES = 200;
  */
 const MAX_GRAPH_STASHES = 1000;
 
+/**
+ * Retention cap for `access_log`, mirroring `backup_log`'s `MAX_LOG_ROWS`.
+ *
+ * The access log is a *usage* trail — one row per read/create/update across
+ * REST, MCP and the UI — so it grows far faster than the backup log and needs
+ * a much larger cap: 20k rows are roughly 3 MB and still cover a long tail of
+ * history for the per-stash view (100 rows) and the API (max 1000 rows).
+ */
+export const MAX_ACCESS_LOG_ROWS = 20_000;
+/**
+ * Inserts between prune passes. Unlike `backup_log` (a handful of rows every
+ * few minutes) `access_log` is written on every request, so pruning on each
+ * insert would put a scan of the whole table on the hot read path. Amortising
+ * it over this many inserts keeps the table bounded by
+ * `MAX_ACCESS_LOG_ROWS + ACCESS_LOG_PRUNE_INTERVAL` at a negligible cost.
+ */
+export const ACCESS_LOG_PRUNE_INTERVAL = 500;
+
 export class ClawStashDB {
   private db: Database.Database;
   private tokens: TokenStore;
@@ -108,6 +123,10 @@ export class ClawStashDB {
   // Process-local: the stdio MCP server runs without a listener and is
   // caught up by the web process's next scheduled sync.
   private mutationListener: StashMutationListener | null = null;
+  // Inserts since the last access_log prune (see ACCESS_LOG_PRUNE_INTERVAL).
+  // Process-local and deliberately not persisted: a restart only delays the
+  // next prune, it never lets the table grow past one interval per process.
+  private accessLogWrites = 0;
 
   constructor(dbPath?: string) {
     const resolvedPath = dbPath || process.env.DATABASE_PATH || './data/clawstash.db';
@@ -218,6 +237,29 @@ export class ClawStashDB {
     `,
       )
       .run(id, stashId, source, action, now, ip || null, userAgent || null);
+
+    if (++this.accessLogWrites >= ACCESS_LOG_PRUNE_INTERVAL) {
+      this.accessLogWrites = 0;
+      this.pruneAccessLog();
+    }
+  }
+
+  /**
+   * Drop the oldest `access_log` rows beyond `MAX_ACCESS_LOG_ROWS`. Same
+   * shape as `BackupStore.insertBackupLogEntries` (`timestamp` + `id` as
+   * tiebreaker so same-timestamp rows prune deterministically), just
+   * amortised instead of running on every insert.
+   */
+  private pruneAccessLog(): void {
+    this.db
+      .prepare(
+        `
+      DELETE FROM access_log WHERE id NOT IN (
+        SELECT id FROM access_log ORDER BY timestamp DESC, id DESC LIMIT ?
+      )
+    `,
+      )
+      .run(MAX_ACCESS_LOG_ROWS);
   }
 
   getAccessLog(stashId: string, limit = 100): AccessLogEntry[] {
@@ -1499,6 +1541,9 @@ export class ClawStashDB {
     });
 
     const result = tx();
+    // The import wiped access_log, so the prune counter would otherwise carry
+    // a stale count into an empty table.
+    this.accessLogWrites = 0;
     // Both rebuild calls run after the transaction commits; isolate failures so
     // a broken FTS/relations rebuild cannot roll back the successfully imported
     // data. Closes BACKLOG #74.

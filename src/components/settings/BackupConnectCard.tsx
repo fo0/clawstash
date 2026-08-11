@@ -101,6 +101,9 @@ export default function BackupConnectCard({ response, onUpdated }: Props) {
   useEffect(() => stopPolling, []);
 
   const poll = (sessionId: string, intervalSec: number, failures = 0) => {
+    // setTimeout ignores the returned promise, but the callback body wraps
+    // every await in try/catch, so it can never reject unhandled.
+    // eslint-disable-next-line @typescript-eslint/no-misused-promises
     pollTimer.current = setTimeout(async () => {
       if (cancelledRef.current) return;
       try {

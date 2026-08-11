@@ -488,6 +488,10 @@ export default function GraphViewer({
     return () => {
       cancelled = true;
     };
+    // `startLoop` is a useCallback declared further down, so listing it here
+    // would hit its temporal dead zone during render. The effect only ever
+    // needs to restart on a graph change.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [focusTag, graphTab, reloadNonce]);
 
   // Focus mode: fetch subgraph from server
@@ -529,6 +533,8 @@ export default function GraphViewer({
     return () => {
       cancelled = true;
     };
+    // Same as above: `startLoop` is declared after this effect.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [focusTag, focusDepth, reloadNonce]);
 
   const screenToWorld = useCallback((sx: number, sy: number, canvas: HTMLCanvasElement) => {

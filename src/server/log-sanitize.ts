@@ -23,6 +23,8 @@
 export function sanitizeLogValue(value: string | undefined): string {
   if (!value) return 'unknown';
   const stripped = value.replace(
+    // Stripping control characters is the whole point of this helper.
+    // eslint-disable-next-line no-control-regex
     /[\x00-\x1f\x7f-\x9f\u2028\u2029\u200e\u200f\u202a-\u202e\u2066-\u2069]/g,
     '',
   );

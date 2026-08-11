@@ -106,7 +106,9 @@ export default function SearchOverlay({ open, onClose, onSelectStash, onSearchAl
       setLoading(false);
       return;
     }
-    debounceRef.current = setTimeout(() => doSearch(value), SEARCH_DEBOUNCE_MS);
+    debounceRef.current = setTimeout(() => {
+      void doSearch(value);
+    }, SEARCH_DEBOUNCE_MS);
   };
 
   // Clear the query without closing the overlay — Escape closes it entirely, so
