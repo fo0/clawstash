@@ -1420,17 +1420,27 @@ export default function GraphViewer({
 
   const isStashTab = graphTab === 'stashes';
 
+  // The active tab was signalled by the `active` CSS class alone, so assistive
+  // tech could not tell which graph is on screen (WCAG 4.1.2). `aria-pressed`
+  // matches how every other toggle pair in this codebase is marked up
+  // (Dashboard layout toggle, StashViewer wrap/render toggles).
   const tabSwitcher = (
     <div className="graph-tab-switcher">
       <button
+        type="button"
         className={`graph-tab-btn ${isStashTab ? 'active' : ''}`}
         onClick={() => setGraphTab('stashes')}
+        aria-pressed={isStashTab}
+        title="Show the stash graph"
       >
         Stashes
       </button>
       <button
+        type="button"
         className={`graph-tab-btn ${!isStashTab ? 'active' : ''}`}
         onClick={() => setGraphTab('tags')}
+        aria-pressed={!isStashTab}
+        title="Show the tag graph"
       >
         Tags
       </button>
