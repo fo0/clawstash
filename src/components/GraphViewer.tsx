@@ -1450,6 +1450,10 @@ export default function GraphViewer({
   if (isStashTab) {
     return (
       <div className="graph-viewer">
+        {/* Same missing-<h1> gap already closed in StashViewer / Settings:
+            this view carried no heading at all, so assistive tech had no
+            landmark for it. Visually hidden — the visible chrome is unchanged. */}
+        <h1 className="sr-only">Stash Graph</h1>
         <div className="graph-header">
           <div className="graph-title">
             <button
@@ -1476,6 +1480,7 @@ export default function GraphViewer({
 
   return (
     <div className="graph-viewer">
+      <h1 className="sr-only">Tag Graph</h1>
       <div className="graph-header">
         <div className="graph-title">
           <button

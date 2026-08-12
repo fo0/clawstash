@@ -397,6 +397,16 @@ export default function StashEditor({ stash, template, onSave, onCancel, onDirty
 
   return (
     <div className="stash-editor">
+      {/*
+        App.tsx renders no app-level heading, so the visible <h2> below was
+        the highest heading on this view — the same missing-<h1> gap already
+        closed in StashViewer and Settings. A visually-hidden <h1> restores
+        h1 -> h2 -> h3 without touching the visible heading or its
+        tag-selector CSS.
+      */}
+      <h1 className="sr-only">
+        {stash ? 'Edit Stash' : template ? 'Duplicate Stash' : 'New Stash'}
+      </h1>
       <div className="editor-header">
         <h2>{stash ? 'Edit Stash' : template ? 'Duplicate Stash' : 'New Stash'}</h2>
         <div className="editor-header-actions">
