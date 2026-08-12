@@ -176,6 +176,22 @@ export default function App() {
       adminSession !== null && (adminSession.authenticated || !adminSession.authRequired);
   }, [adminSession]);
 
+  // Keep <title> in sync with the current view. This is a pushState SPA with a
+  // single static <title> in the App Router layout, so every history entry,
+  // browser tab and bookmark read "ClawStash - AI Stash Storage" no matter
+  // what was on screen — back/forward through five stashes gave five
+  // indistinguishable entries (WCAG 2.4.2 Page Titled).
+  useEffect(() => {
+    const stashLabel = () => selectedStash?.name || selectedStash?.files[0]?.filename || 'Stash';
+    let label: string | null = null;
+    if (view === 'view') label = stashLabel();
+    else if (view === 'edit') label = `Edit ${stashLabel()}`;
+    else if (view === 'new') label = duplicateSource ? 'Duplicate stash' : 'New stash';
+    else if (view === 'settings') label = 'Settings';
+    else if (view === 'graph') label = 'Graph';
+    document.title = label ? `${label} · ClawStash` : 'ClawStash - AI Stash Storage';
+  }, [view, selectedStash, duplicateSource]);
+
   // Global quick-search shortcut. Ctrl+K / Cmd+K is the accelerator every
   // comparable tool uses (GitHub, Linear, Slack, VS Code), so it is what users
   // reach for first; Alt+K stays as the original binding. Both are handled
