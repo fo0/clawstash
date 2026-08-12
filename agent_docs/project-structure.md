@@ -5,16 +5,26 @@ Offloaded from `CLAUDE.md`, which keeps only the top-level skeleton (budgets: `a
 ````
 clawstash/
 ├── package.json                # Dependencies and scripts
+├── package-lock.json           # npm lockfile -- always committed; CI/Docker install with `npm ci`
 ├── tsconfig.json               # TypeScript config (strict, ES2022, Next.js plugin, @/* path alias)
 ├── next.config.ts              # Next.js config (standalone output, better-sqlite3 external)
 ├── vitest.config.ts            # Vitest config (node env, @/* alias, src/**/*.{test,spec}.{ts,tsx})
+├── eslint.config.js            # ESLint 9 flat config -- correctness rules only, never formatting (development-notes.md -> Linter scope)
 ├── Dockerfile                  # Multi-stage Docker build (Node 26-slim, Next.js standalone)
+├── .dockerignore               # Docker build-context excludes (node_modules, data, .git, *.md, .claude, agent_docs, ...)
 ├── docker-compose.yml          # Docker Compose deployment
 ├── docker-entrypoint.sh        # Container entrypoint: chown data dir as root, drop to `node` via setpriv
 ├── .env.example                # Environment variables template
+├── .prettierrc.json            # Prettier options (2-space indent, single quotes, trailing commas, printWidth 100, LF)
 ├── .prettierignore             # Prettier excludes (`.claude/` is excluded on purpose -- see MEMORY.md)
+├── .git-blame-ignore-revs      # Bulk-reformat commits that `git blame` should skip (Prettier baseline, PR #158)
 ├── test-data.http              # Manual REST scratch file: 20 sample stashes against localhost:3000
+├── README.md                   # User-facing entry point: features, quick start, MCP connection, doc index
+├── CLAUDE.md                   # Agent entry point: stack, commands, conventions, budgets (details offloaded to agent_docs/)
 ├── AGENTS.md                   # Canonical verbatim GitNexus read-only policy (CLAUDE.md keeps the condensed copy)
+├── CONTRIBUTING.md             # Contributor setup, the local check chain, code style, PR workflow
+├── SECURITY.md                 # Security policy: supported versions, private advisory reporting, scope
+├── LICENSE                     # MIT
 ├── BACKLOG.md                  # Deferred review findings tracker
 ├── CHANGELOG.md                # Keep-a-Changelog release notes
 ├── MEMORY.md                   # Session-spanning project knowledge (long-term)
@@ -180,6 +190,7 @@ clawstash/
 │   │   ├── format.ts           # Date formatting (formatDate, formatDateTime, formatRelativeTime)
 │   │   ├── highlight.ts        # Split text into matched/unmatched segments to <mark> search terms
 │   │   ├── html.ts             # HTML sanitization helpers
+│   │   ├── link-click.ts       # `isModifiedClick()` -- let the browser handle Ctrl/Cmd/Shift/middle-click on SPA `<a href>` rows
 │   │   ├── markdown.ts         # Markdown rendering for descriptions (Marked + sanitization)
 │   │   ├── mermaid.ts          # Lazy-loaded Mermaid renderer (shared util for .mmd files + inline ```mermaid blocks)
 │   │   ├── mermaid-hydrate.ts  # Hydrate inline ```mermaid placeholders inside rendered Markdown HTML
