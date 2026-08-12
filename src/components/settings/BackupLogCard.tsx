@@ -87,8 +87,9 @@ export default function BackupLogCard({ repoFullName, refreshToken }: Props) {
 
       {log.length === 0 && !loadFailed && <p className="api-hint">No sync runs recorded yet.</p>}
 
+      {/* Focusable scroll container — see BackupActivityCard (WCAG 2.1.1). */}
       {log.length > 0 && (
-        <div className="backup-table-wrap">
+        <div className="backup-table-wrap" tabIndex={0} role="region" aria-label="Sync log">
           <table className="backup-table">
             <thead>
               <tr>
