@@ -952,6 +952,15 @@ export default function App() {
 
   return (
     <div className="app">
+      {/*
+        WCAG 2.4.1 (Bypass Blocks): the sidebar precedes <main> in DOM order
+        and holds the search field, the tag filter and the whole stash list,
+        so keyboard-only users had to tab through all of it on every view.
+        The link is off-screen until focused and jumps straight to <main>.
+      */}
+      <a className="skip-link" href="#main-content">
+        Skip to main content
+      </a>
       {sidebarOpen && <div className="sidebar-overlay" onClick={() => setSidebarOpen(false)} />}
       <Sidebar
         stashes={stashes}
@@ -1031,7 +1040,8 @@ export default function App() {
             </svg>
           </button>
         </header>
-        <main className="main-content">
+        {/* tabIndex={-1} so the skip link can move focus here, not just scroll. */}
+        <main className="main-content" id="main-content" tabIndex={-1}>
           {view === 'home' && (
             <Dashboard
               stashes={stashes}
