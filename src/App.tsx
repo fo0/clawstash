@@ -15,6 +15,7 @@ import { loadSortMode, saveSortMode } from './utils/sort';
 import { loadShowArchived, saveShowArchived } from './utils/archived';
 import { recordRecentView } from './utils/recent-views';
 import { SEARCH_DEBOUNCE_MS, STASH_PAGE_SIZE } from './utils/constants';
+import { decidePopState } from './utils/nav-guard';
 import Sidebar from './components/Sidebar';
 import Dashboard from './components/Dashboard';
 import StashViewer from './components/StashViewer';
@@ -223,6 +224,14 @@ export default function App() {
   // hotkeys, quick-search selection) checks this before leaving the editor —
   // beforeunload only guards real page unloads, not SPA navigation.
   const editorDirtyRef = useRef(false);
+  // URL the dirty editor lives at, captured when it goes dirty. `popstate` has
+  // already rewritten location by the time we hear about it, so this is the
+  // only way back to the entry the user was on.
+  const dirtyPathRef = useRef<string | null>(null);
+  // Latch consuming exactly one popstate: the restore push below must never
+  // re-enter the guard, or a declined discard would re-open the confirm dialog
+  // for its own correction and trap the user in a dialog loop.
+  const suppressNextPopRef = useRef(false);
 
   // Mirror of selectedStash for the dependency-free hotkey handler (Escape
   // from a clean editor returns to the stash's view instead of home).
@@ -416,6 +425,22 @@ export default function App() {
   // Handle browser back/forward navigation
   useEffect(() => {
     const onPopState = () => {
+      if (suppressNextPopRef.current) {
+        suppressNextPopRef.current = false;
+        return;
+      }
+      // Browser-back out of a dirty editor would otherwise discard the work
+      // silently — beforeunload does not fire on SPA history navigation.
+      const decision = decidePopState(
+        editorDirtyRef.current,
+        dirtyPathRef.current,
+        confirmDiscardUnsaved,
+      );
+      if (decision.type === 'restore') {
+        suppressNextPopRef.current = true;
+        window.history.pushState(null, '', decision.path);
+        return;
+      }
       const route = getInitialRoute();
       // Bump the generation for every popstate so an older in-flight fetch
       // cannot land after a newer popstate's fetch has resolved. Without this,
@@ -1121,6 +1146,7 @@ export default function App() {
               onSave={handleSaveStash}
               onDirtyChange={(dirty) => {
                 editorDirtyRef.current = dirty;
+                if (dirty) dirtyPathRef.current = window.location.pathname;
               }}
               onCancel={
                 selectedStash
