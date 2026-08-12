@@ -185,8 +185,12 @@ export default function BackupActivityCard({ onSyncRan, onUnhealthyChange }: Pro
         <p className="api-hint">No stashes tracked yet.</p>
       )}
 
+      {/* `.backup-table-wrap` is `overflow-x: auto`, but nothing inside it can
+          move the scroll port, so keyboard-only users never reached the
+          right-hand columns (WCAG 2.1.1). tabIndex + a named region make the
+          scroll container focusable and announceable. */}
       {status.states.length > 0 && (
-        <div className="backup-table-wrap">
+        <div className="backup-table-wrap" tabIndex={0} role="region" aria-label="Sync activity">
           <table className="backup-table">
             <thead>
               <tr>

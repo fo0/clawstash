@@ -77,6 +77,38 @@ body {
   border: 0;
 }
 
+/* Skip link (WCAG 2.4.1) — off-screen until it takes keyboard focus, then it */
+/* drops into the top-left corner above everything else. */
+.skip-link {
+  position: absolute;
+  top: 8px;
+  left: -9999px;
+  z-index: 3000;
+  padding: 10px 16px;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius);
+  background: var(--bg-card);
+  color: var(--text-primary);
+  font-size: 13px;
+  font-weight: 500;
+  text-decoration: none;
+}
+
+/* :focus (not only :focus-visible) — a link reached by Tab always matches
+   both, and keeping :focus means the link still surfaces in browsers that
+   move focus to it programmatically. */
+.skip-link:focus {
+  left: 8px;
+  outline: 2px solid var(--accent-blue);
+  outline-offset: 2px;
+}
+
+/* The main region is only focusable as the skip link's target — it must not */
+/* draw a focus ring when a click inside it bubbles up. */
+.main-content:focus {
+  outline: none;
+}
+
 /* === App Layout === */
 .app {
   display: flex;

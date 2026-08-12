@@ -88,7 +88,16 @@ export default function VersionDiff({ v1, v2 }: Props) {
               </span>
               <span>{fd.filename}</span>
             </div>
-            <div className="diff-table-wrapper">
+            {/* Focusable scroll container: `.diff-table-wrapper` is
+                `overflow-x: auto` and long code lines push past its width, so
+                without a tabindex keyboard-only users cannot scroll it
+                (WCAG 2.1.1). */}
+            <div
+              className="diff-table-wrapper"
+              tabIndex={0}
+              role="region"
+              aria-label={`Diff for ${fd.filename}`}
+            >
               <table className="diff-table">
                 <tbody>
                   {fd.hunks.map((hunk, hi) =>
