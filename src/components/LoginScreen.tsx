@@ -9,7 +9,20 @@ export default function LoginScreen({ onLogin }: Props) {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  // Caps Lock is the classic cause of a failed password entry, and a masked
+  // field gives no clue. Detected from the real modifier state of key events
+  // in the field — there is no way to read it without one, so the warning can
+  // only appear from the first keystroke onwards (and never before the user
+  // has touched the field, which is exactly when it would be noise).
+  const [capsLockOn, setCapsLockOn] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  const syncCapsLock = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    // getModifierState is unimplemented on some synthetic/legacy events —
+    // treat "unknown" as off rather than throwing inside a key handler.
+    if (typeof e.getModifierState !== 'function') return;
+    setCapsLockOn(e.getModifierState('CapsLock'));
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -69,7 +82,16 @@ export default function LoginScreen({ onLogin }: Props) {
             // submit and never gives it back after a failed attempt.
             readOnly={loading}
             autoFocus
-            aria-describedby={error ? 'login-error-msg' : undefined}
+            onKeyDown={syncCapsLock}
+            onKeyUp={syncCapsLock}
+            // Leaving the field ends our only source of truth for the
+            // modifier — drop the warning rather than let it go stale.
+            onBlur={() => setCapsLockOn(false)}
+            aria-describedby={
+              [error ? 'login-error-msg' : null, capsLockOn ? 'login-capslock-msg' : null]
+                .filter(Boolean)
+                .join(' ') || undefined
+            }
           />
           <button
             type="button"
@@ -103,6 +125,14 @@ export default function LoginScreen({ onLogin }: Props) {
             )}
           </button>
         </div>
+        {capsLockOn && (
+          <div id="login-capslock-msg" className="login-capslock" role="status" aria-live="polite">
+            <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
+              <path d="M7.03 1.53a.75.75 0 0 1 1.06 0l5 5A.75.75 0 0 1 12.56 7.8H10.5v2.45a.75.75 0 0 1-.75.75h-3.5a.75.75 0 0 1-.75-.75V7.8H3.44a.75.75 0 0 1-.53-1.28ZM6 12.75a.75.75 0 0 1 .75-.75h2.5a.75.75 0 0 1 0 1.5h-2.5a.75.75 0 0 1-.75-.75Z" />
+            </svg>
+            Caps Lock is on
+          </div>
+        )}
         <button type="submit" className="btn btn-primary login-btn" disabled={loading || !password}>
           {loading ? 'Signing in...' : 'Sign in'}
         </button>
