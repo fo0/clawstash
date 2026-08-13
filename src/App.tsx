@@ -917,13 +917,14 @@ export default function App() {
   };
 
   /**
-   * Tag clicked inside the stash viewer: apply the filter and go back to the
-   * dashboard to show the result. Unlike `handleFilterTag` this never toggles
-   * the tag OFF — the viewer shows no active-filter chip, so re-clicking the
-   * already-active tag would look like the click did nothing while silently
-   * clearing the dashboard filter.
+   * Tag clicked in a view that is not the dashboard (stash viewer, settings →
+   * storage): apply the filter and go back to the dashboard to show the
+   * result. Unlike `handleFilterTag` this never toggles the tag OFF — those
+   * views show no active-filter chip, so re-clicking the already-active tag
+   * would look like the click did nothing while silently clearing the
+   * dashboard filter.
    */
-  const handleViewerFilterTag = (tag: string) => {
+  const handleNavigateToTag = (tag: string) => {
     if (tag !== filterTagRef.current) handleFilterTag(tag);
     setSelectedStash(null);
     setView('home');
@@ -1117,7 +1118,7 @@ export default function App() {
               onArchive={handleArchiveStash}
               onBack={handleGoHome}
               onAnalyzeStash={handleAnalyzeStash}
-              onFilterTag={handleViewerFilterTag}
+              onFilterTag={handleNavigateToTag}
               isFavorite={favoriteIds.has(selectedStash.id)}
               onToggleFavorite={handleToggleFavorite}
               onStashUpdated={(stash) => {
@@ -1170,6 +1171,7 @@ export default function App() {
               layout={layout}
               onLayoutChange={handleLayoutChange}
               onSettingsSection={setSettingsSection}
+              onFilterTag={handleNavigateToTag}
             />
           )}
           {view === 'graph' && (

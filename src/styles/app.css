@@ -4670,6 +4670,27 @@ textarea.code-editor-plain.code-editor-wrap {
   line-height: 1.4;
 }
 
+/* Interactive variant of the pill — reuses .settings-tag's look and only
+   resets the browser's <button> defaults, so a clickable and a plain tag are
+   visually identical apart from the hover/focus affordance. */
+.settings-tag-action {
+  font-family: inherit;
+  cursor: pointer;
+  transition:
+    background 0.15s ease,
+    border-color 0.15s ease;
+}
+
+.settings-tag-action:hover {
+  background: rgba(88, 166, 255, 0.2);
+  border-color: rgba(88, 166, 255, 0.45);
+}
+
+.settings-tag-action:focus-visible {
+  outline: 2px solid var(--accent-blue);
+  outline-offset: 2px;
+}
+
 .settings-tag-count {
   font-size: 11px;
   color: var(--text-muted);

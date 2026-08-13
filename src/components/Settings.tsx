@@ -382,7 +382,16 @@ function GeneralSection({ layout, onLayoutChange }: GeneralSectionProps) {
 
 // --- Section: Storage ---
 
-function StorageSection() {
+interface StorageSectionProps {
+  /**
+   * Apply a tag filter to the dashboard and navigate there. Optional so the
+   * section still renders (with an inert tag cloud) if a future caller omits
+   * it — the same shape `GraphViewer` already uses.
+   */
+  onFilterTag?: (tag: string) => void;
+}
+
+function StorageSection({ onFilterTag }: StorageSectionProps) {
   const [stats, setStats] = useState<Stats | null>(null);
   const [tags, setTags] = useState<TagInfo[]>([]);
   const [loading, setLoading] = useState(true);
@@ -553,12 +562,34 @@ function StorageSection() {
               <div className="settings-card-header">
                 <h3>Tags ({tags.length})</h3>
               </div>
+              {onFilterTag && (
+                <p className="api-hint">Select a tag to browse its stashes on the dashboard.</p>
+              )}
+              {/* Tags look identical to the ones on stash cards, in the sidebar
+                  and in the viewer — all of which filter the dashboard when
+                  clicked. Here they were inert <span>s, so the tag overview
+                  dead-ended: users had to go back and re-find the tag in the
+                  sidebar dropdown. With a handler they become real buttons
+                  (keyboard reachable); without one they stay plain text. */}
               <div className="settings-tags-cloud">
-                {tags.map((t) => (
-                  <span key={t.tag} className="settings-tag">
-                    {t.tag} <span className="settings-tag-count">{t.count}</span>
-                  </span>
-                ))}
+                {tags.map((t) =>
+                  onFilterTag ? (
+                    <button
+                      key={t.tag}
+                      type="button"
+                      className="settings-tag settings-tag-action"
+                      onClick={() => onFilterTag(t.tag)}
+                      title={`Show the ${pluralize(t.count, 'stash', 'stashes')} tagged "${t.tag}"`}
+                      aria-label={`Filter stashes by tag ${t.tag}`}
+                    >
+                      {t.tag} <span className="settings-tag-count">{t.count}</span>
+                    </button>
+                  ) : (
+                    <span key={t.tag} className="settings-tag">
+                      {t.tag} <span className="settings-tag-count">{t.count}</span>
+                    </span>
+                  ),
+                )}
               </div>
             </div>
           )}
@@ -749,6 +780,8 @@ interface Props {
   layout: LayoutMode;
   onLayoutChange: (mode: LayoutMode) => void;
   onSettingsSection: (section: SettingsSection) => void;
+  /** Apply a tag filter and leave settings for the dashboard. */
+  onFilterTag?: (tag: string) => void;
 }
 
 // Every other top-level view (Dashboard, API Documentation) starts with a
@@ -771,6 +804,7 @@ export default function Settings({
   layout,
   onLayoutChange,
   onSettingsSection,
+  onFilterTag,
 }: Props) {
   return (
     <div className="settings">
@@ -790,7 +824,7 @@ export default function Settings({
       )}
       {activeSection === 'api' && <ApiManager embedded />}
       {activeSection === 'backup' && <BackupSection />}
-      {activeSection === 'storage' && <StorageSection />}
+      {activeSection === 'storage' && <StorageSection onFilterTag={onFilterTag} />}
       {activeSection === 'about' && <AboutSection />}
     </div>
   );
