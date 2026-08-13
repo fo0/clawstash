@@ -1651,14 +1651,44 @@ export default function StashViewer({
               </svg>
               Access Log
             </h3>
-            <span
-              className="access-log-hint"
-              title="Tracks when this stash was accessed via API, MCP, or the web dashboard"
-            >
-              Shows recent access from all channels
-            </span>
+            <div className="access-log-header-actions">
+              <span
+                className="access-log-hint"
+                title="Tracks when this stash was accessed via API, MCP, or the web dashboard"
+              >
+                Shows recent access from all channels
+              </span>
+              {/* The log is fetched once when the tab is opened and never again,
+                  so new agent/API hits only appeared after navigating away and
+                  back. This is the missing manual refresh — the error state has
+                  had its own Retry since it shipped, but the success path had
+                  no way to re-read at all. */}
+              <button
+                className="btn btn-sm btn-ghost access-log-refresh"
+                onClick={() => setLogReloadKey((k) => k + 1)}
+                disabled={logLoading}
+                aria-busy={logLoading || undefined}
+                title="Reload the access log"
+                aria-label="Refresh access log"
+              >
+                <svg
+                  width="12"
+                  height="12"
+                  viewBox="0 0 16 16"
+                  fill="currentColor"
+                  aria-hidden="true"
+                >
+                  <path d="M8 2.5a5.487 5.487 0 0 0-4.131 1.869l1.204 1.204A.25.25 0 0 1 4.896 6H1.25A.25.25 0 0 1 1 5.75V2.104a.25.25 0 0 1 .427-.177l1.38 1.38A7 7 0 0 1 15 8a.75.75 0 0 1-1.5 0 5.5 5.5 0 0 0-5.5-5.5Zm-6.203 5.5a.75.75 0 0 1 .75.75A5.5 5.5 0 0 0 12.131 11.63l-1.204-1.204A.25.25 0 0 1 11.104 10h3.646a.25.25 0 0 1 .25.25v3.646a.25.25 0 0 1-.427.177l-1.38-1.38A7 7 0 0 1 1.047 8.75a.75.75 0 0 1 .75-.75Z" />
+                </svg>
+                {logLoading ? 'Refreshing…' : 'Refresh'}
+              </button>
+            </div>
           </div>
-          {logLoading ? (
+          {/* Only the FIRST load swaps the panel for a spinner. A manual
+              refresh keeps the current entries on screen (the button carries
+              its own "Refreshing…" state), mirroring the dashboard's
+              keep-the-grid-visible refresh instead of flashing to empty. */}
+          {logLoading && accessLog.length === 0 ? (
             <div className="loading" role="status" aria-live="polite">
               <Spinner size={16} />
               <span style={{ marginLeft: 10 }}>Loading access log...</span>
@@ -1701,7 +1731,7 @@ export default function StashViewer({
               </span>
             </div>
           ) : (
-            <div className="access-log-list">
+            <div className="access-log-list" aria-busy={logLoading || undefined}>
               {accessLog.map((entry) => (
                 <div key={entry.id} className="access-log-entry">
                   <SourceBadge source={entry.source} />
