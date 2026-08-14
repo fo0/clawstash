@@ -15,41 +15,59 @@ When a session begins, read in this order. Stop early if a file is missing.
 
 ## Workflow Triggers
 
-| User says...                                     | Skill to load                             |
-| ------------------------------------------------ | ----------------------------------------- |
-| "done" / "fertig" / "finished" / "/done"         | `.claude/skills/done/SKILL.md`            |
-| "PR" / "create PR" / "/pr"                       | `.claude/skills/pr/SKILL.md`              |
-| "review" / "/review"                             | `.claude/skills/review/SKILL.md`          |
-| "security review" / "/security-review"           | `.claude/skills/security-review/SKILL.md` |
-| "rollback" / "revert" / "undo" / "/rollback"     | `.claude/skills/rollback/SKILL.md`        |
-| "CI" / "fix CI" / "check the build" / "/ci"      | `.claude/skills/ci/SKILL.md`              |
-| "stuck" / "loop" / "going in circles" / "/stuck" | `.claude/skills/stuck/SKILL.md`           |
-| "check dependencies" / "update deps" / "/beacon" | `.claude/skills/beacon/SKILL.md`          |
-| Verify a UI change in a real browser             | `.claude/skills/verify/SKILL.md`          |
-| Diagram request                                  | `agent_docs/diagram_prompt.md`            |
+| User says...                                      | Skill to load                             |
+| ------------------------------------------------- | ----------------------------------------- |
+| "done" / "fertig" / "finished" / "/done"          | `.claude/skills/done/SKILL.md`            |
+| "PR" / "create PR" / "/pr"                        | `.claude/skills/pr/SKILL.md`              |
+| "review" / "/review"                              | `.claude/skills/review/SKILL.md`          |
+| "security review" / "/security-review"            | `.claude/skills/security-review/SKILL.md` |
+| "rollback" / "revert" / "undo" / "/rollback"      | `.claude/skills/rollback/SKILL.md`        |
+| "CI" / "fix CI" / "check the build" / "/ci"       | `.claude/skills/ci/SKILL.md`              |
+| "stuck" / "loop" / "going in circles" / "/stuck"  | `.claude/skills/stuck/SKILL.md`           |
+| "check dependencies" / "update deps" / "/beacon"  | `.claude/skills/beacon/SKILL.md`          |
+| "schedule" / "routine" / "nightly" / "/scheduler" | `.claude/skills/scheduler/SKILL.md`       |
+| "orca" / "orchestrator mode" / "/orca"            | `.claude/skills/orca/SKILL.md`            |
+| Verify a UI change in a real browser              | `.claude/skills/verify/SKILL.md`          |
+| Diagram request                                   | `agent_docs/diagram_prompt.md`            |
 
 > Review runs via the `review` skill -- done-skill does NOT auto-run it. Findings -> `BACKLOG.md` (`agent_docs/backlog_process.md`). Knowledge -> `MEMORY.md` / `SCRATCHPAD.md` (`agent_docs/memory_process.md`).
 > **On "done" / "fertig":** commit uncommitted changes, comment on + close the related issue (English), reference it in the commit (`fix: resolve crash #42`). **Do NOT push unless explicitly asked.**
 
 ## Output Languages
 
-| Surface                                       | Language                          |
-| --------------------------------------------- | --------------------------------- |
-| Chat / status messages to user                | User's language (default: German) |
-| Code, identifiers, comments                   | English                           |
-| Commit messages                               | English (Conventional Commits)    |
-| PR titles + bodies                            | English                           |
-| GitHub issue comments                         | English                           |
-| Generated files (CLAUDE.md, agent_docs, etc.) | English                           |
-| Console / log output of the app               | English                           |
-| User-facing UI strings                        | English                           |
+| Surface                                             | Language                          |
+| --------------------------------------------------- | --------------------------------- |
+| Chat / status messages to user                      | User's language (default: German) |
+| Code, identifiers, comments                         | English                           |
+| Commit messages                                     | English (Conventional Commits)    |
+| PR titles + bodies                                  | English                           |
+| GitHub issue comments                               | English                           |
+| Generated files (CLAUDE.md, agent_docs, etc.)       | English                           |
+| Console / log output of the app                     | English                           |
+| User-facing UI strings                              | English                           |
+| **Technical terms -- every surface, chat included** | **English, never translated**     |
+
+**Technical terms are never translated** -- not even inside a German sentence. Keep the English word verbatim and inflect around it: "2 Bugs gefixt", "Code Smell in `db.ts`", "PR gemerged", "Build ist rot" -- never "Programmfehler", "Zusammenführungsantrag". Covers the whole vocabulary of the work (bug, smell, lint, build, commit, merge, branch, PR, review, refactoring, deployment, rollback, issue, hotfix, flaky test, regression, stack trace, dependency, tech debt) plus everything naming something real: file paths, commands, tool / skill / hook names, status labels, error strings (quoted verbatim). Test: English in code, a commit or a PR -> English in chat.
 
 ## Performance / Modes
 
 - **Default model:** whatever the session resolves to -- don't pin one here or in `.claude/settings.json`; `/model` switches mid-session.
 - **Fast mode** (`/fast`): same Opus model, faster output -- not a downgrade. Use when latency beats reasoning depth.
 - **Caveman mode** (chat compression): `caveman lite|full|ultra` / `stop caveman`. Chat only, never generated files.
+- **Orca mode** (orchestrator-only): `/orca` toggles it, `/orca <N>` sets the parallel width (default 5). While on, the agent itself does no task work -- every unit goes to a subagent at the session's model and effort. Off by default; contract in `.claude/skills/orca/SKILL.md`.
 - **Plan mode**: for non-trivial implementation strategy -- `Plan` subagent or `EnterPlanMode`. Not for single-step tasks.
+
+## Autonomy
+
+Which session you are in is resolvable, so it is a rule and not a guess: `$CLAUDE_CODE_REMOTE` is `"true"` in Claude Code web/cloud sessions -- routine runs included -- and unset in the local CLI.
+
+- **Unattended** (`CLAUDE_CODE_REMOTE=true`, or the session's initial instructions are a routine): nobody is there to answer. Never end a turn with a question -- decide under an assumption you state, finish every part that isn't blocked, and carry the open point into the final report or `BACKLOG.md`. A routine run has no permission prompts, so a session that "waits for approval" waits forever.
+- **Interactive** (local CLI): asking is cheap. Ask when two readings of the task produce materially different work; otherwise decide and mention the call.
+- **Both:** an action that is destructive _and_ not ordered _and_ not standard practice gets the same answer either way -- skip it, report it with the recommendation, finish everything it does not block. Gates stay where they are: merges -> `.claude/skills/pr/SKILL.md -> /pr merge`, reversals and force operations -> `.claude/skills/rollback/SKILL.md`, deploys and secrets -> _Deployment_ and `agent_docs/env-vars.md`.
+
+## Scheduled Work
+
+Three schedulers with different lifetimes: **Routines** (cloud, durable, >= 1 h, survive the session), **`/loop` + `CronCreate`/`CronList`/`CronDelete`** (this session only, 7-day expiry), **Desktop scheduled tasks** (local machine). Choosing one, creating/listing/deleting jobs, and the cleanup contract for agent-created jobs: `.claude/skills/scheduler/SKILL.md`. This repo's default prompt for a bare `/loop`: `.claude/loop.md`.
 
 ## Project Overview
 
@@ -59,21 +77,7 @@ User-facing feature list: `README.md`. Backup semantics: `docs/backup.md`.
 
 ## Tech Stack
 
-| Component       | Technology                               | Version         |
-| --------------- | ---------------------------------------- | --------------- |
-| Language        | TypeScript (strict)                      | 6               |
-| Runtime         | Node.js (CI + Docker run 26)             | >= 20.9         |
-| Framework       | Next.js (App Router) + React             | 16 / 19         |
-| Database        | SQLite (better-sqlite3)                  | 12              |
-| MCP Server      | @modelcontextprotocol/sdk                | 1.30            |
-| Validation      | Zod                                      | 3.24            |
-| Rendering       | marked, mermaid (lazy), diff, PrismJS    | 18, 11, 9, 1.30 |
-| Module System   | ESM (`"type": "module"`)                 | --              |
-| Container / CI  | Docker (standalone) -> GHCR Actions      | --              |
-| Package Manager | npm (`package-lock.json`)                | --              |
-| Formatter       | Prettier                                 | 3.9             |
-| Linter          | ESLint (flat config) + typescript-eslint | 9 / 8           |
-| Test Framework  | vitest                                   | 4.x             |
+TypeScript 6 (strict, ESM) · Next.js 16 App Router + React 19 · Node.js >= 20.9 (CI + Docker run 26) · SQLite via better-sqlite3 12 · Zod 3.24 · `@modelcontextprotocol/sdk` 1.30 · vitest 4 · ESLint 9 flat + typescript-eslint 8 · Prettier 3.9 · marked / mermaid / diff / PrismJS for rendering · Docker standalone -> GHCR · npm (`package-lock.json`).
 
 Exact versions: `package.json`.
 
@@ -140,20 +144,15 @@ Try/catch in async route handlers; UI components keep error state in React. Vali
 - All UI text and documentation in **English**; ESM everywhere (`"type": "module"`).
 - 2-space indent, single quotes in TS. `.claude/` stays excluded in `.prettierignore` -- keep that exclusion.
 - Named imports; `@/*` path aliases for server-side imports in route handlers.
-- Functional React components with typed props; complex features split into sub-directories.
 - API route handlers use `checkScope()` / `checkAdmin()` helpers -- no Express-style middleware.
-- Global CSS with custom properties (no CSS-in-JS), BEM-like naming.
-- TypeScript strict, `noEmit`, target ES2022.
 - Max file length: ~300 lines (split), ~500 lines (strongly recommended).
 
-Full conventions: `agent_docs/coding-conventions.md`.
+Component style, CSS conventions and the TS compiler settings: `agent_docs/coding-conventions.md`.
 
 ## Architecture Principles
 
 - Single-process Next.js app (App Router) -- no separate backend/frontend processes.
-- `tool-defs.ts` is the single source of truth feeding server registration, MCP spec and frontend tabs.
 - Permissive CORS by design -- ClawStash must be reachable from any AI agent's origin.
-- All persistence is local SQLite -- no external DB; deployment is single-binary + volume.
 - Server validates everything via Zod at the trust boundary; clients are not trusted.
 
 ## Architecture Decisions
@@ -165,7 +164,8 @@ Significant decisions are recorded as ADRs under `docs/adr/`. Triggers + format:
 - **Branch Naming:** `claude/<description>-<shortId>` for agent branches, `feature/<name>` for manual
 - **Commit Messages:** Conventional Commits `type(scope): description #issue` (feat, fix, chore, refactor, docs)
 - **Merge Strategy:** Squash merge for PRs
-- **CI/CD:** `docker-publish.yml` (manual dispatch, Node 26): format:check -> `tsc --noEmit` -> lint -> test -> build, then Docker build + push to GHCR. The lint step probes `package.json` for the script, so `npm run lint` is picked up without a workflow change.
+- **CI/CD:** `docker-publish.yml` (manual dispatch, Node 26): format:check -> `tsc --noEmit` -> lint -> test -> build, then Docker build + push to GHCR.
+- **Cloud / routine runs:** a `claude/`-prefixed branch is always accepted; a push to any other branch is rejected when the branch is protected, carries someone else's open PR, or holds commits authored by someone else. Unattended work therefore starts on `claude/<topic>` unless the task names a branch.
 - **Formatting guard (optional):** husky + lint-staged auto-format on commit -- `agent_docs/ci_formatting_guard.md`. Never bypass with `--no-verify`.
 
 ## Dependency Management
@@ -184,13 +184,13 @@ Significant decisions are recorded as ADRs under `docs/adr/`. Triggers + format:
 | `CLAWSTASH_ENCRYPTION_KEY` | Secrets at rest, 64 hex chars     | auto-generated        |
 | `PORT`                     | Server port                       | `3000`                |
 
-Full list + secret locations: `agent_docs/env-vars.md`, `.env.example`. Never `gh secret set` from agent code without an explicit user command; `security-review` scans for committed secrets.
+Full list + secret locations: `agent_docs/env-vars.md`, `.env.example`. Never `gh secret set` without an explicit user command; `security-review` scans for committed secrets.
 
 ## Deployment
 
-- **Trigger:** manual `workflow_dispatch` on `docker-publish.yml`; pipeline type-check -> build -> multi-stage Docker build -> push to GHCR. Single image, any container host; DB volume at `/app/data`.
+- **Trigger:** manual `workflow_dispatch` on `docker-publish.yml` -> multi-stage Docker build -> push to GHCR. Single image, any container host; DB volume at `/app/data`.
 - **Agent scope:** push to feature branches, open/update PRs, suggest merge. **Agent does NOT trigger production deploys** without explicit user command.
-- **Routine exception:** a session running an **owner-authorized routine** counts as an explicit user command -- its merges are pre-approved _including_ any pipeline they trigger (CI/CD, GHCR publish, prod deploy), provided the change set is non-destructive (additive; no data migration, no history rewrite, no repo-settings change) and verification passed. Destructive changes stay gated. Full gate: `.claude/skills/pr/SKILL.md -> /pr merge`.
+- **Routine exception:** merges ordered by an owner-authorized routine count as an explicit user command -- conditions + full gate: `.claude/skills/pr/SKILL.md -> /pr merge` (single source of truth).
 - **Rollback:** `.claude/skills/rollback/SKILL.md`. Prefer revert-PR over redeploying an old build.
 
 Deployment detail: `docs/deployment.md`.
@@ -204,36 +204,28 @@ Full reference: `docs/api-reference.md` - MCP tools: `docs/mcp.md` - auth/scopes
 ## Testing
 
 - **Framework:** vitest 4.x - **Run:** `npm test` (`npm run test:watch` for watch mode)
-- **Structure:** colocated `__tests__/` folders under `src/`; vitest collects `src/**/*.{test,spec}.{ts,tsx}` (`vitest.config.ts`: node env, `@/*` alias, typecheck off)
-- **Patterns:** unit tests with mocked DB / fetch; no real network or paid-API calls
-- **Constraints:** agent-runnable, zero-cost, deterministic -- no real API calls, cloud resources or prod DB writes; mock external boundaries. Real-service E2E only on explicit request. Details: `agent_docs/review_process.md -> Test execution constraints`.
+- **Structure:** colocated `__tests__/` folders under `src/`; vitest collects `src/**/*.{test,spec}.{ts,tsx}`
+- **Constraints:** agent-runnable, zero-cost, deterministic -- canonical: `agent_docs/review_process.md -> Test execution constraints`. Config + patterns: `agent_docs/testing.md`.
 
 ## External Integrations / MCPs
 
-Project-intended and common MCPs: `agent_docs/mcp_catalog.md`. Never auto-detect host MCP availability -- fall back to standard tools (`Read`, `Bash`, `WebFetch`) when an MCP is absent. Workflows must never hard-require an MCP.
+Project-intended and common MCPs: `agent_docs/mcp_catalog.md`. Never auto-detect host MCP availability -- fall back to standard tools (`Read`, `Bash`, `WebFetch`) when an MCP is absent. Workflows must never hard-require an MCP. A server an unattended cloud or routine run needs must be a committed `.mcp.json` entry or a claude.ai connector -- a local `claude mcp add` does not travel with the clone (`agent_docs/mcp_catalog.md -> MCPs in cloud and routine runs`).
 
-**Trigger tools never prompt.** `.claude/settings.json` -> `permissions.allow` holds exactly one `mcp__<server>__*` glob per Claude Code Remote spelling, plus the two `mcp__github__(un)subscribe_pr_activity` entries (there is no `mcp__github__*` glob). A per-tool entry that a glob in the same list already matches is redundant -- those were pruned; do not re-add them. **Self-heal:** a tool that still prompts means its server spelling is missing -- append `mcp__<that server>__*` and commit it on the current branch/PR. **Never write `deny`/`ask`.** Rationale, trust-gate caveat and the user-level fallback: `agent_docs/mcp_catalog.md`.
+**Trigger tools never prompt.** `.claude/settings.json` -> `permissions.allow` carries one `mcp__<server>__*` glob per Claude Code Remote spelling plus the two `mcp__github__(un)subscribe_pr_activity` entries, so scheduled check-ins, Routine cleanup and PR-watch subscriptions run unattended. **Self-heal:** a tool that still prompts means its server spelling is missing -- append `mcp__<that server>__*` and commit it on the current branch/PR; additive only, never `deny`/`ask`. Allowlist shape, trust-gate caveat and the user-level fallback: `agent_docs/mcp_catalog.md`.
 
 ## CI
 
 CI failure handling: `.claude/skills/ci/SKILL.md`. Triggered by `/ci`, "fix CI", "check the build". Auto-routes by run state (none / running / passed / failed / stale). Never auto-reruns; always verifies fixes locally before pushing.
 
-`docker-publish.yml` is `workflow_dispatch`-only, so a pushed branch legitimately has zero runs of it and `/ci` reporting "no runs" for it is configuration, not breakage. `docs-format.yml` is the one workflow that runs automatically: PRs and pushes to `main` touching `**.md`, Prettier-Markdown only (no `npm ci`, no build) — without it nothing would verify Markdown, even though `format:check` is `prettier --check .` and includes it. `.prettierignore` still applies, so the `.claude/` exclusion holds. Two GitHub-managed workflows also run without a file in the repo: **CodeQL** (default setup -- `Analyze (actions)` / `Analyze (javascript-typescript)`, runs on every PR and gates merge) and **Dependabot Updates**. The local Automated Checks above remain the real gate for correctness.
+`docker-publish.yml` is `workflow_dispatch`-only, so a pushed branch legitimately has zero runs of it -- "no runs" is configuration, not breakage. What runs automatically (`docs-format.yml`, CodeQL, Dependabot): `agent_docs/development-notes.md -> CI/CD`.
 
 ## Subagents
 
-Delegate complex / parallel / read-heavy work: `Explore` (read-only search), `Plan` (implementation strategy), `general-purpose` (write+execute, tests, docs, refactor), `claude-code-guide` (Claude Code itself -- hooks, MCP, SDK).
-
-Direct tools beat subagents when the target is known. Parallelize independent calls in one message. Pass full context -- subagents have no conversation history. Full guide: `agent_docs/review_process.md -> Subagent Delegation`.
+Delegate complex / parallel / read-heavy work: `Explore` (read-only search), `Plan` (strategy), `general-purpose` (write+execute), `claude-code-guide` (Claude Code itself). Direct tools beat subagents when the target is known; parallelize independent calls; pass full context -- subagents have no history. **Orca mode** (`/orca`) turns this from a menu into the only path: while on, every unit is delegated and the thresholds do not apply (`.claude/skills/orca/SKILL.md`). Full guide: `agent_docs/review_process.md -> Subagent Delegation`.
 
 ## Development Notes
 
-- Dev server runs frontend + API in one process on port 3000; production uses `next start` with standalone output.
-- SQLite auto-creates in `data/` on first run; the DB singleton uses `globalThis` to survive HMR.
-- `src/instrumentation.ts` starts the GitHub backup scheduler at boot (nodejs runtime only); the stdio MCP process runs no scheduler.
-- Docker: multi-stage Node 26-slim (needs python3/make/g++ for `better-sqlite3`), volume at `/app/data`, entrypoint drops root -> `node` via `setpriv`.
-
-Full notes: `agent_docs/development-notes.md`.
+Runtime + process model, database, Docker and CI/CD specifics: `agent_docs/development-notes.md`. Live gotchas and non-obvious couplings: `MEMORY.md`.
 
 ## Refactoring Notes
 
@@ -277,4 +269,4 @@ Indexed as **clawstash** (2191 symbols, 3899 relationships, 189 execution flows)
 
 <!-- gitnexus:end -->
 
-<!-- Generated by claude-code-optimizer v1.18.0 -->
+<!-- Generated by claude-code-optimizer v1.22.0 -->
