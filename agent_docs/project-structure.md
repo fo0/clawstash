@@ -195,6 +195,7 @@ clawstash/
 │   │   ├── mermaid.ts          # Lazy-loaded Mermaid renderer (shared util for .mmd files + inline ```mermaid blocks)
 │   │   ├── mermaid-hydrate.ts  # Hydrate inline ```mermaid placeholders inside rendered Markdown HTML
 │   │   ├── mermaid-zoom.ts     # Per-diagram zoom persistence in localStorage (LRU-capped)
+│   │   ├── nav-guard.ts        # Pure popstate decision for the dirty-editor back-navigation guard
 │   │   ├── platform.ts         # SSR-safe platform detection for keyboard-shortcut labels
 │   │   ├── recent-views.ts     # Recently-viewed stashes MRU list (localStorage) for the search overlay
 │   │   ├── sort.ts             # Dashboard sort-order state + pure sort helper
@@ -248,7 +249,7 @@ clawstash/
 │   │       ├── FileCodeEditor.tsx # PrismJS code editor wrapper
 │   │       ├── TagCombobox.tsx # Tag input with autocomplete dropdown
 │   │       ├── MetadataEditor.tsx # Key-value editor with suggestions
-│   │       └── __tests__/      # Editor unit tests (vitest: FileCodeEditor, metadata-entries)
+│   │       └── __tests__/      # Editor unit tests (vitest: FileCodeEditor, StashEditor.duplicate, metadata-entries)
 │   └── styles/
 │       └── app.css             # Global styles (CSS custom properties)
 └── data/                       # SQLite database directory (gitignored)
