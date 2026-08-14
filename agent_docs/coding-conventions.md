@@ -1,6 +1,6 @@
 # Coding Conventions
 
-Full convention list. CLAUDE.md keeps the eight an agent violates most easily; the rest is here.
+Full convention list. CLAUDE.md keeps the five an agent violates most easily; the rest -- component style, CSS conventions, error handling and the TS compiler settings -- is here.
 
 - **Language**: All UI text and documentation in English.
 - **Module System**: ESM (`"type": "module"` in `package.json`).

@@ -22,6 +22,8 @@ Plain stdout from a hook is **only** added to the model's context on `SessionSta
 
 Supported on `SessionStart`, `SubagentStart`, `UserPromptSubmit`, `UserPromptExpansion`, `PreToolUse`, `PostToolUse`, `PostToolUseFailure`, `Stop`, `SubagentStop` -- **not** on `PreCompact`, `SessionEnd`, `Notification`. Build the JSON with `jq -nc --arg m "$msg" '...'` whenever the message contains captured output, so quotes and newlines stay escaped. Alternatives: exit 2 + stderr (blocks the call on `PreToolUse`), `{"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"ask"}}` (forces the permission prompt), `{"systemMessage":"..."}` (shown to the user, not the agent).
 
+**Two levers most catalogs miss.** `$CLAUDE_CODE_REMOTE` is `"true"` in web/cloud sessions and unset in the local CLI -- the one _resolvable_ test for "is a human watching", which is what makes an autonomy-conditional hook legal (CLAUDE.md -> _Autonomy_). And a hook entry is not only a shell command: `"type"` also accepts `"http"`, `"mcp_tool"`, `"prompt"` (LLM yes/no) and `"agent"`, entries take `"timeout"` and an `"if"` condition, and `${CLAUDE_PROJECT_DIR}` expands inside `command`. Events beyond the ones used below: `Setup`, `PostCompact`, `SessionEnd`, `PermissionRequest`, `PermissionDenied`, `PostToolUseFailure`, `SubagentStart`/`SubagentStop`, `TaskCreated`/`TaskCompleted`, `ConfigChange`, `FileChanged` -- reach for one of those before inventing a polling loop.
+
 Each snippet below states its **Trigger** and, where it matters, whether it is agent-facing or user-facing.
 
 ---

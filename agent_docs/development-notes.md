@@ -28,6 +28,13 @@ Setup hints, runtime quirks and operational details for ClawStash. CLAUDE.md kee
 - Workflow: `.github/workflows/docker-publish.yml`, triggered by manual `workflow_dispatch`.
 - Deployment detail: `docs/deployment.md`.
 
+### Which workflows actually run (cited from CLAUDE.md -> CI)
+
+- **`docker-publish.yml` is `workflow_dispatch`-only**, so a pushed branch legitimately has zero runs of it. `/ci` reporting "no runs" for it is configuration, not breakage.
+- **`docs-format.yml`** is the one workflow that runs automatically: PRs and pushes to `main` touching `**.md`, Prettier-Markdown only (no `npm ci`, no build). Without it nothing would verify Markdown, even though `format:check` is `prettier --check .` and includes it. `.prettierignore` still applies, so the `.claude/` exclusion holds.
+- **Two GitHub-managed workflows run without a file in the repo:** CodeQL (default setup -- `Analyze (actions)` / `Analyze (javascript-typescript)`, runs on every PR and gates merge) and Dependabot Updates.
+- The local Automated Checks in CLAUDE.md -> _Commands_ remain the real gate for correctness.
+
 ## Refactoring candidates
 
 When refactoring is allowed to happen at all, plus the principles: `agent_docs/refactoring_guidelines.md`. This section is only the candidate list -- it is not a work queue.

@@ -65,6 +65,35 @@ This repo's `.claude/settings.json` already pre-approves every Claude Code Remot
 
 Merge into an existing file without clobbering rules you did not add; the same glob-first shape applies (per-tool entries a glob already covers are redundant). To re-gate a single tool (e.g. `add_repo`), add it to `permissions.ask` -- `ask` is evaluated before `allow`, so it prompts despite the glob. **The agent never writes this file on its own, and never writes `deny`/`ask` anywhere** -- this file lives outside the repo, so applying it is the user's call.
 
+Two more keys earn their place in that same user-level file:
+
+| Key                                             | Effect on unattended work                                                                                                                                                                                                                                                                                                                                                                      |
+| ----------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `"askUserQuestionTimeout": "5m"`                | An unanswered `AskUserQuestion` auto-continues after 5 minutes with whatever was preselected, instead of holding the session open. The default `"never"` waits forever -- that is what turns one ambiguous moment into a dead overnight run. Values: `"60s"`, `"5m"`, `"10m"`, `"never"`. **Read from user settings only** -- a repo cannot set it, which is why the optimizer never writes it |
+| `"permissions": {"defaultMode": "acceptEdits"}` | Optional. File edits and common filesystem commands stop prompting; every other rule still applies. Project settings _can_ carry this, but how much a machine may do unsupervised is the owner's call, not the repo's -- so it is left to you. `bypassPermissions` skips nearly all prompts and belongs only in a container or VM you are willing to lose                                      |
+
+## MCPs in cloud and routine runs
+
+A cloud session -- every routine run included -- starts from a fresh clone of the repository. Nothing added locally with `claude mcp add` travels with it, because that configuration lives on the machine, not in the repo. Two paths make a server reachable in an unattended run:
+
+1. **A committed `.mcp.json` at the repo root** (project scope). It is part of the clone, so it applies everywhere the repo goes:
+
+   ```json
+   {
+     "mcpServers": {
+       "example": { "type": "http", "url": "https://mcp.example.com/mcp" }
+     }
+   }
+   ```
+
+   stdio servers use `"command"` + `"args"` instead of `"type"`/`"url"`. `${VAR}` and `${VAR:-default}` expand in `command`, `args` and `env` -- **use them for every credential**; a token committed in `.mcp.json` is a leaked token. Project servers need approval before they connect: `.claude/settings.json` -> `enableAllProjectMcpServers: true` grants it, and like every project-level allow rule it applies only after the workspace-trust dialog is accepted.
+
+   > ClawStash has **no committed `.mcp.json`**, so `enableAllProjectMcpServers` is deliberately absent from `.claude/settings.json` -- it would approve an empty set. Add the key in the same commit that adds the file, never before.
+
+2. **claude.ai connectors.** A routine includes the account's connectors, and its own form is where you narrow them to what the run needs. Connector traffic goes through Anthropic's servers, so it is unaffected by the environment's allowed-domains list.
+
+Neither path is a hard requirement -- Selection Heuristic rule 3 still holds. A run whose MCP is missing falls back and says so once.
+
 ## Selection Heuristic for the Agent
 
 1. **Project MCPs first.** If the project intends an MCP for a task, use it.
