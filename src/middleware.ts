@@ -63,6 +63,22 @@ const CONTENT_SECURITY_POLICY = [
 const PERMISSIONS_POLICY =
   'camera=(), microphone=(), geolocation=(), payment=(), usb=(), interest-cohort=()';
 
+// `Cross-Origin-Opener-Policy: same-origin` severs the `window.opener` link
+// when a cross-origin page opens ClawStash in a popup. `X-Frame-Options: DENY`
+// and CSP `frame-ancestors 'none'` above only cover the <iframe> case; the
+// popup channel stays open without COOP, and it lets the opener navigate the
+// ClawStash tab (phishing the admin login form, tabnabbing-style) and probe
+// it through the window handle (`window.length`, named frames — XS-Leaks).
+//
+// Behaviour-neutral here: ClawStash never reads `window.opener` and never
+// needs a handle back to an opener. Every external link it renders already
+// carries `rel="noopener noreferrer"` (markdown link renderers in
+// utils/markdown.ts and StashViewer.tsx), so no in-app flow depends on the
+// opener relationship. The header is defined on documents only — browsers
+// ignore it on the API/MCP JSON responses it is also emitted on, so it cannot
+// interact with the deliberately permissive CORS policy above.
+const CROSS_ORIGIN_OPENER_POLICY = 'same-origin';
+
 const SECURITY_HEADERS: Record<string, string> = {
   'X-Content-Type-Options': 'nosniff',
   'Referrer-Policy': 'strict-origin-when-cross-origin',
@@ -70,6 +86,7 @@ const SECURITY_HEADERS: Record<string, string> = {
   'X-Frame-Options': 'DENY',
   'Content-Security-Policy': CONTENT_SECURITY_POLICY,
   'Permissions-Policy': PERMISSIONS_POLICY,
+  'Cross-Origin-Opener-Policy': CROSS_ORIGIN_OPENER_POLICY,
 };
 
 // `Strict-Transport-Security` pins the host to HTTPS in every browser that
