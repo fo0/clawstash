@@ -59,7 +59,7 @@ clawstash/
 │       └── 0002-github-backup-architecture.md
 ├── .claude/
 │   ├── settings.json           # Tier-1 hooks (session start, context budget, GitNexus commit guard) + trigger allowlist
-│   └── skills/                 # Agent workflow skills: done, pr, review, security-review, rollback, ci, stuck, beacon, verify
+│   └── skills/                 # Agent workflow skills: done, pr, review, security-review, rollback, ci, stuck, beacon, scheduler, orca, verify
 │       └── gitnexus/           # Read-only GitNexus skills (exactly 8): guide, cli, exploring, impact-analysis, debugging, refactoring, review, query
 ├── .github/
 │   ├── dependabot.yml          # Weekly npm + github-actions update PRs

@@ -100,7 +100,7 @@ docker compose up -d
 
 ## Node.js (without Docker)
 
-**Prerequisites:** Node.js 20+ (project pins Node 26 in Docker; `better-sqlite3` 12.x requires ≥ 20)
+**Prerequisites:** Node.js 20.9+ — the floor `package.json` declares in `engines` (`>=20.9.0`); Docker and CI run Node 26, and `better-sqlite3` 12.x supports 20.x–26.x
 
 ### Development
 
@@ -166,7 +166,7 @@ docker build \
 
 The repository includes `.github/workflows/docker-publish.yml` which, when triggered:
 
-1. **Check code** — TypeScript type-check, optional lint/tests, Next.js build
+1. **Check code** — Prettier `format:check`, TypeScript type-check, ESLint, the vitest suite, Next.js build (all mandatory; the job fails on the first red step)
 2. **Build & push** — Multi-stage Docker image pushed to GitHub Container Registry (GHCR)
 
 Triggered manually via `workflow_dispatch` (GitHub → **Actions** tab); there is no automatic push trigger.
