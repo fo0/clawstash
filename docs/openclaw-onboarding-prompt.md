@@ -36,7 +36,7 @@ Install ClawStash on my server and set it up as your persistent storage.
          - ADMIN_PASSWORD=<ADMIN_PASSWORD>
        restart: unless-stopped
    COMPOSE
-````
+   ```
 
 - Replace `<PORT>` with the desired external port (e.g. `3000`, `8080`)
   Left side = external port you access, right side stays `3000` (container internal)
@@ -121,7 +121,4 @@ Install ClawStash on my server and set it up as your persistent storage.
 From now on, use ClawStash as your default persistent storage via MCP.
 Store any information that doesn't need to stay in active context:
 background notes, project history, reference docs, configs, code snippets.
-
-```
-
-```
+````
