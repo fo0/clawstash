@@ -2,7 +2,8 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import type { Stash, TagInfo, FileInput } from '../../types';
 import { api } from '../../api';
 import { DELETE_CONFIRM_TIMEOUT_MS } from '../../utils/constants';
-import { formatBytes } from '../../utils/format';
+import { formatBytes, formatRelativeTime } from '../../utils/format';
+import { clearDraft, loadDraft, saveDraft, type EditorDraft } from '../../utils/editor-draft';
 import FileCodeEditor from './FileCodeEditor';
 import TagCombobox from './TagCombobox';
 import type { TagComboboxHandle } from './TagCombobox';
@@ -51,6 +52,14 @@ const MAX_FILE_CONTENT_LENGTH = 10 * 1024 * 1024;
  * surprising.
  */
 const EDITOR_WRAP_PREF_KEY = 'clawstash-editor-wrap-lines';
+
+/**
+ * How long the editor waits after the last keystroke before mirroring its form
+ * state into the recovery draft. Long enough that typing never serializes the
+ * whole stash on every character, short enough that a crash loses at most a
+ * second of work.
+ */
+const DRAFT_AUTOSAVE_DEBOUNCE_MS = 1000;
 
 /** Read the persisted editor wrap preference. Defaults to off (horizontal scroll). */
 function getEditorWrapPreference(): boolean {
@@ -132,6 +141,20 @@ export default function StashEditor({ stash, template, onSave, onCancel, onDirty
   // text would be silently lost.
   const tagComboboxRef = useRef<TagComboboxHandle>(null);
 
+  // Recovery draft for this editor target (`null` id = the new-stash form).
+  // Read once on mount: a draft only exists when a previous session ended
+  // without running any cleanup — a tab crash, a killed background tab, or a
+  // dismissed unload prompt. Held in state so Restore/Discard can retire the
+  // banner. See utils/editor-draft.ts for the lifecycle.
+  const draftTargetId = stash?.id ?? null;
+  // Version the draft is written against, so a restore can warn when the stash
+  // has moved on in the meantime. Hoisted out of the effect's dependency array,
+  // which may only hold plain identifiers.
+  const draftBaseVersion = stash?.version;
+  const [recoveredDraft, setRecoveredDraft] = useState<EditorDraft | null>(() =>
+    loadDraft(stash?.id ?? null),
+  );
+
   // Reads the callback through a ref so stable useCallbacks (updateFile,
   // handleNameChange) never capture a stale onDirtyChange prop.
   const markDirty = () => {
@@ -142,12 +165,47 @@ export default function StashEditor({ stash, template, onSave, onCancel, onDirty
   };
 
   // On unmount the editor's unsaved state is gone either way — reset the
-  // parent's dirty flag so a later navigation isn't blocked by a stale guard.
+  // parent's dirty flag so a later navigation isn't blocked by a stale guard,
+  // and drop the recovery draft: every unmount path is a deliberate exit the
+  // user already confirmed (Cancel, Escape, a guarded navigation, a save), so
+  // resurrecting the content on the next open would contradict that choice.
+  // A crash or a closed tab runs no cleanup, which is exactly when the draft
+  // must survive. Guarded on `dirtyRef` so React's development-mode double
+  // mount — which unmounts before anything was typed — cannot wipe a draft the
+  // banner is about to offer.
   useEffect(() => {
     return () => {
       onDirtyChangeRef.current?.(false);
+      if (dirtyRef.current) clearDraft(draftTargetId);
     };
-  }, []);
+  }, [draftTargetId]);
+
+  /**
+   * Mirror the form state into the recovery draft, debounced, while the editor
+   * is dirty. `dirtyRef` is deliberately read rather than depended on: it only
+   * ever flips inside the same interactions that change the state below, so by
+   * the time this effect runs after a real edit it is already true — and the
+   * mount pass, which has nothing worth saving, is skipped.
+   */
+  useEffect(() => {
+    if (!dirtyRef.current) return;
+    const timer = setTimeout(() => {
+      saveDraft(draftTargetId, {
+        savedAt: Date.now(),
+        baseVersion: draftBaseVersion,
+        name,
+        description,
+        tags,
+        metadata: metadataEntries.map((e) => ({ key: e.key, value: e.value })),
+        files: files.map((f) => ({
+          filename: f.filename,
+          content: f.content,
+          language: f.language,
+        })),
+      });
+    }, DRAFT_AUTOSAVE_DEBOUNCE_MS);
+    return () => clearTimeout(timer);
+  }, [name, description, tags, metadataEntries, files, draftTargetId, draftBaseVersion]);
 
   // useRef(initialValue) re-evaluates `initialValue` on every render but only
   // keeps the FIRST render's result. The naive `.map(() => counter++)` form
@@ -162,6 +220,36 @@ export default function StashEditor({ stash, template, onSave, onCancel, onDirty
     const initialFiles = source ? source.files : [{ filename: '', content: '', language: '' }];
     fileIds.current = initialFiles.map(() => fileIdCounter.current++);
   }
+
+  /** Load the recovered draft into the form and retire the banner. */
+  const restoreDraft = () => {
+    if (!recoveredDraft) return;
+    setName(recoveredDraft.name);
+    setDescription(recoveredDraft.description);
+    setTags(recoveredDraft.tags);
+    setMetadataEntries(recoveredDraft.metadata.map((e) => ({ key: e.key, value: e.value })));
+    // An empty file list would leave the form with no editor at all — fall
+    // back to the same blank row a fresh new-stash form starts with.
+    const restoredFiles: FileInput[] =
+      recoveredDraft.files.length > 0
+        ? recoveredDraft.files.map((f) => ({ ...f }))
+        : [{ filename: '', content: '', language: '' }];
+    setFiles(restoredFiles);
+    // Fresh ids so every file editor remounts with the restored content
+    // instead of reusing the row that happened to sit at the same index.
+    fileIds.current = restoredFiles.map(() => fileIdCounter.current++);
+    // The restored content differs from what the server holds, and the first
+    // filename came from the draft — keep the name auto-fill off.
+    setFirstFileManuallyEdited(true);
+    markDirty();
+    setRecoveredDraft(null);
+  };
+
+  /** Drop the recovered draft without applying it. */
+  const discardDraft = () => {
+    clearDraft(draftTargetId);
+    setRecoveredDraft(null);
+  };
 
   // Load available tags and metadata keys
   useEffect(() => {
@@ -335,11 +423,15 @@ export default function StashEditor({ stash, template, onSave, onCancel, onDirty
         await api.updateStash(stash.id, payload);
         dirtyRef.current = false;
         onDirtyChangeRef.current?.(false);
+        // The work is on the server now — a leftover draft would offer it back
+        // as "unsaved" the next time this stash is edited.
+        clearDraft(draftTargetId);
         onSave(stash.id);
       } else {
         const created = await api.createStash(payload);
         dirtyRef.current = false;
         onDirtyChangeRef.current?.(false);
+        clearDraft(draftTargetId);
         onSave(created.id);
       }
     } catch (err) {
@@ -459,6 +551,39 @@ export default function StashEditor({ stash, template, onSave, onCancel, onDirty
           </button>
         </div>
       </div>
+
+      {recoveredDraft && (
+        <div className="draft-recovery-banner" role="status">
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
+            <path d="M8 2.5a5.487 5.487 0 0 0-4.131 1.869l1.204 1.204A.25.25 0 0 1 4.896 6H1.25A.25.25 0 0 1 1 5.75V2.104a.25.25 0 0 1 .427-.177l1.38 1.38A7 7 0 0 1 15 8a.75.75 0 0 1-1.5 0 5.5 5.5 0 0 0-5.5-5.5Zm-6.203 5.5a.75.75 0 0 1 .75.75A5.5 5.5 0 0 0 12.131 11.63l-1.204-1.204A.25.25 0 0 1 11.104 10h3.646a.25.25 0 0 1 .25.25v3.646a.25.25 0 0 1-.427.177l-1.38-1.38A7 7 0 0 1 1.047 8.75a.75.75 0 0 1 .75-.75Z" />
+          </svg>
+          <span className="draft-recovery-text">
+            Unsaved changes from{' '}
+            {formatRelativeTime(new Date(recoveredDraft.savedAt).toISOString())} were recovered —
+            the editor was closed before they could be saved.
+            {stash &&
+              recoveredDraft.baseVersion !== undefined &&
+              recoveredDraft.baseVersion !== stash.version &&
+              ` They were written against v${recoveredDraft.baseVersion}; this stash is now at v${stash.version}.`}
+          </span>
+          <button
+            type="button"
+            className="btn btn-sm btn-primary"
+            onClick={restoreDraft}
+            title="Load the recovered changes into this form"
+          >
+            Restore
+          </button>
+          <button
+            type="button"
+            className="btn btn-sm btn-ghost"
+            onClick={discardDraft}
+            title="Delete the recovered changes and keep the saved content"
+          >
+            Discard
+          </button>
+        </div>
+      )}
 
       {error && (
         <div className="error-banner" role="alert">

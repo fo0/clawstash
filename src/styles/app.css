@@ -2632,6 +2632,27 @@ body {
   margin-bottom: 16px;
 }
 
+/* Recovered-draft notice above the editor form. Amber rather than red: the
+   editor is offering work back, not reporting a failure. */
+.draft-recovery-banner {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  padding: 10px 16px;
+  background: rgba(210, 153, 34, 0.1);
+  border: 1px solid rgba(210, 153, 34, 0.35);
+  border-radius: var(--radius);
+  color: #e3b341;
+  font-size: 13px;
+  margin-bottom: 16px;
+}
+
+.draft-recovery-text {
+  flex: 1 1 240px;
+  line-height: 1.5;
+}
+
 .editor-form {
   display: flex;
   flex-direction: column;

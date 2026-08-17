@@ -8,6 +8,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/), and this
 
 ### Added
 
+- Editor crash recovery: while the stash editor has unsaved changes its form state is mirrored into `localStorage` (debounced, capped at 512 KB, expires after 7 days). If the tab crashes or is closed before saving, reopening the same editor offers the work back with a Restore / Discard banner — including a warning when the stash has been updated elsewhere since. Deliberate exits (Cancel, Escape, guarded navigation, a successful save) drop the draft, so a discard never resurrects
 - Sidebar keyboard navigation: `↓` in the sidebar search field steps straight into the stash list, `↑` / `↓` walk it, `Home` / `End` jump to the ends, and `↑` on the first row hands focus back to the search field. Previously `/` focused the field and the only way onward was Tab, one stop per row
 - Comfort actions (#483): duplicate any stash into a pre-filled new one, open a stash in a new tab from the dashboard and the sidebar (Ctrl/Cmd/Shift/middle-click), and undo an accidental archive straight from the success toast
 - One-click code copy (#443): every fenced code block in rendered Markdown carries a copy button — file preview and stash description in the viewer, dashboard cards opt out. Keyboard reachable, always visible on touch
