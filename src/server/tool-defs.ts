@@ -368,10 +368,10 @@ Incremental exploration strategy for large graphs:
   },
   {
     name: 'get_stats',
-    description: `Get storage statistics: total stashes, total files, and top programming languages. Useful for getting an overview of what's stored.`,
+    description: `Get storage statistics: total stashes, total files, total content size in bytes, and top programming languages. Useful for getting an overview of what's stored.`,
     schema: z.object({}),
     returns:
-      '{ totalStashes: number, totalFiles: number, topLanguages: [{ language: string, count: number }] }',
+      '{ totalStashes: number, totalFiles: number, totalBytes: number, topLanguages: [{ language: string, count: number }] }',
   },
   {
     name: 'get_rest_api_spec',

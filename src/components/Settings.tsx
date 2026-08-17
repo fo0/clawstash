@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, type ReactNode } from 'react';
 import type { SettingsSection, LayoutMode, Stats, TagInfo } from '../types';
 import { api } from '../api';
-import { formatExportTimestamp, pluralize } from '../utils/format';
+import { formatBytes, formatExportTimestamp, pluralize } from '../utils/format';
 import ApiManager from './api/ApiManager';
 import BackupSection from './settings/BackupSection';
 import Spinner from './shared/Spinner';
@@ -529,6 +529,10 @@ function StorageSection({ onFilterTag }: StorageSectionProps) {
               <div className="settings-stat-item">
                 <div className="settings-stat-value">{stats.totalFiles}</div>
                 <div className="settings-stat-label">Total Files</div>
+              </div>
+              <div className="settings-stat-item">
+                <div className="settings-stat-value">{formatBytes(stats.totalBytes)}</div>
+                <div className="settings-stat-label">Total Size</div>
               </div>
             </div>
           </div>

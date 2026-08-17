@@ -74,6 +74,8 @@ export interface TagInfo {
 export interface Stats {
   totalStashes: number;
   totalFiles: number;
+  /** Total content size across all stash files, in bytes (`LENGTH(content)`). */
+  totalBytes: number;
   topLanguages: { language: string; count: number }[];
 }
 
