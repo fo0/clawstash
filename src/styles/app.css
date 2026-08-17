@@ -2163,8 +2163,44 @@ body {
    the per-file action buttons below it. */
 .viewer-files-toolbar {
   display: flex;
+  align-items: center;
   justify-content: flex-end;
+  gap: 12px;
   margin-bottom: -8px;
+}
+
+/* Quick-jump chips for multi-file stashes. A stash may hold up to 100 files,
+   so the row scrolls horizontally instead of wrapping into a wall of chips
+   that pushes the first file off screen. `min-width: 0` lets the flex child
+   actually shrink — without it the row would force the toolbar wider than
+   the viewer. */
+.viewer-file-jump {
+  display: flex;
+  flex: 1 1 auto;
+  min-width: 0;
+  gap: 6px;
+  overflow-x: auto;
+  padding-bottom: 2px;
+}
+
+.viewer-file-jump-chip {
+  padding: 3px 10px;
+  border-radius: 12px;
+  font-size: 11px;
+  line-height: 1.4;
+  font-family: var(--font-mono);
+  background: var(--bg-tertiary);
+  color: var(--text-secondary);
+  border: 1px solid var(--border-color);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.15s;
+}
+
+.viewer-file-jump-chip:hover {
+  background: rgba(88, 166, 255, 0.1);
+  border-color: rgba(88, 166, 255, 0.3);
+  color: var(--accent-blue);
 }
 
 .viewer-files-collapse-all {

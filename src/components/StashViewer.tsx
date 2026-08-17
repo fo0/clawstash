@@ -721,6 +721,33 @@ export default function StashViewer({
     [stash.files],
   );
 
+  /**
+   * Jump to a file from the quick-jump bar. A collapsed file is expanded
+   * first and the scroll is finished after the re-render (the same hand-off
+   * the TOC links use, via `pendingScrollIdRef`); an already-expanded file is
+   * scrolled to directly, because no re-render would follow to run the effect.
+   */
+  const jumpToFile = useCallback(
+    (fileIndex: number) => {
+      const file = stash.files[fileIndex];
+      if (!file) return;
+      const anchorId = `stash-file-${fileIndex}`;
+      if (collapsedFiles.has(file.id)) {
+        pendingScrollIdRef.current = anchorId;
+        setCollapsedFiles((prev) => {
+          const next = new Set(prev);
+          next.delete(file.id);
+          return next;
+        });
+        return;
+      }
+      document
+        .getElementById(anchorId)
+        ?.scrollIntoView({ behavior: preferredScrollBehavior(), block: 'start' });
+    },
+    [stash.files, collapsedFiles],
+  );
+
   // Finish a TOC heading jump that required expanding a collapsed file first.
   useEffect(() => {
     if (!pendingScrollIdRef.current) return;
@@ -1244,6 +1271,26 @@ export default function StashViewer({
         >
           {stash.files.length > 1 && (
             <div className="viewer-files-toolbar">
+              {/* Quick-jump bar. A multi-file stash renders every file one
+                  below the other, so reaching file 9 of 12 meant scrolling
+                  past everything before it — and "Collapse all" only traded
+                  that for a wall of headers. The chips jump straight to a
+                  file and expand it when it is collapsed. The multi-file TOC
+                  above is markdown-only and lists headings; this covers every
+                  file type and is always the same length as the file list. */}
+              <nav className="viewer-file-jump" aria-label="Jump to file">
+                {stash.files.map((file, fileIndex) => (
+                  <button
+                    key={file.id}
+                    type="button"
+                    className="viewer-file-jump-chip"
+                    onClick={() => jumpToFile(fileIndex)}
+                    title={`Jump to ${file.filename}`}
+                  >
+                    {file.filename}
+                  </button>
+                ))}
+              </nav>
               <button
                 type="button"
                 className="btn btn-sm btn-ghost viewer-files-collapse-all"
