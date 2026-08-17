@@ -1302,6 +1302,7 @@ export class ClawStashDB {
   getStats(): {
     totalStashes: number;
     totalFiles: number;
+    totalBytes: number;
     topLanguages: { language: string; count: number }[];
   } {
     const totalStashes = (
@@ -1310,6 +1311,14 @@ export class ClawStashDB {
     const totalFiles = (
       this.db.prepare('SELECT COUNT(*) as c FROM stash_files').get() as { c: number }
     ).c;
+    // Same measure as the per-file `size` and the list view's `total_size`
+    // (`LENGTH(content)`), so the Storage total agrees with what the cards and
+    // the viewer already report instead of introducing a second definition.
+    const totalBytes = (
+      this.db.prepare('SELECT COALESCE(SUM(LENGTH(content)), 0) as c FROM stash_files').get() as {
+        c: number;
+      }
+    ).c;
 
     const langRows = this.db
       .prepare(
@@ -1317,7 +1326,7 @@ export class ClawStashDB {
       )
       .all() as { language: string; count: number }[];
 
-    return { totalStashes, totalFiles, topLanguages: langRows };
+    return { totalStashes, totalFiles, totalBytes, topLanguages: langRows };
   }
 
   // === Version History ===

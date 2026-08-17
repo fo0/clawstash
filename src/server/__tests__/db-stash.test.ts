@@ -329,6 +329,26 @@ describe('ClawStashDB stash CRUD + FTS sync', () => {
     });
   });
 
+  describe('getStats totalBytes (#129)', () => {
+    it('sums content length across all files and is 0 on an empty database', () => {
+      expect(db.getStats().totalBytes).toBe(0);
+
+      db.createStash({
+        name: 'sized',
+        files: [
+          { filename: 'a.txt', content: 'abcde' },
+          { filename: 'b.txt', content: 'xyz' },
+        ],
+      });
+      db.createStash({ name: 'second', files: [{ filename: 'c.txt', content: '12' }] });
+
+      const stats = db.getStats();
+      expect(stats.totalBytes).toBe(10);
+      // Same measure the list view reports as `total_size`.
+      expect(stats.totalFiles).toBe(3);
+    });
+  });
+
   describe('stash files multi-file behaviour', () => {
     it('replaces full file list on update when files key is provided', () => {
       const s = db.createStash({

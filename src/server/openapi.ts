@@ -174,6 +174,10 @@ export function getOpenApiSpec(baseUrl: string): OpenApiSpec {
           properties: {
             totalStashes: { type: 'integer' },
             totalFiles: { type: 'integer' },
+            totalBytes: {
+              type: 'integer',
+              description: 'Total content size across all stash files, in bytes',
+            },
             topLanguages: {
               type: 'array',
               items: {
