@@ -55,6 +55,10 @@ function buildShortcutGroups(quickSearchKey: string): ShortcutGroup[] {
       { keys: [quickSearchKey], description: 'Open quick search' },
       { keys: ['Alt', 'K'], description: 'Open quick search (alternative)' },
       { keys: ['/'], description: 'Focus sidebar search' },
+      {
+        keys: ['↓'],
+        description: 'From sidebar search: step into the stash list (↑ / ↓ to move, Enter to open)',
+      },
     ],
   };
   return [STATIC_SHORTCUT_GROUPS[0], search, ...STATIC_SHORTCUT_GROUPS.slice(1)];

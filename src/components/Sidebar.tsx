@@ -202,6 +202,8 @@ export default function Sidebar({
   const [tagHighlight, setTagHighlight] = useState(0);
   const tagFilterRef = useRef<HTMLDivElement>(null);
   const tagOptionsRef = useRef<HTMLDivElement>(null);
+  const searchInputRef = useRef<HTMLInputElement>(null);
+  const stashListRef = useRef<HTMLDivElement>(null);
 
   // Same ordering pipeline as Dashboard: sort first, then lift favorites to
   // the top. Without it the sidebar kept the server's `updated_at DESC` order
@@ -269,6 +271,54 @@ export default function Sidebar({
       ?.querySelector('.sidebar-tag-option.highlighted')
       ?.scrollIntoView({ block: 'nearest' });
   }, [tagHighlight, tagDropdownOpen]);
+
+  /**
+   * The stash rows, in DOM order. Read from the DOM rather than from a ref
+   * array so the order can never drift from what is rendered (the list is
+   * re-sorted by `sortMode` + favorites on every change).
+   */
+  const stashRows = useCallback(
+    (): HTMLAnchorElement[] =>
+      Array.from(stashListRef.current?.querySelectorAll<HTMLAnchorElement>('a.sidebar-item') ?? []),
+    [],
+  );
+
+  /** Move focus to the row at `index` (clamped). Returns false on an empty list. */
+  const focusStashRow = useCallback(
+    (index: number) => {
+      const rows = stashRows();
+      if (rows.length === 0) return false;
+      const row = rows[Math.max(0, Math.min(index, rows.length - 1))];
+      row.focus();
+      row.scrollIntoView({ block: 'nearest' });
+      return true;
+    },
+    [stashRows],
+  );
+
+  /**
+   * Arrow-key navigation for the stash list. `/` focuses the search field, but
+   * from there the only way into the results was Tab — which walks the filter
+   * button, the "New Stash" button and the archive toggle first, then one stop
+   * per row. Down/Up now step through the rows directly (Home/End jump to the
+   * ends), and Up from the first row hands focus back to the search field, so
+   * the field and the list behave as one keyboard unit. Enter/Space on a row
+   * already opens the stash (the rows are real links).
+   */
+  const handleStashListKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
+    if (e.key !== 'ArrowDown' && e.key !== 'ArrowUp' && e.key !== 'Home' && e.key !== 'End') return;
+    const rows = stashRows();
+    // Only react when focus is actually on a row — the container also hosts
+    // the empty state, and a stray key elsewhere must keep its default.
+    const current = rows.indexOf(document.activeElement as HTMLAnchorElement);
+    if (current === -1) return;
+    e.preventDefault();
+    if (e.key === 'ArrowDown') focusStashRow(current + 1);
+    else if (e.key === 'Home') focusStashRow(0);
+    else if (e.key === 'End') focusStashRow(rows.length - 1);
+    else if (current === 0) searchInputRef.current?.focus();
+    else focusStashRow(current - 1);
+  };
 
   /**
    * Wrap the parts of `text` matching the active stash search in <mark>, so a
@@ -359,6 +409,7 @@ export default function Sidebar({
           <div className="sidebar-search">
             <div className="search-input-wrapper">
               <input
+                ref={searchInputRef}
                 id="sidebar-stash-search"
                 type="text"
                 placeholder="Search stashes..."
@@ -372,10 +423,14 @@ export default function Sidebar({
                     e.preventDefault();
                     e.stopPropagation();
                     onSearch('');
+                  } else if (e.key === 'ArrowDown') {
+                    // Step straight from the query into the results, the way
+                    // the quick-search overlay and the tag dropdown already do.
+                    if (focusStashRow(0)) e.preventDefault();
                   }
                 }}
                 className="search-input"
-                title={`Search by name, filename, or content — / to focus, Esc to clear, ${quickSearchKey} (or Alt+K) for quick search`}
+                title={`Search by name, filename, or content — / to focus, Down arrow to step into the list, Esc to clear, ${quickSearchKey} (or Alt+K) for quick search`}
                 aria-label="Search stashes"
               />
               {search ? (
@@ -605,7 +660,7 @@ export default function Sidebar({
             </div>
           )}
 
-          <div className="sidebar-list">
+          <div className="sidebar-list" ref={stashListRef} onKeyDown={handleStashListKeyDown}>
             {orderedStashes.map((stash) => (
               // A real link, so a row can be opened in a new tab the way every
               // other list on the web can (Ctrl/Cmd+click, middle-click,

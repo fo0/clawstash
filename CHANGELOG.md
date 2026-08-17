@@ -8,6 +8,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/), and this
 
 ### Added
 
+- Sidebar keyboard navigation: `↓` in the sidebar search field steps straight into the stash list, `↑` / `↓` walk it, `Home` / `End` jump to the ends, and `↑` on the first row hands focus back to the search field. Previously `/` focused the field and the only way onward was Tab, one stop per row
 - Comfort actions (#483): duplicate any stash into a pre-filled new one, open a stash in a new tab from the dashboard and the sidebar (Ctrl/Cmd/Shift/middle-click), and undo an accidental archive straight from the success toast
 - One-click code copy (#443): every fenced code block in rendered Markdown carries a copy button — file preview and stash description in the viewer, dashboard cards opt out. Keyboard reachable, always visible on touch
 - GitHub backup (#108): mirror all stashes into a GitHub repository via the Git Data API — scheduled (5 min – 24 h presets), debounced on every mutation, and manual ("Back up now" per stash + globally). "Sign in with GitHub" via OAuth device flow (own OAuth app client ID, no secret/callback) or PAT fallback; token stored AES-256-GCM-encrypted and redacted from all logs/errors. One commit per logical change, idempotent hash-based change detection, per-stash opt-out (`backup_enabled`), configurable delete mode, sync log + health indicator, new Settings section + viewer status bar. Docs: `docs/backup.md`
