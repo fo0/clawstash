@@ -3,9 +3,12 @@ name: Build and Push Docker image to GHCR
 on:
   workflow_dispatch:
 
+# Workflow-level default = least privilege. Only `build-and-push` needs to
+# write packages, and it declares that itself in its own `permissions:` block
+# below; granting `packages: write` here would hand the same GHCR push token
+# to `check-code`, which merely lints, tests and builds.
 permissions:
   contents: read
-  packages: write
 
 env:
   REGISTRY: ghcr.io
