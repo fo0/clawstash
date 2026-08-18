@@ -9,9 +9,6 @@ updates:
       # eslint major: peer-dep conflicts (eslint-config-next still pins ^9)
       - dependency-name: 'eslint'
         update-types: ['version-update:semver-major']
-      # electron major: needs manual migration
-      - dependency-name: 'electron'
-        update-types: ['version-update:semver-major']
   - package-ecosystem: 'docker'
     directory: '/'
     schedule:

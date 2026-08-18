@@ -12,9 +12,15 @@ type CopyStatus = 'idle' | 'copied' | 'failed';
 function useClipboardBase<T>(idleValue: T, feedbackDuration: number) {
   const [state, setState] = useState(idleValue);
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const mountedRef = useRef(true);
 
   useEffect(() => {
+    // Re-arm on every mount: StrictMode runs mount → cleanup → mount, so
+    // relying on the `useRef(true)` initial value alone would leave the hook
+    // permanently "unmounted" after the first cleanup.
+    mountedRef.current = true;
     return () => {
+      mountedRef.current = false;
       if (timeoutRef.current) clearTimeout(timeoutRef.current);
     };
   }, []);
@@ -22,6 +28,13 @@ function useClipboardBase<T>(idleValue: T, feedbackDuration: number) {
   const trigger = useCallback(
     async (text: string, successValue: T, failValue: T): Promise<boolean> => {
       const success = await copyToClipboard(text);
+      // The component can unmount while the async clipboard write is still in
+      // flight (copy, then navigate away). The unmount cleanup has already run
+      // by then, so a timer armed below would never be cleared and would fire
+      // `setState` on an unmounted component after the feedback window. Every
+      // other async surface in the app guards the same way (TokensTab,
+      // SwaggerViewer, Settings); this one did not.
+      if (!mountedRef.current) return success;
       if (timeoutRef.current) clearTimeout(timeoutRef.current);
       setState(success ? successValue : failValue);
       timeoutRef.current = setTimeout(() => setState(idleValue), feedbackDuration);

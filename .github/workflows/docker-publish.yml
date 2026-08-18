@@ -3,9 +3,12 @@ name: Build and Push Docker image to GHCR
 on:
   workflow_dispatch:
 
+# Workflow-level default = least privilege. Only `build-and-push` needs to
+# write packages, and it declares that itself in its own `permissions:` block
+# below; granting `packages: write` here would hand the same GHCR push token
+# to `check-code`, which merely lints, tests and builds.
 permissions:
   contents: read
-  packages: write
 
 env:
   REGISTRY: ghcr.io
@@ -15,6 +18,11 @@ jobs:
   # 1. Code Quality Check
   check-code:
     runs-on: ubuntu-latest
+    # GitHub's default job timeout is 6 hours. A hung install/build (network
+    # stall, a test waiting on stdin) would sit there burning runner minutes
+    # and holding the dispatch open. `docs-format.yml` already caps itself;
+    # these two jobs were the drift.
+    timeout-minutes: 20
     steps:
       - name: Checkout repository
         uses: actions/checkout@v7
@@ -56,6 +64,7 @@ jobs:
   build-and-push:
     needs: check-code
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     permissions:
       contents: read
       packages: write
