@@ -81,7 +81,7 @@ function setEditorWrapPreference(enabled: boolean): void {
 function InfoIcon({ tooltip }: { tooltip: string }) {
   return (
     <span className="info-icon" title={tooltip}>
-      <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
+      <svg aria-hidden="true" width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
         <path d="M0 8a8 8 0 1 1 16 0A8 8 0 0 1 0 8Zm8-6.5a6.5 6.5 0 1 0 0 13 6.5 6.5 0 0 0 0-13ZM6.92 6.085h.001a.749.749 0 1 1-1.342-.67c.169-.339.516-.552.974-.552.97 0 1.447.67 1.447 1.181 0 .43-.245.756-.462.97l-.044.042c-.21.196-.383.375-.383.632v.22a.75.75 0 0 1-1.5 0v-.22c0-.67.406-1.05.634-1.26l.044-.043c.16-.147.228-.228.228-.356 0-.098-.06-.233-.447-.233-.218 0-.316.1-.361.183ZM8 10.5a1 1 0 1 1 0 2 1 1 0 0 1 0-2Z" />
       </svg>
     </span>
@@ -532,7 +532,13 @@ export default function StashEditor({ stash, template, onSave, onCancel, onDirty
               }}
               title="Discard changes and go back"
             >
-              <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
+              <svg
+                aria-hidden="true"
+                width="14"
+                height="14"
+                viewBox="0 0 16 16"
+                fill="currentColor"
+              >
                 <path d="M3.72 3.72a.75.75 0 0 1 1.06 0L8 6.94l3.22-3.22a.749.749 0 0 1 1.275.326.749.749 0 0 1-.215.734L9.06 8l3.22 3.22a.749.749 0 0 1-.326 1.275.749.749 0 0 1-.734-.215L8 9.06l-3.22 3.22a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042L6.94 8 3.72 4.78a.75.75 0 0 1 0-1.06Z" />
               </svg>
               Cancel
@@ -544,7 +550,7 @@ export default function StashEditor({ stash, template, onSave, onCancel, onDirty
             disabled={saving}
             title="Save this stash (Ctrl+S / Cmd+S)"
           >
-            <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
+            <svg aria-hidden="true" width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
               <path d="M13.78 4.22a.75.75 0 0 1 0 1.06l-7.25 7.25a.75.75 0 0 1-1.06 0L2.22 9.28a.751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018L6 10.94l6.72-6.72a.75.75 0 0 1 1.06 0Z" />
             </svg>
             {saving ? 'Saving...' : 'Save Stash'}
@@ -706,7 +712,13 @@ export default function StashEditor({ stash, template, onSave, onCancel, onDirty
                 onClick={addFile}
                 title="Add another file to this stash"
               >
-                <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor">
+                <svg
+                  aria-hidden="true"
+                  width="12"
+                  height="12"
+                  viewBox="0 0 16 16"
+                  fill="currentColor"
+                >
                   <path d="M8 2a.75.75 0 0 1 .75.75v4.5h4.5a.75.75 0 0 1 0 1.5h-4.5v4.5a.75.75 0 0 1-1.5 0v-4.5h-4.5a.75.75 0 0 1 0-1.5h4.5v-4.5A.75.75 0 0 1 8 2Z" />
                 </svg>
                 Add File
@@ -755,7 +767,13 @@ export default function StashEditor({ stash, template, onSave, onCancel, onDirty
                       title="Remove this file"
                       aria-label="Remove this file"
                     >
-                      <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
+                      <svg
+                        aria-hidden="true"
+                        width="14"
+                        height="14"
+                        viewBox="0 0 16 16"
+                        fill="currentColor"
+                      >
                         <path d="M11 1.75V3h2.25a.75.75 0 0 1 0 1.5H2.75a.75.75 0 0 1 0-1.5H5V1.75C5 .784 5.784 0 6.75 0h2.5C10.216 0 11 .784 11 1.75ZM4.496 6.675l.66 6.6a.25.25 0 0 0 .249.225h5.19a.25.25 0 0 0 .249-.225l.66-6.6a.75.75 0 0 1 1.492.149l-.66 6.6A1.748 1.748 0 0 1 10.595 15h-5.19a1.75 1.75 0 0 1-1.741-1.575l-.66-6.6a.75.75 0 1 1 1.492-.15ZM6.5 1.75V3h3V1.75a.25.25 0 0 0-.25-.25h-2.5a.25.25 0 0 0-.25.25Z" />
                       </svg>
                     </button>
