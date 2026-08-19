@@ -46,6 +46,7 @@ const SETTINGS_SECTIONS: { id: SettingsSection; label: string; icon: JSX.Element
     label: 'Dashboard',
     icon: (
       <svg
+        aria-hidden="true"
         width="16"
         height="16"
         viewBox="0 0 24 24"
@@ -67,6 +68,7 @@ const SETTINGS_SECTIONS: { id: SettingsSection; label: string; icon: JSX.Element
     label: 'General',
     icon: (
       <svg
+        aria-hidden="true"
         width="16"
         height="16"
         viewBox="0 0 24 24"
@@ -93,6 +95,7 @@ const SETTINGS_SECTIONS: { id: SettingsSection; label: string; icon: JSX.Element
     label: 'API & Tokens',
     icon: (
       <svg
+        aria-hidden="true"
         width="16"
         height="16"
         viewBox="0 0 24 24"
@@ -111,6 +114,7 @@ const SETTINGS_SECTIONS: { id: SettingsSection; label: string; icon: JSX.Element
     label: 'GitHub Backup',
     icon: (
       <svg
+        aria-hidden="true"
         width="16"
         height="16"
         viewBox="0 0 24 24"
@@ -131,6 +135,7 @@ const SETTINGS_SECTIONS: { id: SettingsSection; label: string; icon: JSX.Element
     label: 'Storage',
     icon: (
       <svg
+        aria-hidden="true"
         width="16"
         height="16"
         viewBox="0 0 24 24"
@@ -151,6 +156,7 @@ const SETTINGS_SECTIONS: { id: SettingsSection; label: string; icon: JSX.Element
     label: 'About',
     icon: (
       <svg
+        aria-hidden="true"
         width="16"
         height="16"
         viewBox="0 0 24 24"
@@ -349,6 +355,7 @@ export default function Sidebar({
         {onClose && (
           <button className="sidebar-close-btn" onClick={onClose} aria-label="Close menu">
             <svg
+              aria-hidden="true"
               width="18"
               height="18"
               viewBox="0 0 24 24"
@@ -380,6 +387,7 @@ export default function Sidebar({
           aria-label="Tag Graph — visualize tag connections"
         >
           <svg
+            aria-hidden="true"
             width="16"
             height="16"
             viewBox="0 0 16 16"
@@ -441,7 +449,13 @@ export default function Sidebar({
                   title="Clear search (Esc)"
                   aria-label="Clear search"
                 >
-                  <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor">
+                  <svg
+                    aria-hidden="true"
+                    width="12"
+                    height="12"
+                    viewBox="0 0 16 16"
+                    fill="currentColor"
+                  >
                     <path d="M3.72 3.72a.75.75 0 0 1 1.06 0L8 6.94l3.22-3.22a.749.749 0 0 1 1.275.326.749.749 0 0 1-.215.734L9.06 8l3.22 3.22a.749.749 0 0 1-.326 1.275.749.749 0 0 1-.734-.215L8 9.06l-3.22 3.22a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042L6.94 8 3.72 4.78a.75.75 0 0 1 0-1.06Z" />
                   </svg>
                 </button>
@@ -461,6 +475,7 @@ export default function Sidebar({
               {filterTag ? (
                 <div className="sidebar-active-tag">
                   <svg
+                    aria-hidden="true"
                     className="sidebar-tag-icon"
                     width="14"
                     height="14"
@@ -503,7 +518,13 @@ export default function Sidebar({
                     title="Clear tag filter"
                     aria-label="Clear tag filter"
                   >
-                    <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor">
+                    <svg
+                      aria-hidden="true"
+                      width="12"
+                      height="12"
+                      viewBox="0 0 16 16"
+                      fill="currentColor"
+                    >
                       <path d="M3.72 3.72a.75.75 0 0 1 1.06 0L8 6.94l3.22-3.22a.749.749 0 0 1 1.275.326.749.749 0 0 1-.215.734L9.06 8l3.22 3.22a.749.749 0 0 1-.326 1.275.749.749 0 0 1-.734-.215L8 9.06l-3.22 3.22a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042L6.94 8 3.72 4.78a.75.75 0 0 1 0-1.06Z" />
                     </svg>
                   </button>
@@ -523,7 +544,13 @@ export default function Sidebar({
                   aria-expanded={tagDropdownOpen}
                   aria-haspopup="listbox"
                 >
-                  <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
+                  <svg
+                    aria-hidden="true"
+                    width="14"
+                    height="14"
+                    viewBox="0 0 16 16"
+                    fill="currentColor"
+                  >
                     <path d="M1 7.775V2.75C1 1.784 1.784 1 2.75 1h5.025c.464 0 .91.184 1.238.513l6.25 6.25a1.75 1.75 0 0 1 0 2.474l-5.026 5.026a1.75 1.75 0 0 1-2.474 0l-6.25-6.25A1.752 1.752 0 0 1 1 7.775Zm1.5 0c0 .066.026.13.073.177l6.25 6.25a.25.25 0 0 0 .354 0l5.025-5.025a.25.25 0 0 0 0-.354l-6.25-6.25a.25.25 0 0 0-.177-.073H2.75a.25.25 0 0 0-.25.25ZM6 5a1 1 0 1 1 0 2 1 1 0 0 1 0-2Z" />
                   </svg>
                   Filter by tag
@@ -630,7 +657,13 @@ export default function Sidebar({
               onClick={onNewStash}
               title="Create a new stash to store files"
             >
-              <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
+              <svg
+                aria-hidden="true"
+                width="14"
+                height="14"
+                viewBox="0 0 16 16"
+                fill="currentColor"
+              >
                 <path d="M8 2a.75.75 0 0 1 .75.75v4.5h4.5a.75.75 0 0 1 0 1.5h-4.5v4.5a.75.75 0 0 1-1.5 0v-4.5h-4.5a.75.75 0 0 1 0-1.5h4.5v-4.5A.75.75 0 0 1 8 2Z" />
               </svg>
               New Stash
@@ -642,7 +675,7 @@ export default function Sidebar({
             onClick={onToggleShowArchived}
             title={showArchived ? 'Hide archived stashes' : 'Show archived stashes'}
           >
-            <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
+            <svg aria-hidden="true" width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
               <path d="M1.75 3h12.5a.75.75 0 0 1 .75.75v1.5a.75.75 0 0 1-.75.75H1.75A.75.75 0 0 1 1 5.25v-1.5A.75.75 0 0 1 1.75 3ZM2 7.5h12v5.75a.75.75 0 0 1-.75.75H2.75a.75.75 0 0 1-.75-.75Zm4.25 1.5a.75.75 0 0 0 0 1.5h3.5a.75.75 0 0 0 0-1.5Z" />
             </svg>
             {showArchived ? 'Showing archived' : 'Show archived'}
@@ -708,6 +741,7 @@ export default function Sidebar({
         <>
           <div className="sidebar-settings-header">
             <svg
+              aria-hidden="true"
               width="18"
               height="18"
               viewBox="0 0 24 24"
@@ -765,7 +799,13 @@ export default function Sidebar({
               tabIndex={0}
             >
               <span className="sidebar-settings-nav-icon">
-                <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+                <svg
+                  aria-hidden="true"
+                  width="16"
+                  height="16"
+                  viewBox="0 0 16 16"
+                  fill="currentColor"
+                >
                   <path d="M7.78 12.53a.75.75 0 0 1-1.06 0L2.47 8.28a.75.75 0 0 1 0-1.06l4.25-4.25a.75.75 0 0 1 1.06 1.06L4.81 7h7.44a.75.75 0 0 1 0 1.5H4.81l2.97 2.97a.75.75 0 0 1 0 1.06Z" />
                 </svg>
               </span>
@@ -784,6 +824,7 @@ export default function Sidebar({
             aria-label="Settings, API tokens, and administration"
           >
             <svg
+              aria-hidden="true"
               width="16"
               height="16"
               viewBox="0 0 24 24"
@@ -806,6 +847,7 @@ export default function Sidebar({
               aria-label="Sign out"
             >
               <svg
+                aria-hidden="true"
                 width="16"
                 height="16"
                 viewBox="0 0 24 24"
