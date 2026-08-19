@@ -886,7 +886,7 @@ export default function StashViewer({
 
       <div className="viewer-header">
         <button className="btn btn-ghost" onClick={onBack} title="Go back to dashboard">
-          <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+          <svg aria-hidden="true" width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
             <path d="M7.78 12.53a.75.75 0 0 1-1.06 0L2.47 8.28a.75.75 0 0 1 0-1.06l4.25-4.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042L4.81 7h7.44a.75.75 0 0 1 0 1.5H4.81l2.97 2.97a.75.75 0 0 1 0 1.06Z" />
           </svg>
           Back
@@ -970,7 +970,7 @@ export default function StashViewer({
             />
           </button>
           <button className="btn btn-secondary" onClick={onEdit} title="Edit this stash">
-            <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
+            <svg aria-hidden="true" width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
               <path d="M11.013 1.427a1.75 1.75 0 0 1 2.474 0l1.086 1.086a1.75 1.75 0 0 1 0 2.474l-8.61 8.61c-.21.21-.47.364-.756.445l-3.251.93a.75.75 0 0 1-.927-.928l.929-3.25c.081-.286.235-.547.445-.758ZM11.189 4l1.811 1.811 1.72-1.72a.25.25 0 0 0 0-.354l-1.086-1.086a.25.25 0 0 0-.354 0Zm.528 3.283L9.906 5.472l-6.1 6.1a.25.25 0 0 0-.063.108l-.558 1.953 1.953-.558a.249.249 0 0 0 .108-.063Z" />
             </svg>
             Edit
@@ -995,7 +995,7 @@ export default function StashViewer({
                 : 'Archive this stash — hide from default listings'
             }
           >
-            <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
+            <svg aria-hidden="true" width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
               <path d="M1.75 3h12.5a.75.75 0 0 1 .75.75v1.5a.75.75 0 0 1-.75.75H1.75A.75.75 0 0 1 1 5.25v-1.5A.75.75 0 0 1 1.75 3ZM2 7.5h12v5.75a.75.75 0 0 1-.75.75H2.75a.75.75 0 0 1-.75-.75Zm4.25 1.5a.75.75 0 0 0 0 1.5h3.5a.75.75 0 0 0 0-1.5Z" />
             </svg>
             {stash.archived ? 'Unarchive' : 'Archive'}
@@ -1009,7 +1009,7 @@ export default function StashViewer({
                 : 'Delete this stash'
             }
           >
-            <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
+            <svg aria-hidden="true" width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
               <path d="M11 1.75V3h2.25a.75.75 0 0 1 0 1.5H2.75a.75.75 0 0 1 0-1.5H5V1.75C5 .784 5.784 0 6.75 0h2.5C10.216 0 11 .784 11 1.75ZM4.496 6.675l.66 6.6a.25.25 0 0 0 .249.225h5.19a.25.25 0 0 0 .249-.225l.66-6.6a.75.75 0 0 1 1.492.149l-.66 6.6A1.748 1.748 0 0 1 10.595 15h-5.19a1.75 1.75 0 0 1-1.741-1.575l-.66-6.6a.75.75 0 1 1 1.492-.15ZM6.5 1.75V3h3V1.75a.25.25 0 0 0-.25-.25h-2.5a.25.25 0 0 0-.25.25Z" />
             </svg>
             {showDeleteConfirm ? 'Confirm Delete?' : 'Delete'}
@@ -1053,6 +1053,7 @@ export default function StashViewer({
           {Object.keys(stash.metadata).length > 0 && (
             <span className="meta-indicator" title="This stash has AI metadata attached">
               <svg
+                aria-hidden="true"
                 width="12"
                 height="12"
                 viewBox="0 0 16 16"
@@ -1214,6 +1215,7 @@ export default function StashViewer({
             </svg>
             Table of Contents
             <svg
+              aria-hidden="true"
               width="12"
               height="12"
               viewBox="0 0 16 16"
@@ -1232,7 +1234,13 @@ export default function StashViewer({
                     href={`#stash-file-${entry.fileIndex}`}
                     onClick={(e) => scrollToId(e, `stash-file-${entry.fileIndex}`)}
                   >
-                    <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor">
+                    <svg
+                      aria-hidden="true"
+                      width="12"
+                      height="12"
+                      viewBox="0 0 16 16"
+                      fill="currentColor"
+                    >
                       <path d="M2 1.75C2 .784 2.784 0 3.75 0h6.586c.464 0 .909.184 1.237.513l2.914 2.914c.329.328.513.773.513 1.237v9.586A1.75 1.75 0 0 1 13.25 16h-9.5A1.75 1.75 0 0 1 2 14.25Zm1.75-.25a.25.25 0 0 0-.25.25v12.5c0 .138.112.25.25.25h9.5a.25.25 0 0 0 .25-.25V6h-2.75A1.75 1.75 0 0 1 9 4.25V1.5Zm6.75.062V4.25c0 .138.112.25.25.25h2.688l-.011-.013-2.914-2.914-.013-.011Z" />
                     </svg>
                     {entry.filename}
@@ -1372,7 +1380,13 @@ export default function StashViewer({
                         title={showRendered ? 'Show raw source code' : 'Show rendered preview'}
                         aria-label={showRendered ? 'Show raw source code' : 'Show rendered preview'}
                       >
-                        <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor">
+                        <svg
+                          aria-hidden="true"
+                          width="12"
+                          height="12"
+                          viewBox="0 0 16 16"
+                          fill="currentColor"
+                        >
                           <path d="M8 2c1.981 0 3.671.992 4.933 2.078 1.27 1.091 2.187 2.345 2.637 3.023a1.62 1.62 0 0 1 0 1.798c-.45.678-1.367 1.932-2.637 3.023C11.67 13.008 9.981 14 8 14c-1.981 0-3.671-.992-4.933-2.078C1.797 10.831.88 9.577.43 8.9a1.619 1.619 0 0 1 0-1.798c.45-.678 1.367-1.932 2.637-3.023C4.33 2.992 6.019 2 8 2ZM1.679 7.932a.12.12 0 0 0 0 .136c.411.622 1.241 1.75 2.366 2.717C5.176 11.758 6.527 12.5 8 12.5c1.473 0 2.825-.742 3.955-1.715 1.124-.967 1.954-2.096 2.366-2.717a.12.12 0 0 0 0-.136c-.412-.621-1.242-1.75-2.366-2.717C10.824 4.242 9.473 3.5 8 3.5c-1.473 0-2.825.742-3.955 1.715-1.124.967-1.954 2.096-2.366 2.717ZM8 10a2 2 0 1 1-.001-3.999A2 2 0 0 1 8 10Z" />
                         </svg>
                         {showRendered ? 'Raw' : 'Preview'}

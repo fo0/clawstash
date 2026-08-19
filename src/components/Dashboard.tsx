@@ -214,7 +214,7 @@ export default function Dashboard({
             onClick={onNewStash}
             title="Create a new stash to store files"
           >
-            <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
+            <svg aria-hidden="true" width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
               <path d="M8 2a.75.75 0 0 1 .75.75v4.5h4.5a.75.75 0 0 1 0 1.5h-4.5v4.5a.75.75 0 0 1-1.5 0v-4.5h-4.5a.75.75 0 0 1 0-1.5h4.5v-4.5A.75.75 0 0 1 8 2Z" />
             </svg>
             New Stash
@@ -232,7 +232,7 @@ export default function Dashboard({
         // misleadingly read "No stashes yet" — show the failure + a retry.
         <div className="empty-state" role="alert">
           <div className="empty-icon">
-            <svg width="36" height="36" viewBox="0 0 16 16" fill="currentColor">
+            <svg aria-hidden="true" width="36" height="36" viewBox="0 0 16 16" fill="currentColor">
               <path d="M6.457 1.047c.659-1.234 2.427-1.234 3.086 0l6.082 11.378A1.75 1.75 0 0 1 14.082 15H1.918a1.75 1.75 0 0 1-1.543-2.575Zm1.763.707a.25.25 0 0 0-.44 0L1.698 13.132a.25.25 0 0 0 .22.368h12.164a.25.25 0 0 0 .22-.368Zm.53 3.996v2.5a.75.75 0 0 1-1.5 0v-2.5a.75.75 0 0 1 1.5 0ZM9 11a1 1 0 1 1-2 0 1 1 0 0 1 2 0Z" />
             </svg>
           </div>
@@ -244,7 +244,7 @@ export default function Dashboard({
       ) : !loading && stashes.length === 0 ? (
         <div className="empty-state">
           <div className="empty-icon">
-            <svg width="36" height="36" viewBox="0 0 16 16" fill="currentColor">
+            <svg aria-hidden="true" width="36" height="36" viewBox="0 0 16 16" fill="currentColor">
               <path d="M8 2a.75.75 0 0 1 .75.75v4.5h4.5a.75.75 0 0 1 0 1.5h-4.5v4.5a.75.75 0 0 1-1.5 0v-4.5h-4.5a.75.75 0 0 1 0-1.5h4.5v-4.5A.75.75 0 0 1 8 2Z" />
             </svg>
           </div>
@@ -256,7 +256,7 @@ export default function Dashboard({
                 : 'No stashes yet. Create your first one!'}
           </p>
           <button className="btn btn-new-stash" onClick={onNewStash}>
-            <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
+            <svg aria-hidden="true" width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
               <path d="M8 2a.75.75 0 0 1 .75.75v4.5h4.5a.75.75 0 0 1 0 1.5h-4.5v4.5a.75.75 0 0 1-1.5 0v-4.5h-4.5a.75.75 0 0 1 0-1.5h4.5v-4.5A.75.75 0 0 1 8 2Z" />
             </svg>
             New Stash
@@ -294,7 +294,13 @@ export default function Dashboard({
               title="Create a new stash"
             >
               <div className="new-stash-icon">
-                <svg width="36" height="36" viewBox="0 0 16 16" fill="currentColor">
+                <svg
+                  aria-hidden="true"
+                  width="36"
+                  height="36"
+                  viewBox="0 0 16 16"
+                  fill="currentColor"
+                >
                   <path d="M8 2a.75.75 0 0 1 .75.75v4.5h4.5a.75.75 0 0 1 0 1.5h-4.5v4.5a.75.75 0 0 1-1.5 0v-4.5h-4.5a.75.75 0 0 1 0-1.5h4.5v-4.5A.75.75 0 0 1 8 2Z" />
                 </svg>
               </div>
