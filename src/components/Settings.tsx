@@ -22,6 +22,7 @@ const WELCOME_CARDS: {
     color: 'var(--accent-orange)',
     icon: (
       <svg
+        aria-hidden="true"
         width="22"
         height="22"
         viewBox="0 0 24 24"
@@ -50,6 +51,7 @@ const WELCOME_CARDS: {
     color: '#3bc9db',
     icon: (
       <svg
+        aria-hidden="true"
         width="22"
         height="22"
         viewBox="0 0 24 24"
@@ -73,6 +75,7 @@ const WELCOME_CARDS: {
     color: '#f783ac',
     icon: (
       <svg
+        aria-hidden="true"
         width="22"
         height="22"
         viewBox="0 0 24 24"
@@ -95,6 +98,7 @@ const WELCOME_CARDS: {
     color: '#b197fc',
     icon: (
       <svg
+        aria-hidden="true"
         width="22"
         height="22"
         viewBox="0 0 24 24"
@@ -117,6 +121,7 @@ const WELCOME_CARDS: {
     color: 'var(--accent-green)',
     icon: (
       <svg
+        aria-hidden="true"
         width="22"
         height="22"
         viewBox="0 0 24 24"
@@ -167,6 +172,7 @@ function WelcomeSection({ onNavigate }: WelcomeSectionProps) {
       <div className="settings-welcome-header">
         <div className="settings-welcome-icon">
           <svg
+            aria-hidden="true"
             width="28"
             height="28"
             viewBox="0 0 24 24"
@@ -232,7 +238,13 @@ function WelcomeSection({ onNavigate }: WelcomeSectionProps) {
               <p>{card.description}</p>
             </div>
             <div className="settings-welcome-card-arrow">
-              <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+              <svg
+                aria-hidden="true"
+                width="16"
+                height="16"
+                viewBox="0 0 16 16"
+                fill="currentColor"
+              >
                 <path d="M6.22 3.22a.75.75 0 0 1 1.06 0l4.25 4.25a.75.75 0 0 1 0 1.06l-4.25 4.25a.75.75 0 0 1-1.06-1.06L9.94 8 6.22 4.28a.75.75 0 0 1 0-1.06Z" />
               </svg>
             </div>
@@ -242,6 +254,7 @@ function WelcomeSection({ onNavigate }: WelcomeSectionProps) {
 
       <div className="settings-welcome-hint">
         <svg
+          aria-hidden="true"
           width="16"
           height="16"
           viewBox="0 0 24 24"
@@ -269,6 +282,7 @@ function WelcomeSection({ onNavigate }: WelcomeSectionProps) {
 function SlidersIcon() {
   return (
     <svg
+      aria-hidden="true"
       width="20"
       height="20"
       viewBox="0 0 24 24"
@@ -294,6 +308,7 @@ function SlidersIcon() {
 function DatabaseIcon() {
   return (
     <svg
+      aria-hidden="true"
       width="20"
       height="20"
       viewBox="0 0 24 24"
@@ -313,6 +328,7 @@ function DatabaseIcon() {
 function InfoIcon() {
   return (
     <svg
+      aria-hidden="true"
       width="20"
       height="20"
       viewBox="0 0 24 24"
@@ -617,6 +633,7 @@ function StorageSection({ onFilterTag }: StorageSectionProps) {
             disabled={exporting || importing}
           >
             <svg
+              aria-hidden="true"
               width="16"
               height="16"
               viewBox="0 0 24 24"
@@ -638,6 +655,7 @@ function StorageSection({ onFilterTag }: StorageSectionProps) {
             style={{ cursor: importing ? 'wait' : 'pointer' }}
           >
             <svg
+              aria-hidden="true"
               width="16"
               height="16"
               viewBox="0 0 24 24"
