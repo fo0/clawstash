@@ -1462,7 +1462,13 @@ export default function GraphViewer({
               title="Back to dashboard"
               aria-label="Back to dashboard"
             >
-              <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+              <svg
+                aria-hidden="true"
+                width="16"
+                height="16"
+                viewBox="0 0 16 16"
+                fill="currentColor"
+              >
                 <path d="M7.78 12.53a.75.75 0 0 1-1.06 0L2.47 8.28a.75.75 0 0 1 0-1.06l4.25-4.25a.75.75 0 0 1 1.06 1.06L4.81 7h7.44a.75.75 0 0 1 0 1.5H4.81l2.97 2.97a.75.75 0 0 1 0 1.06Z" />
               </svg>
             </button>
@@ -1489,7 +1495,7 @@ export default function GraphViewer({
             title="Back to dashboard"
             aria-label="Back to dashboard"
           >
-            <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+            <svg aria-hidden="true" width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
               <path d="M7.78 12.53a.75.75 0 0 1-1.06 0L2.47 8.28a.75.75 0 0 1 0-1.06l4.25-4.25a.75.75 0 0 1 1.06 1.06L4.81 7h7.44a.75.75 0 0 1 0 1.5H4.81l2.97 2.97a.75.75 0 0 1 0 1.06Z" />
             </svg>
           </button>
@@ -1501,7 +1507,13 @@ export default function GraphViewer({
         <div className="graph-actions">
           {focusTag && (
             <div className="graph-focus-indicator">
-              <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
+              <svg
+                aria-hidden="true"
+                width="14"
+                height="14"
+                viewBox="0 0 16 16"
+                fill="currentColor"
+              >
                 <path d="M8 2a6 6 0 1 0 0 12A6 6 0 0 0 8 2Zm0 1.5a4.5 4.5 0 1 1 0 9 4.5 4.5 0 0 1 0-9Zm0 2a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5Z" />
               </svg>
               <span>{focusTag}</span>
@@ -1530,7 +1542,13 @@ export default function GraphViewer({
                 title="Clear focus"
                 aria-label="Clear focus"
               >
-                <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor">
+                <svg
+                  aria-hidden="true"
+                  width="12"
+                  height="12"
+                  viewBox="0 0 16 16"
+                  fill="currentColor"
+                >
                   <path d="M3.72 3.72a.75.75 0 0 1 1.06 0L8 6.94l3.22-3.22a.749.749 0 0 1 1.275.326.749.749 0 0 1-.215.734L9.06 8l3.22 3.22a.749.749 0 0 1-.326 1.275.749.749 0 0 1-.734-.215L8 9.06l-3.22 3.22a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042L6.94 8 3.72 4.78a.75.75 0 0 1 0-1.06Z" />
                 </svg>
               </button>
@@ -1538,7 +1556,13 @@ export default function GraphViewer({
           )}
           {highlightTag && !focusTag && (
             <div className="graph-highlight-indicator">
-              <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
+              <svg
+                aria-hidden="true"
+                width="14"
+                height="14"
+                viewBox="0 0 16 16"
+                fill="currentColor"
+              >
                 <path d="M10.68 11.74a6 6 0 0 1-7.922-8.982 6 6 0 0 1 8.982 7.922l3.04 3.04a.749.749 0 0 1-.326 1.275.749.749 0 0 1-.734-.215ZM11.5 7a4.499 4.499 0 1 0-8.997 0A4.499 4.499 0 0 0 11.5 7Z" />
               </svg>
               <span>{highlightTag}</span>
@@ -1547,7 +1571,13 @@ export default function GraphViewer({
                 onClick={() => handleFocusTag(highlightTag)}
                 title="Focus on this tag"
               >
-                <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor">
+                <svg
+                  aria-hidden="true"
+                  width="12"
+                  height="12"
+                  viewBox="0 0 16 16"
+                  fill="currentColor"
+                >
                   <path d="M8 2a6 6 0 1 0 0 12A6 6 0 0 0 8 2Zm0 1.5a4.5 4.5 0 1 1 0 9 4.5 4.5 0 0 1 0-9Zm0 2a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5Z" />
                 </svg>
                 Focus
@@ -1558,7 +1588,13 @@ export default function GraphViewer({
                 title="Clear highlight"
                 aria-label="Clear highlight"
               >
-                <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor">
+                <svg
+                  aria-hidden="true"
+                  width="12"
+                  height="12"
+                  viewBox="0 0 16 16"
+                  fill="currentColor"
+                >
                   <path d="M3.72 3.72a.75.75 0 0 1 1.06 0L8 6.94l3.22-3.22a.749.749 0 0 1 1.275.326.749.749 0 0 1-.215.734L9.06 8l3.22 3.22a.749.749 0 0 1-.326 1.275.749.749 0 0 1-.734-.215L8 9.06l-3.22 3.22a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042L6.94 8 3.72 4.78a.75.75 0 0 1 0-1.06Z" />
                 </svg>
               </button>
@@ -1566,7 +1602,13 @@ export default function GraphViewer({
           )}
           {hoveredTag && !popup && !highlightTag && (
             <span className="graph-hover-info">
-              <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
+              <svg
+                aria-hidden="true"
+                width="14"
+                height="14"
+                viewBox="0 0 16 16"
+                fill="currentColor"
+              >
                 <path d="M1 7.775V2.75C1 1.784 1.784 1 2.75 1h5.025c.464 0 .91.184 1.238.513l6.25 6.25a1.75 1.75 0 0 1 0 2.474l-5.026 5.026a1.75 1.75 0 0 1-2.474 0l-6.25-6.25A1.752 1.752 0 0 1 1 7.775Zm1.5 0c0 .066.026.13.073.177l6.25 6.25a.25.25 0 0 0 .354 0l5.025-5.025a.25.25 0 0 0 0-.354l-6.25-6.25a.25.25 0 0 0-.177-.073H2.75a.25.25 0 0 0-.25.25ZM6 5a1 1 0 1 1 0 2 1 1 0 0 1 0-2Z" />
               </svg>
               {hoveredTag}
@@ -1575,6 +1617,7 @@ export default function GraphViewer({
           <div className="graph-search-wrapper">
             <div className="graph-search-box">
               <svg
+                aria-hidden="true"
                 className="graph-search-icon"
                 width="14"
                 height="14"
@@ -1624,7 +1667,13 @@ export default function GraphViewer({
                   title="Clear search"
                   aria-label="Clear search"
                 >
-                  <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor">
+                  <svg
+                    aria-hidden="true"
+                    width="12"
+                    height="12"
+                    viewBox="0 0 16 16"
+                    fill="currentColor"
+                  >
                     <path d="M3.72 3.72a.75.75 0 0 1 1.06 0L8 6.94l3.22-3.22a.749.749 0 0 1 1.275.326.749.749 0 0 1-.215.734L9.06 8l3.22 3.22a.749.749 0 0 1-.326 1.275.749.749 0 0 1-.734-.215L8 9.06l-3.22 3.22a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042L6.94 8 3.72 4.78a.75.75 0 0 1 0-1.06Z" />
                   </svg>
                 </button>
@@ -1644,7 +1693,13 @@ export default function GraphViewer({
                             inGraph ? 'Locate in graph' : 'Not in current view — click to focus'
                           }
                         >
-                          <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor">
+                          <svg
+                            aria-hidden="true"
+                            width="12"
+                            height="12"
+                            viewBox="0 0 16 16"
+                            fill="currentColor"
+                          >
                             <path d="M1 7.775V2.75C1 1.784 1.784 1 2.75 1h5.025c.464 0 .91.184 1.238.513l6.25 6.25a1.75 1.75 0 0 1 0 2.474l-5.026 5.026a1.75 1.75 0 0 1-2.474 0l-6.25-6.25A1.752 1.752 0 0 1 1 7.775Zm1.5 0c0 .066.026.13.073.177l6.25 6.25a.25.25 0 0 0 .354 0l5.025-5.025a.25.25 0 0 0 0-.354l-6.25-6.25a.25.25 0 0 0-.177-.073H2.75a.25.25 0 0 0-.25.25ZM6 5a1 1 0 1 1 0 2 1 1 0 0 1 0-2Z" />
                           </svg>
                           <span className="graph-search-result-name">{t.tag}</span>
@@ -1659,7 +1714,13 @@ export default function GraphViewer({
                           title="Focus graph on this tag"
                           aria-label="Focus graph on this tag"
                         >
-                          <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor">
+                          <svg
+                            aria-hidden="true"
+                            width="12"
+                            height="12"
+                            viewBox="0 0 16 16"
+                            fill="currentColor"
+                          >
                             <path d="M8 2a6 6 0 1 0 0 12A6 6 0 0 0 8 2Zm0 1.5a4.5 4.5 0 1 1 0 9 4.5 4.5 0 0 1 0-9Zm0 2a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5Z" />
                           </svg>
                         </button>
@@ -1695,7 +1756,7 @@ export default function GraphViewer({
             onClick={handleResetView}
             title="Reset graph layout and zoom"
           >
-            <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
+            <svg aria-hidden="true" width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
               <path d="M3.38 8A4.62 4.62 0 0 1 8 3.38a4.63 4.63 0 0 1 3.27 1.35L9.74 6.26h4.51V1.75l-1.49 1.49A6.12 6.12 0 0 0 8 1.88 6.13 6.13 0 0 0 1.88 8Z" />
               <path d="M12.62 8A4.62 4.62 0 0 1 8 12.62a4.63 4.63 0 0 1-3.27-1.35l1.53-1.53H1.75v4.51l1.49-1.49A6.12 6.12 0 0 0 8 14.12 6.13 6.13 0 0 0 14.12 8Z" />
             </svg>
@@ -1732,7 +1793,14 @@ export default function GraphViewer({
 
         {!loading && !loadError && tags.length === 0 && !focusTag && (
           <div className="graph-empty">
-            <svg width="36" height="36" viewBox="0 0 16 16" fill="currentColor" opacity="0.3">
+            <svg
+              aria-hidden="true"
+              width="36"
+              height="36"
+              viewBox="0 0 16 16"
+              fill="currentColor"
+              opacity="0.3"
+            >
               <path d="M1 7.775V2.75C1 1.784 1.784 1 2.75 1h5.025c.464 0 .91.184 1.238.513l6.25 6.25a1.75 1.75 0 0 1 0 2.474l-5.026 5.026a1.75 1.75 0 0 1-2.474 0l-6.25-6.25A1.752 1.752 0 0 1 1 7.775Zm1.5 0c0 .066.026.13.073.177l6.25 6.25a.25.25 0 0 0 .354 0l5.025-5.025a.25.25 0 0 0 0-.354l-6.25-6.25a.25.25 0 0 0-.177-.073H2.75a.25.25 0 0 0-.25.25ZM6 5a1 1 0 1 1 0 2 1 1 0 0 1 0-2Z" />
             </svg>
             <p>No tags to visualize. Add tags to your stashes to see the graph.</p>
@@ -1749,7 +1817,13 @@ export default function GraphViewer({
           >
             <div className="graph-popup-header">
               <div className="graph-popup-tag">
-                <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
+                <svg
+                  aria-hidden="true"
+                  width="14"
+                  height="14"
+                  viewBox="0 0 16 16"
+                  fill="currentColor"
+                >
                   <path d="M1 7.775V2.75C1 1.784 1.784 1 2.75 1h5.025c.464 0 .91.184 1.238.513l6.25 6.25a1.75 1.75 0 0 1 0 2.474l-5.026 5.026a1.75 1.75 0 0 1-2.474 0l-6.25-6.25A1.752 1.752 0 0 1 1 7.775Zm1.5 0c0 .066.026.13.073.177l6.25 6.25a.25.25 0 0 0 .354 0l5.025-5.025a.25.25 0 0 0 0-.354l-6.25-6.25a.25.25 0 0 0-.177-.073H2.75a.25.25 0 0 0-.25.25ZM6 5a1 1 0 1 1 0 2 1 1 0 0 1 0-2Z" />
                 </svg>
                 <strong>{popup.tag}</strong>
@@ -1760,7 +1834,13 @@ export default function GraphViewer({
                 title="Close"
                 aria-label="Close"
               >
-                <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
+                <svg
+                  aria-hidden="true"
+                  width="14"
+                  height="14"
+                  viewBox="0 0 16 16"
+                  fill="currentColor"
+                >
                   <path d="M3.72 3.72a.75.75 0 0 1 1.06 0L8 6.94l3.22-3.22a.749.749 0 0 1 1.275.326.749.749 0 0 1-.215.734L9.06 8l3.22 3.22a.749.749 0 0 1-.326 1.275.749.749 0 0 1-.734-.215L8 9.06l-3.22 3.22a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042L6.94 8 3.72 4.78a.75.75 0 0 1 0-1.06Z" />
                 </svg>
               </button>
@@ -1818,7 +1898,13 @@ export default function GraphViewer({
                   onFilterTag(popup.tag);
                 }}
               >
-                <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor">
+                <svg
+                  aria-hidden="true"
+                  width="12"
+                  height="12"
+                  viewBox="0 0 16 16"
+                  fill="currentColor"
+                >
                   <path d="M.75 3h14.5a.75.75 0 0 1 0 1.5H.75a.75.75 0 0 1 0-1.5ZM3 7.75A.75.75 0 0 1 3.75 7h8.5a.75.75 0 0 1 0 1.5h-8.5A.75.75 0 0 1 3 7.75Zm3 4a.75.75 0 0 1 .75-.75h2.5a.75.75 0 0 1 0 1.5h-2.5a.75.75 0 0 1-.75-.75Z" />
                 </svg>
                 Filter Dashboard
@@ -1827,7 +1913,13 @@ export default function GraphViewer({
                 className="graph-popup-action-btn graph-popup-action-focus"
                 onClick={() => handleFocusTag(popup.tag)}
               >
-                <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor">
+                <svg
+                  aria-hidden="true"
+                  width="12"
+                  height="12"
+                  viewBox="0 0 16 16"
+                  fill="currentColor"
+                >
                   <path d="M8 2a6 6 0 1 0 0 12A6 6 0 0 0 8 2Zm0 1.5a4.5 4.5 0 1 1 0 9 4.5 4.5 0 0 1 0-9Zm0 2a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5Z" />
                 </svg>
                 Focus Graph
