@@ -1570,7 +1570,7 @@ export default function StashGraphCanvas({
             onClick={handleClearAnalysis}
             title="Reset analysis"
           >
-            <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
+            <svg aria-hidden="true" width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
               <path d="M3.72 3.72a.75.75 0 0 1 1.06 0L8 6.94l3.22-3.22a.749.749 0 0 1 1.275.326.749.749 0 0 1-.215.734L9.06 8l3.22 3.22a.749.749 0 0 1-.326 1.275.749.749 0 0 1-.734-.215L8 9.06l-3.22 3.22a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042L6.94 8 3.72 4.78a.75.75 0 0 1 0-1.06Z" />
             </svg>
             Reset analysis ({analysedStashes.size})
@@ -1578,7 +1578,14 @@ export default function StashGraphCanvas({
         )}
         {trackedTags.size > 0 && (
           <span className="graph-ignored-tags-info" style={{ color: 'rgba(35, 134, 54, 0.9)' }}>
-            <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor" opacity="0.8">
+            <svg
+              aria-hidden="true"
+              width="12"
+              height="12"
+              viewBox="0 0 16 16"
+              fill="currentColor"
+              opacity="0.8"
+            >
               <path d="M1 7.775V2.75C1 1.784 1.784 1 2.75 1h5.025c.464 0 .91.184 1.238.513l6.25 6.25a1.75 1.75 0 0 1 0 2.474l-5.026 5.026a1.75 1.75 0 0 1-2.474 0l-6.25-6.25A1.752 1.752 0 0 1 1 7.775Zm1.5 0c0 .066.026.13.073.177l6.25 6.25a.25.25 0 0 0 .354 0l5.025-5.025a.25.25 0 0 0 0-.354l-6.25-6.25a.25.25 0 0 0-.177-.073H2.75a.25.25 0 0 0-.25.25ZM6 5a1 1 0 1 1 0 2 1 1 0 0 1 0-2Z" />
             </svg>
             {trackedTags.size} tag{trackedTags.size !== 1 ? 's' : ''} tracked
@@ -1592,7 +1599,14 @@ export default function StashGraphCanvas({
             title={`Re-include all ${ignoredTags.size} ignored tag${ignoredTags.size !== 1 ? 's' : ''}`}
             aria-label={`Re-include all ${ignoredTags.size} ignored tag${ignoredTags.size !== 1 ? 's' : ''}`}
           >
-            <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor" opacity="0.6">
+            <svg
+              aria-hidden="true"
+              width="12"
+              height="12"
+              viewBox="0 0 16 16"
+              fill="currentColor"
+              opacity="0.6"
+            >
               <path d="M1 7.775V2.75C1 1.784 1.784 1 2.75 1h5.025c.464 0 .91.184 1.238.513l6.25 6.25a1.75 1.75 0 0 1 0 2.474l-5.026 5.026a1.75 1.75 0 0 1-2.474 0l-6.25-6.25A1.752 1.752 0 0 1 1 7.775Zm1.5 0c0 .066.026.13.073.177l6.25 6.25a.25.25 0 0 0 .354 0l5.025-5.025a.25.25 0 0 0 0-.354l-6.25-6.25a.25.25 0 0 0-.177-.073H2.75a.25.25 0 0 0-.25.25ZM6 5a1 1 0 1 1 0 2 1 1 0 0 1 0-2Z" />
             </svg>
             {ignoredTags.size} tag{ignoredTags.size !== 1 ? 's' : ''} ignored
@@ -1601,7 +1615,7 @@ export default function StashGraphCanvas({
         )}
         {hoveredLabel && !popup && (
           <span className="graph-hover-info">
-            <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
+            <svg aria-hidden="true" width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
               <path d="M1 7.775V2.75C1 1.784 1.784 1 2.75 1h5.025c.464 0 .91.184 1.238.513l6.25 6.25a1.75 1.75 0 0 1 0 2.474l-5.026 5.026a1.75 1.75 0 0 1-2.474 0l-6.25-6.25A1.752 1.752 0 0 1 1 7.775Zm1.5 0c0 .066.026.13.073.177l6.25 6.25a.25.25 0 0 0 .354 0l5.025-5.025a.25.25 0 0 0 0-.354l-6.25-6.25a.25.25 0 0 0-.177-.073H2.75a.25.25 0 0 0-.25.25ZM6 5a1 1 0 1 1 0 2 1 1 0 0 1 0-2Z" />
             </svg>
             {hoveredLabel}
@@ -1612,7 +1626,7 @@ export default function StashGraphCanvas({
           onClick={handleReset}
           title="Reset graph layout and zoom"
         >
-          <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
+          <svg aria-hidden="true" width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
             <path d="M3.38 8A4.62 4.62 0 0 1 8 3.38a4.63 4.63 0 0 1 3.27 1.35L9.74 6.26h4.51V1.75l-1.49 1.49A6.12 6.12 0 0 0 8 1.88 6.13 6.13 0 0 0 1.88 8Z" />
             <path d="M12.62 8A4.62 4.62 0 0 1 8 12.62a4.63 4.63 0 0 1-3.27-1.35l1.53-1.53H1.75v4.51l1.49-1.49A6.12 6.12 0 0 0 8 14.12 6.13 6.13 0 0 0 14.12 8Z" />
           </svg>
@@ -1668,7 +1682,14 @@ export default function StashGraphCanvas({
 
         {!loading && !loadError && nodeCount === 0 && (
           <div className="graph-empty">
-            <svg width="36" height="36" viewBox="0 0 16 16" fill="currentColor" opacity="0.3">
+            <svg
+              aria-hidden="true"
+              width="36"
+              height="36"
+              viewBox="0 0 16 16"
+              fill="currentColor"
+              opacity="0.3"
+            >
               <path d="M2 1.75C2 .784 2.784 0 3.75 0h6.586c.464 0 .909.184 1.237.513l2.914 2.914c.329.328.513.773.513 1.237v9.586A1.75 1.75 0 0 1 13.25 16h-9.5A1.75 1.75 0 0 1 2 14.25Zm1.75-.25a.25.25 0 0 0-.25.25v12.5c0 .138.112.25.25.25h9.5a.25.25 0 0 0 .25-.25V6h-2.75A1.75 1.75 0 0 1 9 4.25V1.5Zm6.75.062V4.25c0 .138.112.25.25.25h2.688l-.011-.013-2.914-2.914-.013-.011Z" />
             </svg>
             <p>No stashes to visualize. Create stashes to see the graph.</p>
@@ -1738,7 +1759,13 @@ export default function StashGraphCanvas({
           >
             <div className="graph-popup-header">
               <div className="graph-popup-tag">
-                <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
+                <svg
+                  aria-hidden="true"
+                  width="14"
+                  height="14"
+                  viewBox="0 0 16 16"
+                  fill="currentColor"
+                >
                   <path d="M2 1.75C2 .784 2.784 0 3.75 0h6.586c.464 0 .909.184 1.237.513l2.914 2.914c.329.328.513.773.513 1.237v9.586A1.75 1.75 0 0 1 13.25 16h-9.5A1.75 1.75 0 0 1 2 14.25Zm1.75-.25a.25.25 0 0 0-.25.25v12.5c0 .138.112.25.25.25h9.5a.25.25 0 0 0 .25-.25V6h-2.75A1.75 1.75 0 0 1 9 4.25V1.5Zm6.75.062V4.25c0 .138.112.25.25.25h2.688l-.011-.013-2.914-2.914-.013-.011Z" />
                 </svg>
                 <strong>{popup.node.label}</strong>
@@ -1749,7 +1776,13 @@ export default function StashGraphCanvas({
                 title="Close"
                 aria-label="Close"
               >
-                <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
+                <svg
+                  aria-hidden="true"
+                  width="14"
+                  height="14"
+                  viewBox="0 0 16 16"
+                  fill="currentColor"
+                >
                   <path d="M3.72 3.72a.75.75 0 0 1 1.06 0L8 6.94l3.22-3.22a.749.749 0 0 1 1.275.326.749.749 0 0 1-.215.734L9.06 8l3.22 3.22a.749.749 0 0 1-.326 1.275.749.749 0 0 1-.734-.215L8 9.06l-3.22 3.22a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042L6.94 8 3.72 4.78a.75.75 0 0 1 0-1.06Z" />
                 </svg>
               </button>
@@ -1806,6 +1839,7 @@ export default function StashGraphCanvas({
                       {t}
                       {ignoredTags.has(t) && (
                         <svg
+                          aria-hidden="true"
                           width="10"
                           height="10"
                           viewBox="0 0 16 16"
@@ -1842,7 +1876,13 @@ export default function StashGraphCanvas({
                 className="graph-popup-action-btn graph-popup-action-analyse"
                 onClick={() => handleAnalyse(popup.node.id)}
               >
-                <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor">
+                <svg
+                  aria-hidden="true"
+                  width="12"
+                  height="12"
+                  viewBox="0 0 16 16"
+                  fill="currentColor"
+                >
                   <path d="M8 2a6 6 0 1 0 0 12A6 6 0 0 0 8 2Zm0 1.5a4.5 4.5 0 1 1 0 9 4.5 4.5 0 0 1 0-9Zm0 2a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5Z" />
                 </svg>
                 {analysedStashes.has(popup.node.id) ? 'End analysis' : 'Analyze'}
@@ -1854,7 +1894,13 @@ export default function StashGraphCanvas({
                   onSelectStash(popup.node.id);
                 }}
               >
-                <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor">
+                <svg
+                  aria-hidden="true"
+                  width="12"
+                  height="12"
+                  viewBox="0 0 16 16"
+                  fill="currentColor"
+                >
                   <path d="M1.5 8a6.5 6.5 0 1 1 13 0 6.5 6.5 0 0 1-13 0ZM8 0a8 8 0 1 0 0 16A8 8 0 0 0 8 0Zm.75 4.75a.75.75 0 0 0-1.5 0v2.5h-2.5a.75.75 0 0 0 0 1.5h2.5v2.5a.75.75 0 0 0 1.5 0v-2.5h2.5a.75.75 0 0 0 0-1.5h-2.5Z" />
                 </svg>
                 Open Stash
@@ -1873,7 +1919,13 @@ export default function StashGraphCanvas({
           >
             <div className="graph-popup-header">
               <div className="graph-popup-tag">
-                <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
+                <svg
+                  aria-hidden="true"
+                  width="14"
+                  height="14"
+                  viewBox="0 0 16 16"
+                  fill="currentColor"
+                >
                   <path d="M1 7.775V2.75C1 1.784 1.784 1 2.75 1h5.025c.464 0 .91.184 1.238.513l6.25 6.25a1.75 1.75 0 0 1 0 2.474l-5.026 5.026a1.75 1.75 0 0 1-2.474 0l-6.25-6.25A1.752 1.752 0 0 1 1 7.775Zm1.5 0c0 .066.026.13.073.177l6.25 6.25a.25.25 0 0 0 .354 0l5.025-5.025a.25.25 0 0 0 0-.354l-6.25-6.25a.25.25 0 0 0-.177-.073H2.75a.25.25 0 0 0-.25.25ZM6 5a1 1 0 1 1 0 2 1 1 0 0 1 0-2Z" />
                 </svg>
                 <strong>{popup.node.label}</strong>
@@ -1884,7 +1936,13 @@ export default function StashGraphCanvas({
                 title="Close"
                 aria-label="Close"
               >
-                <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
+                <svg
+                  aria-hidden="true"
+                  width="14"
+                  height="14"
+                  viewBox="0 0 16 16"
+                  fill="currentColor"
+                >
                   <path d="M3.72 3.72a.75.75 0 0 1 1.06 0L8 6.94l3.22-3.22a.749.749 0 0 1 1.275.326.749.749 0 0 1-.215.734L9.06 8l3.22 3.22a.749.749 0 0 1-.326 1.275.749.749 0 0 1-.734-.215L8 9.06l-3.22 3.22a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042L6.94 8 3.72 4.78a.75.75 0 0 1 0-1.06Z" />
                 </svg>
               </button>
@@ -1906,7 +1964,13 @@ export default function StashGraphCanvas({
                   setPopup(null);
                 }}
               >
-                <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor">
+                <svg
+                  aria-hidden="true"
+                  width="12"
+                  height="12"
+                  viewBox="0 0 16 16"
+                  fill="currentColor"
+                >
                   {ignoredTags.has(popup.node.label) ? (
                     <path d="M8 2a6 6 0 1 0 0 12A6 6 0 0 0 8 2Zm0 1.5a4.5 4.5 0 1 1 0 9 4.5 4.5 0 0 1 0-9Zm0 2a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5Z" />
                   ) : (
@@ -1930,7 +1994,13 @@ export default function StashGraphCanvas({
                   setPopup(null);
                 }}
               >
-                <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor">
+                <svg
+                  aria-hidden="true"
+                  width="12"
+                  height="12"
+                  viewBox="0 0 16 16"
+                  fill="currentColor"
+                >
                   <path d="M8.75 1.75a.75.75 0 0 0-1.5 0V5H4a.75.75 0 0 0 0 1.5h3.25v3.25a.75.75 0 0 0 1.5 0V6.5H12A.75.75 0 0 0 12 5H8.75V1.75ZM4 13a.75.75 0 0 0 0 1.5h8a.75.75 0 0 0 0-1.5H4Z" />
                 </svg>
                 {trackedTags.has(popup.node.label) ? 'Stop tracking' : 'Track'}
