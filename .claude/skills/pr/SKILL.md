@@ -1,6 +1,7 @@
 ---
 name: pr
 description: "Use for any GitHub Pull Request work. Auto-detects lifecycle phase (create / update / report) from current state — only requires explicit command for status, comments, or merge. Triggered by /pr, 'PR', 'create PR', 'open PR', 'update PR', 'PR status', 'merge PR'. Suggests, never auto-creates without user invocation."
+argument-hint: "[status|comments|update|merge]"
 ---
 
 # PR — Pull Request Workflow
