@@ -24,6 +24,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/), and this
 
 ### Changed
 
+- Sidebar stash list: an empty list now names what caused it (the active search, the tag filter, or neither) and offers the matching way out — clear search, clear tag filter, show archived, or create a stash. It also carries the dashboard's "Load more", so the stashes past the server's list cap are reachable without leaving the sidebar
+- Settings → Storage: a successful export now reports the downloaded filename and size instead of saying nothing, an export failure is reported as an export failure instead of through the import error slot, and the import confirmation names the exact data it will replace (stash count, file count, total size) and points out that only a prior export can undo it
+- Stash viewer → Access Log: the tab fetched 100 entries and rendered them as if they were the whole log. It now says how many entries are on screen when the log is cut off and offers "Show more" up to the 1000 the server returns
 - Rate-limit moved from Edge middleware to Node route handlers, so successful login can clear the per-IP counter and prevent legitimate users from being locked out after 10 logins
 - Rate-limit now applied to `/api/admin/auth`, `/api/tokens/validate`, and `/api/admin/session` (the latter previously bypassed the limit when a token was supplied — a brute-force oracle)
 - `getBaseUrl()` and rate-limit IP detection now ignore `X-Forwarded-*` unless `TRUST_PROXY=1`

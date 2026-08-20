@@ -1007,6 +1007,8 @@ export default function App() {
       <Sidebar
         stashes={stashes}
         total={total}
+        loading={loading}
+        onLoadMore={handleLoadMore}
         sortMode={sortMode}
         favoriteIds={favoriteIds}
         selectedId={selectedStash?.id || null}
