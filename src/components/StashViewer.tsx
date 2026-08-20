@@ -86,6 +86,15 @@ const WRAP_PREF_KEY = 'clawstash-wrap-lines';
 type ViewerTab = 'content' | 'metadata' | 'access-log' | 'history';
 const VALID_TABS: ViewerTab[] = ['content', 'metadata', 'access-log', 'history'];
 
+/**
+ * How many access-log entries the tab requests at once, and how far "Show more"
+ * may widen it. `ACCESS_LOG_MAX` mirrors the server's own ceiling
+ * (`Math.min(limit, 1000)` in `api/stashes/[id]/access-log/route.ts`) — asking
+ * for more would silently return the same page and leave the button useless.
+ */
+const ACCESS_LOG_PAGE_SIZE = 100;
+const ACCESS_LOG_MAX = 1000;
+
 function getRenderPreference(): boolean {
   try {
     const stored = localStorage.getItem(RENDER_PREF_KEY);
@@ -458,6 +467,16 @@ export default function StashViewer({
   // button re-run the fetch effect without leaving the tab.
   const [logError, setLogError] = useState(false);
   const [logReloadKey, setLogReloadKey] = useState(0);
+  // How many entries the log tab currently asks for. The fetch was pinned at
+  // 100 and the panel rendered the result as if it were the whole log, so a
+  // busy stash's older access was unreachable and — worse — invisible.
+  const [logLimit, setLogLimit] = useState(ACCESS_LOG_PAGE_SIZE);
+  // The limit the entries currently on screen were fetched with. Kept separate
+  // from `logLimit` so the "showing N most recent" footer describes the
+  // rendered list, not the request in flight — otherwise clicking "Show more"
+  // made the footer (and the button under the cursor) vanish until the
+  // response landed.
+  const [logLoadedLimit, setLogLoadedLimit] = useState(ACCESS_LOG_PAGE_SIZE);
   // Raw/Preview is presented as a per-file button, so it behaves like one:
   // `renderOverrides` holds the explicit per-file choices (keyed by file id),
   // and files without one fall back to the persisted default. That default is
@@ -694,6 +713,10 @@ export default function StashViewer({
     // active).
     setAccessLog([]);
     setLogError(false);
+    // A widened log window belongs to the stash it was widened for — carrying
+    // it over would make the next stash fetch up to 1000 entries unasked.
+    setLogLimit(ACCESS_LOG_PAGE_SIZE);
+    setLogLoadedLimit(ACCESS_LOG_PAGE_SIZE);
     document.querySelector('.main-content')?.scrollTo(0, 0);
   }, [stash.id]);
 
@@ -762,9 +785,12 @@ export default function StashViewer({
     setLogLoading(true);
     setLogError(false);
     api
-      .getAccessLog(stash.id, 100)
+      .getAccessLog(stash.id, logLimit)
       .then((log) => {
-        if (!cancelled) setAccessLog(log);
+        if (!cancelled) {
+          setAccessLog(log);
+          setLogLoadedLimit(logLimit);
+        }
       })
       .catch(() => {
         if (!cancelled) {
@@ -778,7 +804,7 @@ export default function StashViewer({
     return () => {
       cancelled = true;
     };
-  }, [activeTab, stash.id, logReloadKey]);
+  }, [activeTab, stash.id, logReloadKey, logLimit]);
 
   // Cleanup delete confirmation timer on unmount
   useEffect(() => {
@@ -1792,15 +1818,45 @@ export default function StashViewer({
               </span>
             </div>
           ) : (
-            <div className="access-log-list" aria-busy={logLoading || undefined}>
-              {accessLog.map((entry) => (
-                <div key={entry.id} className="access-log-entry">
-                  <SourceBadge source={entry.source} />
-                  <span className="access-log-action">{entry.action}</span>
-                  <RelativeTime dateStr={entry.timestamp} className="access-log-time" />
+            <>
+              <div className="access-log-list" aria-busy={logLoading || undefined}>
+                {accessLog.map((entry) => (
+                  <div key={entry.id} className="access-log-entry">
+                    <SourceBadge source={entry.source} />
+                    <span className="access-log-action">{entry.action}</span>
+                    <RelativeTime dateStr={entry.timestamp} className="access-log-time" />
+                  </div>
+                ))}
+              </div>
+              {/* A full page means the log is cut off. Rendering it as if it
+                were complete is the one thing an audit trail must not do —
+                say how many entries are on screen, and offer the rest up to
+                the server's own ceiling. Mirrors the dashboard / sidebar
+                "showing N of M" + "Load more" pattern. */}
+              {accessLog.length >= logLoadedLimit && (
+                <div className="access-log-footer">
+                  <span className="access-log-hint">
+                    Showing the {accessLog.length} most recent entries.
+                    {logLoadedLimit >= ACCESS_LOG_MAX && ' This is the maximum the server returns.'}
+                  </span>
+                  {logLoadedLimit < ACCESS_LOG_MAX && (
+                    <button
+                      type="button"
+                      className="btn btn-sm btn-ghost"
+                      onClick={() =>
+                        setLogLimit((limit) =>
+                          Math.min(limit + ACCESS_LOG_PAGE_SIZE, ACCESS_LOG_MAX),
+                        )
+                      }
+                      disabled={logLoading}
+                      aria-busy={logLoading || undefined}
+                    >
+                      {logLoading ? 'Loading…' : 'Show more'}
+                    </button>
+                  )}
                 </div>
-              ))}
-            </div>
+              )}
+            </>
           )}
         </div>
       )}

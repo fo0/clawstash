@@ -3096,6 +3096,15 @@ textarea.code-editor-plain.code-editor-wrap {
   overflow: hidden;
 }
 
+.access-log-footer {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding: 12px 8px 4px;
+}
+
 .access-log-entry {
   display: flex;
   align-items: center;
