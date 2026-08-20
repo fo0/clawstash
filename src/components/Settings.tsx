@@ -415,6 +415,12 @@ function StorageSection({ onFilterTag }: StorageSectionProps) {
   const [importing, setImporting] = useState(false);
   const [importResult, setImportResult] = useState<string | null>(null);
   const [importError, setImportError] = useState<string | null>(null);
+  // Export gets its own result/error pair. A successful export used to report
+  // nothing at all — the browser's download shelf was the only signal, and it
+  // is hidden on most setups — while a failed one was rendered through the
+  // IMPORT error slot, so "Import failed" appeared for an export nobody ran.
+  const [exportResult, setExportResult] = useState<string | null>(null);
+  const [exportError, setExportError] = useState<string | null>(null);
   // True after a failed stats/tags load. Without it the section fell through to
   // "No storage data available." — the same misleading empty state the
   // dashboard already replaced with an error + retry (see Dashboard loadError).
@@ -461,19 +467,25 @@ function StorageSection({ onFilterTag }: StorageSectionProps) {
     setExporting(true);
     setImportResult(null);
     setImportError(null);
+    setExportResult(null);
+    setExportError(null);
     try {
       const blob = await api.exportData();
+      const filename = `clawstash-export-${formatExportTimestamp()}.zip`;
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `clawstash-export-${formatExportTimestamp()}.zip`;
+      a.download = filename;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
+      if (sectionMountedRef.current) {
+        setExportResult(`Export downloaded: ${filename} (${formatBytes(blob.size)}).`);
+      }
     } catch (err) {
       if (sectionMountedRef.current) {
-        setImportError(err instanceof Error ? err.message : 'Export failed');
+        setExportError(err instanceof Error ? err.message : 'Export failed');
       }
     } finally {
       if (sectionMountedRef.current) setExporting(false);
@@ -485,11 +497,26 @@ function StorageSection({ onFilterTag }: StorageSectionProps) {
     if (!file) return;
     e.target.value = '';
 
-    if (!confirm('This will replace ALL existing stash data. Are you sure?')) return;
+    // Name the blast radius. The old prompt said "ALL existing stash data"
+    // without saying how much that is, so the one irreversible action in the
+    // app was confirmed blind — and it never mentioned that an export taken
+    // first is the only way back.
+    const atRisk = stats
+      ? `${pluralize(stats.totalStashes, 'stash', 'stashes')} and ${pluralize(stats.totalFiles, 'file')} (${formatBytes(stats.totalBytes)})`
+      : 'all existing stash data';
+    if (
+      !confirm(
+        `Import "${file.name}"?\n\n` +
+          `This REPLACES ${atRisk}. The replaced data cannot be recovered unless you exported it first.`,
+      )
+    )
+      return;
 
     setImporting(true);
     setImportResult(null);
     setImportError(null);
+    setExportResult(null);
+    setExportError(null);
     try {
       const result = await api.importData(file);
       if (!sectionMountedRef.current) return;
@@ -680,6 +707,16 @@ function StorageSection({ onFilterTag }: StorageSectionProps) {
           </label>
         </div>
 
+        {exportResult && (
+          <div role="status" className="settings-import-success">
+            {exportResult}
+          </div>
+        )}
+        {exportError && (
+          <div role="alert" className="settings-import-error">
+            Export failed: {exportError}
+          </div>
+        )}
         {importResult && (
           <div role="status" className="settings-import-success">
             {importResult}
