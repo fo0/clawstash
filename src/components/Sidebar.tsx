@@ -14,6 +14,16 @@ interface Props {
   stashes: StashListItem[];
   /** Full result count from the server — the list itself is capped. */
   total: number;
+  /**
+   * True while a stash list request is in flight — disables "Load more" and
+   * labels it, mirroring the dashboard's button.
+   */
+  loading?: boolean;
+  /**
+   * Widen the list by one more page. Same handler the dashboard's "Load more"
+   * uses, so both surfaces stay on one server-ranked result set.
+   */
+  onLoadMore?: () => void;
   /** Dashboard sort order — the sidebar list mirrors it. */
   sortMode: SortMode;
   /** Pinned stashes — sorted to the top, same as on the dashboard. */
@@ -177,6 +187,8 @@ const SETTINGS_SECTIONS: { id: SettingsSection; label: string; icon: JSX.Element
 export default function Sidebar({
   stashes,
   total,
+  loading,
+  onLoadMore,
   sortMode,
   favoriteIds,
   selectedId,
@@ -732,7 +744,85 @@ export default function Sidebar({
                 </div>
               </a>
             ))}
-            {stashes.length === 0 && <div className="sidebar-empty">No stashes found</div>}
+            {/* An empty sidebar used to read "No stashes found" whatever caused
+                it, with no way out — the dashboard has said WHY and offered the
+                next action since it shipped, while the sidebar (which owns the
+                search field and the tag filter that cause it) dead-ended. */}
+            {stashes.length === 0 &&
+              (search || filterTag ? (
+                <div className="sidebar-empty">
+                  <span className="sidebar-empty-text">
+                    {search && filterTag
+                      ? `No stashes match "${search}" with tag "${filterTag}".`
+                      : search
+                        ? `No stashes match "${search}".`
+                        : `No stashes tagged "${filterTag}".`}
+                  </span>
+                  <span className="sidebar-empty-actions">
+                    {search && (
+                      <button
+                        type="button"
+                        className="sidebar-empty-action"
+                        onClick={() => onSearch('')}
+                        title="Clear the search field"
+                      >
+                        Clear search
+                      </button>
+                    )}
+                    {filterTag && (
+                      <button
+                        type="button"
+                        className="sidebar-empty-action"
+                        onClick={() => onFilterTag(filterTag)}
+                        title="Clear the tag filter"
+                      >
+                        Clear tag filter
+                      </button>
+                    )}
+                  </span>
+                </div>
+              ) : (
+                <div className="sidebar-empty">
+                  <span className="sidebar-empty-text">
+                    {showArchived ? 'No stashes yet.' : 'No active stashes.'}
+                  </span>
+                  <span className="sidebar-empty-actions">
+                    {!showArchived && (
+                      <button
+                        type="button"
+                        className="sidebar-empty-action"
+                        onClick={onToggleShowArchived}
+                        title="Include archived stashes in the list"
+                      >
+                        Show archived
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      className="sidebar-empty-action"
+                      onClick={onNewStash}
+                      title="Create a new stash to store files"
+                    >
+                      New Stash
+                    </button>
+                  </span>
+                </div>
+              ))}
+            {/* The sidebar admitted "showing N" of a larger total but offered no
+                way to widen the list — the only path to stash 51 was to leave
+                for the dashboard and press its "Load more". Same handler, so
+                both lists stay one server-ranked result set. */}
+            {onLoadMore && stashes.length > 0 && stashes.length < total && (
+              <button
+                type="button"
+                className="sidebar-load-more"
+                onClick={onLoadMore}
+                disabled={loading}
+                title={`Show more of the ${total} matching stashes`}
+              >
+                {loading ? 'Loading…' : `Load more (${stashes.length} of ${total})`}
+              </button>
+            )}
           </div>
         </>
       )}
