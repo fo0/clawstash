@@ -51,11 +51,10 @@ When a session begins, read in this order. Stop early if a file is missing.
 
 ## Performance / Modes
 
-- **Default model:** whatever the session resolves to -- don't pin one here or in `.claude/settings.json`; `/model` switches mid-session.
-- **Fast mode** (`/fast`): same Opus model, faster output -- not a downgrade. Use when latency beats reasoning depth.
-- **Caveman mode** (chat compression): `caveman lite|full|ultra` / `stop caveman`. Chat only, never generated files.
-- **Orca mode** (orchestrator-only): `/orca` toggles it, `/orca <N>` sets the parallel width (default 5). While on, the agent itself does no task work -- every unit goes to a subagent at the session's model and effort. Off by default; contract in `.claude/skills/orca/SKILL.md`.
-- **Plan mode**: for non-trivial implementation strategy -- `Plan` subagent or `EnterPlanMode`. Not for single-step tasks.
+- **Default model:** whatever the session resolves to -- never pin one here or in `.claude/settings.json`; `/model` switches mid-session. **Fast mode** (`/fast`) is the same Opus model with faster output, not a downgrade.
+- **Caveman mode:** `caveman lite|full|ultra` / `stop caveman` -- chat only, never generated files. **Orca mode:** `/orca` toggles orchestrator-only work, `/orca <N>` sets the parallel width (default 5); off by default, contract in `.claude/skills/orca/SKILL.md`. **Plan mode** for non-trivial strategy, not for single-step tasks.
+
+Full mode reference: `agent_docs/modes.md`.
 
 ## Autonomy
 
@@ -122,7 +121,7 @@ npm run mcp                # MCP server (stdio transport)
 npx @mermaid-js/mermaid-cli mmdc -i docs/ARCHITECTURE.mmd -o docs/ARCHITECTURE.svg
 ```
 
-> **ESLint is a correctness gate, not a style one** (`eslint.config.js`, flat config): formatting stays entirely with Prettier, so no rule there may overlap it, and `.claude/` is ignored just like in `.prettierignore`. Scope, the type-aware rules and the deliberately disabled families: `agent_docs/development-notes.md -> Linter scope`.
+> **ESLint is a correctness gate, not a style one** -- formatting stays entirely with Prettier, and `.claude/` is ignored in both. Scope, type-aware rules, disabled families: `agent_docs/development-notes.md -> Linter scope`.
 > GitNexus CLI (read-only): `agent_docs/gitnexus.md`.
 
 ## Key Patterns
@@ -209,19 +208,19 @@ Full reference: `docs/api-reference.md` - MCP tools: `docs/mcp.md` - auth/scopes
 
 ## External Integrations / MCPs
 
-Project-intended and common MCPs: `agent_docs/mcp_catalog.md`. Never auto-detect host MCP availability -- fall back to standard tools (`Read`, `Bash`, `WebFetch`) when an MCP is absent. Workflows must never hard-require an MCP. A server an unattended cloud or routine run needs must be a committed `.mcp.json` entry or a claude.ai connector -- a local `claude mcp add` does not travel with the clone (`agent_docs/mcp_catalog.md -> MCPs in cloud and routine runs`).
+Project-intended and common MCPs: `agent_docs/mcp_catalog.md`. Never auto-detect host MCP availability -- fall back to standard tools (`Read`, `Bash`, `WebFetch`) when an MCP is absent, and never hard-require one. A server an unattended cloud or routine run needs must be a committed `.mcp.json` entry or a claude.ai connector -- a local `claude mcp add` does not travel with the clone.
 
-**Trigger tools never prompt.** `.claude/settings.json` -> `permissions.allow` carries one `mcp__<server>__*` glob per Claude Code Remote spelling plus the two `mcp__github__(un)subscribe_pr_activity` entries, so scheduled check-ins, Routine cleanup and PR-watch subscriptions run unattended. **Self-heal:** a tool that still prompts means its server spelling is missing -- append `mcp__<that server>__*` and commit it on the current branch/PR; additive only, never `deny`/`ask`. Allowlist shape, trust-gate caveat and the user-level fallback: `agent_docs/mcp_catalog.md`.
+**Trigger tools.** `.claude/settings.json` -> `permissions.allow` pre-approves them, so scheduled check-ins, Routine cleanup and PR-watch subscriptions run unattended **wherever this repo's workspace is trusted -- which a web/cloud session never is** (`$CLAUDE_CODE_REMOTE=true`: fresh container, no trust dialog, block dropped at startup); there they keep prompting until the one-time user-scope fix. **Self-heal is local-only:** a tool that still prompts means its server spelling is missing -- append `mcp__<that server>__*` and commit it, additive only, never `deny`/`ask`. Web/cloud appends nothing (it could not take effect in any session) -- name the fix once and carry on. Allowlist shape, both surfaces, user-level fallback: `agent_docs/mcp_catalog.md -> Prompt-free triggers everywhere`.
 
 ## CI
 
 CI failure handling: `.claude/skills/ci/SKILL.md`. Triggered by `/ci`, "fix CI", "check the build". Auto-routes by run state (none / running / passed / failed / stale). Never auto-reruns; always verifies fixes locally before pushing.
 
-`docker-publish.yml` is `workflow_dispatch`-only, so a pushed branch legitimately has zero runs of it -- "no runs" is configuration, not breakage. What runs automatically (`docs-format.yml`, CodeQL, Dependabot): `agent_docs/development-notes.md -> CI/CD`.
+Which workflows actually run -- `docker-publish.yml` is dispatch-only, so "no runs" on a pushed branch is configuration, not breakage: `agent_docs/development-notes.md -> CI/CD`.
 
 ## Subagents
 
-Delegate complex / parallel / read-heavy work: `Explore` (read-only search), `Plan` (strategy), `general-purpose` (write+execute), `claude-code-guide` (Claude Code itself). Direct tools beat subagents when the target is known; parallelize independent calls; pass full context -- subagents have no history. **Orca mode** (`/orca`) turns this from a menu into the only path: while on, every unit is delegated and the thresholds do not apply (`.claude/skills/orca/SKILL.md`). Full guide: `agent_docs/review_process.md -> Subagent Delegation`.
+`Explore` (read-only search) - `Plan` (strategy) - `general-purpose` (write+execute) - `claude-code-guide` (Claude Code itself). Direct tools beat subagents when the target is known; parallelize independent calls; pass full context -- subagents have no history. Repo-local agents in `.claude/agents/*.md` load automatically, cloud sessions included -- a `model:` pinned there overrides model inheritance. **Orca mode** (`/orca`) makes delegation the only path and voids the thresholds (`.claude/skills/orca/SKILL.md`). Full guide: `agent_docs/review_process.md -> Subagent Delegation`.
 
 ## Development Notes
 
@@ -229,25 +228,23 @@ Runtime + process model, database, Docker and CI/CD specifics: `agent_docs/devel
 
 ## Refactoring Notes
 
-Refactoring does NOT happen automatically -- only on explicit request, on repeated review smells, or when structure blocks a feature. Principles: `agent_docs/refactoring_guidelines.md`.
-
-Candidate list with line counts and BACKLOG refs: `agent_docs/development-notes.md -> Refactoring candidates`.
+Refactoring does NOT happen automatically -- only on explicit request, on repeated review smells, or when structure blocks a feature. Principles: `agent_docs/refactoring_guidelines.md` - candidate list with line counts and BACKLOG refs: `agent_docs/development-notes.md -> Refactoring candidates`.
 
 ## Documentation Rules
 
 After every code change, check and update:
 
-| File                           | Update when...                                      |
-| ------------------------------ | --------------------------------------------------- |
-| `CLAUDE.md`                    | New components, configs, patterns, technical detail |
-| `README.md`                    | New features, onboarding changes                    |
-| `BACKLOG.md`                   | Unresolved review findings                          |
-| `MEMORY.md`                    | Decisions, gotchas, deps, user preferences          |
-| `SCRATCHPAD.md`                | Working context, open questions                     |
-| `docs/*.md`                    | API, backup, MCP, deployment, auth changes          |
-| `docs/ARCHITECTURE.mmd`        | Modules, data flow or external deps changed         |
-| `agent_docs/key-patterns.md`   | Pattern detail not belonging in CLAUDE.md           |
-| `.env.example` + `env-vars.md` | New configuration options                           |
+| File                                      | Update when...                                      |
+| ----------------------------------------- | --------------------------------------------------- |
+| `CLAUDE.md`                               | New components, configs, patterns, technical detail |
+| `README.md`                               | New features, onboarding changes                    |
+| `BACKLOG.md`                              | Unresolved review findings                          |
+| `MEMORY.md`                               | Decisions, gotchas, deps, user preferences          |
+| `SCRATCHPAD.md`                           | Working context, open questions                     |
+| `docs/*.md`                               | API, backup, MCP, deployment, auth changes          |
+| `docs/ARCHITECTURE.mmd`                   | Modules, data flow or external deps changed         |
+| `agent_docs/key-patterns.md`              | Pattern detail not belonging in CLAUDE.md           |
+| `.env.example` + `agent_docs/env-vars.md` | New configuration options                           |
 
 ### Context budget
 
@@ -269,4 +266,4 @@ Indexed as **clawstash** (2191 symbols, 3899 relationships, 189 execution flows)
 
 <!-- gitnexus:end -->
 
-<!-- Generated by claude-code-optimizer v1.22.0 -->
+<!-- Generated by claude-code-optimizer v1.24.0 -->

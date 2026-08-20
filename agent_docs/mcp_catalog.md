@@ -39,15 +39,22 @@ The list is glob-first and deliberately minimal:
 
 - **Keep exactly one `mcp__<server>__*` glob per Claude Code Remote spelling** (`claude-code-remote`, `Claude_Code_Remote`, `claude_code_remote`). A glob covers every current and future tool of that server, so autonomous check-ins never stall on an approval prompt.
 - **Per-tool entries already matched by a glob in the same list are redundant** -- they were pruned (2026-08-02, owner decision) and **must not be re-added**. Only `mcp__github__subscribe_pr_activity` / `mcp__github__unsubscribe_pr_activity` remain per-tool, because there is no `mcp__github__*` glob; if such a glob is ever added, those two become redundant too and go with it.
-- **Self-heal by appending a glob.** A tool that still prompts means its server spelling is missing from the list -- append `mcp__<that server>__*` and commit it on the current branch/PR. Never widen by adding individual tool names.
+- **Self-heal by appending a glob -- local sessions only.** Where the block applies (local CLI, workspace trusted), a tool that still prompts means its server spelling is missing from the list -- append `mcp__<that server>__*` and commit it on the current branch/PR. Never widen by adding individual tool names. In a web/cloud session (`$CLAUDE_CODE_REMOTE=true`) append **nothing**: the entry could not take effect there in any session, so committing it would manufacture dead config -- name the one-time user-scope fix below once instead and carry on.
 - **Never write `deny`/`ask`** in this file. Re-gating is the user's call in their own settings (below), never the agent's in the repo.
 - Never remove a glob, and never touch entries for a server you are not fixing.
 
 > `.prettierignore` excludes `.claude/`, so a format run never reaches this file -- keep the JSON hand-formatted (2-space indent) and keep that exclusion.
 
-## Prompt-free triggers everywhere (one-time, optional)
+## Prompt-free triggers everywhere (one-time)
 
-This repo's `.claude/settings.json` already pre-approves every Claude Code Remote trigger tool. Two things can still get in the way: `permissions.allow` from a **project** settings file applies only after the **workspace-trust dialog** for this repo has been accepted, and a repo that never ran the optimizer has no such block at all. Both are solved once, per machine, by putting the same rules into the **user-level** `~/.claude/settings.json` -- user settings carry no trust gate and apply to every repo:
+This repo's `.claude/settings.json` pre-approves every Claude Code Remote trigger tool -- but a **project** allowlist grants capability, so Claude Code applies it only after this repo's **workspace-trust dialog** has been accepted. That single fact splits the two surfaces:
+
+| Surface                                                             | What actually happens                                                                                                                                                                                                                                                        | The one-time fix                                                                                                     |
+| ------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------- |
+| **Local CLI**                                                       | The trust dialog appears on the first interactive run in the repo; accept it and the repo block is live                                                                                                                                                                      | Accept the dialog -- or put the rules in user settings below and cover every repo at once                            |
+| **Claude Code web / cloud** (routines, Claude Tag, mobile included) | No trust dialog exists and every session starts from a fresh container, so the block is dropped at startup -- `Ignoring N permissions.allow entries from .claude/settings.json: this workspace has not been trusted` -- and `delete_trigger` & friends prompt on every merge | User settings, installed by the environment's **setup script** (below). Nothing inside the repo can fix this surface |
+
+Same rules either way, in `~/.claude/settings.json` -- user scope carries no trust gate and applies to every repo:
 
 ```json
 {
@@ -62,6 +69,26 @@ This repo's `.claude/settings.json` already pre-approves every Claude Code Remot
   }
 }
 ```
+
+**Cloud/web -- paste this into the environment's _Setup script_** (claude.ai -> Claude Code -> cloud environment settings). It runs as root before Claude Code launches, and what it writes survives in the environment snapshot, so later sessions start with the file already in place. Merge-safe: it adds only what is missing.
+
+```bash
+python3 - <<'PY'
+import json, os, pathlib
+d = pathlib.Path(os.environ.get("CLAUDE_CONFIG_DIR") or (pathlib.Path.home() / ".claude"))
+d.mkdir(parents=True, exist_ok=True)
+f = d / "settings.json"
+cfg = json.loads(f.read_text()) if f.exists() else {}
+allow = cfg.setdefault("permissions", {}).setdefault("allow", [])
+for rule in ["mcp__claude-code-remote__*", "mcp__Claude_Code_Remote__*", "mcp__claude_code_remote__*",
+             "mcp__github__subscribe_pr_activity", "mcp__github__unsubscribe_pr_activity"]:
+    if rule not in allow:
+        allow.append(rule)
+f.write_text(json.dumps(cfg, indent=2))
+PY
+```
+
+Editing the setup script re-runs it and rebuilds the snapshot; the cache also expires after roughly seven days. Verify in the next session with `cat ~/.claude/settings.json`. **Why not a `SessionStart` hook in the repo:** hooks do run in an untrusted workspace, but settings are read _before_ hooks fire -- the rules would apply to the session _after_ the one that wrote them, and in the cloud there is no session after: each gets a new container. The web surface pre-approves the GitHub MCP server on its own, which is why the prompts that survive there are the Claude Code Remote ones.
 
 Merge into an existing file without clobbering rules you did not add; the same glob-first shape applies (per-tool entries a glob already covers are redundant). To re-gate a single tool (e.g. `add_repo`), add it to `permissions.ask` -- `ask` is evaluated before `allow`, so it prompts despite the glob. **The agent never writes this file on its own, and never writes `deny`/`ask` anywhere** -- this file lives outside the repo, so applying it is the user's call.
 
