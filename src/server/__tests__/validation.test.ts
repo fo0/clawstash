@@ -1,13 +1,18 @@
+import crypto from 'crypto';
 import { describe, it, expect } from 'vitest';
 import {
   CreateStashSchema,
   UpdateStashSchema,
+  ImportStashRowSchema,
   ImportStashFileRowSchema,
+  ImportStashVersionRowSchema,
   ImportStashVersionFileRowSchema,
   MAX_METADATA_DEPTH,
+  MAX_RECORD_ID_LENGTH,
   maxObjectDepth,
   hasUniqueFilenames,
   isValidFilename,
+  isValidRecordId,
   DUPLICATE_FILENAME_MESSAGE,
   formatZodPath,
   formatZodError,
@@ -205,6 +210,52 @@ describe('import file-row filename validation', () => {
   it('still rejects an empty filename', () => {
     expect(ImportStashFileRowSchema.safeParse(fileRow('')).success).toBe(false);
     expect(ImportStashVersionFileRowSchema.safeParse(versionFileRow('')).success).toBe(false);
+  });
+});
+
+describe('import row-id validation', () => {
+  // The import route is the only path on which a caller-chosen id reaches the
+  // stashes table, and stash.id becomes a bare git path segment in the
+  // GitHub-backup tree (<pathPrefix>/<id>/stash.json). A separator or ".."
+  // there escapes the operator's configured backup path prefix.
+  it('accepts the UUID ids real exports carry', () => {
+    expect(isValidRecordId('0f8fad5b-d9cb-469f-a165-70867728950e')).toBe(true);
+    expect(ImportStashRowSchema.safeParse({ id: crypto.randomUUID() }).success).toBe(true);
+  });
+
+  it('rejects path separators and traversal', () => {
+    expect(isValidRecordId('../../../.github/workflows/evil')).toBe(false);
+    expect(isValidRecordId('a/b')).toBe(false);
+    expect(isValidRecordId('a\\b')).toBe(false);
+    expect(isValidRecordId('..')).toBe(false);
+    expect(ImportStashRowSchema.safeParse({ id: '../../evil' }).success).toBe(false);
+  });
+
+  it('rejects control characters, empty and over-long ids', () => {
+    expect(isValidRecordId('a\r\nb')).toBe(false);
+    expect(isValidRecordId('a\x00b')).toBe(false);
+    expect(isValidRecordId('')).toBe(false);
+    expect(isValidRecordId('a'.repeat(MAX_RECORD_ID_LENGTH + 1))).toBe(false);
+  });
+
+  it('applies the guard to foreign-key columns too', () => {
+    expect(
+      ImportStashFileRowSchema.safeParse({
+        id: 'f1',
+        stash_id: '../../evil',
+        filename: 'README.md',
+      }).success,
+    ).toBe(false);
+    expect(ImportStashVersionRowSchema.safeParse({ id: 'v1', stash_id: 'a/b' }).success).toBe(
+      false,
+    );
+    expect(
+      ImportStashVersionFileRowSchema.safeParse({
+        id: 'vf1',
+        version_id: '../v',
+        filename: 'README.md',
+      }).success,
+    ).toBe(false);
   });
 });
 
