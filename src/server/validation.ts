@@ -18,6 +18,7 @@ export const MAX_METADATA_KEYS = 50;
 export const MAX_METADATA_DEPTH = 5;
 export const MAX_FILES = 100;
 export const MAX_FILENAME_LENGTH = 255;
+export const MAX_RECORD_ID_LENGTH = 100;
 export const MAX_FILE_CONTENT_LENGTH = 10 * 1024 * 1024; // 10MB per file
 export const MAX_IMPORT_SIZE = 100 * 1024 * 1024; // 100MB for ZIP import
 /**
@@ -84,6 +85,36 @@ export function isValidFilename(filename: string): boolean {
   // controls (0x80-0x9F). No legitimate filename contains control bytes.
   for (let i = 0; i < filename.length; i++) {
     const code = filename.charCodeAt(i);
+    if (code <= 0x1f || (code >= 0x7f && code <= 0x9f)) return false;
+  }
+  return true;
+}
+
+/**
+ * Validates a record identifier read out of an import archive: no path
+ * separators, no ".." segments, no control characters, non-empty, within the
+ * length cap. Mirrors `isValidFilename` so both trust boundaries reject the
+ * same shapes.
+ *
+ * Every id ClawStash writes itself is a `crypto.randomUUID()` value, so this
+ * is a no-op for genuine exports. `POST /api/admin/import` is the ONLY path
+ * on which a caller-chosen id reaches the `stashes` table, and `stash.id` is
+ * interpolated into GitHub-backup git tree paths as a bare path segment
+ * (`<pathPrefix>/<id>/stash.json`, see backup/backup-service.ts). A `/`, `\`
+ * or `..` inside the id therefore escapes the operator's configured backup
+ * path prefix and writes outside the intended subtree of their repository.
+ * Rejecting the separators here keeps the id symmetric with the filename
+ * guard applied to the same archives.
+ */
+export function isValidRecordId(id: string): boolean {
+  if (typeof id !== 'string') return false;
+  if (id.length === 0 || id.length > MAX_RECORD_ID_LENGTH) return false;
+  if (/[/\\]/.test(id)) return false;
+  if (id.includes('..')) return false;
+  // Reject C0 controls (0x00-0x1F, incl. NUL/CR/LF), DEL (0x7F) and C1
+  // controls (0x80-0x9F). No id ClawStash issues contains control bytes.
+  for (let i = 0; i < id.length; i++) {
+    const code = id.charCodeAt(i);
     if (code <= 0x1f || (code >= 0x7f && code <= 0x9f)) return false;
   }
   return true;
@@ -202,8 +233,19 @@ const IsoDateStringSchema = z.string().min(1).max(100);
 /** JSON string (tags/metadata stored as serialised JSON in the DB). */
 const JsonStringSchema = z.string().max(200_000);
 
+/**
+ * Row / foreign-key identifier from an export archive. Same length bound the
+ * schemas carried before, plus the `isValidRecordId` guard — see there for
+ * why a path separator inside an id is a live problem for GitHub backup.
+ */
+const RecordIdSchema = z
+  .string()
+  .min(1)
+  .max(MAX_RECORD_ID_LENGTH)
+  .refine(isValidRecordId, 'Identifier contains invalid characters');
+
 export const ImportStashRowSchema = z.object({
-  id: z.string().min(1).max(100),
+  id: RecordIdSchema,
   name: z.string().max(MAX_NAME_LENGTH).nullable().optional(),
   description: z.string().max(MAX_DESCRIPTION_LENGTH).nullable().optional(),
   tags: JsonStringSchema.nullable().optional(),
@@ -229,8 +271,8 @@ const ImportFilenameSchema = z
   .refine(isValidFilename, 'Filename contains invalid characters');
 
 export const ImportStashFileRowSchema = z.object({
-  id: z.string().min(1).max(100),
-  stash_id: z.string().min(1).max(100),
+  id: RecordIdSchema,
+  stash_id: RecordIdSchema,
   filename: ImportFilenameSchema,
   content: z.string().max(MAX_FILE_CONTENT_LENGTH).nullable().optional(),
   language: z.string().max(50).nullable().optional(),
@@ -238,8 +280,8 @@ export const ImportStashFileRowSchema = z.object({
 });
 
 export const ImportStashVersionRowSchema = z.object({
-  id: z.string().min(1).max(100),
-  stash_id: z.string().min(1).max(100),
+  id: RecordIdSchema,
+  stash_id: RecordIdSchema,
   name: z.string().max(MAX_NAME_LENGTH).nullable().optional(),
   description: z.string().max(MAX_DESCRIPTION_LENGTH).nullable().optional(),
   tags: JsonStringSchema.nullable().optional(),
@@ -251,8 +293,8 @@ export const ImportStashVersionRowSchema = z.object({
 });
 
 export const ImportStashVersionFileRowSchema = z.object({
-  id: z.string().min(1).max(100),
-  version_id: z.string().min(1).max(100),
+  id: RecordIdSchema,
+  version_id: RecordIdSchema,
   filename: ImportFilenameSchema,
   content: z.string().max(MAX_FILE_CONTENT_LENGTH).nullable().optional(),
   language: z.string().max(50).nullable().optional(),
