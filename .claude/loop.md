@@ -7,8 +7,9 @@ nothing is pending, say so in one line and do not invent work.
 2. **This branch's pull request** — new review comments, a failed CI run, or a merge conflict. Red build →
    `.claude/skills/ci/SKILL.md`. Comments and merge state → `.claude/skills/pr/SKILL.md`. Address them; do not just
    describe them.
-3. **Verification** — `npm run format:check`, `npm run lint`, `npx tsc --noEmit`, `npm test`. Anything red is the work
-   for this iteration.
+3. **Verification** — the project's chain in its stated order: `npm install`, `npm run format:check`, `npm run lint`,
+   `npx tsc --noEmit`, `npm test`, `npm run build` (install matters on a fresh clone, which is what a cloud or routine
+   session always is). Anything red is the work for this iteration.
 4. **Backlog** — the top item in `BACKLOG.md` if it is small and self-contained. Anything larger stays where it is.
 
 Rules for every iteration:
