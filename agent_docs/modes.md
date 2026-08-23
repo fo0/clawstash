@@ -13,19 +13,22 @@ when latency beats reasoning depth; switch back for anything where a wrong answe
 
 ## Caveman mode (chat compression)
 
-`caveman lite|full|ultra` turns it on, `stop caveman` turns it off. It compresses **chat replies only** — generated
-files (`CLAUDE.md`, `agent_docs/*`, `MEMORY.md`, `SCRATCHPAD.md`, `BACKLOG.md`, skills, commit messages, PR bodies,
-issue comments) always stay in full prose in the language `CLAUDE.md → Output Languages` assigns them.
+**Default `full` in every session** — in force from the first reply, no activation step. The rules live in
+`CLAUDE.md → Caveman Mode` (always loaded); this entry only records the switch surface: `caveman lite|full|ultra`
+switches mode, `stop caveman` turns it off for the rest of the session, and neither carries forward — the next
+session starts at `full` again. It compresses **chat replies only** — generated files (`CLAUDE.md`, `agent_docs/*`,
+`MEMORY.md`, `SCRATCHPAD.md`, `BACKLOG.md`, skills, commit messages, PR bodies, issue comments) always stay in full
+prose in the language `CLAUDE.md → Output Languages` assigns them.
 
 Technical terms stay English and verbatim in every mode — compression never reaches them.
 
-## Orca mode (orchestrator-only)
+## Orca mode (orchestrator mode — the default)
 
-`/orca` toggles it, `/orca <N>` sets the parallel width (default 5), `/orca status` reports state without changing it.
-While on, the agent itself does no task work — every unit goes to a subagent at the session's model and effort.
-
-**Off by default:** the skill file existing changes nothing until someone types `/orca`. Full contract — what the
-orchestrator keeps, quality parity, disjoint write scopes, the wave report: `.claude/skills/orca/SKILL.md`.
+**On by default, width 5** — every session starts orchestrating; the default is declared in `CLAUDE.md → Subagents`.
+`/orca <N>` sets the parallel width, `/orca off` drops to plain behavior for the rest of that session and carries
+nowhere, `/orca status` reports state without changing it. While on, the agent itself does no task work — every unit
+goes to a role-framed subagent at the session's model and effort. Full contract — what the orchestrator keeps,
+quality parity, disjoint write scopes, the wave report: `.claude/skills/orca/SKILL.md`.
 
 ## Plan mode
 

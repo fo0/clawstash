@@ -170,18 +170,17 @@ Rules:
 
 ## Subagent Delegation
 
-For isolated, clearly bounded subtasks. Pick the matching `subagent_type` instead of always defaulting to `general-purpose`. The thresholds below are the default; while **Orca mode** is on (`.claude/skills/orca/SKILL.md`) they are void -- everything is delegated, whatever its size.
+**Delegation is the default, not a decision per task** -- orchestrator mode is on from session start (`CLAUDE.md -> Subagents`, contract in `.claude/skills/orca/SKILL.md`), so every unit of task work goes to a subagent at width 5. Where the surface allows it, run them asynchronously and keep working -- spawn-and-block gives up most of the benefit -- and step in when one goes off track or is missing context it cannot discover.
 
-| Task                            | When to delegate                                     | Recommended `subagent_type`                                          |
-| ------------------------------- | ---------------------------------------------------- | -------------------------------------------------------------------- |
-| **Locate code / find symbols**  | Search across >3 paths or unknown location           | `Explore` (read-only, fast, doesn't pollute main context)            |
-| **Plan refactoring/feature**    | Non-trivial, >3 files affected, architectural choice | `Plan`                                                               |
-| **Write tests**                 | >3 test files for a feature                          | `general-purpose`                                                    |
-| **Doc updates**                 | >2 documentation files                               | `general-purpose`                                                    |
-| **Refactoring chunks**          | Independent subtasks of larger refactoring           | `general-purpose`                                                    |
-| **Boilerplate generation**      | Migrations, schemas, repetitive configs              | `general-purpose`                                                    |
-| **Independent code review**     | Second-opinion on diff                               | `general-purpose` (or project-specific reviewer subagent if defined) |
-| **Q about Claude Code/SDK/API** | "Can Claude do X?", hooks, MCP, SDK questions        | `claude-code-guide`                                                  |
+**The review itself is delegated, and to a different agent than wrote the code.** A fresh-context reviewer reads the diff without holding the author's intent, which is why it finds what self-critique does not. Where a change can fail in more than one way, seat _distinct_ lenses from the roster (`architect`, `domain`, `security`, `docs`) rather than a second reviewer with the same one -- agreement between identical lenses is not evidence of correctness. The orchestrator still owns the process: it reads the returned diffs, decides what the findings mean, and holds the commit gate.
+
+| Task                                                             | Matching `subagent_type`                                             |
+| ---------------------------------------------------------------- | -------------------------------------------------------------------- |
+| **Locate code / find symbols**                                   | `Explore` (read-only, fast, doesn't pollute main context)            |
+| **Design an approach**                                           | `Plan`                                                               |
+| **Write tests · doc updates · refactoring chunks · boilerplate** | `general-purpose`                                                    |
+| **Independent code review**                                      | `general-purpose` (or project-specific reviewer subagent if defined) |
+| **Q about Claude Code/SDK/API**                                  | `claude-code-guide`                                                  |
 
 ## Subagent Selection Rules
 
@@ -190,7 +189,7 @@ For isolated, clearly bounded subtasks. Pick the matching `subagent_type` instea
 - **Use `general-purpose` for write+execute** tasks. Default for "do this work" delegations.
 - **Use `claude-code-guide` for tooling questions** about Claude Code itself (slash commands, hooks, MCP servers, SDK).
 - **Parallelize independent work** -- multiple Agent calls in one message when no dependencies exist.
-- **Prefer direct tools when target is known** -- `Read` for known path, `grep` via Bash for known symbol. Reserve subagents for open-ended or multi-step work.
+- **Orchestrator mode changes what "known target" means.** Reading a file for its content is task work and goes to a subagent like anything else; the orchestrator's own reads are the _verification_ kind -- `git status`, `git diff`, reading a returned change. `/orca off` is what restores direct-tool-first behavior, not a judgment per call.
 - **Pass full context** -- subagents have no conversation history. Include file paths, line numbers, what was already tried, and the goal.
 - **Trust but verify** -- a subagent's summary describes intent, not necessarily the actual change. Inspect diffs after write-capable subagents finish.
 

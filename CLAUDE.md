@@ -2,33 +2,24 @@
 
 ## Session Start -- Read Order
 
-When a session begins, read in this order. Stop early if a file is missing.
-
-1. `MEMORY.md` -- long-term project knowledge
-2. `SCRATCHPAD.md` -- short-term working context
-3. `BACKLOG.md` -- only if user references prior findings or asks "what's open"
-4. `agent_docs/review_process.md`, `agent_docs/memory_process.md` -- only when needed
-5. `agent_docs/mcp_catalog.md` -- only when MCPs come up
-6. `.claude/skills/*/SKILL.md` -- only when its trigger fires
-
-> Don't pre-load everything. The Tier-1 SessionStart hook already prints a reminder.
+Read in this order, stopping early if a file is missing: `MEMORY.md` (long-term knowledge) -> `SCRATCHPAD.md` (working context) -> `BACKLOG.md` (only if the user references prior findings). `agent_docs/review_process.md`, `memory_process.md` and `mcp_catalog.md` come up on topic; a skill file only when its trigger fires. Don't pre-load everything -- the Tier-1 SessionStart hook prints a reminder.
 
 ## Workflow Triggers
 
-| User says...                                      | Skill to load                             |
-| ------------------------------------------------- | ----------------------------------------- |
-| "done" / "fertig" / "finished" / "/done"          | `.claude/skills/done/SKILL.md`            |
-| "PR" / "create PR" / "/pr"                        | `.claude/skills/pr/SKILL.md`              |
-| "review" / "/review"                              | `.claude/skills/review/SKILL.md`          |
-| "security review" / "/security-review"            | `.claude/skills/security-review/SKILL.md` |
-| "rollback" / "revert" / "undo" / "/rollback"      | `.claude/skills/rollback/SKILL.md`        |
-| "CI" / "fix CI" / "check the build" / "/ci"       | `.claude/skills/ci/SKILL.md`              |
-| "stuck" / "loop" / "going in circles" / "/stuck"  | `.claude/skills/stuck/SKILL.md`           |
-| "check dependencies" / "update deps" / "/beacon"  | `.claude/skills/beacon/SKILL.md`          |
-| "schedule" / "routine" / "nightly" / "/scheduler" | `.claude/skills/scheduler/SKILL.md`       |
-| "orca" / "orchestrator mode" / "/orca"            | `.claude/skills/orca/SKILL.md`            |
-| Verify a UI change in a real browser              | `.claude/skills/verify/SKILL.md`          |
-| Diagram request                                   | `agent_docs/diagram_prompt.md`            |
+Skills live at `.claude/skills/<name>/SKILL.md` -- load the one whose trigger fires.
+
+- `done` -- "done" / "fertig" / "finished" / "/done"
+- `pr` -- "PR" / "create PR" / "/pr"
+- `review` -- "review" / "/review"
+- `security-review` -- "security review" / "/security-review"
+- `rollback` -- "rollback" / "revert" / "undo" / "/rollback"
+- `ci` -- "CI" / "fix CI" / "check the build" / "/ci"
+- `stuck` -- "stuck" / "loop" / "going in circles" / "/stuck"
+- `beacon` -- "check dependencies" / "update deps" / "/beacon"
+- `scheduler` -- "schedule" / "routine" / "nightly" / "/scheduler"
+- `orca` -- "orca" / "orchestrator mode" / "/orca"
+- `verify` -- verify a UI change in a real browser
+- Diagram request -> `agent_docs/diagram_prompt.md`
 
 > Review runs via the `review` skill -- done-skill does NOT auto-run it. Findings -> `BACKLOG.md` (`agent_docs/backlog_process.md`). Knowledge -> `MEMORY.md` / `SCRATCHPAD.md` (`agent_docs/memory_process.md`).
 > **On "done" / "fertig":** commit uncommitted changes, comment on + close the related issue (English), reference it in the commit (`fix: resolve crash #42`). **Do NOT push unless explicitly asked.**
@@ -52,21 +43,35 @@ When a session begins, read in this order. Stop early if a file is missing.
 ## Performance / Modes
 
 - **Default model:** whatever the session resolves to -- never pin one here or in `.claude/settings.json`; `/model` switches mid-session. **Fast mode** (`/fast`) is the same Opus model with faster output, not a downgrade.
-- **Caveman mode:** `caveman lite|full|ultra` / `stop caveman` -- chat only, never generated files. **Orca mode:** `/orca` toggles orchestrator-only work, `/orca <N>` sets the parallel width (default 5); off by default, contract in `.claude/skills/orca/SKILL.md`. **Plan mode** for non-trivial strategy, not for single-step tasks.
+- **Caveman mode** (chat compression): default `full` in every session -- rules in its own section below.
+- **Orchestrator mode** (`orca`): **the default**, width 5 -- see _Subagents_ below.
+- **Plan mode** for non-trivial strategy, not for single-step tasks.
 
 Full mode reference: `agent_docs/modes.md`.
 
+## Caveman Mode -- chat compression (default `full`)
+
+In force from the first reply of every session -- no activation step, no environment check. Chat, status messages and confirmations only; **never** files (`CLAUDE.md`, `agent_docs/*`, MEMORY/SCRATCHPAD/BACKLOG, skills), code, commits, PR bodies or issue comments -- those keep the form _Output Languages_ defines.
+
+- **Shorten by selection, not by compression.** Cut what would not change the reader's next move -- never squeeze prose into abbreviations, arrow chains (`A -> B -> fails`) or invented shorthand.
+- Drop articles, filler, pleasantries, hedging. Fragments are fine for a status line. Technical terms exact, code blocks unchanged, error strings verbatim.
+- **The closing summary is never compressed** -- outcome first, then what it rests on, in complete sentences, each file/commit/flag in its own plain clause.
+- Normal prose for security warnings, irreversible-action confirmations, and whenever fragment order risks a misread.
+
+`caveman lite|full|ultra` switches mode mid-session; **`stop caveman` turns it off** for the rest of the session. Neither carries forward -- the next session starts at `full`.
+
 ## Autonomy
 
-Which session you are in is resolvable, so it is a rule and not a guess: `$CLAUDE_CODE_REMOTE` is `"true"` in Claude Code web/cloud sessions -- routine runs included -- and unset in the local CLI.
+`$CLAUDE_CODE_REMOTE` is `"true"` in web/cloud sessions (routine runs included) and unset in the local CLI, so the mode is resolvable -- a rule, not a guess.
 
-- **Unattended** (`CLAUDE_CODE_REMOTE=true`, or the session's initial instructions are a routine): nobody is there to answer. Never end a turn with a question -- decide under an assumption you state, finish every part that isn't blocked, and carry the open point into the final report or `BACKLOG.md`. A routine run has no permission prompts, so a session that "waits for approval" waits forever.
-- **Interactive** (local CLI): asking is cheap. Ask when two readings of the task produce materially different work; otherwise decide and mention the call.
-- **Both:** an action that is destructive _and_ not ordered _and_ not standard practice gets the same answer either way -- skip it, report it with the recommendation, finish everything it does not block. Gates stay where they are: merges -> `.claude/skills/pr/SKILL.md -> /pr merge`, reversals and force operations -> `.claude/skills/rollback/SKILL.md`, deploys and secrets -> _Deployment_ and `agent_docs/env-vars.md`.
+- **Unattended:** never end a turn with a question -- decide under a stated assumption, finish everything unblocked, carry the open point into the report or `BACKLOG.md`. **Interactive:** ask only when two readings mean materially different work.
+- **Both:** destructive _and_ not ordered _and_ not standard practice -> skip it, report it with the recommendation, finish the rest. Gates: merges -> `pr` skill `/pr merge`, reversals/force -> `rollback` skill, deploys + secrets -> _Deployment_ and `agent_docs/env-vars.md`.
+
+Full wording: `agent_docs/autonomy.md`.
 
 ## Scheduled Work
 
-Three schedulers with different lifetimes: **Routines** (cloud, durable, >= 1 h, survive the session), **`/loop` + `CronCreate`/`CronList`/`CronDelete`** (this session only, 7-day expiry), **Desktop scheduled tasks** (local machine). Choosing one, creating/listing/deleting jobs, and the cleanup contract for agent-created jobs: `.claude/skills/scheduler/SKILL.md`. This repo's default prompt for a bare `/loop`: `.claude/loop.md`.
+Three schedulers, three lifetimes: **Routines** (cloud, durable, >= 1 h), **`/loop` + `Cron*`** (this session only, 7-day expiry), **Desktop scheduled tasks** (local machine). Selection, job management and the cleanup contract for agent-created jobs: `.claude/skills/scheduler/SKILL.md`. Default prompt for a bare `/loop`: `.claude/loop.md`.
 
 ## Project Overview
 
@@ -156,7 +161,7 @@ Component style, CSS conventions and the TS compiler settings: `agent_docs/codin
 
 ## Architecture Decisions
 
-Significant decisions are recorded as ADRs under `docs/adr/`. Triggers + format: `agent_docs/adr_template.md`. Always grep `docs/adr/` before contradicting an existing decision. To reverse one, add a new ADR with `Status: Supersedes ADR-NNNN` -- never edit accepted ADRs.
+ADRs live under `docs/adr/`; triggers + format: `agent_docs/adr_template.md`. Grep `docs/adr/` before contradicting a decision; reverse one only via a new ADR with `Status: Supersedes ADR-NNNN` -- never edit accepted ADRs.
 
 ## Git Conventions
 
@@ -169,9 +174,7 @@ Significant decisions are recorded as ADRs under `docs/adr/`. Triggers + format:
 
 ## Dependency Management
 
-- **New dependencies:** Only after user approval with reasoning.
-- **devDependencies:** Can be added without approval for tooling/testing.
-- **Lock file:** `package-lock.json` -- always commit.
+New runtime dependencies only after user approval with reasoning; devDependencies fine without for tooling/testing. Lock file `package-lock.json` -- always commit.
 
 ## Environment Variables
 
@@ -179,17 +182,14 @@ Significant decisions are recorded as ADRs under `docs/adr/`. Triggers + format:
 | -------------------------- | --------------------------------- | --------------------- |
 | `DATABASE_PATH`            | SQLite database file              | `./data/clawstash.db` |
 | `ADMIN_PASSWORD`           | Admin login (unset = open access) | --                    |
-| `TRUST_PROXY`              | Trust `X-Forwarded-*`             | off                   |
 | `CLAWSTASH_ENCRYPTION_KEY` | Secrets at rest, 64 hex chars     | auto-generated        |
-| `PORT`                     | Server port                       | `3000`                |
 
-Full list + secret locations: `agent_docs/env-vars.md`, `.env.example`. Never `gh secret set` without an explicit user command; `security-review` scans for committed secrets.
+Full list (incl. `PORT`, `TRUST_PROXY`) + secret locations: `agent_docs/env-vars.md`, `.env.example`. Never `gh secret set` without an explicit user command; `security-review` scans for committed secrets.
 
 ## Deployment
 
 - **Trigger:** manual `workflow_dispatch` on `docker-publish.yml` -> multi-stage Docker build -> push to GHCR. Single image, any container host; DB volume at `/app/data`.
-- **Agent scope:** push to feature branches, open/update PRs, suggest merge. **Agent does NOT trigger production deploys** without explicit user command.
-- **Routine exception:** merges ordered by an owner-authorized routine count as an explicit user command -- conditions + full gate: `.claude/skills/pr/SKILL.md -> /pr merge` (single source of truth).
+- **Agent scope:** push to feature branches, open/update PRs, suggest merge -- **no production deploys** without an explicit user command. The one exception (merges ordered by an owner-authorized routine) + full gate: `.claude/skills/pr/SKILL.md -> /pr merge` (single source of truth).
 - **Rollback:** `.claude/skills/rollback/SKILL.md`. Prefer revert-PR over redeploying an old build.
 
 Deployment detail: `docs/deployment.md`.
@@ -208,19 +208,29 @@ Full reference: `docs/api-reference.md` - MCP tools: `docs/mcp.md` - auth/scopes
 
 ## External Integrations / MCPs
 
-Project-intended and common MCPs: `agent_docs/mcp_catalog.md`. Never auto-detect host MCP availability -- fall back to standard tools (`Read`, `Bash`, `WebFetch`) when an MCP is absent, and never hard-require one. A server an unattended cloud or routine run needs must be a committed `.mcp.json` entry or a claude.ai connector -- a local `claude mcp add` does not travel with the clone.
-
-**Trigger tools.** `.claude/settings.json` -> `permissions.allow` pre-approves them, so scheduled check-ins, Routine cleanup and PR-watch subscriptions run unattended **wherever this repo's workspace is trusted -- which a web/cloud session never is** (`$CLAUDE_CODE_REMOTE=true`: fresh container, no trust dialog, block dropped at startup); there they keep prompting until the one-time user-scope fix. **Self-heal is local-only:** a tool that still prompts means its server spelling is missing -- append `mcp__<that server>__*` and commit it, additive only, never `deny`/`ask`. Web/cloud appends nothing (it could not take effect in any session) -- name the fix once and carry on. Allowlist shape, both surfaces, user-level fallback: `agent_docs/mcp_catalog.md -> Prompt-free triggers everywhere`.
+Project-intended and common MCPs, cloud/routine reachability (committed `.mcp.json` / claude.ai connectors) and both permission surfaces: `agent_docs/mcp_catalog.md`. Never auto-detect host MCP availability -- fall back to `Read` / `Bash` / `WebFetch`, and never hard-require an MCP. **Trigger-tool self-heal, local sessions only:** a tool that still prompts is a missing server spelling -- append `mcp__<that server>__*` to `permissions.allow` and commit it, additive only, never `deny`/`ask`; in a web/cloud session (untrusted workspace, block dropped) append nothing -- name the one-time user-scope fix once instead (`agent_docs/mcp_catalog.md -> Prompt-free triggers everywhere`).
 
 ## CI
 
-CI failure handling: `.claude/skills/ci/SKILL.md`. Triggered by `/ci`, "fix CI", "check the build". Auto-routes by run state (none / running / passed / failed / stale). Never auto-reruns; always verifies fixes locally before pushing.
+CI failure handling: `.claude/skills/ci/SKILL.md`. Triggered by `/ci`, "fix CI", "check the build". Auto-routes by run state; never auto-reruns; always verifies fixes locally before pushing. `docker-publish.yml` is dispatch-only, so "no runs" on a pushed branch is configuration, not breakage: `agent_docs/development-notes.md -> CI/CD`.
 
-Which workflows actually run -- `docker-publish.yml` is dispatch-only, so "no runs" on a pushed branch is configuration, not breakage: `agent_docs/development-notes.md -> CI/CD`.
+## Subagents -- orchestrator mode is the default
 
-## Subagents
+**Every session starts in orchestrator mode, width 5.** The main agent decides and delegates; subagents do the task work -- not a mode to switch on. `/orca <N>` changes the width, `/orca off` drops to plain behavior for that session only. The orchestrator keeps only the decisions: decomposition, verification of what comes back, the integration gates, the report. Contract: `.claude/skills/orca/SKILL.md`.
 
-`Explore` (read-only search) - `Plan` (strategy) - `general-purpose` (write+execute) - `claude-code-guide` (Claude Code itself). Direct tools beat subagents when the target is known; parallelize independent calls; pass full context -- subagents have no history. Repo-local agents in `.claude/agents/*.md` load automatically, cloud sessions included -- a `model:` pinned there overrides model inheritance. **Orca mode** (`/orca`) makes delegation the only path and voids the thresholds (`.claude/skills/orca/SKILL.md`). Full guide: `agent_docs/review_process.md -> Subagent Delegation`.
+**The type carries tool access** (`Explore`, `Plan`, `general-purpose`, `claude-code-guide`); **the role carries the lens**, named in the wave report:
+
+| Role          | Earns a seat when                                       |
+| ------------- | ------------------------------------------------------- |
+| `implementer` | always, for any code change                             |
+| `reviewer`    | **any code change -- never its author**                 |
+| `architect`   | the change adds, moves or crosses a boundary            |
+| `domain`      | it encodes a domain or business rule                    |
+| `product`     | the request is ambiguous or scope could drift           |
+| `docs`        | a documented interface or contract changes              |
+| `security`    | it touches trust boundaries, untrusted input or secrets |
+
+Seat the lenses the change calls for, never two agents with the same one. **Quality parity is by omission:** leave model and effort off and the subagent inherits the session's (a `model:` pinned in `.claude/agents/*.md` overrides). Disjoint write scopes per wave; verify the diff, not the summary. Full guide: `agent_docs/review_process.md -> Subagent Delegation`.
 
 ## Development Notes
 
@@ -228,7 +238,7 @@ Runtime + process model, database, Docker and CI/CD specifics: `agent_docs/devel
 
 ## Refactoring Notes
 
-Refactoring does NOT happen automatically -- only on explicit request, on repeated review smells, or when structure blocks a feature. Principles: `agent_docs/refactoring_guidelines.md` - candidate list with line counts and BACKLOG refs: `agent_docs/development-notes.md -> Refactoring candidates`.
+Never automatic -- explicit request, repeated review smells, or structure blocking a feature only. Principles: `agent_docs/refactoring_guidelines.md` - candidates with line counts + BACKLOG refs: `agent_docs/development-notes.md -> Refactoring candidates`.
 
 ## Documentation Rules
 
@@ -266,4 +276,4 @@ Indexed as **clawstash** (2191 symbols, 3899 relationships, 189 execution flows)
 
 <!-- gitnexus:end -->
 
-<!-- Generated by claude-code-optimizer v1.24.0 -->
+<!-- Generated by claude-code-optimizer v1.28.6 -->
