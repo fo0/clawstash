@@ -1937,6 +1937,65 @@ body {
   gap: 16px;
 }
 
+/* Crash fallback (ErrorBoundary). Deliberately independent of the app shell:
+   it renders when the shell itself is what failed, so it must not depend on
+   the sidebar / main-wrapper layout. */
+.app-crash {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  padding: 24px;
+  background: var(--bg-primary);
+}
+
+.app-crash-box {
+  max-width: 640px;
+  width: 100%;
+  padding: 28px;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  background: var(--bg-secondary);
+}
+
+.app-crash-box h1 {
+  font-size: 20px;
+  margin-bottom: 10px;
+  color: var(--text-primary);
+}
+
+.app-crash-box p {
+  color: var(--text-muted);
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.app-crash-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 20px 0 8px;
+}
+
+.app-crash-details summary {
+  cursor: pointer;
+  color: var(--text-muted);
+  font-size: 13px;
+}
+
+.app-crash-details pre {
+  margin-top: 10px;
+  padding: 12px;
+  max-height: 240px;
+  overflow: auto;
+  border-radius: var(--radius);
+  background: var(--bg-tertiary);
+  color: var(--text-muted);
+  font-size: 12px;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
 .empty-icon {
   font-size: 48px;
   color: var(--text-muted);
