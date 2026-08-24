@@ -133,13 +133,42 @@ body {
 
 /* === Sidebar === */
 .sidebar {
-  width: 260px;
-  min-width: 260px;
+  /* Width is driven by `--sidebar-width` on `.app` (persisted, drag-resizable
+     via .sidebar-resizer). The fallback keeps the old fixed width whenever the
+     variable is absent — SSR, or the mobile overlay below. */
+  width: var(--sidebar-width, 260px);
+  min-width: var(--sidebar-width, 260px);
   background: var(--bg-sidebar);
   border-right: 1px solid var(--border-color);
   display: flex;
   flex-direction: column;
   overflow: hidden;
+}
+
+/* Drag handle on the sidebar's trailing edge. The hit area is wider than the
+   visible line so it can be grabbed without pixel-hunting; it draws itself
+   only on hover / focus / drag. */
+.sidebar-resizer {
+  flex: 0 0 auto;
+  width: 6px;
+  margin-left: -3px;
+  margin-right: -3px;
+  z-index: 10;
+  cursor: col-resize;
+  background: transparent;
+  transition: background 0.15s;
+  touch-action: none;
+}
+
+.sidebar-resizer:hover,
+.sidebar-resizer:active {
+  background: var(--accent-blue);
+}
+
+.sidebar-resizer:focus-visible {
+  outline: 2px solid var(--accent-blue);
+  outline-offset: -1px;
+  background: var(--accent-blue);
 }
 
 .sidebar-header {
@@ -5437,6 +5466,11 @@ textarea.code-editor-plain.code-editor-wrap {
     transform: translateX(-100%);
     transition: transform 0.25s ease;
     box-shadow: none;
+  }
+
+  /* The mobile sidebar is a fixed-width slide-in overlay — nothing to drag. */
+  .sidebar-resizer {
+    display: none;
   }
 
   .sidebar.sidebar-open {

@@ -16,7 +16,9 @@ import { loadShowArchived, saveShowArchived } from './utils/archived';
 import { recordRecentView } from './utils/recent-views';
 import { SEARCH_DEBOUNCE_MS, STASH_PAGE_SIZE } from './utils/constants';
 import { decidePopState } from './utils/nav-guard';
+import { SIDEBAR_DEFAULT_WIDTH, loadSidebarWidth, saveSidebarWidth } from './utils/sidebar-width';
 import Sidebar from './components/Sidebar';
+import SidebarResizer from './components/SidebarResizer';
 import Dashboard from './components/Dashboard';
 import StashViewer from './components/StashViewer';
 import StashEditor from './components/editor/StashEditor';
@@ -142,6 +144,15 @@ export default function App() {
   const [analyzeStashId, setAnalyzeStashId] = useState<string | null>(null);
   const [showArchived, setShowArchived] = useState<boolean>(loadShowArchived);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  // Desktop sidebar width (persisted). Seeded with the default and adopted from
+  // localStorage after mount on purpose: reading storage in the initializer
+  // would make the server-rendered markup disagree with the first client
+  // render on the app's ROOT element, which is the one hydration mismatch
+  // worth avoiding.
+  const [sidebarWidth, setSidebarWidth] = useState(SIDEBAR_DEFAULT_WIDTH);
+  useEffect(() => {
+    setSidebarWidth(loadSidebarWidth());
+  }, []);
   // Favorite stash ids — persisted to localStorage (key `clawstash_favorite_stashes`).
   // Held as Set<string> for O(1) lookups during sort + per-card render.
   const [favoriteIds, setFavoriteIds] = useState<ReadonlySet<string>>(() => loadFavoriteIds());
@@ -993,7 +1004,7 @@ export default function App() {
   }
 
   return (
-    <div className="app">
+    <div className="app" style={{ '--sidebar-width': `${sidebarWidth}px` } as React.CSSProperties}>
       {/*
         WCAG 2.4.1 (Bypass Blocks): the sidebar precedes <main> in DOM order
         and holds the search field, the tag filter and the whole stash list,
@@ -1032,6 +1043,10 @@ export default function App() {
         isOpen={sidebarOpen}
         onClose={() => setSidebarOpen(false)}
       />
+      {/* Sits between the sidebar and the content it resizes, so its DOM order
+          matches what it separates. Hidden on mobile, where the sidebar is a
+          slide-in overlay with a fixed width. */}
+      <SidebarResizer width={sidebarWidth} onResize={setSidebarWidth} onCommit={saveSidebarWidth} />
       <div className="main-wrapper">
         <header className="mobile-header">
           <button
