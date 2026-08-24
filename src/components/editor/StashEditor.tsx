@@ -4,6 +4,7 @@ import { api } from '../../api';
 import { DELETE_CONFIRM_TIMEOUT_MS } from '../../utils/constants';
 import { formatBytes, formatRelativeTime } from '../../utils/format';
 import { clearDraft, loadDraft, saveDraft, type EditorDraft } from '../../utils/editor-draft';
+import { MAX_IMPORT_FILES, readImportedFiles } from '../../utils/file-import';
 import FileCodeEditor from './FileCodeEditor';
 import TagCombobox from './TagCombobox';
 import type { TagComboboxHandle } from './TagCombobox';
@@ -118,6 +119,13 @@ export default function StashEditor({ stash, template, onSave, onCancel, onDirty
   // Soft-wrap long lines in the file editors (persisted, applies to all files
   // of the stash — same scope as the viewer's wrap toggle).
   const [wrapLines, setWrapLines] = useState<boolean>(getEditorWrapPreference);
+  // File import (picker + drag & drop): in-flight flag, drag highlight, and
+  // the per-file reasons for anything the import refused.
+  const [importing, setImporting] = useState(false);
+  const [dragActive, setDragActive] = useState(false);
+  const [importSkipped, setImportSkipped] = useState<string[]>([]);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const dragDepth = useRef(0);
   const [availableTags, setAvailableTags] = useState<TagInfo[]>([]);
   const [availableMetaKeys, setAvailableMetaKeys] = useState<string[]>([]);
   // A duplicate arrives with real filenames too, so the name→filename
@@ -304,6 +312,65 @@ export default function StashEditor({ stash, template, onSave, onCancel, onDirty
       setEditorWrapPreference(next);
       return next;
     });
+  };
+
+  /**
+   * Add picked or dropped files as file rows. Getting an existing file into a
+   * stash previously meant opening it elsewhere, copying its content and
+   * pasting it into an empty row — one round trip per file.
+   *
+   * A single untouched blank row is replaced rather than kept above the
+   * import: it is the form's starting state, not something the user typed.
+   */
+  const importFiles = async (selected: File[]) => {
+    if (selected.length === 0 || importing) return;
+    setImporting(true);
+    try {
+      const { files: imported, skipped } = await readImportedFiles(
+        selected,
+        MAX_FILE_CONTENT_LENGTH,
+      );
+      if (imported.length > 0) {
+        markDirty();
+        const blankStart =
+          files.length === 1 && !files[0].filename.trim() && !files[0].content.trim();
+        const baseFiles = blankStart ? [] : files;
+        const baseIds = blankStart ? [] : fileIds.current;
+        fileIds.current = [...baseIds, ...imported.map(() => fileIdCounter.current++)];
+        setFiles([...baseFiles, ...imported]);
+        // The imported filename is the user's choice of name — stop the stash
+        // name from overwriting row 1 the next time the name field changes.
+        setFirstFileManuallyEdited(true);
+      }
+      setImportSkipped(skipped);
+    } finally {
+      setImporting(false);
+    }
+  };
+
+  /**
+   * Drag events fire for every element entered inside the drop zone, so a
+   * plain enter/leave pair flickers the highlight. Count depth instead.
+   */
+  const handleDragEnter = (e: React.DragEvent) => {
+    if (!e.dataTransfer.types.includes('Files')) return;
+    dragDepth.current++;
+    setDragActive(true);
+  };
+
+  const handleDragLeave = () => {
+    dragDepth.current = Math.max(0, dragDepth.current - 1);
+    if (dragDepth.current === 0) setDragActive(false);
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    if (!e.dataTransfer.types.includes('Files')) return;
+    // Without this the browser navigates to the dropped file, abandoning the
+    // form (the beforeunload guard would only warn).
+    e.preventDefault();
+    dragDepth.current = 0;
+    setDragActive(false);
+    void importFiles(Array.from(e.dataTransfer.files));
   };
 
   const addFile = () => {
@@ -678,7 +745,15 @@ export default function StashEditor({ stash, template, onSave, onCancel, onDirty
           />
         </div>
 
-        <div className="editor-files">
+        <div
+          className={`editor-files${dragActive ? ' editor-files-dragging' : ''}`}
+          onDragEnter={handleDragEnter}
+          onDragOver={(e) => {
+            if (e.dataTransfer.types.includes('Files')) e.preventDefault();
+          }}
+          onDragLeave={handleDragLeave}
+          onDrop={handleDrop}
+        >
           <div className="files-header">
             <h3>
               Files
@@ -707,6 +782,37 @@ export default function StashEditor({ stash, template, onSave, onCancel, onDirty
                 </svg>
                 Wrap
               </button>
+              <input
+                ref={fileInputRef}
+                type="file"
+                multiple
+                style={{ display: 'none' }}
+                onChange={(e) => {
+                  const picked = Array.from(e.target.files ?? []);
+                  // Reset first: picking the same file twice in a row fires no
+                  // change event otherwise.
+                  e.target.value = '';
+                  void importFiles(picked);
+                }}
+              />
+              <button
+                className="btn btn-sm btn-ghost"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={importing}
+                aria-busy={importing || undefined}
+                title={`Read files from disk into this stash (or drop them here, up to ${MAX_IMPORT_FILES} at a time)`}
+              >
+                <svg
+                  aria-hidden="true"
+                  width="12"
+                  height="12"
+                  viewBox="0 0 16 16"
+                  fill="currentColor"
+                >
+                  <path d="M8.75 1.75a.75.75 0 0 0-1.5 0v6.44L5.28 6.22a.75.75 0 1 0-1.06 1.06l3.25 3.25a.75.75 0 0 0 1.06 0l3.25-3.25a.75.75 0 0 0-1.06-1.06L8.75 8.19Zm-6 8.5a.75.75 0 0 0-1.5 0v2A2.75 2.75 0 0 0 4 15h8a2.75 2.75 0 0 0 2.75-2.75v-2a.75.75 0 0 0-1.5 0v2c0 .69-.56 1.25-1.25 1.25H4c-.69 0-1.25-.56-1.25-1.25Z" />
+                </svg>
+                {importing ? 'Importing…' : 'Import Files'}
+              </button>
               <button
                 className="btn btn-sm btn-secondary"
                 onClick={addFile}
@@ -725,6 +831,37 @@ export default function StashEditor({ stash, template, onSave, onCancel, onDirty
               </button>
             </div>
           </div>
+
+          {dragActive && (
+            <div className="editor-files-drop-hint" aria-hidden="true">
+              Drop to add {MAX_IMPORT_FILES} files at most as new file rows
+            </div>
+          )}
+
+          {/* Silently dropping a picked file would look like the import simply
+              did nothing — name every file that did not make it, and why. */}
+          {importSkipped.length > 0 && (
+            <div className="editor-import-skipped" role="status" aria-live="polite">
+              <div className="editor-import-skipped-head">
+                <span>
+                  {importSkipped.length} file{importSkipped.length !== 1 ? 's' : ''} not imported
+                </span>
+                <button
+                  type="button"
+                  className="btn btn-sm btn-ghost"
+                  onClick={() => setImportSkipped([])}
+                  aria-label="Dismiss import warnings"
+                >
+                  Dismiss
+                </button>
+              </div>
+              <ul>
+                {importSkipped.map((reason) => (
+                  <li key={reason}>{reason}</li>
+                ))}
+              </ul>
+            </div>
+          )}
 
           {files.map((file, index) => (
             <div key={fileIds.current[index]} className="editor-file">

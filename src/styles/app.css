@@ -2844,6 +2844,53 @@ body {
 /* === Editor Files === */
 .editor-files {
   margin-top: 8px;
+  /* The drag highlight draws an inset ring, so reserve the space up front and
+     keep the rows from shifting the moment a file enters the drop zone. */
+  border-radius: var(--radius-lg);
+  padding: 4px;
+  outline: 2px dashed transparent;
+  outline-offset: -2px;
+  transition: outline-color 0.15s;
+}
+
+.editor-files-dragging {
+  outline-color: var(--accent-blue);
+  background: var(--bg-tertiary);
+}
+
+.editor-files-drop-hint {
+  margin-bottom: 12px;
+  padding: 10px 12px;
+  border-radius: var(--radius);
+  background: var(--bg-secondary);
+  color: var(--text-muted);
+  font-size: 13px;
+  text-align: center;
+}
+
+.editor-import-skipped {
+  margin-bottom: 12px;
+  padding: 10px 12px;
+  border: 1px solid var(--border-color);
+  border-left: 3px solid var(--accent-orange);
+  border-radius: var(--radius);
+  background: var(--bg-secondary);
+  font-size: 13px;
+}
+
+.editor-import-skipped-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.editor-import-skipped ul {
+  margin: 6px 0 0;
+  padding-left: 18px;
+  color: var(--text-muted);
 }
 
 .files-header {
