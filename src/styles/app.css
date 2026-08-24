@@ -133,13 +133,42 @@ body {
 
 /* === Sidebar === */
 .sidebar {
-  width: 260px;
-  min-width: 260px;
+  /* Width is driven by `--sidebar-width` on `.app` (persisted, drag-resizable
+     via .sidebar-resizer). The fallback keeps the old fixed width whenever the
+     variable is absent — SSR, or the mobile overlay below. */
+  width: var(--sidebar-width, 260px);
+  min-width: var(--sidebar-width, 260px);
   background: var(--bg-sidebar);
   border-right: 1px solid var(--border-color);
   display: flex;
   flex-direction: column;
   overflow: hidden;
+}
+
+/* Drag handle on the sidebar's trailing edge. The hit area is wider than the
+   visible line so it can be grabbed without pixel-hunting; it draws itself
+   only on hover / focus / drag. */
+.sidebar-resizer {
+  flex: 0 0 auto;
+  width: 6px;
+  margin-left: -3px;
+  margin-right: -3px;
+  z-index: 10;
+  cursor: col-resize;
+  background: transparent;
+  transition: background 0.15s;
+  touch-action: none;
+}
+
+.sidebar-resizer:hover,
+.sidebar-resizer:active {
+  background: var(--accent-blue);
+}
+
+.sidebar-resizer:focus-visible {
+  outline: 2px solid var(--accent-blue);
+  outline-offset: -1px;
+  background: var(--accent-blue);
 }
 
 .sidebar-header {
@@ -1908,6 +1937,65 @@ body {
   gap: 16px;
 }
 
+/* Crash fallback (ErrorBoundary). Deliberately independent of the app shell:
+   it renders when the shell itself is what failed, so it must not depend on
+   the sidebar / main-wrapper layout. */
+.app-crash {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  padding: 24px;
+  background: var(--bg-primary);
+}
+
+.app-crash-box {
+  max-width: 640px;
+  width: 100%;
+  padding: 28px;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  background: var(--bg-secondary);
+}
+
+.app-crash-box h1 {
+  font-size: 20px;
+  margin-bottom: 10px;
+  color: var(--text-primary);
+}
+
+.app-crash-box p {
+  color: var(--text-muted);
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.app-crash-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 20px 0 8px;
+}
+
+.app-crash-details summary {
+  cursor: pointer;
+  color: var(--text-muted);
+  font-size: 13px;
+}
+
+.app-crash-details pre {
+  margin-top: 10px;
+  padding: 12px;
+  max-height: 240px;
+  overflow: auto;
+  border-radius: var(--radius);
+  background: var(--bg-tertiary);
+  color: var(--text-muted);
+  font-size: 12px;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
 .empty-icon {
   font-size: 48px;
   color: var(--text-muted);
@@ -2844,6 +2932,53 @@ body {
 /* === Editor Files === */
 .editor-files {
   margin-top: 8px;
+  /* The drag highlight draws an inset ring, so reserve the space up front and
+     keep the rows from shifting the moment a file enters the drop zone. */
+  border-radius: var(--radius-lg);
+  padding: 4px;
+  outline: 2px dashed transparent;
+  outline-offset: -2px;
+  transition: outline-color 0.15s;
+}
+
+.editor-files-dragging {
+  outline-color: var(--accent-blue);
+  background: var(--bg-tertiary);
+}
+
+.editor-files-drop-hint {
+  margin-bottom: 12px;
+  padding: 10px 12px;
+  border-radius: var(--radius);
+  background: var(--bg-secondary);
+  color: var(--text-muted);
+  font-size: 13px;
+  text-align: center;
+}
+
+.editor-import-skipped {
+  margin-bottom: 12px;
+  padding: 10px 12px;
+  border: 1px solid var(--border-color);
+  border-left: 3px solid var(--accent-orange);
+  border-radius: var(--radius);
+  background: var(--bg-secondary);
+  font-size: 13px;
+}
+
+.editor-import-skipped-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.editor-import-skipped ul {
+  margin: 6px 0 0;
+  padding-left: 18px;
+  color: var(--text-muted);
 }
 
 .files-header {
@@ -5390,6 +5525,11 @@ textarea.code-editor-plain.code-editor-wrap {
     transform: translateX(-100%);
     transition: transform 0.25s ease;
     box-shadow: none;
+  }
+
+  /* The mobile sidebar is a fixed-width slide-in overlay — nothing to drag. */
+  .sidebar-resizer {
+    display: none;
   }
 
   .sidebar.sidebar-open {

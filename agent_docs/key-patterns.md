@@ -133,6 +133,7 @@ Detailed pattern descriptions for clawstash internals. CLAUDE.md keeps a short i
 - Logout button in sidebar footer (only shown when auth is required)
 - SSR safety: `getStoredPreference`, `getStoredAdminToken`, `getInitialRoute` guard against `window` being undefined
 - Mobile sidebar: `sidebarOpen` state controls slide-in overlay sidebar on mobile (< 640px); navigation actions auto-close sidebar; hamburger menu + mobile header shown only on mobile via CSS
+- Sidebar width: `sidebarWidth` state is published as the `--sidebar-width` custom property on the app root and dragged by `<SidebarResizer>`; persisted via `utils/sidebar-width.ts`. It is adopted from localStorage in a mount effect, **not** in the state initializer -- an initializer read would put a hydration mismatch on the root element. Mobile ignores the variable (fixed-width overlay).
 
 ## Footer (src/components/Footer.tsx)
 
@@ -195,6 +196,13 @@ Detailed pattern descriptions for clawstash internals. CLAUDE.md keeps a short i
 - Metadata Key-Value Editor: add/remove entries, key suggestions from existing stashes, expand/collapse (first 3 visible)
 - Auto-filename: first file name auto-syncs with stash name during creation (until manually edited)
 - `MetadataEditor` exports `metadataToEntries()` and `entriesToMetadata()` conversion helpers
+- File import: the Files section is a drop zone and carries an "Import Files" button (hidden `<input type="file" multiple>`). Reading + rejection live in `utils/file-import.ts`; a single untouched blank row is replaced rather than kept above the import, and importing sets `firstFileManuallyEdited` so the stash-name auto-fill stops rewriting row 1. Every refused file is named with its reason in the panel above the rows.
+
+## Crash Guard (src/components/ErrorBoundary.tsx)
+
+- Class boundary wrapping `<App/>` at **both** mount points (`src/app/page.tsx` and `src/app/[...slug]/page.tsx`) -- without it a render-time throw unmounts React to a blank page
+- Fallback offers the three real recoveries: reset the boundary state ("Try again"), `location.reload()`, and `location.assign('/')`; the stack sits behind a collapsed `<details>`
+- `componentDidCatch` logs to the browser console only -- there is no client error-reporting endpoint, and adding one would be a new interface
 
 ## API Management (src/components/api/)
 
@@ -216,6 +224,8 @@ Detailed pattern descriptions for clawstash internals. CLAUDE.md keeps a short i
 ## Shared Utilities (src/utils/)
 
 - `clipboard.ts`: `copyToClipboard()` with modern Clipboard API + fallback for non-HTTPS
+- `file-import.ts`: reads picked / dropped files into editor rows -- `readImportedFiles()` plus the pure `sanitizeImportedFilename()` (basename only, no path separators / `..` / control characters, exactly what the server's `isValidFilename()` accepts) and `isProbablyBinary()` (NUL byte, or a U+FFFD share above 10% in the first 4 KB). Oversized files are rejected before the read when the byte size exceeds `3 * maxContentLength`, and exactly after decoding otherwise.
+- `sidebar-width.ts`: persisted sidebar width (`clawstash-sidebar-width`) -- `clampSidebarWidth()` (200-520px, rounds, falls back to the default on a non-finite value), `loadSidebarWidth()`, `saveSidebarWidth()`
 - `format.ts`: `formatDate()`, `formatDateTime()`, `formatRelativeTime()` -- centralized date formatting used by Sidebar, StashViewer, StashCard, TokensTab
 - `code-copy.ts`: Copy-button scaffold for fenced code blocks in rendered Markdown -- `wrapCodeBlockWithCopy()` (markup), `findCodeCopyTarget()` (click resolver), `setCodeCopyState()` (transient feedback). See "Markdown Code Copy" below.
 - `markdown.ts`: `renderDescriptionMarkdown(content, { codeCopyButtons? })` -- renders stash descriptions as sanitized Markdown HTML (Marked + DOMParser sanitization, external links in new tab). Used by StashViewer (with copy buttons) and StashCard (without -- the card is a clamped teaser with no handler attached).
