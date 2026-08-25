@@ -11,8 +11,29 @@ const UNAUTHENTICATED_MESSAGE = 'Authentication required. Provide a Bearer token
 const FORBIDDEN_SCOPE_MESSAGE = 'Insufficient permissions.';
 const FORBIDDEN_ADMIN_MESSAGE = 'Admin access required.';
 
+/**
+ * Build the `WWW-Authenticate` challenge for a 401.
+ *
+ * RFC 9110 §15.5.2 makes the header mandatory on every 401 ("the server
+ * generating a 401 response MUST send a WWW-Authenticate header field
+ * containing at least one challenge"), and RFC 6750 §3 defines the Bearer form
+ * ClawStash uses. Without it a 401 does not tell a client *how* to
+ * authenticate, and generic HTTP clients cannot distinguish "wrong scheme"
+ * from "no credentials".
+ *
+ * Safe for the browser SPA: user agents only open the native credential dialog
+ * for the `Basic` / `Digest` schemes, never for `Bearer`, so nothing about the
+ * UI's fetch-based login flow changes.
+ */
+export function bearerChallenge(error?: 'invalid_token' | 'insufficient_scope'): string {
+  return error ? `Bearer realm="ClawStash", error="${error}"` : 'Bearer realm="ClawStash"';
+}
+
 function unauthenticatedResponse() {
-  return NextResponse.json({ error: UNAUTHENTICATED_MESSAGE }, { status: 401 });
+  return NextResponse.json(
+    { error: UNAUTHENTICATED_MESSAGE },
+    { status: 401, headers: { 'WWW-Authenticate': bearerChallenge() } },
+  );
 }
 
 function forbiddenResponse(message: string) {

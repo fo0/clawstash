@@ -3,10 +3,18 @@ import { WebStandardStreamableHTTPServerTransport } from '@modelcontextprotocol/
 import { createMcpServer } from '@/server/mcp-server';
 import { getDb } from '@/server/singleton';
 import { requireScopeAuth } from '@/server/auth';
-import { getBaseUrl } from '@/app/api/_helpers';
+import { getBaseUrl, bearerChallenge } from '@/app/api/_helpers';
 
-function jsonRpcError(code: number, message: string, status: number) {
-  return NextResponse.json({ jsonrpc: '2.0', error: { code, message }, id: null }, { status });
+function jsonRpcError(
+  code: number,
+  message: string,
+  status: number,
+  headers?: Record<string, string>,
+) {
+  return NextResponse.json(
+    { jsonrpc: '2.0', error: { code, message }, id: null },
+    { status, headers },
+  );
 }
 
 // POST /mcp — Streamable HTTP MCP endpoint (stateless)
@@ -16,10 +24,17 @@ export async function POST(req: NextRequest) {
   // Auth check
   const auth = requireScopeAuth(db, req, 'mcp');
   if (!auth) {
+    // A 401 must carry a WWW-Authenticate challenge (RFC 9110 §15.5.2); the
+    // Bearer form is RFC 6750 §3. `requireScopeAuth` collapses "no token" and
+    // "token without the mcp scope" into one null, so the bare challenge (no
+    // `error=` parameter) is the accurate one here.
     return jsonRpcError(
       -32000,
       'Authentication required. Provide a Bearer token with MCP scope.',
       401,
+      {
+        'WWW-Authenticate': bearerChallenge(),
+      },
     );
   }
 
