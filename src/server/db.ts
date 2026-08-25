@@ -84,6 +84,11 @@ export type {
   StashGraphResult,
 } from './db-types';
 
+// Version-history retention (refs #535) lives with the version SQL in
+// VersionStore; re-exported here so `MAX_ACCESS_LOG_ROWS` and the version cap
+// are discoverable from the same module.
+export { DEFAULT_STASH_VERSION_LIMIT, resolveStashVersionLimit } from './stores/version-store';
+
 /** Stash-graph rows fetched when the caller does not pass a `limit`. */
 const DEFAULT_GRAPH_STASHES = 200;
 /**

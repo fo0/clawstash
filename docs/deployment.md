@@ -130,12 +130,52 @@ Both serve on port 3000 (configurable via `PORT` env variable).
 | `ADMIN_SESSION_HOURS`      | Session duration in hours (0 = unlimited)                                                                                                                                                                                                           | `24`                  |
 | `TRUST_PROXY`              | Trust `X-Forwarded-*` headers (set behind nginx/Traefik/Cloudflare); also enables HSTS for HTTPS requests (`x-forwarded-proto: https`)                                                                                                              | off                   |
 | `CLAWSTASH_ENCRYPTION_KEY` | Key for secrets at rest (64 hex chars); unset = auto-generated key file `data/.clawstash-key`                                                                                                                                                       | auto-generated        |
+| `STASH_VERSION_LIMIT`      | Version snapshots kept per stash; `0` = unlimited. **Deletes data** — see below                                                                                                                                                                     | `200`                 |
 
 Copy `.env.example` and adjust as needed:
 
 ```bash
 cp .env.example .env
 ```
+
+### `STASH_VERSION_LIMIT` — the one variable that deletes data
+
+Version history used to grow without bound: every update of a stash adds a
+snapshot to `stash_versions` (plus a row per file in `stash_version_files`),
+and nothing ever removed one. `STASH_VERSION_LIMIT` caps that at 200 snapshots
+per stash by default.
+
+Because a cap deletes data, the pruning is deliberately narrow:
+
+- It runs **only while a new snapshot is written for that one stash** — an
+  update, or a restore (which goes through update) — inside the same
+  transaction. It is incremental and attached to a user action.
+- It **never sweeps the whole table**, at start-up or otherwise, and no
+  migration deletes rows. Upgrading to this version removes nothing on its
+  own: a stash loses its oldest snapshots on its next update, and only once it
+  holds more than the limit.
+- Every prune is logged:
+  `[DB] Pruned 3 version snapshot(s) of stash <id> (STASH_VERSION_LIMIT=200)`.
+- Admin import (`/api/admin/import`) writes version rows directly and is not
+  pruned, so a restored backup arrives intact.
+
+**To keep the previous unbounded behaviour, set `STASH_VERSION_LIMIT=0`.** Any
+value that is not a non-negative integer falls back to `200` rather than to an
+accidentally tiny cap.
+
+### Client-bundle variables (inlined at build time)
+
+`NEXT_PUBLIC_*` variables are baked into the JavaScript the browser downloads,
+so they are fixed when the image is built — changing one needs a rebuild, not a
+restart.
+
+- `NEXT_PUBLIC_CLAWSTASH_FETCH_TIMEOUT_MS` (default `10000`) — deadline in
+  milliseconds for the web UI's own API requests. `fetch` has no built-in
+  timeout, so without it a proxy that accepts a connection and then goes silent
+  leaves the UI spinning forever; with it the request rejects as a typed
+  `ApiTimeoutError`. Full data export/import and every call that reaches the
+  GitHub API get 6x this budget. `0` disables the deadline (the previous
+  behaviour). Non-integer or negative values fall back to `10000`.
 
 ### Build-time variables (Docker build only)
 

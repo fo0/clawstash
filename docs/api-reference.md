@@ -54,6 +54,13 @@ See [authentication.md](authentication.md) for token creation and scopes.
 > produces a new v6 whose content equals v2, and v5 is still listed in
 > history.
 
+> **Retention**: version history is capped per stash by `STASH_VERSION_LIMIT`
+> (default 200, `0` = unlimited). The oldest snapshots of a stash are dropped
+> at the moment that same stash gets a new one — nothing is pruned in bulk and
+> no migration deletes rows, so an upgrade alone removes nothing. Requesting a
+> version that has aged out returns `404`. Every prune is logged. Details:
+> [Deployment → `STASH_VERSION_LIMIT`](deployment.md#stash_version_limit--the-one-variable-that-deletes-data).
+
 > **Archive semantics**: PATCH `/api/stashes/:id` with body `{ "archived": true }` (or
 > `false`) flips the archive flag inside a single transaction without creating a new version.
 > Pass `archived` alongside content fields (name/description/tags/metadata/files) to change

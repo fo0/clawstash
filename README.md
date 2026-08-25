@@ -12,7 +12,7 @@ AI agents lose context between sessions. ClawStash gives them a persistent memor
 - **Organize with tags & metadata** — structured key-value metadata and tags for easy retrieval
 - **Full-text search** — find stashes by content, name, description, or tags
 - **Token-efficient** — MCP tools return summaries first, full content only on demand
-- **Version history** — every change is tracked, diffable, and restorable
+- **Version history** — every change is tracked, diffable, and restorable; the last 200 snapshots per stash are kept (`STASH_VERSION_LIMIT`, `0` = keep everything — [what gets deleted, and when](docs/deployment.md#stash_version_limit--the-one-variable-that-deletes-data))
 - **Duplicate a stash** — open any stash as a pre-filled new one and use it as a template
 - **Import files from disk** — drop text files onto the editor (or pick them) to add them as file rows, instead of copy-pasting each one
 - **GitHub backup** — mirror all stashes into a GitHub repo (scheduled, on change, or manual) with "Sign in with GitHub" or a PAT — see [docs/backup.md](docs/backup.md)
