@@ -6,6 +6,9 @@ data
 .github
 .env
 .env.*
+# Keep the auto-generated at-rest encryption key out of the build context, so a
+# non-default DATABASE_PATH cannot bake one host's secret into the image.
+.clawstash-key
 *.md
 .dockerignore
 .gitnexus

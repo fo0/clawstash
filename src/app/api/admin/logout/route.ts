@@ -6,6 +6,7 @@ import {
   getClientIp,
   RATE_LIMIT_WINDOW_SEC,
 } from '@/server/auth-rate-limit';
+import { bearerChallenge } from '@/app/api/_helpers';
 
 // Rate-limit state lives in an in-memory Map on the Node runtime; pin this
 // handler so it shares state with the other admin auth routes.
@@ -14,7 +15,10 @@ export const runtime = 'nodejs';
 export async function POST(req: NextRequest) {
   const token = extractToken(req);
   if (!token) {
-    return NextResponse.json({ error: 'No token provided' }, { status: 401 });
+    return NextResponse.json(
+      { error: 'No token provided' },
+      { status: 401, headers: { 'WWW-Authenticate': bearerChallenge() } },
+    );
   }
 
   // Logout hashes a candidate token and queries the DB on every call. It's
@@ -42,7 +46,10 @@ export async function POST(req: NextRequest) {
   const db = getDb();
   const auth = validateAuth(db, token);
   if (!auth.authenticated || auth.source !== 'admin_session') {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    return NextResponse.json(
+      { error: 'Unauthorized' },
+      { status: 401, headers: { 'WWW-Authenticate': bearerChallenge('invalid_token') } },
+    );
   }
   db.deleteAdminSession(token);
   // Standard admin POST response shape: { success: true, message }. `message`
