@@ -27,13 +27,14 @@ import { NextRequest, NextResponse } from 'next/server';
 // response headers (Cache-Control, Content-Language, Content-Length,
 // Content-Type, Expires, Last-Modified, Pragma) are readable from a
 // cross-origin script. `Retry-After` carries the backoff for the 429 the auth
-// rate limiter returns, so without this a cross-origin caller sees the status
-// but not how long to wait.
+// rate limiter returns and `Allow` the supported methods for the 405 /mcp
+// returns, so without this a cross-origin caller sees the status but not the
+// one piece of information the status exists to deliver.
 const CORS_HEADERS: Record<string, string> = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Methods': 'GET, POST, PUT, PATCH, DELETE, OPTIONS',
   'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Access-Source, X-Requested-With',
-  'Access-Control-Expose-Headers': 'Retry-After',
+  'Access-Control-Expose-Headers': 'Retry-After, Allow',
   'Access-Control-Max-Age': '86400',
 };
 
