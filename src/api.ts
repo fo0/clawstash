@@ -40,6 +40,99 @@ const BASE = '/api/stashes';
  */
 const seg = (value: string | number): string => encodeURIComponent(String(value));
 
+/**
+ * Default per-request timeout for every call in this module (refs #535).
+ *
+ * Without one, a proxy that accepts a connection and then goes silent leaves
+ * the UI spinning forever — `fetch` has no built-in timeout. Ten seconds is
+ * comfortably above a healthy local round-trip while still failing fast enough
+ * that a user sees an error instead of a hang.
+ */
+export const DEFAULT_FETCH_TIMEOUT_MS = 10_000;
+
+/**
+ * Multiplier applied to the base timeout for calls that are legitimately slow:
+ * full data export/import (a ZIP of the whole database) and everything that
+ * makes ClawStash talk to the GitHub API on the caller's behalf. These share
+ * the single env var rather than adding a second knob.
+ */
+const SLOW_CALL_FACTOR = 6;
+
+/**
+ * Resolve `NEXT_PUBLIC_CLAWSTASH_FETCH_TIMEOUT_MS` into an effective timeout.
+ *
+ * - unset / empty -> `DEFAULT_FETCH_TIMEOUT_MS`
+ * - `0` -> no timeout (today's behaviour: wait forever)
+ * - any other non-negative integer -> that many milliseconds
+ * - anything else (negative, fractional, NaN, `"abc"`) -> the default
+ */
+export function resolveFetchTimeoutMs(raw: string | undefined): number {
+  if (raw === undefined || raw.trim() === '') return DEFAULT_FETCH_TIMEOUT_MS;
+  const parsed = Number(raw);
+  if (!Number.isInteger(parsed) || parsed < 0) return DEFAULT_FETCH_TIMEOUT_MS;
+  return parsed;
+}
+
+// Read once at module scope. This is a client module, so Next.js inlines the
+// `NEXT_PUBLIC_*` member access at build time — the value is fixed for the
+// lifetime of the bundle (see docs/deployment.md → Environment Variables).
+export const FETCH_TIMEOUT_MS = resolveFetchTimeoutMs(
+  process.env.NEXT_PUBLIC_CLAWSTASH_FETCH_TIMEOUT_MS,
+);
+
+/** Timeout for the slow calls described on `SLOW_CALL_FACTOR`. 0 stays 0. */
+const SLOW_FETCH_TIMEOUT_MS = FETCH_TIMEOUT_MS === 0 ? 0 : FETCH_TIMEOUT_MS * SLOW_CALL_FACTOR;
+
+/**
+ * Thrown when a request exceeded its timeout, so callers can tell "the server
+ * never answered" apart from "the server answered with an error". A typed
+ * error, never an unhandled rejection from an aborted `fetch`.
+ */
+export class ApiTimeoutError extends Error {
+  readonly url: string;
+  readonly timeoutMs: number;
+
+  constructor(url: string, timeoutMs: number) {
+    super(`Request timed out after ${timeoutMs} ms: ${url}`);
+    this.name = 'ApiTimeoutError';
+    this.url = url;
+    this.timeoutMs = timeoutMs;
+  }
+}
+
+/**
+ * `fetch` with a deadline. `AbortSignal.timeout` rejects the request with a
+ * `TimeoutError` DOMException, which is translated into `ApiTimeoutError`;
+ * every other rejection (offline, DNS, a caller-supplied abort) passes
+ * through untouched. `timeoutMs === 0` disables the deadline.
+ *
+ * Exported so tests can drive the timeout path directly.
+ */
+export async function fetchWithTimeout(
+  url: string,
+  init: RequestInit = {},
+  timeoutMs: number = FETCH_TIMEOUT_MS,
+): Promise<Response> {
+  if (timeoutMs <= 0) return fetch(url, init);
+
+  const timeoutSignal = AbortSignal.timeout(timeoutMs);
+  // Preserve a caller-supplied signal instead of dropping it: whichever fires
+  // first wins. `AbortSignal.any` is baseline in every runtime this app
+  // supports (Node >= 20.9, and the browsers Next.js 16 targets).
+  const signal = init.signal ? AbortSignal.any([init.signal, timeoutSignal]) : timeoutSignal;
+
+  try {
+    return await fetch(url, { ...init, signal });
+  } catch (err) {
+    // Only the deadline produces a TimeoutError here; a caller abort is an
+    // AbortError and stays the caller's business.
+    if (err instanceof Error && err.name === 'TimeoutError') {
+      throw new ApiTimeoutError(url, timeoutMs);
+    }
+    throw err;
+  }
+}
+
 let _authToken = '';
 
 export function setAuthToken(token: string) {
@@ -57,9 +150,9 @@ function getHeaders(): Record<string, string> {
   return h;
 }
 
-async function request<T>(url: string, init?: RequestInit): Promise<T>;
-async function request(url: string, init?: RequestInit): Promise<unknown> {
-  const res = await fetch(url, init);
+async function request<T>(url: string, init?: RequestInit, timeoutMs?: number): Promise<T>;
+async function request(url: string, init?: RequestInit, timeoutMs?: number): Promise<unknown> {
+  const res = await fetchWithTimeout(url, init, timeoutMs);
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
     throw new Error(body.error || `HTTP ${res.status}`);
@@ -236,7 +329,7 @@ export const api = {
 
   // MCP spec (text/markdown format with data types and tool schemas)
   async getMcpSpec(): Promise<string> {
-    const res = await fetch('/api/mcp-spec');
+    const res = await fetchWithTimeout('/api/mcp-spec');
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     return res.text();
   },
@@ -252,7 +345,8 @@ export const api = {
     if (_authToken) {
       headers['Authorization'] = `Bearer ${_authToken}`;
     }
-    const res = await fetch('/api/admin/export', { headers });
+    // Whole-database ZIP — legitimately slow, so it gets the slow-call budget.
+    const res = await fetchWithTimeout('/api/admin/export', { headers }, SLOW_FETCH_TIMEOUT_MS);
     if (!res.ok) {
       const body = await res.json().catch(() => ({}));
       throw new Error(body.error || `HTTP ${res.status}`);
@@ -271,11 +365,11 @@ export const api = {
     if (_authToken) {
       headers['Authorization'] = `Bearer ${_authToken}`;
     }
-    const res = await fetch('/api/admin/import', {
-      method: 'POST',
-      headers,
-      body: formData,
-    });
+    const res = await fetchWithTimeout(
+      '/api/admin/import',
+      { method: 'POST', headers, body: formData },
+      SLOW_FETCH_TIMEOUT_MS,
+    );
     if (!res.ok) {
       const body = await res.json().catch(() => ({}));
       throw new Error(body.error || `HTTP ${res.status}`);
@@ -296,12 +390,14 @@ export const api = {
     });
   },
 
+  // Everything below that reaches GitHub on the server's behalf gets the
+  // slow-call budget — a round-trip to api.github.com is not a local request.
   connectBackupPat(token: string): Promise<BackupSettingsResponse> {
-    return request('/api/backup/token', {
-      method: 'POST',
-      headers: getHeaders(),
-      body: JSON.stringify({ token }),
-    });
+    return request(
+      '/api/backup/token',
+      { method: 'POST', headers: getHeaders(), body: JSON.stringify({ token }) },
+      SLOW_FETCH_TIMEOUT_MS,
+    );
   },
 
   disconnectBackup(): Promise<BackupSettingsResponse> {
@@ -309,36 +405,44 @@ export const api = {
   },
 
   startBackupDeviceFlow(clientId?: string): Promise<BackupDeviceStartResponse> {
-    return request('/api/backup/device/start', {
-      method: 'POST',
-      headers: getHeaders(),
-      body: JSON.stringify(clientId ? { clientId } : {}),
-    });
+    return request(
+      '/api/backup/device/start',
+      {
+        method: 'POST',
+        headers: getHeaders(),
+        body: JSON.stringify(clientId ? { clientId } : {}),
+      },
+      SLOW_FETCH_TIMEOUT_MS,
+    );
   },
 
   pollBackupDeviceFlow(sessionId: string): Promise<BackupDevicePollResponse> {
-    return request('/api/backup/device/poll', {
-      method: 'POST',
-      headers: getHeaders(),
-      body: JSON.stringify({ sessionId }),
-    });
+    return request(
+      '/api/backup/device/poll',
+      { method: 'POST', headers: getHeaders(), body: JSON.stringify({ sessionId }) },
+      SLOW_FETCH_TIMEOUT_MS,
+    );
   },
 
   listBackupRepos(): Promise<{ repos: BackupRepoInfo[] }> {
-    return request('/api/backup/github/repos', { headers: getHeaders() });
+    return request('/api/backup/github/repos', { headers: getHeaders() }, SLOW_FETCH_TIMEOUT_MS);
   },
 
   listBackupBranches(owner: string, repo: string): Promise<BackupBranchesResponse> {
     const qs = new URLSearchParams({ owner, repo });
-    return request(`/api/backup/github/branches?${qs}`, { headers: getHeaders() });
+    return request(
+      `/api/backup/github/branches?${qs}`,
+      { headers: getHeaders() },
+      SLOW_FETCH_TIMEOUT_MS,
+    );
   },
 
   triggerBackupSync(opts?: { stashId?: string; force?: boolean }): Promise<BackupRunResult> {
-    return request('/api/backup/sync', {
-      method: 'POST',
-      headers: getHeaders(),
-      body: JSON.stringify(opts ?? {}),
-    });
+    return request(
+      '/api/backup/sync',
+      { method: 'POST', headers: getHeaders(), body: JSON.stringify(opts ?? {}) },
+      SLOW_FETCH_TIMEOUT_MS,
+    );
   },
 
   getBackupStatus(stashId?: string): Promise<BackupStatusResponse> {

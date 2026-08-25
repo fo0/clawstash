@@ -28,11 +28,46 @@ export type StashUpdater = (
   createdBy?: string,
 ) => Stash | null;
 
+/**
+ * Default retention cap for `stash_versions`, per stash (refs #535).
+ *
+ * Deliberately generous: a cap deletes user data, so the default must not
+ * silently discard history anyone still expects to find. 200 snapshots cover
+ * a very long editing tail — a stash an agent rewrites daily keeps more than
+ * half a year of history — while still bounding the unbounded growth the
+ * table had before.
+ */
+export const DEFAULT_STASH_VERSION_LIMIT = 200;
+
+/**
+ * Resolve `STASH_VERSION_LIMIT` into an effective per-stash cap.
+ *
+ * - unset / empty -> `DEFAULT_STASH_VERSION_LIMIT`
+ * - `0` -> unlimited, pruning is fully disabled
+ * - any other non-negative integer -> that many snapshots per stash
+ * - anything else (negative, fractional, NaN, `"abc"`) -> the default
+ *
+ * The fallback is deliberate and mirrors `ADMIN_SESSION_HOURS`: a typo must
+ * land on the safe documented default, never on an accidental cap of 1 that
+ * would prune a stash down to a single snapshot on its next update.
+ */
+export function resolveStashVersionLimit(raw: string | undefined): number {
+  if (raw === undefined || raw.trim() === '') return DEFAULT_STASH_VERSION_LIMIT;
+  const parsed = Number(raw);
+  if (!Number.isInteger(parsed) || parsed < 0) return DEFAULT_STASH_VERSION_LIMIT;
+  return parsed;
+}
+
 export class VersionStore {
+  private readonly versionLimit: number;
+
   constructor(
     private readonly db: Database.Database,
     private readonly update: StashUpdater,
-  ) {}
+    versionLimit: number = resolveStashVersionLimit(process.env.STASH_VERSION_LIMIT),
+  ) {
+    this.versionLimit = versionLimit;
+  }
 
   /**
    * List a stash's versions, newest first.
@@ -247,7 +282,54 @@ export class VersionStore {
         file.sort_order,
       );
     }
+
+    // Enforce the retention cap for exactly this stash, inside the caller's
+    // transaction (refs #535). Incremental by design: pruning is attached to
+    // the user action that just added a snapshot, so it never runs as a
+    // start-up sweep over the whole table.
+    this.pruneVersions(args.stashId);
+
     return versionId;
+  }
+
+  /**
+   * Drop the oldest snapshots of one stash beyond `versionLimit`.
+   *
+   * Scoped to a single `stash_id` and called only right after that stash got a
+   * new snapshot — there is no bulk pass over other stashes, and no migration
+   * deletes rows (migrations stay append-only). `stash_version_files` rows go
+   * with their parent via `ON DELETE CASCADE` (`foreign_keys = ON`).
+   *
+   * `versionLimit === 0` disables pruning entirely, so an operator who wants
+   * unbounded history keeps exactly today's behaviour.
+   *
+   * Runs inside the caller's transaction — it does NOT open its own.
+   */
+  private pruneVersions(stashId: string): void {
+    if (this.versionLimit <= 0) return;
+
+    const result = this.db
+      .prepare(
+        `
+      DELETE FROM stash_versions
+      WHERE stash_id = ?
+        AND id NOT IN (
+          SELECT id FROM stash_versions
+          WHERE stash_id = ?
+          ORDER BY version DESC
+          LIMIT ?
+        )
+    `,
+      )
+      .run(stashId, stashId, this.versionLimit);
+
+    if (result.changes > 0) {
+      // Deleting user data is never silent: say how much went, for which
+      // stash, and which limit caused it.
+      console.log(
+        `[DB] Pruned ${result.changes} version snapshot(s) of stash ${stashId} (STASH_VERSION_LIMIT=${this.versionLimit})`,
+      );
+    }
   }
 
   restoreStashVersion(
