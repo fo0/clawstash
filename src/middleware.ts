@@ -15,10 +15,25 @@ import { NextRequest, NextResponse } from 'next/server';
 // CORS headers — permissive for AI agent access from any origin
 // ---------------------------------------------------------------------------
 
+// `Access-Control-Allow-Methods` must list every method a route handler
+// actually exports, or the browser preflight rejects the call before it is
+// sent. `PUT` was the drift: `PUT /api/backup/settings` exists (and is
+// documented in docs/api-reference.md and the OpenAPI spec) but was absent
+// here, so no cross-origin browser client could reach it. Regenerate with
+// `grep -rhoE "export async function (GET|POST|PUT|PATCH|DELETE)" src/app`
+// when a route gains a method.
+//
+// `Access-Control-Expose-Headers` is needed because only the CORS-safelisted
+// response headers (Cache-Control, Content-Language, Content-Length,
+// Content-Type, Expires, Last-Modified, Pragma) are readable from a
+// cross-origin script. `Retry-After` carries the backoff for the 429 the auth
+// rate limiter returns, so without this a cross-origin caller sees the status
+// but not how long to wait.
 const CORS_HEADERS: Record<string, string> = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Methods': 'GET, POST, PATCH, DELETE, OPTIONS',
+  'Access-Control-Allow-Methods': 'GET, POST, PUT, PATCH, DELETE, OPTIONS',
   'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Access-Source, X-Requested-With',
+  'Access-Control-Expose-Headers': 'Retry-After',
   'Access-Control-Max-Age': '86400',
 };
 
