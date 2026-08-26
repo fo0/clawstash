@@ -18,6 +18,13 @@ interface Props {
   entries: MetadataEntry[];
   onChange: (entries: MetadataEntry[]) => void;
   availableKeys: string[];
+  /**
+   * Id of the visible heading that names this editor. The editor is a
+   * composite of several inputs, so no single `<label htmlFor>` can own it —
+   * the wrapper takes `role="group"` + `aria-labelledby` instead, the same
+   * shape the graph depth controls use.
+   */
+  labelledBy?: string;
 }
 
 export function metadataToEntries(metadata: Record<string, unknown>): MetadataEntry[] {
@@ -78,7 +85,7 @@ export function metadataValueType(entry: MetadataEntry): string | null {
 
 const PREVIEW_COUNT = 3;
 
-export default function MetadataEditor({ entries, onChange, availableKeys }: Props) {
+export default function MetadataEditor({ entries, onChange, availableKeys, labelledBy }: Props) {
   const [showAll, setShowAll] = useState(false);
   const [keyInput, setKeyInput] = useState('');
   const [showKeyDropdown, setShowKeyDropdown] = useState(false);
@@ -207,7 +214,7 @@ export default function MetadataEditor({ entries, onChange, availableKeys }: Pro
   useClickOutside(dropdownRef, closeKeyDropdown, showKeyDropdown);
 
   return (
-    <div className="metadata-editor">
+    <div className="metadata-editor" role="group" aria-labelledby={labelledBy}>
       {entries.length > 0 && (
         <div className="metadata-entries">
           {displayEntries.map((entry, index) => (

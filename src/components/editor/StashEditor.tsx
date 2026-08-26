@@ -742,6 +742,7 @@ export default function StashEditor({ stash, template, onSave, onCancel, onDirty
               setMetadataEntries(e);
             }}
             availableKeys={availableMetaKeys}
+            labelledBy="stash-metadata-label"
           />
         </div>
 
