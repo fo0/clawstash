@@ -1526,13 +1526,19 @@ export default function StashGraphCanvas({
             </>
           )}
         </span>
-        <div className="stash-graph-depth-control">
-          <label>Depth:</label>
+        {/* `<label>Depth:</label>` was an orphan label — no `for`, no wrapped
+            control — so it labelled nothing. The zoom control next to it
+            already uses role="group"; mirror it so the two steppers are
+            announced as one named group, and name the buttons themselves
+            (their accessible name was the bare "-" / "+"). */}
+        <div className="stash-graph-depth-control" role="group" aria-label="Depth">
+          <span className="stash-graph-depth-label">Depth:</span>
           <button
             className="graph-depth-btn"
             onClick={() => setDefaultDepth((d) => Math.max(1, d - 1))}
             disabled={defaultDepth <= 1}
             title="Decrease depth"
+            aria-label="Decrease depth"
           >
             -
           </button>
@@ -1542,6 +1548,7 @@ export default function StashGraphCanvas({
             onClick={() => setDefaultDepth((d) => Math.min(5, d + 1))}
             disabled={defaultDepth >= 5}
             title="Increase depth"
+            aria-label="Increase depth"
           >
             +
           </button>

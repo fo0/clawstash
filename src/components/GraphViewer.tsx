@@ -1523,6 +1523,9 @@ export default function GraphViewer({
                   onClick={() => handleDepthChange(-1)}
                   disabled={focusDepth <= 1}
                   title="Decrease depth"
+                  // Without this the accessible name is the visible "-" — the
+                  // sibling zoom buttons next to it already carry one.
+                  aria-label="Decrease depth"
                 >
                   -
                 </button>
@@ -1532,6 +1535,7 @@ export default function GraphViewer({
                   onClick={() => handleDepthChange(1)}
                   disabled={focusDepth >= 4}
                   title="Increase depth"
+                  aria-label="Increase depth"
                 >
                   +
                 </button>

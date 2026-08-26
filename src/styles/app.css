@@ -6984,7 +6984,9 @@ textarea.code-editor-plain.code-editor-wrap {
   user-select: none;
 }
 
-.stash-graph-depth-control label {
+/* Was `… label` — the element is a <span> now, because a <label> with no
+   `for` and no wrapped control labels nothing. Same chrome, honest markup. */
+.stash-graph-depth-label {
   font-weight: 500;
   color: var(--text-secondary);
 }
