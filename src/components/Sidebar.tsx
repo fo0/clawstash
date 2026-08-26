@@ -600,6 +600,18 @@ export default function Sidebar({
                         onKeyDown={handleTagSearchKeyDown}
                         className="sidebar-tag-search-input"
                         aria-label="Search tags"
+                        // This field drives the listbox below through
+                        // aria-activedescendant, which only reaches assistive
+                        // tech from a combobox — a bare textbox announced the
+                        // typed query and never the highlighted option. Same
+                        // wiring the metadata key field and TagCombobox use.
+                        role="combobox"
+                        aria-expanded
+                        aria-haspopup="listbox"
+                        aria-autocomplete="list"
+                        // The browser's own autofill list would otherwise cover
+                        // the tag options.
+                        autoComplete="off"
                         // Only point at a listbox that actually has options.
                         aria-controls={filteredTags.length > 0 ? 'sidebar-tag-options' : undefined}
                         aria-activedescendant={

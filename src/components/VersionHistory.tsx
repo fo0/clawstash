@@ -30,6 +30,10 @@ export default function VersionHistory({ stashId, currentVersion, onRestore }: P
   const [restoring, setRestoring] = useState(false);
   const [confirmRestore, setConfirmRestore] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
+  // Bumped by the Retry button to re-run the load effect. Every other failing
+  // fetch in the app (dashboard, storage stats, access log) offers a retry;
+  // this one left the tab on a dead end until the user navigated away.
+  const [reloadKey, setReloadKey] = useState(0);
   const confirmTimerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
   // Confluence-style inline comparison: "From" (older) and "To" (newer)
@@ -69,7 +73,7 @@ export default function VersionHistory({ stashId, currentVersion, onRestore }: P
     return () => {
       cancelled = true;
     };
-  }, [stashId, currentVersion]);
+  }, [stashId, currentVersion, reloadKey]);
 
   const handleViewVersion = async (version: number) => {
     setLoadingVersion(version);
@@ -177,15 +181,20 @@ export default function VersionHistory({ stashId, currentVersion, onRestore }: P
 
   if (loading)
     return (
-      <div className="loading">
+      // The spinner itself is aria-hidden, so without a live region the wait
+      // was silent for screen readers — the sibling tabs already announce it.
+      <div className="loading" role="status" aria-live="polite">
         <Spinner /> Loading version history...
       </div>
     );
 
   if (error && versions.length === 0) {
     return (
-      <div className="version-empty" style={{ color: 'var(--text-danger, #f85149)' }}>
+      <div className="version-empty" role="alert" style={{ color: 'var(--text-danger, #f85149)' }}>
         <p>{error}</p>
+        <button className="btn btn-sm btn-secondary" onClick={() => setReloadKey((k) => k + 1)}>
+          Retry
+        </button>
       </div>
     );
   }
