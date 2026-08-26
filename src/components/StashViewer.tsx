@@ -1099,6 +1099,11 @@ export default function StashViewer({
           an invalid tablist child and AT may skip or mis-count the tabs). It
           stays a sibling inside the same flex row so the bar looks unchanged. */}
       <div className="viewer-tabs">
+        {/* eslint-disable-next-line jsx-a11y/interactive-supports-focus --
+            roving tabindex per the ARIA APG: focus lives on the tabs (each
+            carries tabIndex 0/-1 below), and the tablist container must NOT
+            be a tab stop of its own. The rule only sees the keydown handler
+            on an unfocusable container. */}
         <div
           className="viewer-tablist"
           role="tablist"

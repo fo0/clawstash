@@ -89,7 +89,14 @@ export default function BackupLogCard({ repoFullName, refreshToken }: Props) {
 
       {/* Focusable scroll container — see BackupActivityCard (WCAG 2.1.1). */}
       {log.length > 0 && (
-        <div className="backup-table-wrap" tabIndex={0} role="region" aria-label="Sync log">
+        <div
+          className="backup-table-wrap"
+          // Deliberate: see BackupActivityCard (WCAG 2.1.1).
+          // eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex -- focusable scroll region
+          tabIndex={0}
+          role="region"
+          aria-label="Sync log"
+        >
           <table className="backup-table">
             <thead>
               <tr>

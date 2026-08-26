@@ -1,5 +1,6 @@
 import js from '@eslint/js';
 import globals from 'globals';
+import jsxA11y from 'eslint-plugin-jsx-a11y';
 import reactHooks from 'eslint-plugin-react-hooks';
 import tseslint from 'typescript-eslint';
 
@@ -105,6 +106,48 @@ export default tseslint.config(
       // promise is usually a fire-and-forget event handler, on the server it
       // is a lost write or an unhandled rejection.
       '@typescript-eslint/no-floating-promises': 'error',
+    },
+  },
+
+  // --- JSX accessibility ---------------------------------------------------
+  // `jsx-a11y` recommended, which is a correctness set (a control with no
+  // accessible name, an invalid ARIA prop, a role that cannot carry the props
+  // given to it) and contains no formatting rule — so it does not collide with
+  // Prettier.
+  //
+  // What it does NOT cover, so nobody mistakes a green run for a clean audit:
+  // the plugin has no `heading-order` rule at all, and there is no
+  // `scrollable-region-focusable` either — whether a container actually
+  // scrolls depends on CSS and content at runtime, which static analysis
+  // cannot see. Both defect classes stay a manual review item.
+  //
+  // Deliberate patterns the plugin cannot recognise carry a per-site
+  // `eslint-disable-next-line` with a reason instead of being switched off
+  // here, so a genuinely new violation of those rules is still an error.
+  {
+    files: ['**/*.{jsx,tsx}'],
+    extends: [jsxA11y.flatConfigs.recommended],
+    rules: {
+      // --- Transitional `warn`, never `off` -------------------------------
+      // These three are one cluster: a click handler on a non-interactive
+      // element. Clearing them is not mechanical — each site needs a real
+      // decision about what the element should *be* (a button, a menuitem, a
+      // row with a keyboard path), and the graph canvases in the set are
+      // already tracked as #465. Left visible as warnings so the count only
+      // moves down.
+      //
+      // click-events-have-key-events: 11 violations (App, MarkdownBody,
+      // MermaidDiagram, StashCard x2, StashViewer x3, TagCombobox).
+      'jsx-a11y/click-events-have-key-events': 'warn',
+      // no-static-element-interactions: 10 violations, largely the same sites.
+      'jsx-a11y/no-static-element-interactions': 'warn',
+      // no-noninteractive-element-interactions: 6 violations. Four are
+      // deliberate (the two modal backdrops close on click-outside and both
+      // dialogs already handle Escape; the Mermaid region and the sidebar
+      // separator are focusable widgets). The remaining two are the App
+      // toasts, which dismiss on click and need a real dismiss affordance —
+      // a design decision, not a mechanical edit.
+      'jsx-a11y/no-noninteractive-element-interactions': 'warn',
     },
   },
 

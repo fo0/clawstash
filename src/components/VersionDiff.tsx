@@ -122,6 +122,10 @@ export default function VersionDiff({ v1, v2 }: Props) {
                 (WCAG 2.1.1). */}
             <div
               className="diff-table-wrapper"
+              // Deliberate: the focusable-scroll-region fix described above.
+              // The plugin has no rule for scrollable regions and flags the
+              // fix for one instead.
+              // eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex -- focusable scroll region
               tabIndex={0}
               role="region"
               aria-label={`Diff for ${fd.filename}`}

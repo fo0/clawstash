@@ -81,6 +81,10 @@ export default function LoginScreen({ onLogin }: Props) {
             // readOnly, not disabled: disabled drops keyboard focus during
             // submit and never gives it back after a failed attempt.
             readOnly={loading}
+            // The login screen renders nothing but this form, so focusing the
+            // password field is where the user was going anyway — there is no
+            // context to be yanked out of.
+            // eslint-disable-next-line jsx-a11y/no-autofocus -- sole control on a dedicated screen
             autoFocus
             onKeyDown={syncCapsLock}
             onKeyUp={syncCapsLock}

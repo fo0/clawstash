@@ -190,7 +190,16 @@ export default function BackupActivityCard({ onSyncRan, onUnhealthyChange }: Pro
           right-hand columns (WCAG 2.1.1). tabIndex + a named region make the
           scroll container focusable and announceable. */}
       {status.states.length > 0 && (
-        <div className="backup-table-wrap" tabIndex={0} role="region" aria-label="Sync activity">
+        <div
+          className="backup-table-wrap"
+          // Deliberate: the focusable-scroll-region fix described above. The
+          // plugin has no rule for scrollable regions and flags the fix for
+          // one instead.
+          // eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex -- focusable scroll region
+          tabIndex={0}
+          role="region"
+          aria-label="Sync activity"
+        >
           <table className="backup-table">
             <thead>
               <tr>
