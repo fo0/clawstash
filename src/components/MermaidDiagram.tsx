@@ -268,7 +268,13 @@ export default function MermaidDiagram({ code, className, storageKey }: Props) {
   );
 
   if (state.loading) {
-    return <div className={`mermaid-loading ${className || ''}`}>Rendering diagram…</div>;
+    // role="status" so the render wait is announced; the error branch below
+    // already carries role="alert".
+    return (
+      <div className={`mermaid-loading ${className || ''}`} role="status" aria-live="polite">
+        Rendering diagram…
+      </div>
+    );
   }
   if (state.error) {
     return (

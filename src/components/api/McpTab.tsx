@@ -165,7 +165,9 @@ export default function McpTab({
               Failed to load the tool list — use Retry above.
             </div>
           ) : (
-            <div className="api-loading">
+            // The spinner is aria-hidden, so without a live region the wait is
+            // silent for screen readers — the error sibling already announces.
+            <div className="api-loading" role="status" aria-live="polite">
               <Spinner /> Loading tools...
             </div>
           )

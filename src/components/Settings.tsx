@@ -544,7 +544,9 @@ function StorageSection({ onFilterTag }: StorageSectionProps) {
   if (loading) {
     return (
       <div className="settings-section-content">
-        <div className="api-loading">
+        {/* The spinner is aria-hidden, so without a live region the wait is
+            silent for screen readers. */}
+        <div className="api-loading" role="status" aria-live="polite">
           <Spinner /> Loading storage info...
         </div>
       </div>

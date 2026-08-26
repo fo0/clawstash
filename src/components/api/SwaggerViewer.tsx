@@ -145,7 +145,9 @@ export default function SwaggerViewer() {
   return (
     <div className="swagger-ui-container">
       {loading && (
-        <div className="api-loading">
+        // The spinner is aria-hidden, so without a live region the wait is
+        // silent for screen readers.
+        <div className="api-loading" role="status" aria-live="polite">
           <Spinner />
           <span>Loading Swagger UI...</span>
         </div>
