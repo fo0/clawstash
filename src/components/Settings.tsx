@@ -452,6 +452,10 @@ function StorageSection({ onFilterTag }: StorageSectionProps) {
     };
   }, [reloadKey]);
 
+  // The import file picker is hidden and opened from a real <button> — see the
+  // Import Data control below for why a <label> wrapper is not enough.
+  const importInputRef = useRef<HTMLInputElement>(null);
+
   // Tracks whether the storage section is still mounted, so async ops launched
   // from event handlers don't trigger setState-after-unmount warnings if the
   // user navigates away mid-import / mid-export.
@@ -677,9 +681,19 @@ function StorageSection({ onFilterTag }: StorageSectionProps) {
             {exporting ? 'Exporting…' : 'Export Data'}
           </button>
 
-          <label
+          {/* A real <button>, not a <label> wrapping the file input: the input
+              has to stay `display: none` (a styled picker is not themable), and
+              a display:none input is removed from the tab order — so the whole
+              Import control used to be unreachable without a pointer (WCAG
+              2.1.1). Same hidden-input + button pattern the stash editor's file
+              import already uses. */}
+          <button
+            type="button"
             className={`settings-option-btn${importing ? ' active' : ''}`}
             style={{ cursor: importing ? 'wait' : 'pointer' }}
+            onClick={() => importInputRef.current?.click()}
+            disabled={exporting || importing}
+            aria-busy={importing || undefined}
           >
             <svg
               aria-hidden="true"
@@ -697,14 +711,17 @@ function StorageSection({ onFilterTag }: StorageSectionProps) {
               <line x1="12" x2="12" y1="3" y2="15" />
             </svg>
             {importing ? 'Importing…' : 'Import Data'}
-            <input
-              type="file"
-              accept=".zip"
-              onChange={handleImport}
-              disabled={exporting || importing}
-              style={{ display: 'none' }}
-            />
-          </label>
+          </button>
+          <input
+            ref={importInputRef}
+            type="file"
+            accept=".zip"
+            onChange={handleImport}
+            disabled={exporting || importing}
+            style={{ display: 'none' }}
+            tabIndex={-1}
+            aria-hidden="true"
+          />
         </div>
 
         {exportResult && (
