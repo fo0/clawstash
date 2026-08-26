@@ -1,6 +1,15 @@
 import { useMemo } from 'react';
 import type { StashVersion } from '../types';
+import type { FileDiff } from './version-diff-utils';
 import { computeFileDiffs } from './version-diff-utils';
+
+/** Spelled-out form of the single-letter A / D / M status badge. */
+const STATUS_WORD: Record<FileDiff['status'], string> = {
+  added: 'Added',
+  removed: 'Deleted',
+  modified: 'Modified',
+  unchanged: 'Unchanged',
+};
 
 interface Props {
   v1: StashVersion;
@@ -45,9 +54,19 @@ export default function VersionDiff({ v1, v2 }: Props) {
 
   return (
     <div className="version-diff">
+      {/* "+12 / -3 / A / D / M" carry their whole meaning in a sign or a single
+          letter — read aloud they are just characters. The visible chrome stays
+          exactly as it was; the words are added for assistive tech and as
+          hover titles. */}
       <div className="diff-summary">
-        <span className="diff-stat-add">+{stats.additions}</span>
-        <span className="diff-stat-remove">-{stats.deletions}</span>
+        <span className="diff-stat-add" title={`${stats.additions} lines added`}>
+          +{stats.additions}
+          <span className="sr-only"> lines added</span>
+        </span>
+        <span className="diff-stat-remove" title={`${stats.deletions} lines removed`}>
+          -{stats.deletions}
+          <span className="sr-only"> lines removed</span>
+        </span>
         <span className="diff-stat-files">
           {fileDiffs.filter((f) => f.status !== 'unchanged').length} file
           {fileDiffs.filter((f) => f.status !== 'unchanged').length !== 1 ? 's' : ''} changed
@@ -61,7 +80,10 @@ export default function VersionDiff({ v1, v2 }: Props) {
         JSON.stringify(v1.metadata ?? {}) !== JSON.stringify(v2.metadata ?? {})) && (
         <div className="diff-meta-section">
           <div className="diff-file-header">
-            <span className="diff-file-status diff-status-modified">M</span>
+            <span className="diff-file-status diff-status-modified" title={STATUS_WORD.modified}>
+              <span aria-hidden="true">M</span>
+              <span className="sr-only">{STATUS_WORD.modified}:</span>
+            </span>
             <span>Stash Metadata</span>
           </div>
           <div className="diff-meta-body">
@@ -83,8 +105,14 @@ export default function VersionDiff({ v1, v2 }: Props) {
         .map((fd) => (
           <div key={fd.filename} className="diff-file">
             <div className="diff-file-header">
-              <span className={`diff-file-status diff-status-${fd.status}`}>
-                {fd.status === 'added' ? 'A' : fd.status === 'removed' ? 'D' : 'M'}
+              <span
+                className={`diff-file-status diff-status-${fd.status}`}
+                title={STATUS_WORD[fd.status]}
+              >
+                <span aria-hidden="true">
+                  {fd.status === 'added' ? 'A' : fd.status === 'removed' ? 'D' : 'M'}
+                </span>
+                <span className="sr-only">{STATUS_WORD[fd.status]}:</span>
               </span>
               <span>{fd.filename}</span>
             </div>
