@@ -203,6 +203,7 @@ export default function VersionHistory({ stashId, currentVersion, onRestore }: P
     return (
       <div className="version-empty">
         <svg
+          aria-hidden="true"
           width="24"
           height="24"
           viewBox="0 0 16 16"
@@ -242,7 +243,7 @@ export default function VersionHistory({ stashId, currentVersion, onRestore }: P
         {errorAlert}
         <div className="version-detail-header">
           <button className="btn btn-ghost btn-sm" onClick={handleBack}>
-            <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
+            <svg aria-hidden="true" width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
               <path d="M7.78 12.53a.75.75 0 0 1-1.06 0L2.47 8.28a.75.75 0 0 1 0-1.06l4.25-4.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042L4.81 7h7.44a.75.75 0 0 1 0 1.5H4.81l2.97 2.97a.75.75 0 0 1 0 1.06Z" />
             </svg>
             Back to versions
@@ -341,7 +342,7 @@ export default function VersionHistory({ stashId, currentVersion, onRestore }: P
       <div className="version-diff-view">
         <div className="version-detail-header">
           <button className="btn btn-ghost btn-sm" onClick={handleBack}>
-            <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
+            <svg aria-hidden="true" width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
               <path d="M7.78 12.53a.75.75 0 0 1-1.06 0L2.47 8.28a.75.75 0 0 1 0-1.06l4.25-4.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042L4.81 7h7.44a.75.75 0 0 1 0 1.5H4.81l2.97 2.97a.75.75 0 0 1 0 1.06Z" />
             </svg>
             Back to versions
@@ -376,7 +377,13 @@ export default function VersionHistory({ stashId, currentVersion, onRestore }: P
               </>
             ) : (
               <>
-                <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor">
+                <svg
+                  aria-hidden="true"
+                  width="12"
+                  height="12"
+                  viewBox="0 0 16 16"
+                  fill="currentColor"
+                >
                   <path d="M9.573.677A.25.25 0 0 1 10 .854V4.5h3.25a.75.75 0 0 1 0 1.5H9.25a.75.75 0 0 1-.75-.75V1.104l-5.427 5.15a.25.25 0 0 0 0 .362l5.427 5.15V8.25a.75.75 0 0 1 .75-.75h3.5a.75.75 0 0 1 0 1.5H10v3.646a.25.25 0 0 1-.427.177l-6.39-6.064a1.75 1.75 0 0 1 0-2.539l6.39-6.064Z" />
                 </svg>
                 Compare

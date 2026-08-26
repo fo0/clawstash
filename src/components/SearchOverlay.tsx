@@ -247,6 +247,7 @@ export default function SearchOverlay({ open, onClose, onSelectStash, onSearchAl
       >
         <div className="search-overlay-input-row">
           <svg
+            aria-hidden="true"
             className="search-overlay-icon"
             width="16"
             height="16"

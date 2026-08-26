@@ -260,7 +260,13 @@ export default function MetadataEditor({ entries, onChange, availableKeys, label
                 title={`Remove metadata entry "${entry.key || `#${index + 1}`}"`}
                 aria-label={`Remove metadata entry "${entry.key || `#${index + 1}`}"`}
               >
-                <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
+                <svg
+                  aria-hidden="true"
+                  width="14"
+                  height="14"
+                  viewBox="0 0 16 16"
+                  fill="currentColor"
+                >
                   <path d="M3.72 3.72a.75.75 0 0 1 1.06 0L8 6.94l3.22-3.22a.749.749 0 0 1 1.275.326.749.749 0 0 1-.215.734L9.06 8l3.22 3.22a.749.749 0 0 1-.326 1.275.749.749 0 0 1-.734-.215L8 9.06l-3.22 3.22a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042L6.94 8 3.72 4.78a.75.75 0 0 1 0-1.06Z" />
                 </svg>
               </button>
@@ -335,7 +341,7 @@ export default function MetadataEditor({ entries, onChange, availableKeys, label
           }}
           title="Add metadata entry"
         >
-          <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor">
+          <svg aria-hidden="true" width="12" height="12" viewBox="0 0 16 16" fill="currentColor">
             <path d="M8 2a.75.75 0 0 1 .75.75v4.5h4.5a.75.75 0 0 1 0 1.5h-4.5v4.5a.75.75 0 0 1-1.5 0v-4.5h-4.5a.75.75 0 0 1 0-1.5h4.5v-4.5A.75.75 0 0 1 8 2Z" />
           </svg>
           Add
