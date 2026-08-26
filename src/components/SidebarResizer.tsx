@@ -78,6 +78,10 @@ export default function SidebarResizer({ width, onResize, onCommit }: Props) {
       aria-valuenow={width}
       aria-valuemin={SIDEBAR_MIN_WIDTH}
       aria-valuemax={SIDEBAR_MAX_WIDTH}
+      // A `separator` carrying aria-valuenow is a focusable window splitter per
+      // the ARIA APG, not decoration; the rule only knows the non-interactive
+      // flavour of the role.
+      // eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex -- focusable window splitter
       tabIndex={0}
       title="Drag to resize the sidebar — double-click or press Enter to reset"
       onPointerDown={handlePointerDown}

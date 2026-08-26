@@ -27,7 +27,9 @@ export default function SpecPreview({ content, failed, label }: Props) {
     );
   }
   return (
-    <div className="api-loading">
+    // The spinner is aria-hidden, so without a live region the wait is silent
+    // for screen readers.
+    <div className="api-loading" role="status" aria-live="polite">
       <Spinner /> Loading spec...
     </div>
   );

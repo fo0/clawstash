@@ -617,6 +617,10 @@ export default function Sidebar({
                         aria-activedescendant={
                           filteredTags.length > 0 ? `sidebar-tag-option-${tagHighlight}` : undefined
                         }
+                        // This input only exists once the user opened the tag
+                        // filter, so focusing it completes that action rather
+                        // than hijacking focus on load.
+                        // eslint-disable-next-line jsx-a11y/no-autofocus -- revealed by a user action
                         autoFocus
                       />
                     </div>

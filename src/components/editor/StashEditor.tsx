@@ -680,6 +680,9 @@ export default function StashEditor({ stash, template, onSave, onCancel, onDirty
             // Mirrors MAX_NAME_LENGTH in server/validation.ts. Without it the
             // limit was only discoverable by hitting a raw Zod error on save.
             maxLength={MAX_NAME_LENGTH}
+            // Only on a brand-new stash, where the name is the first thing the
+            // user came to type. Editing an existing stash does not move focus.
+            // eslint-disable-next-line jsx-a11y/no-autofocus -- new-stash form only
             autoFocus={!stash}
           />
         </div>
@@ -713,6 +716,11 @@ export default function StashEditor({ stash, template, onSave, onCancel, onDirty
         </div>
 
         <div className="form-group">
+          {/* eslint-disable-next-line jsx-a11y/label-has-associated-control --
+              TagCombobox is a composite (input + listbox + tag chips), so no
+              single `htmlFor` can own it. It consumes this id through
+              `inputLabelledBy` instead; the rule cannot see across the
+              component boundary. */}
           <label id="stash-tags-label">
             Tags
             <InfoIcon tooltip="Tags to categorize your stash. Type to search existing tags or create new ones. Press Enter or comma to add. Tags let you filter and find stashes quickly." />
@@ -730,6 +738,9 @@ export default function StashEditor({ stash, template, onSave, onCancel, onDirty
         </div>
 
         <div className="form-group">
+          {/* eslint-disable-next-line jsx-a11y/label-has-associated-control --
+              same as Tags above: MetadataEditor is a composite and takes this
+              id via `labelledBy` on its `role="group"` wrapper. */}
           <label id="stash-metadata-label">
             Metadata
             <InfoIcon tooltip="Key-value pairs for storing structured data like model name, agent ID, or purpose. Searchable via API/MCP. Choose from existing keys or create new ones." />
@@ -742,6 +753,7 @@ export default function StashEditor({ stash, template, onSave, onCancel, onDirty
               setMetadataEntries(e);
             }}
             availableKeys={availableMetaKeys}
+            labelledBy="stash-metadata-label"
           />
         </div>
 

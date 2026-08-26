@@ -98,6 +98,7 @@ export default function Footer({ onShowShortcuts, authToken }: FooterProps) {
               aria-expanded={showDetails}
             >
               <svg
+                aria-hidden="true"
                 width="14"
                 height="14"
                 viewBox="0 0 24 24"
@@ -122,6 +123,7 @@ export default function Footer({ onShowShortcuts, authToken }: FooterProps) {
               {buildInfo.branch && (
                 <span className="footer-detail" title={`Branch: ${buildInfo.branch}`}>
                   <svg
+                    aria-hidden="true"
                     width="14"
                     height="14"
                     viewBox="0 0 24 24"
@@ -142,6 +144,7 @@ export default function Footer({ onShowShortcuts, authToken }: FooterProps) {
               {buildInfo.commitHash && (
                 <span className="footer-detail" title={`Commit: ${buildInfo.commitHash}`}>
                   <svg
+                    aria-hidden="true"
                     width="14"
                     height="14"
                     viewBox="0 0 24 24"
@@ -161,6 +164,7 @@ export default function Footer({ onShowShortcuts, authToken }: FooterProps) {
               {formattedDate && formattedTime && (
                 <span className="footer-detail" title={`Built: ${formattedDate} ${formattedTime}`}>
                   <svg
+                    aria-hidden="true"
                     width="14"
                     height="14"
                     viewBox="0 0 24 24"

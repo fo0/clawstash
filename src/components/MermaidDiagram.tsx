@@ -268,7 +268,13 @@ export default function MermaidDiagram({ code, className, storageKey }: Props) {
   );
 
   if (state.loading) {
-    return <div className={`mermaid-loading ${className || ''}`}>Rendering diagram…</div>;
+    // role="status" so the render wait is announced; the error branch below
+    // already carries role="alert".
+    return (
+      <div className={`mermaid-loading ${className || ''}`} role="status" aria-live="polite">
+        Rendering diagram…
+      </div>
+    );
   }
   if (state.error) {
     return (
@@ -288,6 +294,10 @@ export default function MermaidDiagram({ code, className, storageKey }: Props) {
     <div
       ref={containerRef}
       className={`mermaid-viewer${isFullscreen ? ' mermaid-viewer-fullscreen' : ''} ${className || ''}`}
+      // The region pans and zooms from the keyboard (see onKeyDown), so it has
+      // to be reachable by Tab. Removing the tabIndex would strand keyboard
+      // users outside the diagram (WCAG 2.1.1).
+      // eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex -- keyboard-operated region
       tabIndex={0}
       onKeyDown={handleKeyDown}
       role="region"

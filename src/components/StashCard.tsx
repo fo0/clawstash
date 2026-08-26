@@ -121,6 +121,7 @@ export default function StashCard({
           // break diffing when files are added / reordered in the editor.
           <div key={file.filename} className="stash-card-file" title={file.filename}>
             <svg
+              aria-hidden="true"
               width="12"
               height="12"
               viewBox="0 0 16 16"
