@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { BackupStatusResponse, BackupSyncState, Stash } from '../types';
 import { api } from '../api';
+import { DELETE_CONFIRM_TIMEOUT_MS } from '../utils/constants';
 import RelativeTime from './shared/RelativeTime';
 import CommitLink from './shared/CommitLink';
 
@@ -26,9 +27,23 @@ export default function StashBackupControls({ stash, onStashUpdated }: Props) {
   const [status, setStatus] = useState<BackupStatusResponse | null>(null);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<{ ok: boolean; text: string } | null>(null);
+  // Two-click confirm for "Exclude". Excluding drops the stash's mirrored copy
+  // from the backup repository on the next sync, so it is destructive in the
+  // same sense as Delete — which sits one row above with an armed confirm.
+  // Re-including is additive and stays a single click.
+  const [confirmExclude, setConfirmExclude] = useState(false);
+  const confirmTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   // Last-request-wins: a slow response for a previously shown stash must
   // not clobber the status of the stash the viewer switched to.
   const requestGen = useRef(0);
+
+  const disarmExclude = useCallback(() => {
+    if (confirmTimerRef.current) {
+      clearTimeout(confirmTimerRef.current);
+      confirmTimerRef.current = null;
+    }
+    setConfirmExclude(false);
+  }, []);
 
   const refresh = useCallback(async () => {
     const gen = ++requestGen.current;
@@ -42,8 +57,18 @@ export default function StashBackupControls({ stash, onStashUpdated }: Props) {
 
   useEffect(() => {
     setMessage(null);
+    // An armed confirm must not survive a stash switch — the second click
+    // would otherwise exclude a stash the user never armed.
+    disarmExclude();
     refresh();
-  }, [refresh]);
+  }, [refresh, disarmExclude]);
+
+  // Never let the auto-disarm timer outlive the component.
+  useEffect(() => {
+    return () => {
+      if (confirmTimerRef.current) clearTimeout(confirmTimerRef.current);
+    };
+  }, []);
 
   if (!status || !status.configured) return null;
 
@@ -67,6 +92,18 @@ export default function StashBackupControls({ stash, onStashUpdated }: Props) {
   };
 
   const handleToggleEnabled = async () => {
+    // First click on "Exclude" only arms the confirm (auto-disarming after
+    // DELETE_CONFIRM_TIMEOUT_MS); the second click within that window commits.
+    if (stash.backup_enabled && !confirmExclude) {
+      setConfirmExclude(true);
+      if (confirmTimerRef.current) clearTimeout(confirmTimerRef.current);
+      confirmTimerRef.current = setTimeout(() => {
+        confirmTimerRef.current = null;
+        setConfirmExclude(false);
+      }, DELETE_CONFIRM_TIMEOUT_MS);
+      return;
+    }
+    disarmExclude();
     setBusy(true);
     setMessage(null);
     try {
@@ -121,16 +158,29 @@ export default function StashBackupControls({ stash, onStashUpdated }: Props) {
         </button>
       )}
       <button
-        className="btn btn-ghost btn-sm"
+        className={`btn btn-sm ${confirmExclude ? 'btn-danger btn-confirm-timeout' : 'btn-ghost'}`}
         onClick={handleToggleEnabled}
         disabled={busy}
         title={
-          stash.backup_enabled
-            ? 'Exclude this stash from the GitHub backup (removes its mirrored copy on the next sync)'
-            : 'Include this stash in the GitHub backup again'
+          !stash.backup_enabled
+            ? 'Include this stash in the GitHub backup again'
+            : confirmExclude
+              ? 'Click again to exclude this stash — its mirrored copy is removed on the next sync'
+              : 'Exclude this stash from the GitHub backup (removes its mirrored copy on the next sync)'
+        }
+        aria-label={
+          !stash.backup_enabled
+            ? 'Include this stash in the GitHub backup'
+            : confirmExclude
+              ? 'Confirm excluding this stash from the GitHub backup'
+              : 'Exclude this stash from the GitHub backup'
         }
       >
-        {stash.backup_enabled ? 'Exclude' : 'Include in backup'}
+        {!stash.backup_enabled
+          ? 'Include in backup'
+          : confirmExclude
+            ? 'Confirm exclude?'
+            : 'Exclude'}
       </button>
       {state?.error && stash.backup_enabled && (
         <span className="backup-error-text">{state.error}</span>

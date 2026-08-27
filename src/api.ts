@@ -223,8 +223,14 @@ export const api = {
     return request(`${BASE}/${seg(id)}/access-log${qs}`, { headers: getHeaders() });
   },
 
-  getVersions(id: string): Promise<StashVersionListItem[]> {
-    return request(`${BASE}/${seg(id)}/versions`, { headers: getHeaders() });
+  /**
+   * Version history, newest first. `limit` is optional and additive — the
+   * route already supports it (BACKLOG #8); omitting it keeps the previous
+   * "whole history in one response" behaviour for every other caller.
+   */
+  getVersions(id: string, limit?: number): Promise<StashVersionListItem[]> {
+    const qs = limit ? `?limit=${limit}` : '';
+    return request(`${BASE}/${seg(id)}/versions${qs}`, { headers: getHeaders() });
   },
 
   getVersion(id: string, version: number): Promise<StashVersion> {

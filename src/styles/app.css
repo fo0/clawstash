@@ -6604,6 +6604,21 @@ textarea.code-editor-plain.code-editor-wrap {
   overflow: hidden;
 }
 
+/* Truncation footer under a full page of versions — mirrors .access-log-footer. */
+.version-list-footer {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding: 12px 8px 4px;
+}
+
+.version-list-hint {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
 .version-item {
   display: flex;
   align-items: center;
@@ -6779,6 +6794,24 @@ textarea.code-editor-plain.code-editor-wrap {
   border-radius: 4px;
   font-size: 11px;
   font-weight: 700;
+}
+
+/* Per-file collapse: the toggle sits left of the status badge, the per-file
+   +/- counts are pushed to the far end of the header row. */
+.diff-file-stats {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+  font-size: 12px;
+}
+
+.diff-collapse-all {
+  margin-left: auto;
+}
+
+.diff-file-collapsed .diff-file-header {
+  border-bottom: none;
 }
 
 .diff-status-added {

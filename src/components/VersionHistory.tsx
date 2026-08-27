@@ -17,6 +17,15 @@ interface Props {
 
 type SubView = 'list' | 'detail' | 'diff';
 
+/**
+ * How many version rows the History tab asks for at a time. The tab used to
+ * fetch and render the ENTIRE history in one go — up to `STASH_VERSION_LIMIT`
+ * rows (200 by default, unbounded when it is set to `0`) — and presented the
+ * result as if it were complete. Same page-size + "showing N" + "Show more"
+ * shape the Access Log, the dashboard and the sidebar already use.
+ */
+const VERSION_PAGE_SIZE = 50;
+
 export default function VersionHistory({ stashId, currentVersion, onRestore }: Props) {
   const [versions, setVersions] = useState<StashVersionListItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -34,6 +43,14 @@ export default function VersionHistory({ stashId, currentVersion, onRestore }: P
   // fetch in the app (dashboard, storage stats, access log) offers a retry;
   // this one left the tab on a dead end until the user navigated away.
   const [reloadKey, setReloadKey] = useState(0);
+  // How many rows the next fetch asks for. Raised one page at a time by the
+  // "Show more" button below the list.
+  const [limit, setLimit] = useState(VERSION_PAGE_SIZE);
+  // The limit the rows currently on screen were fetched with. Kept separate
+  // from `limit` so the footer describes the rendered list rather than the
+  // request in flight — otherwise the footer (and the button under the
+  // cursor) would vanish until the response landed.
+  const [loadedLimit, setLoadedLimit] = useState(VERSION_PAGE_SIZE);
   const confirmTimerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
   // Confluence-style inline comparison: "From" (older) and "To" (newer)
@@ -52,14 +69,19 @@ export default function VersionHistory({ stashId, currentVersion, onRestore }: P
     setLoading(true);
     setError(null);
     api
-      .getVersions(stashId)
+      .getVersions(stashId, limit)
       .then((v) => {
         if (cancelled) return;
         setVersions(v);
-        // Auto-select the two most recent versions for quick comparison
+        setLoadedLimit(limit);
+        // Auto-select the two most recent versions for quick comparison, but
+        // keep a selection the user made as long as it is still on screen —
+        // "Show more" re-runs this fetch and would otherwise silently throw
+        // the chosen pair away.
         if (v.length >= 2) {
-          setCompareTo(v[0].version);
-          setCompareFrom(v[1].version);
+          const present = (n: number | null) => n !== null && v.some((x) => x.version === n);
+          setCompareTo((prev) => (present(prev) ? prev : v[0].version));
+          setCompareFrom((prev) => (present(prev) ? prev : v[1].version));
         }
       })
       .catch(() => {
@@ -73,7 +95,7 @@ export default function VersionHistory({ stashId, currentVersion, onRestore }: P
     return () => {
       cancelled = true;
     };
-  }, [stashId, currentVersion, reloadKey]);
+  }, [stashId, currentVersion, reloadKey, limit]);
 
   const handleViewVersion = async (version: number) => {
     setLoadingVersion(version);
@@ -179,7 +201,11 @@ export default function VersionHistory({ stashId, currentVersion, onRestore }: P
     [selectedVersion],
   );
 
-  if (loading)
+  // Only the FIRST load (or a load after a failure) swaps the tab for the
+  // spinner. Widening the list via "Show more" keeps the rows on screen and
+  // marks the button busy instead, so the list does not flash away under the
+  // cursor — same split the Access Log tab uses.
+  if (loading && versions.length === 0)
     return (
       // The spinner itself is aria-hidden, so without a live region the wait
       // was silent for screen readers — the sibling tabs already announce it.
@@ -503,6 +529,26 @@ export default function VersionHistory({ stashId, currentVersion, onRestore }: P
           );
         })}
       </div>
+
+      {/* A full page means older snapshots exist that are NOT on screen.
+          Rendering the list as if it were the complete history hid them —
+          say how many rows are shown and offer the next page. */}
+      {versions.length >= loadedLimit && (
+        <div className="version-list-footer">
+          <span className="version-list-hint">
+            Showing the {versions.length} most recent versions.
+          </span>
+          <button
+            type="button"
+            className="btn btn-sm btn-ghost"
+            onClick={() => setLimit((current) => current + VERSION_PAGE_SIZE)}
+            disabled={loading}
+            aria-busy={loading || undefined}
+          >
+            {loading ? 'Loading…' : 'Show more'}
+          </button>
+        </div>
+      )}
     </div>
   );
 }
