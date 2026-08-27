@@ -24,6 +24,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/), and this
 
 ### Changed
 
+- Stash viewer → GitHub backup bar: "Exclude" removes the stash's mirrored copy from the backup repository on the next sync, but it was a single click. It now uses the same two-click armed confirm as Delete, token delete, file remove and version restore; re-including a stash is additive and stays one click
+- Stash viewer → History tab: the tab fetched and rendered the entire version history in one response (up to `STASH_VERSION_LIMIT` rows, unbounded when it is `0`) and presented it as complete. It now asks for 50 at a time, says how many versions are on screen when the list is cut off, and offers "Show more" — keeping the rows and any compare selection in place while the next page loads
+- Stash viewer → version comparison: a multi-file diff rendered every changed file fully expanded. Each file now has a collapse toggle (plus "Collapse all" / "Expand all"), keeps its own +N / -M counts while folded, and stays expanded by default
 - Sidebar stash list: an empty list now names what caused it (the active search, the tag filter, or neither) and offers the matching way out — clear search, clear tag filter, show archived, or create a stash. It also carries the dashboard's "Load more", so the stashes past the server's list cap are reachable without leaving the sidebar
 - Settings → Storage: a successful export now reports the downloaded filename and size instead of saying nothing, an export failure is reported as an export failure instead of through the import error slot, and the import confirmation names the exact data it will replace (stash count, file count, total size) and points out that only a prior export can undo it
 - Stash viewer → Access Log: the tab fetched 100 entries and rendered them as if they were the whole log. It now says how many entries are on screen when the log is cut off and offers "Show more" up to the 1000 the server returns
