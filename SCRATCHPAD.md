@@ -4,6 +4,8 @@ Temporary working context. **Clean up aggressively -- delete when resolved.**
 
 ## Current Work
 
+- UX refine sweep (2026-08-27) on `claude/upbeat-ramanujan-54jukj` (issue #543, PR #544): three existing features sharpened, no new ones — per-stash GitHub backup bar ("Exclude" now takes the app's two-click armed confirm, since it drops the mirrored copy on the next sync), viewer History tab (50 per page + "Showing the N most recent versions." + "Show more", compare selection preserved across a widen; `api.getVersions` gained the `limit` the route already accepted), version diff view (per-file collapse + Collapse/Expand all, folded files keep their +N / -M). Full local chain green. Cut by the tie-breaker, all still open: sync-log truncation footer, footer build-commit link, `aria-label` on the version-list restore confirm, sort/archived preference in Settings → General.
+
 - UX refine sweep (2026-08-20) on `claude/confident-euler-v5xv8t`: three existing features sharpened, no new ones — sidebar list (honest empty state + "Load more", new `Sidebar.listfooter.test.tsx`), Settings → Storage (export result/error of its own, import confirm names the data at risk), viewer Access Log (truncation footer + "Show more" up to the server's 1000). Full chain green. Rejected as too large for the sweep: settings deep-links (#458), roving tabindex (#457), graph keyboard path (#465).
 
 - Copy button on Markdown code blocks (2026-08-02) on `claude/markdown-code-copy-button-5skt9n`: emitted into the rendered blob + delegated handler; verified in a real browser (hover/keyboard/touch, clipboard content, no overlap at max h-scroll, Mermaid + memo intact after F5). Decision recorded in MEMORY.md.
