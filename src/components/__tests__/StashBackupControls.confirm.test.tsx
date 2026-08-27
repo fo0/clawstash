@@ -38,7 +38,17 @@ const STASH: Stash = {
 async function renderBar(stash: Stash = STASH) {
   mockedApi.getBackupStatus.mockResolvedValue({
     configured: true,
+    enabled: true,
     repoFullName: 'fo0/backup',
+    branch: 'main',
+    intervalMinutes: 60,
+    health: {
+      consecutiveFailures: 0,
+      lastRunAt: null,
+      lastRunStatus: null,
+      lastError: null,
+    },
+    unhealthy: false,
     states: [],
   });
   render(<StashBackupControls stash={stash} onStashUpdated={vi.fn()} />);
