@@ -13,3 +13,15 @@ Full convention list. CLAUDE.md keeps the five an agent violates most easily; th
 - **Error Handling**: Try/catch in async handlers, error state in UI components. Validation errors go through `formatZodError()` for human-readable strings.
 - **TypeScript**: Strict mode enabled, `noEmit`, target ES2022, Next.js plugin.
 - **Max file length**: ~300 lines (split), ~500 lines (strongly recommended) -- TS/JS extension defaults.
+
+## Never-translate term list
+
+Offloaded from `CLAUDE.md → Output Languages` (context budget) — the rule itself stays there, this is the vocabulary it covers.
+
+Technical terms keep the English word verbatim in every surface, chat included, and the German sentence inflects around them: "2 Bugs gefixt", "Code Smell in `db.ts`", "PR gemerged", "Build ist rot" — never "Programmfehler", "Code-Geruch", "Zusammenführungsantrag".
+
+Covered vocabulary: bug · smell · lint · build · commit · merge · rebase · branch · PR · review · refactoring · deployment · rollback · issue · breaking change · hotfix · coverage · flaky test · regression · edge case · stack trace · dependency · tech debt.
+
+Plus everything that names something real: file paths, commands, tool / skill / hook names, status labels, and error strings (quoted verbatim).
+
+Test: English in code, a commit or a PR → English in chat.

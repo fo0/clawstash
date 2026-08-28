@@ -164,9 +164,9 @@ Rules:
 
 ## UI Review (only when UI code changed)
 
-- **Responsive:** Different screen sizes considered?
-- **Accessibility:** Relevant attributes present?
-- **Consistency:** Matches existing design system/patterns?
+Three axes, in this priority order: **accessibility** -> **responsiveness** -> **consistency with the project's existing patterns** (global CSS custom properties, BEM-like class naming, the breakpoints in `agent_docs/coding-conventions.md`). Apply current standards for each; findings take the severity the definitions above give them -- an unreachable control is a bug, not a nit.
+
+Browser-level verification of a nontrivial UI change is its own step: `.claude/skills/verify/SKILL.md`.
 
 ## Subagent Delegation
 
