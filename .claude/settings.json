@@ -7,6 +7,7 @@
       "mcp__claude_code_remote__*",
       "mcp__github__subscribe_pr_activity",
       "mcp__github__unsubscribe_pr_activity",
+      "Bash(npm run format)",
       "Bash(npm run format:check)",
       "Bash(npm run lint)",
       "Bash(npx tsc --noEmit)",
