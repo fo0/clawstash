@@ -1,5 +1,4 @@
-// @vitest-environment jsdom
-import { beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   SIDEBAR_DEFAULT_WIDTH,
   SIDEBAR_MAX_WIDTH,
@@ -10,8 +9,18 @@ import {
 } from '../sidebar-width';
 
 beforeEach(() => {
-  localStorage.clear();
+  const store = new Map<string, string>();
+  const localStorageStub = {
+    getItem: (key: string) => store.get(key) ?? null,
+    setItem: (key: string, value: string) => store.set(key, value),
+    removeItem: (key: string) => store.delete(key),
+    clear: () => store.clear(),
+  };
+  vi.stubGlobal('localStorage', localStorageStub);
+  vi.stubGlobal('window', { localStorage: localStorageStub });
 });
+
+afterEach(() => vi.unstubAllGlobals());
 
 describe('clampSidebarWidth', () => {
   it('holds the width inside the supported range and rounds to a pixel', () => {
