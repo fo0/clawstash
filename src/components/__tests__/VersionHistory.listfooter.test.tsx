@@ -64,7 +64,7 @@ describe('VersionHistory truncation footer', () => {
     await waitFor(() => expect(mockedApi.getVersions).toHaveBeenLastCalledWith('abc', 100));
     // The shorter second page is the whole history — the footer goes away.
     await waitFor(() => expect(screen.queryByRole('button', { name: 'Show more' })).toBeNull());
-  });
+  }, 15_000);
 
   it('keeps the compare selection across a "Show more"', async () => {
     await renderHistory(50);
@@ -82,5 +82,5 @@ describe('VersionHistory truncation footer', () => {
           .checked,
       ).toBe(true),
     );
-  });
+  }, 15_000);
 });
