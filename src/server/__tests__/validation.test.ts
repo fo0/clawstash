@@ -16,6 +16,7 @@ import {
   DUPLICATE_FILENAME_MESSAGE,
   formatZodPath,
   formatZodError,
+  GithubRepoNameSchema,
 } from '../validation';
 
 describe('maxObjectDepth', () => {
@@ -256,6 +257,26 @@ describe('import row-id validation', () => {
         filename: 'README.md',
       }).success,
     ).toBe(false);
+  });
+});
+
+describe('GithubRepoNameSchema', () => {
+  it('accepts real repository names and the not-yet-chosen empty string', () => {
+    for (const name of ['clawstash', 'my.repo', 'my_repo', 'my-repo', 'a..b', '']) {
+      expect(GithubRepoNameSchema.safeParse(name).success).toBe(true);
+    }
+  });
+
+  it('rejects relative path segments that would retarget the GitHub API path', () => {
+    for (const name of ['.', '..']) {
+      expect(GithubRepoNameSchema.safeParse(name).success).toBe(false);
+    }
+  });
+
+  it('still rejects characters outside the GitHub repo-name charset', () => {
+    for (const name of ['owner/repo', 'repo?x=1', 'repo name']) {
+      expect(GithubRepoNameSchema.safeParse(name).success).toBe(false);
+    }
   });
 });
 

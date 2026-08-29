@@ -329,10 +329,27 @@ export const GithubOwnerSchema = z
   .max(100)
   .refine((v) => v === '' || GITHUB_OWNER_PATTERN.test(v), 'Invalid repository owner');
 
+/**
+ * A repo name that is exactly `.` or `..` is a relative path segment, not a
+ * name. `GITHUB_REPO_PATTERN` allows dots, so both slip through — and the repo
+ * name is interpolated straight into the GitHub API path
+ * (`/repos/${owner}/${repo}/branches`, see backup/github-client.ts). WHATWG URL
+ * parsing resolves those segments before the request is sent, so `..` silently
+ * drops the preceding path segment and retargets the call at a different API
+ * endpoint with the stored backup token attached.
+ *
+ * GitHub itself rejects both names, so no reachable repository is excluded by
+ * this guard. It mirrors the `..` refinements the sibling `branch` and
+ * `pathPrefix` fields in `BackupSettingsSchema` already carry, so all three
+ * path-forming backup settings now reject relative segments symmetrically.
+ */
+const RELATIVE_PATH_SEGMENTS = new Set(['.', '..']);
+
 export const GithubRepoNameSchema = z
   .string()
   .max(150)
-  .refine((v) => v === '' || GITHUB_REPO_PATTERN.test(v), 'Invalid repository name');
+  .refine((v) => v === '' || GITHUB_REPO_PATTERN.test(v), 'Invalid repository name')
+  .refine((v) => !RELATIVE_PATH_SEGMENTS.has(v), 'Invalid repository name');
 
 export const BackupSettingsSchema = z.object({
   enabled: z.boolean(),
