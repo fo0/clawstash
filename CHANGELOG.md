@@ -8,6 +8,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/), and this
 
 ### Added
 
+- Stash viewer → History: a file in a version's detail view can be downloaded, not just copied — the current version has offered both since the viewer shipped. The saved name carries the version (`config.v3.yml`), so several revisions of the same file land side by side instead of overwriting each other
 - Stash viewer → Access Log: source filter chips. Once the loaded page mixes channels, one chip per channel (API / MCP / UI) carries its count and narrows the list to it — answering "did an agent read this, or was that just me opening the tab?" without scanning every badge. Purely a view over the entries already fetched, so switching chips never refetches and the footer keeps naming the full fetched window
 - Quick search: a result can be opened in a new tab. The rows are real links now, so Ctrl/Cmd+click, middle-click and the context menu work the way they already do on the dashboard cards and the sidebar rows, and `Ctrl`/`Cmd`+`Enter` opens the highlighted result without closing the overlay — so several stashes can be pulled out of one search
 - File quick-jump bar in the stash viewer: a stash with more than one file gets a chip per file above the file list — one click scrolls to it and expands it if it was collapsed. Covers every file type, unlike the markdown-only table of contents

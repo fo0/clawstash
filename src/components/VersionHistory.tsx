@@ -6,7 +6,8 @@ import VersionDiff from './VersionDiff';
 import { highlightCode, resolvePrismLanguage } from '../languages';
 import { DELETE_CONFIRM_TIMEOUT_MS } from '../utils/constants';
 import { useClipboardWithKey } from '../hooks/useClipboard';
-import { CopyIcon, CheckIcon, XIcon } from './shared/icons';
+import { downloadTextFile, versionedFilename } from '../utils/download';
+import { CopyIcon, CheckIcon, XIcon, DownloadIcon } from './shared/icons';
 import Spinner from './shared/Spinner';
 
 interface Props {
@@ -346,6 +347,24 @@ export default function VersionHistory({ stashId, currentVersion, onRestore }: P
                         <CopyIcon size={12} /> Copy
                       </>
                     )}
+                  </button>
+                  {/* The current version has offered Copy AND Download per
+                      file since the viewer shipped; an older revision could
+                      only be copied. The version number goes into the saved
+                      name so several revisions of the same file land side by
+                      side instead of overwriting each other. */}
+                  <button
+                    className="btn btn-sm btn-ghost version-file-download-btn"
+                    onClick={() =>
+                      downloadTextFile(
+                        versionedFilename(file.filename, selectedVersion.version),
+                        file.content,
+                      )
+                    }
+                    title={`Download ${versionedFilename(file.filename, selectedVersion.version)}`}
+                    aria-label={`Download ${file.filename} as of version ${selectedVersion.version}`}
+                  >
+                    <DownloadIcon size={12} /> Download
                   </button>
                 </div>
                 <pre className="file-content">

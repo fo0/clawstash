@@ -2392,6 +2392,13 @@ body {
   margin-left: auto;
 }
 
+/* Sits right after the copy button, which carries the `margin-left: auto`
+   that pushes the pair to the end of the header — this only re-adds the gap
+   `.file-header` (space-between, no gap) does not provide between them. */
+.version-file-download-btn {
+  margin-left: 4px;
+}
+
 /* Collapsible file headers (stash viewer only — VersionHistory reuses
    .file-header without collapse behavior). The empty header surface is a
    click target; the filename stays selectable and the actions area neutral. */
