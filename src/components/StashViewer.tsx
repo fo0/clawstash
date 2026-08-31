@@ -10,7 +10,7 @@ import {
 } from '../languages';
 import RelativeTime from './shared/RelativeTime';
 import { useClipboard, useClipboardWithKey } from '../hooks/useClipboard';
-import { CopyIcon, CheckIcon, XIcon, StarIcon } from './shared/icons';
+import { CopyIcon, CheckIcon, XIcon, StarIcon, DownloadIcon } from './shared/icons';
 import VersionHistory from './VersionHistory';
 import { Marked } from 'marked';
 import { renderDescriptionMarkdown, isUnsafeUrl, sanitizeHtml } from '../utils/markdown';
@@ -18,6 +18,14 @@ import { hydrateMermaidPlaceholders, encodeMermaidSource } from '../utils/mermai
 import { wrapCodeBlockWithCopy } from '../utils/code-copy';
 import { useCodeBlockCopy } from '../hooks/useCodeBlockCopy';
 import { DELETE_CONFIRM_TIMEOUT_MS } from '../utils/constants';
+import { downloadTextFile } from '../utils/download';
+import {
+  ACCESS_SOURCES,
+  countBySource,
+  filterBySource,
+  hasMixedSources,
+  type AccessSourceFilter,
+} from '../utils/access-log-filter';
 import { formatBytes } from '../utils/format';
 import { escapeHtml } from '../utils/html';
 import { buildStashUrl } from '../utils/stash-url';
@@ -177,24 +185,6 @@ function resolveEffectiveLanguage(file: StashFile): string {
   const fromMeta = resolvePrismLanguage(file.language, file.filename);
   if (fromMeta !== 'text') return fromMeta;
   return detectLanguageFromContent(file.content);
-}
-
-/**
- * Trigger a browser file download for the given text content.
- * Uses a temporary object URL so it works without a server round-trip.
- */
-function downloadFile(filename: string, content: string): void {
-  const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
-  const url = URL.createObjectURL(blob);
-  const anchor = document.createElement('a');
-  anchor.href = url;
-  anchor.download = filename;
-  anchor.style.display = 'none';
-  document.body.appendChild(anchor);
-  anchor.click();
-  document.body.removeChild(anchor);
-  // Release the object URL after a short delay so the download initiates
-  setTimeout(() => URL.revokeObjectURL(url), 10000);
 }
 
 /**
@@ -477,6 +467,11 @@ export default function StashViewer({
   // made the footer (and the button under the cursor) vanish until the
   // response landed.
   const [logLoadedLimit, setLogLoadedLimit] = useState(ACCESS_LOG_PAGE_SIZE);
+  // Which access channel the log list is narrowed to. Purely a view over the
+  // entries already fetched (the endpoint takes no source parameter), so
+  // switching chips never refetches and never changes what "the N most recent
+  // entries" means.
+  const [logSource, setLogSource] = useState<AccessSourceFilter>('all');
   // Raw/Preview is presented as a per-file button, so it behaves like one:
   // `renderOverrides` holds the explicit per-file choices (keyed by file id),
   // and files without one fall back to the persisted default. That default is
@@ -713,6 +708,9 @@ export default function StashViewer({
     // active).
     setAccessLog([]);
     setLogError(false);
+    // A source chip belongs to the stash it was picked for; leaving it armed
+    // would open the next stash's log pre-filtered, with rows silently hidden.
+    setLogSource('all');
     // A widened log window belongs to the stash it was widened for — carrying
     // it over would make the next stash fetch up to 1000 entries unasked.
     setLogLimit(ACCESS_LOG_PAGE_SIZE);
@@ -805,6 +803,18 @@ export default function StashViewer({
       cancelled = true;
     };
   }, [activeTab, stash.id, logReloadKey, logLimit]);
+
+  // Per-source counts for the filter chips, and the rows the chosen chip
+  // leaves on screen. Derived from the loaded page, so "Show more" and
+  // "Refresh" both feed straight back into the counts.
+  const logSourceCounts = useMemo(() => countBySource(accessLog), [accessLog]);
+  const showLogSourceFilter = hasMixedSources(logSourceCounts);
+  const visibleLog = useMemo(
+    // With the chip row hidden (a single-source log) the filter must not be
+    // able to hide anything, even if a stale chip survived a refresh.
+    () => (showLogSourceFilter ? filterBySource(accessLog, logSource) : accessLog),
+    [accessLog, logSource, showLogSourceFilter],
+  );
 
   // Cleanup delete confirmation timer on unmount
   useEffect(() => {
@@ -1465,20 +1475,11 @@ export default function StashViewer({
                     </button>
                     <button
                       className="btn btn-sm btn-ghost"
-                      onClick={() => downloadFile(file.filename, file.content)}
+                      onClick={() => downloadTextFile(file.filename, file.content)}
                       title={`Download ${file.filename}`}
                       aria-label={`Download ${file.filename}`}
                     >
-                      <svg
-                        width="12"
-                        height="12"
-                        viewBox="0 0 16 16"
-                        fill="currentColor"
-                        aria-hidden="true"
-                      >
-                        <path d="M2.75 14A1.75 1.75 0 0 1 1 12.25v-2.5a.75.75 0 0 1 1.5 0v2.5c0 .138.112.25.25.25h10.5a.25.25 0 0 0 .25-.25v-2.5a.75.75 0 0 1 1.5 0v2.5A1.75 1.75 0 0 1 13.25 14Z" />
-                        <path d="M7.25 7.689V2a.75.75 0 0 1 1.5 0v5.689l1.97-1.97a.749.749 0 1 1 1.06 1.06L8.53 10.03a.749.749 0 0 1-1.06 0L4.22 6.78a.749.749 0 1 1 1.06-1.06Z" />
-                      </svg>
+                      <DownloadIcon />
                       Download
                     </button>
                   </div>
@@ -1824,8 +1825,47 @@ export default function StashViewer({
             </div>
           ) : (
             <>
+              {/* One chip per channel, shown only once the loaded page mixes
+                  them — with a single-source log the chips would be buttons
+                  that can only empty the list. Answers "did an agent read
+                  this, or was that just me opening the tab?" without scanning
+                  every badge. */}
+              {showLogSourceFilter && (
+                <div
+                  className="access-log-filter"
+                  role="group"
+                  aria-label="Filter access log by source"
+                >
+                  <button
+                    type="button"
+                    className={`access-log-filter-chip${logSource === 'all' ? ' active' : ''}`}
+                    onClick={() => setLogSource('all')}
+                    aria-pressed={logSource === 'all'}
+                    title="Show access from every channel"
+                  >
+                    All <span className="access-log-filter-count">{accessLog.length}</span>
+                  </button>
+                  {ACCESS_SOURCES.map((source) => (
+                    <button
+                      key={source}
+                      type="button"
+                      className={`access-log-filter-chip${logSource === source ? ' active' : ''}`}
+                      onClick={() => setLogSource(source)}
+                      aria-pressed={logSource === source}
+                      // A channel with no entries on this page stays visible
+                      // (so the row keeps its width while paging) but cannot
+                      // be selected into an empty list.
+                      disabled={logSourceCounts[source] === 0}
+                      title={`Show only access via ${source.toUpperCase()}`}
+                    >
+                      <SourceBadge source={source} />
+                      <span className="access-log-filter-count">{logSourceCounts[source]}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
               <div className="access-log-list" aria-busy={logLoading || undefined}>
-                {accessLog.map((entry) => (
+                {visibleLog.map((entry) => (
                   <div key={entry.id} className="access-log-entry">
                     <SourceBadge source={entry.source} />
                     <span className="access-log-action">{entry.action}</span>
@@ -1842,6 +1882,11 @@ export default function StashViewer({
                 <div className="access-log-footer">
                   <span className="access-log-hint">
                     Showing the {accessLog.length} most recent entries.
+                    {/* The chips filter this fetched window, not the whole
+                        log — say so, or the shorter list would read as if
+                        the server had returned that many. */}
+                    {logSource !== 'all' &&
+                      ` ${visibleLog.length} of them via ${logSource.toUpperCase()}.`}
                     {logLoadedLimit >= ACCESS_LOG_MAX && ' This is the maximum the server returns.'}
                   </span>
                   {logLoadedLimit < ACCESS_LOG_MAX && (

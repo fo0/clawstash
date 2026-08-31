@@ -5,6 +5,8 @@ import { formatRelativeTime } from '../utils/format';
 import { splitHighlight } from '../utils/highlight';
 import { SEARCH_DEBOUNCE_MS } from '../utils/constants';
 import { loadRecentViews, type RecentView } from '../utils/recent-views';
+import { buildStashUrl } from '../utils/stash-url';
+import { isModifiedClick } from '../utils/link-click';
 import { useFocusTrap } from '../hooks/useFocusTrap';
 import { useBodyScrollLock } from '../hooks/useBodyScrollLock';
 import Spinner from './shared/Spinner';
@@ -182,6 +184,19 @@ export default function SearchOverlay({ open, onClose, onSelectStash, onSearchAl
     onClose();
   };
 
+  /**
+   * Open a result in a new browser tab and leave the overlay open, so several
+   * stashes can be pulled out of one search without reopening it. Backs the
+   * Ctrl/Cmd+Enter binding; a modified mouse click is handled natively by the
+   * anchor the rows are rendered as.
+   *
+   * `noopener,noreferrer` matches the rest of the app's new-tab links — the
+   * opened tab must not reach back through `window.opener`.
+   */
+  const openInNewTab = (id: string) => {
+    window.open(buildStashUrl(window.location.origin, id), '_blank', 'noopener,noreferrer');
+  };
+
   // Escape hatch for a capped result list: push the query into the dashboard
   // search, which pages up to the full match count, and close the overlay.
   const handleShowAll = () => {
@@ -205,8 +220,15 @@ export default function SearchOverlay({ open, onClose, onSelectStash, onSearchAl
       setActiveIndex((i) => (i > 0 ? i - 1 : 0));
     } else if (e.key === 'Enter') {
       e.preventDefault();
-      if (navItems[activeIndex]) {
-        handleSelect(navItems[activeIndex].id);
+      const item = navItems[activeIndex];
+      if (!item) return;
+      // Ctrl/Cmd+Enter mirrors the modified click: open the highlighted result
+      // in a new tab and keep the overlay (and the query) in place. Plain
+      // Enter still navigates in place and closes.
+      if (e.ctrlKey || e.metaKey) {
+        openInNewTab(item.id);
+      } else {
+        handleSelect(item.id);
       }
     } else if (e.key === 'Escape') {
       e.preventDefault();
@@ -350,18 +372,29 @@ export default function SearchOverlay({ open, onClose, onSelectStash, onSearchAl
               aria-label={`${results.length} result${results.length !== 1 ? 's' : ''}`}
             >
               {results.map((stash, idx) => (
-                <button
-                  type="button"
+                // A real link, matching the dashboard cards and the sidebar
+                // rows, so a result can be opened in a new tab with the
+                // browser's own affordances (Ctrl/Cmd+click, middle-click,
+                // context menu). `role="option"` keeps the listbox semantics
+                // the overlay's arrow-key navigation relies on.
+                <a
                   key={stash.id}
                   id={`search-overlay-option-${idx}`}
                   className={`search-overlay-item ${idx === activeIndex ? 'active' : ''}`}
                   role="option"
                   aria-selected={idx === activeIndex}
+                  href={buildStashUrl('', stash.id)}
                   // onMouseMove (not onMouseEnter): keyboard-nav's scrollIntoView
                   // shifts the list under a stationary cursor, which would fire
                   // enter events and yank the highlight back to the hovered row.
                   onMouseMove={() => setActiveIndex(idx)}
-                  onClick={() => handleSelect(stash.id)}
+                  onClick={(e) => {
+                    // A modified click asked the browser for a new tab — step
+                    // aside and let it happen instead of navigating in place.
+                    if (isModifiedClick(e)) return;
+                    e.preventDefault();
+                    handleSelect(stash.id);
+                  }}
                 >
                   <div className="search-overlay-item-main">
                     <span className="search-overlay-item-name">
@@ -399,7 +432,7 @@ export default function SearchOverlay({ open, onClose, onSelectStash, onSearchAl
                       {formatRelativeTime(stash.updated_at)}
                     </span>
                   </div>
-                </button>
+                </a>
               ))}
             </div>
           </>
@@ -417,20 +450,26 @@ export default function SearchOverlay({ open, onClose, onSelectStash, onSearchAl
               aria-label={`${recent.length} recently viewed stash${recent.length !== 1 ? 'es' : ''}`}
             >
               {recent.map((item, idx) => (
-                <button
-                  type="button"
+                // Same link treatment as the result rows above — a recently
+                // viewed stash is just as likely to be wanted in a new tab.
+                <a
                   key={item.id}
                   id={`search-overlay-option-${idx}`}
                   className={`search-overlay-item ${idx === activeIndex ? 'active' : ''}`}
                   role="option"
                   aria-selected={idx === activeIndex}
+                  href={buildStashUrl('', item.id)}
                   onMouseMove={() => setActiveIndex(idx)}
-                  onClick={() => handleSelect(item.id)}
+                  onClick={(e) => {
+                    if (isModifiedClick(e)) return;
+                    e.preventDefault();
+                    handleSelect(item.id);
+                  }}
                 >
                   <div className="search-overlay-item-main">
                     <span className="search-overlay-item-name">{item.title}</span>
                   </div>
-                </button>
+                </a>
               ))}
             </div>
           </>
@@ -449,6 +488,15 @@ export default function SearchOverlay({ open, onClose, onSelectStash, onSearchAl
           </span>
           <span className="search-overlay-footer-item">
             <kbd>&crarr;</kbd> open
+          </span>
+          {/* Both modifier labels rather than a platform-detected one: the
+              footer is a hint strip, and naming both keeps it correct on
+              every platform without a client-only render. */}
+          <span className="search-overlay-footer-item">
+            <kbd>ctrl</kbd>
+            <span className="search-overlay-footer-or">/</span>
+            <kbd>&#8984;</kbd>
+            <kbd>&crarr;</kbd> new tab
           </span>
           <span className="search-overlay-footer-item">
             <kbd>esc</kbd> close

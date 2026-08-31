@@ -1100,6 +1100,9 @@ body {
   background: transparent;
   border: none;
   color: inherit;
+  /* The rows are anchors (so they can be opened in a new tab) styled as list
+     options — drop the link underline the browser would otherwise add. */
+  text-decoration: none;
   font: inherit;
   padding: 10px 16px;
   cursor: pointer;
@@ -1215,6 +1218,12 @@ body {
   gap: 4px;
   font-size: 11px;
   color: var(--text-muted);
+}
+
+/* Separator between the two modifier labels in the "new tab" hint — a plain
+   glyph, deliberately not a <kbd>, so it does not read as a key. */
+.search-overlay-footer-or {
+  opacity: 0.6;
 }
 
 .search-overlay-footer-item kbd {
@@ -2383,6 +2392,13 @@ body {
   margin-left: auto;
 }
 
+/* Sits right after the copy button, which carries the `margin-left: auto`
+   that pushes the pair to the end of the header — this only re-adds the gap
+   `.file-header` (space-between, no gap) does not provide between them. */
+.version-file-download-btn {
+  margin-left: 4px;
+}
+
 /* Collapsible file headers (stash viewer only — VersionHistory reuses
    .file-header without collapse behavior). The empty header surface is a
    click target; the filename stays selectable and the actions area neutral. */
@@ -3221,6 +3237,61 @@ textarea.code-editor-plain.code-editor-wrap {
 .access-log-empty p {
   font-size: 14px;
   margin: 0;
+}
+
+/* Source filter chips above the access-log list. */
+.access-log-filter {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+
+.access-log-filter-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius);
+  background: transparent;
+  color: var(--text-secondary);
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+  transition:
+    background 0.12s,
+    border-color 0.12s;
+}
+
+.access-log-filter-chip:hover:not(:disabled) {
+  background: var(--bg-tertiary);
+}
+
+.access-log-filter-chip.active {
+  border-color: var(--accent-blue);
+  background: var(--bg-tertiary);
+  color: var(--text-primary);
+}
+
+.access-log-filter-chip:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.access-log-filter-chip:focus-visible {
+  outline: 2px solid var(--accent-blue);
+  outline-offset: 1px;
+}
+
+.access-log-filter-count {
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.access-log-filter-chip.active .access-log-filter-count {
+  color: var(--text-secondary);
 }
 
 .access-log-list {
