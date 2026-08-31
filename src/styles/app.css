@@ -3232,6 +3232,61 @@ textarea.code-editor-plain.code-editor-wrap {
   margin: 0;
 }
 
+/* Source filter chips above the access-log list. */
+.access-log-filter {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+
+.access-log-filter-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius);
+  background: transparent;
+  color: var(--text-secondary);
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+  transition:
+    background 0.12s,
+    border-color 0.12s;
+}
+
+.access-log-filter-chip:hover:not(:disabled) {
+  background: var(--bg-tertiary);
+}
+
+.access-log-filter-chip.active {
+  border-color: var(--accent-blue);
+  background: var(--bg-tertiary);
+  color: var(--text-primary);
+}
+
+.access-log-filter-chip:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.access-log-filter-chip:focus-visible {
+  outline: 2px solid var(--accent-blue);
+  outline-offset: 1px;
+}
+
+.access-log-filter-count {
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.access-log-filter-chip.active .access-log-filter-count {
+  color: var(--text-secondary);
+}
+
 .access-log-list {
   display: flex;
   flex-direction: column;

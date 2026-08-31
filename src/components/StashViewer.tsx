@@ -18,6 +18,13 @@ import { hydrateMermaidPlaceholders, encodeMermaidSource } from '../utils/mermai
 import { wrapCodeBlockWithCopy } from '../utils/code-copy';
 import { useCodeBlockCopy } from '../hooks/useCodeBlockCopy';
 import { DELETE_CONFIRM_TIMEOUT_MS } from '../utils/constants';
+import {
+  ACCESS_SOURCES,
+  countBySource,
+  filterBySource,
+  hasMixedSources,
+  type AccessSourceFilter,
+} from '../utils/access-log-filter';
 import { formatBytes } from '../utils/format';
 import { escapeHtml } from '../utils/html';
 import { buildStashUrl } from '../utils/stash-url';
@@ -477,6 +484,11 @@ export default function StashViewer({
   // made the footer (and the button under the cursor) vanish until the
   // response landed.
   const [logLoadedLimit, setLogLoadedLimit] = useState(ACCESS_LOG_PAGE_SIZE);
+  // Which access channel the log list is narrowed to. Purely a view over the
+  // entries already fetched (the endpoint takes no source parameter), so
+  // switching chips never refetches and never changes what "the N most recent
+  // entries" means.
+  const [logSource, setLogSource] = useState<AccessSourceFilter>('all');
   // Raw/Preview is presented as a per-file button, so it behaves like one:
   // `renderOverrides` holds the explicit per-file choices (keyed by file id),
   // and files without one fall back to the persisted default. That default is
@@ -713,6 +725,9 @@ export default function StashViewer({
     // active).
     setAccessLog([]);
     setLogError(false);
+    // A source chip belongs to the stash it was picked for; leaving it armed
+    // would open the next stash's log pre-filtered, with rows silently hidden.
+    setLogSource('all');
     // A widened log window belongs to the stash it was widened for — carrying
     // it over would make the next stash fetch up to 1000 entries unasked.
     setLogLimit(ACCESS_LOG_PAGE_SIZE);
@@ -805,6 +820,18 @@ export default function StashViewer({
       cancelled = true;
     };
   }, [activeTab, stash.id, logReloadKey, logLimit]);
+
+  // Per-source counts for the filter chips, and the rows the chosen chip
+  // leaves on screen. Derived from the loaded page, so "Show more" and
+  // "Refresh" both feed straight back into the counts.
+  const logSourceCounts = useMemo(() => countBySource(accessLog), [accessLog]);
+  const showLogSourceFilter = hasMixedSources(logSourceCounts);
+  const visibleLog = useMemo(
+    // With the chip row hidden (a single-source log) the filter must not be
+    // able to hide anything, even if a stale chip survived a refresh.
+    () => (showLogSourceFilter ? filterBySource(accessLog, logSource) : accessLog),
+    [accessLog, logSource, showLogSourceFilter],
+  );
 
   // Cleanup delete confirmation timer on unmount
   useEffect(() => {
@@ -1824,8 +1851,47 @@ export default function StashViewer({
             </div>
           ) : (
             <>
+              {/* One chip per channel, shown only once the loaded page mixes
+                  them — with a single-source log the chips would be buttons
+                  that can only empty the list. Answers "did an agent read
+                  this, or was that just me opening the tab?" without scanning
+                  every badge. */}
+              {showLogSourceFilter && (
+                <div
+                  className="access-log-filter"
+                  role="group"
+                  aria-label="Filter access log by source"
+                >
+                  <button
+                    type="button"
+                    className={`access-log-filter-chip${logSource === 'all' ? ' active' : ''}`}
+                    onClick={() => setLogSource('all')}
+                    aria-pressed={logSource === 'all'}
+                    title="Show access from every channel"
+                  >
+                    All <span className="access-log-filter-count">{accessLog.length}</span>
+                  </button>
+                  {ACCESS_SOURCES.map((source) => (
+                    <button
+                      key={source}
+                      type="button"
+                      className={`access-log-filter-chip${logSource === source ? ' active' : ''}`}
+                      onClick={() => setLogSource(source)}
+                      aria-pressed={logSource === source}
+                      // A channel with no entries on this page stays visible
+                      // (so the row keeps its width while paging) but cannot
+                      // be selected into an empty list.
+                      disabled={logSourceCounts[source] === 0}
+                      title={`Show only access via ${source.toUpperCase()}`}
+                    >
+                      <SourceBadge source={source} />
+                      <span className="access-log-filter-count">{logSourceCounts[source]}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
               <div className="access-log-list" aria-busy={logLoading || undefined}>
-                {accessLog.map((entry) => (
+                {visibleLog.map((entry) => (
                   <div key={entry.id} className="access-log-entry">
                     <SourceBadge source={entry.source} />
                     <span className="access-log-action">{entry.action}</span>
@@ -1842,6 +1908,11 @@ export default function StashViewer({
                 <div className="access-log-footer">
                   <span className="access-log-hint">
                     Showing the {accessLog.length} most recent entries.
+                    {/* The chips filter this fetched window, not the whole
+                        log — say so, or the shorter list would read as if
+                        the server had returned that many. */}
+                    {logSource !== 'all' &&
+                      ` ${visibleLog.length} of them via ${logSource.toUpperCase()}.`}
                     {logLoadedLimit >= ACCESS_LOG_MAX && ' This is the maximum the server returns.'}
                   </span>
                   {logLoadedLimit < ACCESS_LOG_MAX && (
