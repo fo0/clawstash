@@ -8,6 +8,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/), and this
 
 ### Added
 
+- Quick search: a result can be opened in a new tab. The rows are real links now, so Ctrl/Cmd+click, middle-click and the context menu work the way they already do on the dashboard cards and the sidebar rows, and `Ctrl`/`Cmd`+`Enter` opens the highlighted result without closing the overlay — so several stashes can be pulled out of one search
 - File quick-jump bar in the stash viewer: a stash with more than one file gets a chip per file above the file list — one click scrolls to it and expands it if it was collapsed. Covers every file type, unlike the markdown-only table of contents
 - Editor crash recovery: while the stash editor has unsaved changes its form state is mirrored into `localStorage` (debounced, capped at 512 KB, expires after 7 days). If the tab crashes or is closed before saving, reopening the same editor offers the work back with a Restore / Discard banner — including a warning when the stash has been updated elsewhere since. Deliberate exits (Cancel, Escape, guarded navigation, a successful save) drop the draft, so a discard never resurrects
 - Sidebar keyboard navigation: `↓` in the sidebar search field steps straight into the stash list, `↑` / `↓` walk it, `Home` / `End` jump to the ends, and `↑` on the first row hands focus back to the search field. Previously `/` focused the field and the only way onward was Tab, one stop per row

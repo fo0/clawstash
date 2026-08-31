@@ -54,6 +54,11 @@ function buildShortcutGroups(quickSearchKey: string): ShortcutGroup[] {
     shortcuts: [
       { keys: [quickSearchKey], description: 'Open quick search' },
       { keys: ['Alt', 'K'], description: 'Open quick search (alternative)' },
+      {
+        keys: ['Ctrl', '↵'],
+        description:
+          'From quick search: open the highlighted result in a new tab and keep searching (Cmd+↵ on Mac)',
+      },
       { keys: ['/'], description: 'Focus sidebar search' },
       {
         keys: ['↓'],

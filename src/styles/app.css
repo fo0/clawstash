@@ -1100,6 +1100,9 @@ body {
   background: transparent;
   border: none;
   color: inherit;
+  /* The rows are anchors (so they can be opened in a new tab) styled as list
+     options — drop the link underline the browser would otherwise add. */
+  text-decoration: none;
   font: inherit;
   padding: 10px 16px;
   cursor: pointer;
@@ -1215,6 +1218,12 @@ body {
   gap: 4px;
   font-size: 11px;
   color: var(--text-muted);
+}
+
+/* Separator between the two modifier labels in the "new tab" hint — a plain
+   glyph, deliberately not a <kbd>, so it does not read as a key. */
+.search-overlay-footer-or {
+  opacity: 0.6;
 }
 
 .search-overlay-footer-item kbd {
