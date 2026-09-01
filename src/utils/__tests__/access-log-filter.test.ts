@@ -34,6 +34,13 @@ describe('countBySource', () => {
     const unknown = { ...entry('x', 'api'), source: 'webhook' } as unknown as AccessLogEntry;
     expect(countBySource([unknown, entry('a', 'ui')])).toEqual({ api: 0, mcp: 0, ui: 1 });
   });
+
+  it('ignores an unknown source that collides with an Object.prototype key', () => {
+    const polluted = ['toString', 'constructor', 'valueOf'].map(
+      (source, i) => ({ ...entry(`p${i}`, 'api'), source }) as unknown as AccessLogEntry,
+    );
+    expect(countBySource([...polluted, entry('a', 'ui')])).toEqual({ api: 0, mcp: 0, ui: 1 });
+  });
 });
 
 describe('filterBySource', () => {
