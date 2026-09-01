@@ -34,7 +34,14 @@ export type AccessSourceFilter = AccessSource | 'all';
 export function countBySource(entries: readonly AccessLogEntry[]): Record<AccessSource, number> {
   const counts = { api: 0, mcp: 0, ui: 0 } satisfies Record<AccessSource, number>;
   for (const entry of entries) {
-    if (entry.source in counts) counts[entry.source] += 1;
+    // Own-property check, not `in`: `in` walks the prototype chain, so an
+    // unknown source literally named `toString` / `constructor` / `valueOf`
+    // would pass the guard and then `counts[source] += 1` would turn an
+    // inherited function into `NaN` on a new own property. `source` is typed
+    // as a union, but these entries arrive as unvalidated JSON from the API,
+    // so the guard has to hold at runtime — the same idiom `languages.ts`
+    // already uses for its lookup maps.
+    if (Object.prototype.hasOwnProperty.call(counts, entry.source)) counts[entry.source] += 1;
   }
   return counts;
 }

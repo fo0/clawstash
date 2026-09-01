@@ -1,4 +1,5 @@
-import { useState, useRef, useCallback, forwardRef, useImperativeHandle } from 'react';
+import { useState, useRef, useCallback, useImperativeHandle } from 'react';
+import type { Ref } from 'react';
 import { useClickOutside } from '../../hooks/useClickOutside';
 import type { TagInfo } from '../../types';
 
@@ -7,6 +8,14 @@ interface Props {
   onChange: (tags: string[]) => void;
   availableTags: TagInfo[];
   inputLabelledBy?: string;
+  /**
+   * Imperative handle for the parent's Ctrl+S flush (see
+   * {@link TagComboboxHandle}). Declared as a normal prop rather than through
+   * `forwardRef`: React 19 passes `ref` to function components like any other
+   * prop, and `forwardRef` is on its way out. Behaviour is unchanged —
+   * `useImperativeHandle` accepts the same `Ref` value either way.
+   */
+  ref?: Ref<TagComboboxHandle>;
 }
 
 export interface TagComboboxHandle {
@@ -20,10 +29,13 @@ export interface TagComboboxHandle {
   commitPending: () => string[];
 }
 
-const TagCombobox = forwardRef<TagComboboxHandle, Props>(function TagCombobox(
-  { tags, onChange, availableTags, inputLabelledBy },
+export default function TagCombobox({
+  tags,
+  onChange,
+  availableTags,
+  inputLabelledBy,
   ref,
-) {
+}: Props) {
   const [input, setInput] = useState('');
   const [showDropdown, setShowDropdown] = useState(false);
   const [activeIndex, setActiveIndex] = useState(-1);
@@ -243,6 +255,4 @@ const TagCombobox = forwardRef<TagComboboxHandle, Props>(function TagCombobox(
       )}
     </div>
   );
-});
-
-export default TagCombobox;
+}
