@@ -227,6 +227,13 @@ export default function MetadataEditor({ entries, onChange, availableKeys, label
                 className="form-input metadata-key-input"
                 aria-label={`Metadata key ${index + 1}`}
                 aria-invalid={duplicateKeys.has(entry.key.trim()) || undefined}
+                // `title` is a pointer-only affordance: it never reaches a
+                // touch user and assistive tech may ignore it when the field
+                // already has a label. Point the flagged rows at the warning
+                // list below, which spells the same thing out in the DOM.
+                aria-describedby={
+                  duplicateKeys.has(entry.key.trim()) ? 'metadata-duplicate-keys' : undefined
+                }
                 title={
                   duplicateKeys.has(entry.key.trim())
                     ? `Duplicate key "${entry.key.trim()}" — only the last value is saved`
@@ -293,6 +300,7 @@ export default function MetadataEditor({ entries, onChange, availableKeys, label
           )}
           {duplicateKeys.size > 0 && (
             <div
+              id="metadata-duplicate-keys"
               className="metadata-dup-warning"
               role="status"
               aria-live="polite"
@@ -329,6 +337,10 @@ export default function MetadataEditor({ entries, onChange, availableKeys, label
           aria-activedescendant={activeOptionId}
           aria-label="Add metadata key"
           aria-invalid={dupWarning ? true : undefined}
+          // Same reason as the entry rows above: the warning is a polite live
+          // region announced once, so without this a user returning to an
+          // already-invalid field hears "invalid" and no reason.
+          aria-describedby={dupWarning ? 'metadata-add-warning' : undefined}
           autoComplete="off"
         />
         <button
@@ -373,6 +385,7 @@ export default function MetadataEditor({ entries, onChange, availableKeys, label
       </div>
       {dupWarning && (
         <div
+          id="metadata-add-warning"
           className="metadata-dup-warning"
           role="status"
           aria-live="polite"

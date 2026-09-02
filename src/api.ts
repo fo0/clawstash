@@ -150,12 +150,37 @@ function getHeaders(): Record<string, string> {
   return h;
 }
 
+/**
+ * Fallback message for a response that carried no `error` body.
+ *
+ * The bare `HTTP 500` these paths used to throw is what the UI renders in its
+ * error banners and toasts, and it tells the user neither what went wrong nor
+ * what to do about it. Say both, and keep the status code in the text so it is
+ * still greppable in a bug report (and so LoginScreen's 429 check still
+ * matches).
+ */
+export function httpErrorMessage(status: number): string {
+  const reason =
+    status === 401 || status === 403
+      ? 'You are not signed in, or your token lacks the required scope.'
+      : status === 404
+        ? 'The requested item no longer exists — reload and try again.'
+        : status === 413
+          ? 'The request was too large for the server to accept.'
+          : status === 429
+            ? 'Too many requests — please wait a moment and try again.'
+            : status >= 500
+              ? 'The server could not complete the request. Please try again.'
+              : 'The server rejected the request.';
+  return `${reason} (HTTP ${status})`;
+}
+
 async function request<T>(url: string, init?: RequestInit, timeoutMs?: number): Promise<T>;
 async function request(url: string, init?: RequestInit, timeoutMs?: number): Promise<unknown> {
   const res = await fetchWithTimeout(url, init, timeoutMs);
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
-    throw new Error(body.error || `HTTP ${res.status}`);
+    throw new Error(body.error || httpErrorMessage(res.status));
   }
   if (res.status === 204) return undefined;
   return res.json();
@@ -336,7 +361,7 @@ export const api = {
   // MCP spec (text/markdown format with data types and tool schemas)
   async getMcpSpec(): Promise<string> {
     const res = await fetchWithTimeout('/api/mcp-spec');
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    if (!res.ok) throw new Error(httpErrorMessage(res.status));
     return res.text();
   },
 
@@ -355,7 +380,7 @@ export const api = {
     const res = await fetchWithTimeout('/api/admin/export', { headers }, SLOW_FETCH_TIMEOUT_MS);
     if (!res.ok) {
       const body = await res.json().catch(() => ({}));
-      throw new Error(body.error || `HTTP ${res.status}`);
+      throw new Error(body.error || httpErrorMessage(res.status));
     }
     return res.blob();
   },
@@ -378,7 +403,7 @@ export const api = {
     );
     if (!res.ok) {
       const body = await res.json().catch(() => ({}));
-      throw new Error(body.error || `HTTP ${res.status}`);
+      throw new Error(body.error || httpErrorMessage(res.status));
     }
     return res.json();
   },

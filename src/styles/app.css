@@ -1577,7 +1577,18 @@ body {
   line-height: 1.4;
 }
 
+/* WCAG 2.2 SC 2.5.8 (Target Size, Minimum) asks for 24x24 CSS px. A bare */
+/* "x" glyph at 14px with 2px of side padding measures roughly 12x17, and  */
+/* the chip it sits in is not a sentence, so the inline exception does not  */
+/* apply. Grow the hit area only — the glyph stays the same size and is     */
+/* centred in it, so the chip's height (line-height 1.4 at 13px + 6px       */
+/* padding) already accommodates the box.                                   */
 .filter-clear {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 24px;
+  min-height: 24px;
   background: none;
   border: none;
   color: var(--accent-blue);
@@ -6277,6 +6288,7 @@ textarea.code-editor-plain.code-editor-wrap {
 }
 
 .tag-combobox-tag-remove {
+  position: relative;
   background: none;
   border: none;
   color: var(--accent-blue, #58a6ff);
@@ -6285,6 +6297,22 @@ textarea.code-editor-plain.code-editor-wrap {
   line-height: 1;
   padding: 0;
   opacity: 0.7;
+}
+
+/* WCAG 2.2 SC 2.5.8 (Target Size, Minimum): the bare "x" measures about   */
+/* 9x14, well under the 24x24 floor, and a tag chip is not a sentence, so  */
+/* the inline exception does not apply. The chip's own content box is only */
+/* 16.8px tall, so sizing the button itself would push every chip ~7px     */
+/* taller — extend the hit area with a centred overlay instead, which      */
+/* leaves the glyph and the chip geometry exactly as they are.             */
+.tag-combobox-tag-remove::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 24px;
+  height: 24px;
+  transform: translate(-50%, -50%);
 }
 
 .tag-combobox-tag-remove:hover {

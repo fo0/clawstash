@@ -137,28 +137,48 @@ export default function KeyboardShortcutsHelp({ open, onClose }: Props) {
           </button>
         </div>
         <div className="shortcuts-help-body">
-          {groups.map((group) => (
-            <div key={group.label} className="shortcuts-group">
-              <div className="shortcuts-group-label">{group.label}</div>
-              <table className="shortcuts-table">
-                <tbody>
-                  {group.shortcuts.map((s) => (
-                    <tr key={s.description}>
-                      <td className="shortcuts-keys">
-                        {s.keys.map((k, i) => (
-                          <span key={k}>
-                            <kbd className="shortcuts-kbd">{k}</kbd>
-                            {i < s.keys.length - 1 && <span className="shortcuts-plus">+</span>}
-                          </span>
-                        ))}
-                      </td>
-                      <td className="shortcuts-desc">{s.description}</td>
+          {groups.map((group) => {
+            // The visible group label is a plain <div>, so each table was
+            // announced as an unnamed table and the two columns had no
+            // headers at all — four of them in one dialog, indistinguishable.
+            // Reuse the label as the table's accessible name instead of
+            // duplicating it in a caption.
+            const labelId = `shortcuts-group-${group.label.toLowerCase().replace(/\s+/g, '-')}`;
+            return (
+              <div key={group.label} className="shortcuts-group">
+                <div className="shortcuts-group-label" id={labelId}>
+                  {group.label}
+                </div>
+                <table className="shortcuts-table" aria-labelledby={labelId}>
+                  {/* Visually hidden: the columns are self-evident on screen,
+                      but without them the cells carry no header association.
+                      .sr-only sits on <thead> so no zero-height row is left
+                      in the table box. */}
+                  <thead className="sr-only">
+                    <tr>
+                      <th scope="col">Shortcut</th>
+                      <th scope="col">Action</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          ))}
+                  </thead>
+                  <tbody>
+                    {group.shortcuts.map((s) => (
+                      <tr key={s.description}>
+                        <td className="shortcuts-keys">
+                          {s.keys.map((k, i) => (
+                            <span key={k}>
+                              <kbd className="shortcuts-kbd">{k}</kbd>
+                              {i < s.keys.length - 1 && <span className="shortcuts-plus">+</span>}
+                            </span>
+                          ))}
+                        </td>
+                        <td className="shortcuts-desc">{s.description}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            );
+          })}
         </div>
         <div className="shortcuts-help-footer">
           <span>Press</span>
