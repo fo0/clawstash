@@ -190,6 +190,11 @@ export default function TagCombobox({
           aria-labelledby={inputLabelledBy}
           aria-activedescendant={activeOptionId}
           aria-invalid={dupWarning ? true : undefined}
+          // The warning below is a polite live region, so it is announced once
+          // as it appears — a user who tabs back into an already-invalid field
+          // heard nothing but "invalid". Point at it so the reason travels
+          // with the field.
+          aria-describedby={dupWarning ? 'tag-combobox-warning' : undefined}
         />
       </div>
       {dropdownVisible && (
@@ -245,6 +250,7 @@ export default function TagCombobox({
       )}
       {dupWarning && (
         <div
+          id="tag-combobox-warning"
           className="tag-combobox-dup-warning"
           role="status"
           aria-live="polite"

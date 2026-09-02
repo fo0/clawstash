@@ -148,6 +148,9 @@ export default function BackupTargetCard({ response, onSaved }: Props) {
     }
   };
 
+  // More than one "/" cannot be an "owner/repository" pair.
+  const repoFormatInvalid = repoInput.indexOf('/') !== repoInput.lastIndexOf('/');
+
   return (
     <div className="settings-card">
       <div className="settings-card-header">
@@ -165,6 +168,10 @@ export default function BackupTargetCard({ response, onSaved }: Props) {
           list="backup-repo-list"
           value={repoInput}
           onChange={(e) => handleRepoInput(e.target.value)}
+          // The format complaint below used to be a loose paragraph next to
+          // the field: visible, but never announced as the field's own error.
+          aria-invalid={repoFormatInvalid || undefined}
+          aria-describedby={repoFormatInvalid ? 'backup-repo-format' : undefined}
           // Locked until a connection exists or a target was saved —
           // without a token the repo cannot be listed or synced anyway.
           disabled={!tokenSet && repos.length === 0 && !form.repoOwner && !repoInput}
@@ -175,8 +182,8 @@ export default function BackupTargetCard({ response, onSaved }: Props) {
           ))}
         </datalist>
       </div>
-      {repoInput.indexOf('/') !== repoInput.lastIndexOf('/') && (
-        <p className="api-hint" role="status">
+      {repoFormatInvalid && (
+        <p className="api-hint" id="backup-repo-format" role="status">
           Use the &ldquo;owner/repository&rdquo; format — repository names cannot contain
           &ldquo;/&rdquo;.
         </p>
