@@ -211,6 +211,16 @@ export default function SearchOverlay({ open, onClose, onSelectStash, onSearchAl
   // item shapes expose an `id`, so selection is uniform.
   const navItems: { id: string }[] = query.trim() ? results : recent;
 
+  // The id of the listbox that is actually rendered right now, or `undefined`
+  // when neither is — drives both `aria-controls` and `aria-expanded` from one
+  // source so they can never disagree.
+  const listboxId =
+    navItems.length === 0
+      ? undefined
+      : query.trim()
+        ? 'search-overlay-results'
+        : 'search-overlay-recent';
+
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'ArrowDown') {
       e.preventDefault();
@@ -286,18 +296,18 @@ export default function SearchOverlay({ open, onClose, onSelectStash, onSearchAl
             value={query}
             onChange={(e) => handleInputChange(e.target.value)}
             aria-label="Search stashes"
+            // The field owns a listbox and moves a virtual cursor through it
+            // with aria-activedescendant, which is the combobox pattern — as a
+            // plain textbox assistive tech never announced that a result list
+            // had opened. Same spelling the editor's TagCombobox uses.
+            role="combobox"
+            aria-haspopup="listbox"
+            aria-autocomplete="list"
+            aria-expanded={listboxId !== undefined}
             // Only reference a listbox that is actually rendered — a query with
             // zero results (or no query and no recents) renders no list, so a
             // dangling aria-controls id would point at nothing.
-            aria-controls={
-              query.trim()
-                ? results.length > 0
-                  ? 'search-overlay-results'
-                  : undefined
-                : recent.length > 0
-                  ? 'search-overlay-recent'
-                  : undefined
-            }
+            aria-controls={listboxId}
             aria-activedescendant={
               navItems.length > 0 ? `search-overlay-option-${activeIndex}` : undefined
             }
