@@ -5001,6 +5001,34 @@ textarea.code-editor-plain.code-editor-wrap {
 }
 
 /* Tags Cloud */
+.settings-tag-filter {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.settings-tag-filter-input {
+  flex: 1 1 auto;
+  min-width: 0;
+  max-width: 280px;
+  font-size: 13px;
+}
+
+.settings-tag-filter-count {
+  color: var(--text-muted);
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.settings-tag-filter-empty {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--text-muted);
+  font-size: 13px;
+}
+
 .settings-tags-cloud {
   display: flex;
   flex-wrap: wrap;
