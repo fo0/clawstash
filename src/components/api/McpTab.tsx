@@ -26,6 +26,7 @@ export default function McpTab({
   const { copyNotice, handleCopy } = useCopyToast();
   const { expandedSpecs, toggleSpecPreview } = useExpandableSpecs();
 
+  const mcpEndpoint = `${baseUrl}/mcp`;
   const streamableConfigJson = JSON.stringify(buildMcpStreamableConfig(baseUrl), null, 2);
   const stdioConfigJson = JSON.stringify(buildMcpStdioConfig(), null, 2);
 
@@ -89,7 +90,22 @@ export default function McpTab({
           </div>
           <div className="api-mcp-row">
             <span className="api-mcp-label">Endpoint:</span>
-            <code>{baseUrl}/mcp</code>
+            {/* The endpoint is the one value on this page a user actually has
+                to paste somewhere (an MCP client config, a curl call), and it
+                was the only bare <code> without a copy button — every config
+                snippet below has one. Selecting a URL out of a styled <code>
+                by hand is exactly the fiddly step the rest of the tab avoids. */}
+            <span className="api-mcp-endpoint">
+              <code>{mcpEndpoint}</code>
+              <button
+                className="btn btn-ghost btn-sm api-mcp-endpoint-copy"
+                onClick={() => handleCopy(mcpEndpoint, 'MCP Endpoint')}
+                title="Copy the MCP endpoint URL"
+                aria-label="Copy the MCP endpoint URL"
+              >
+                <CopyIcon size={12} />
+              </button>
+            </span>
           </div>
           <div className="api-mcp-row">
             <span className="api-mcp-label">Method:</span>

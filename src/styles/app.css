@@ -3804,6 +3804,23 @@ textarea.code-editor-plain.code-editor-wrap {
   color: var(--text-primary);
 }
 
+/* Keeps the endpoint URL and its copy button on one line, including in the
+   mobile layout where .api-mcp-row itself stacks into a column. */
+.api-mcp-endpoint {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.api-mcp-endpoint code {
+  overflow-wrap: anywhere;
+}
+
+.api-mcp-endpoint-copy {
+  flex-shrink: 0;
+}
+
 .api-mcp-config {
   margin-bottom: 16px;
 }
