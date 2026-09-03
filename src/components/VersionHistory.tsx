@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
 import type { Stash, StashVersionListItem, StashVersion } from '../types';
 import { api } from '../api';
-import { formatRelativeTime } from '../utils/format';
+import RelativeTime from './shared/RelativeTime';
 import VersionDiff from './VersionDiff';
 import { highlightCode, resolvePrismLanguage } from '../languages';
 import { DELETE_CONFIRM_TIMEOUT_MS } from '../utils/constants';
@@ -514,7 +514,15 @@ export default function VersionHistory({ stashId, currentVersion, onRestore }: P
                   </span>
                   <span className="version-item-meta">
                     {v.created_by === 'current' ? 'live' : v.created_by || 'system'} &middot;{' '}
-                    {formatRelativeTime(v.created_at)} &middot; {v.file_count} file
+                    {/* Was a bare formatRelativeTime string: "3 days ago" with no
+                        way to reach the exact timestamp. Choosing which snapshot
+                        to restore is precisely when the absolute date matters,
+                        and two snapshots taken the same day were
+                        indistinguishable. <RelativeTime> is the same
+                        hover-for-absolute / click-to-toggle affordance the stash
+                        cards, the access log and the backup bar already use, and
+                        it keeps the label fresh on a long-open tab. */}
+                    <RelativeTime dateStr={v.created_at} /> &middot; {v.file_count} file
                     {v.file_count !== 1 ? 's' : ''}
                   </span>
                 </div>

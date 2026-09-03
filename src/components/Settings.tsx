@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, type ReactNode } from 'react';
+import { useState, useEffect, useMemo, useRef, type ReactNode } from 'react';
 import type { SettingsSection, LayoutMode, Stats, TagInfo } from '../types';
 import { api } from '../api';
 import { formatBytes, formatExportTimestamp, pluralize } from '../utils/format';
@@ -398,6 +398,12 @@ function GeneralSection({ layout, onLayoutChange }: GeneralSectionProps) {
 
 // --- Section: Storage ---
 
+/**
+ * Tag count from which the Storage tag cloud grows its own search field. Below
+ * it the whole cloud fits on screen and the extra input would be noise.
+ */
+const TAG_FILTER_THRESHOLD = 10;
+
 interface StorageSectionProps {
   /**
    * Apply a tag filter to the dashboard and navigate there. Optional so the
@@ -427,6 +433,17 @@ function StorageSection({ onFilterTag }: StorageSectionProps) {
   const [loadFailed, setLoadFailed] = useState(false);
   // Bumped by the Retry button to re-run the load effect.
   const [reloadKey, setReloadKey] = useState(0);
+  // Substring filter over the tag cloud below. The cloud renders every tag in
+  // the database, ordered by usage count, so on an instance with many tags a
+  // specific one could only be found by eye — while the sidebar's tag filter
+  // has offered "Search tags..." all along.
+  const [tagQuery, setTagQuery] = useState('');
+
+  const visibleTags = useMemo(() => {
+    const needle = tagQuery.trim().toLowerCase();
+    if (!needle) return tags;
+    return tags.filter((t) => t.tag.toLowerCase().includes(needle));
+  }, [tags, tagQuery]);
 
   useEffect(() => {
     let cancelled = false;
@@ -618,6 +635,31 @@ function StorageSection({ onFilterTag }: StorageSectionProps) {
               {onFilterTag && (
                 <p className="api-hint">Select a tag to browse its stashes on the dashboard.</p>
               )}
+              {/* Only worth the extra control once scanning the cloud by eye
+                  actually costs something — same "don't add chrome to a short
+                  list" rule the sidebar tag filter applies at its own
+                  threshold. */}
+              {tags.length > TAG_FILTER_THRESHOLD && (
+                <div className="settings-tag-filter">
+                  <input
+                    type="text"
+                    className="form-input settings-tag-filter-input"
+                    placeholder="Search tags..."
+                    value={tagQuery}
+                    onChange={(e) => setTagQuery(e.target.value)}
+                    aria-label="Search tags"
+                    // The browser's own autofill list would cover the cloud.
+                    autoComplete="off"
+                  />
+                  {/* Says how much of the cloud is currently hidden, so a
+                      filtered view never reads as the whole tag list. */}
+                  <span className="settings-tag-filter-count" role="status" aria-live="polite">
+                    {tagQuery.trim()
+                      ? `${visibleTags.length} of ${tags.length} tags`
+                      : `${tags.length} tags`}
+                  </span>
+                </div>
+              )}
               {/* Tags look identical to the ones on stash cards, in the sidebar
                   and in the viewer — all of which filter the dashboard when
                   clicked. Here they were inert <span>s, so the tag overview
@@ -625,7 +667,7 @@ function StorageSection({ onFilterTag }: StorageSectionProps) {
                   sidebar dropdown. With a handler they become real buttons
                   (keyboard reachable); without one they stay plain text. */}
               <div className="settings-tags-cloud">
-                {tags.map((t) =>
+                {visibleTags.map((t) =>
                   onFilterTag ? (
                     <button
                       key={t.tag}
@@ -644,6 +686,20 @@ function StorageSection({ onFilterTag }: StorageSectionProps) {
                   ),
                 )}
               </div>
+              {/* An empty cloud would otherwise read as "this instance has no
+                  tags" — name the filter as the reason and offer the way back. */}
+              {visibleTags.length === 0 && (
+                <div className="settings-tag-filter-empty">
+                  <span>No tags match &ldquo;{tagQuery.trim()}&rdquo;.</span>
+                  <button
+                    type="button"
+                    className="btn btn-sm btn-ghost"
+                    onClick={() => setTagQuery('')}
+                  >
+                    Clear filter
+                  </button>
+                </div>
+              )}
             </div>
           )}
         </>
