@@ -32,6 +32,26 @@ describe('sanitizeSvg', () => {
     );
   });
 
+  it('drops data:image/svg+xml, which carries its own script context', () => {
+    // An SVG document referenced through a data: URI brings markup this
+    // sanitiser never inspects, so it must be rejected by scheme. Mirrors
+    // isUnsafeUrl() in utils/markdown.ts, which rejects it on the Markdown
+    // surface — the two normalisations are deliberately kept in step.
+    expect(
+      sanitizeSvg('<svg><use xlink:href="data:image/svg+xml;base64,PHN2Zz48L3N2Zz4=" /></svg>'),
+    ).not.toContain('data:image/svg+xml');
+    expect(sanitizeSvg('<svg><a href="DATA:IMAGE/SVG+XML,<svg/>">t</a></svg>')).not.toContain(
+      'IMAGE/SVG+XML',
+    );
+  });
+
+  it('keeps raster data: URIs, which cannot carry script', () => {
+    // Only the SVG/HTML data: forms are script-bearing. Blocking every data:
+    // URI would strip a legitimate inline icon out of a diagram.
+    const png = 'data:image/png;base64,iVBORw0KGgo=';
+    expect(sanitizeSvg(`<svg><image href="${png}" /></svg>`)).toContain(png);
+  });
+
   it('drops script schemes obfuscated with control chars or whitespace', () => {
     // The HTML parser decodes the entity into a literal TAB inside the
     // scheme; browsers ignore it when resolving the URL, so the sanitiser
