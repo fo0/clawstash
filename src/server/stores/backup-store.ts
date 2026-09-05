@@ -55,8 +55,7 @@ export class BackupStore {
 
   getAppSetting(key: string): string | null {
     const row = this.db.prepare('SELECT value FROM app_settings WHERE key = ?').get(key) as
-      | { value: string }
-      | undefined;
+      { value: string } | undefined;
     return row ? row.value : null;
   }
 
@@ -83,8 +82,7 @@ export class BackupStore {
 
   getBackupState(stashId: string): BackupStashState | null {
     const row = this.db.prepare('SELECT * FROM backup_state WHERE stash_id = ?').get(stashId) as
-      | BackupStateRow
-      | undefined;
+      BackupStateRow | undefined;
     return row ? this.rowToState(row) : null;
   }
 
