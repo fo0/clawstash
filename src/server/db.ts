@@ -374,8 +374,7 @@ export class ClawStashDB {
 
   getStash(id: string): Stash | null {
     const row = this.db.prepare('SELECT * FROM stashes WHERE id = ?').get(id) as
-      | Record<string, unknown>
-      | undefined;
+      Record<string, unknown> | undefined;
     if (!row) return null;
 
     const files = this.db
@@ -387,8 +386,7 @@ export class ClawStashDB {
 
   getStashMeta(id: string): StashMeta | null {
     const row = this.db.prepare('SELECT * FROM stashes WHERE id = ?').get(id) as
-      | Record<string, unknown>
-      | undefined;
+      Record<string, unknown> | undefined;
     if (!row) return null;
 
     const files = this.db
@@ -610,8 +608,7 @@ export class ClawStashDB {
     // for the backup deletion commit message, and the deletion_audit row keeps
     // it after the stash is gone.
     const existing = this.db.prepare('SELECT name FROM stashes WHERE id = ?').get(id) as
-      | { name: string }
-      | undefined;
+      { name: string } | undefined;
     // Wrap the row delete + FTS cleanup + audit record so a mid-operation
     // failure does not leave the FTS index pointing at a stash row that no
     // longer exists, and the audit row is written iff the delete happened.
