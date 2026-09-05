@@ -1,6 +1,8 @@
 ---
 name: done
 description: "Use when the user signals work completion with 'done', 'fertig', 'finished', 'abschluss', '/done'. Detects current branch (main vs feature), runs closure checks defined in CLAUDE.md, handles commit and push based on branch context, closes related GitHub issues, and reports a strict short summary."
+metadata:
+  origin: claude-code-optimizer
 ---
 
 # Done — Work Closure
@@ -9,6 +11,11 @@ description: "Use when the user signals work completion with 'done', 'fertig', '
 
 - User says "done", "fertig", "finished", "abschluss", "/done"
 - End of a feature, bugfix, or task when ready to wrap up
+
+## Scope Boundaries
+
+**Owns:** closing a piece of work out -- format, the automated-check chain, scope check, commit, push, issue close.
+**Does not own:** the review itself (`review`), the PR object (`pr`), remote build state (`ci`). It _suggests_ those and never runs them -- that fence is what keeps `/done` predictable enough to type without reading it first.
 
 ## Workflow
 
@@ -66,7 +73,7 @@ Over 20,000 / 16,000 / 8,000 chars -> offload per `agent_docs/context_budget.md`
 
 - Follow project's commit message convention (Conventional Commits if defined)
 - Reference GitHub issue number if applicable (e.g. `feat: add X (#42)`)
-- **Main branch:** if uncommitted diff is large/unfocused -> ask user before committing
+- **Main branch:** if uncommitted diff is large/unfocused -> ask user before committing. Unattended (`$CLAUDE_CODE_REMOTE=true`) nobody answers: leave it uncommitted, report the `git diff --stat` as the open point, and finish the steps that do not depend on it (CLAUDE.md -> _Autonomy_).
 
 ### 7. Push
 
@@ -103,6 +110,6 @@ Strict format, strict limits:
 - **Pre-commit guard is a backstop, not a substitute.** If `agent_docs/ci_formatting_guard.md` (husky + lint-staged) is set up, commits auto-format staged files even outside this skill -- but still run format-write here so the diff you review matches what gets committed, and never bypass the hook with `--no-verify`.
 - **Never push to `main` with failing checks.** Hard stop.
 - **Never force-push** without explicit user request.
-- **Ambiguous state on main** (large uncommitted diff, unclear scope) -> ask first.
+- **Ambiguous state on main** (large uncommitted diff, unclear scope) -> ask first; unattended -> uncommitted plus a report line (step 6).
 - **Report line limits are hard.** 3 lines for summary, 2 lines for next. No preamble, no postamble.
 - If nothing to commit AND nothing to push AND no open issue -> single-line confirmation: `[OK] {branch}: already clean, nothing to do.`

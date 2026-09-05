@@ -2,7 +2,7 @@
 
 Ready-to-paste hook snippets that enforce optimizer rules beyond the Tier-1 minimum in `.claude/settings.json`. Copy what fits, paste into `.claude/settings.json` under the matching trigger.
 
-> **Tier-1 hooks** (already in `.claude/settings.json`): GitNexus read-only pre-commit guard (no auto-analyze), context budget guard (CLAUDE.md / MEMORY.md / SCRATCHPAD.md), SessionStart memory reminder.
+> **Tier-1 hooks** (already in `.claude/settings.json`): GitNexus read-only pre-commit guard (no auto-analyze), context budget guard (CLAUDE.md / MEMORY.md / SCRATCHPAD.md), quality-config guard (a `PreToolUse` deny on `.prettierrc.json` / `eslint.config.js` / `tsconfig.json` -- a red check is fixed in the code, never by weakening the rule that caught it), SessionStart memory reminder.
 > **Tier-2** = recommended, default off -- copy if relevant.
 > **Tier-3** = optional, situational -- copy only if you actively want the behavior.
 
@@ -31,6 +31,26 @@ Each snippet below states its **Trigger** and, where it matters, whether it is a
 ## Tier 2 -- Recommended
 
 > **MEMORY.md / SCRATCHPAD.md size warnings are no longer here** -- since v1.18.0 they are part of the Tier-1 **context budget guard** in `.claude/settings.json`, which checks all three budgeted files (`CLAUDE.md` 20k, `MEMORY.md` 16k, `SCRATCHPAD.md` 8k) in a single `PostToolUse` hook and points at `agent_docs/context_budget.md`. Nothing to paste; adjust the thresholds there if this project needs different ones.
+
+### Write -- stray doc-file warning
+
+```json
+{
+  "matcher": "Write",
+  "hooks": [
+    {
+      "type": "command",
+      "command": "f=$(jq -r '.tool_input.file_path // empty'); case \"$f\" in *.md|*.txt) ;; *) exit 0;; esac; case \"$f\" in docs/*|*/docs/*|agent_docs/*|*/agent_docs/*|.claude/*|*/.claude/*|.github/*|*/.github/*) exit 0;; esac; case \"${f##*/}\" in README.md|CLAUDE.md|AGENTS.md|CONTRIBUTING.md|CHANGELOG.md|LICENSE.md|SECURITY.md|MEMORY.md|SCRATCHPAD.md|BACKLOG.md|SKILL.md) exit 0;; esac; printf '%s' '{\"hookSpecificOutput\":{\"hookEventName\":\"PreToolUse\",\"additionalContext\":\"New standalone .md/.txt outside the documented homes. The agent docs already have one: an architecture decision goes to docs/adr/, a repo gotcha to MEMORY.md, working notes to SCRATCHPAD.md, an unfixed finding to BACKLOG.md, a process to agent_docs/. Write the file anyway only if it is a deliverable the project asked for -- see agent_docs/context_budget.md.\"}}'; exit 0"
+    }
+  ]
+}
+```
+
+Trigger: `PreToolUse`. Agent-facing, **non-blocking** -- it names the right home and lets the agent proceed, because a genuine deliverable is indistinguishable from sprawl at hook time.
+
+**Why this exists next to the budget guard.** The Tier-1 budget guard measures three files. It is blind to the other half of context rot: the `SUMMARY.md`, `NOTES.md`, `IMPLEMENTATION_PLAN.md`, `REFACTOR_PLAN.md` layer an agent leaves behind across sessions. Each one is individually small and permanently under every threshold, so nothing ever fires -- and the next session greps a root full of half-true snapshots that no rule ever updates. The homes in the message are the ones `memory_process.md` and `backlog_process.md` already define; the hook only makes the agent meet them at the moment it is about to write past them.
+
+**Allowlist maintenance:** the basename list is the set of files this repo has agreed to keep at root, and the directory list is everything that is unbudgeted by design. Add a project's own root-level docs to the basename list rather than deleting the hook.
 
 ### Stop -- scratchpad cleanup reminder
 
@@ -61,6 +81,22 @@ Trigger: `Stop`. **User-facing** by design: `additionalContext` on `Stop` would 
 ```
 
 Trigger: `PreCompact`. **Neither agent- nor user-facing:** `PreCompact` supports no `additionalContext`, and its stdout only reaches the debug log -- so the snippet writes a side-file instead of printing. The reliable path back into context after a compaction is the SessionStart reminder plus re-reading `SCRATCHPAD.md`. Gitignore the `.bak`.
+
+### SessionStart -- unattended-session banner
+
+```json
+{
+  "matcher": "startup|resume",
+  "hooks": [
+    {
+      "type": "command",
+      "command": "if [ \"$CLAUDE_CODE_REMOTE\" = \"true\" ]; then echo 'Unattended session (CLAUDE_CODE_REMOTE=true) -- no human will answer a question. CLAUDE.md > Autonomy applies to this run.'; fi; exit 0"
+    }
+  ]
+}
+```
+
+Trigger: `SessionStart`. Agent-facing via plain stdout -- one of the three events where that works, so no JSON wrapper is needed. Fires only in web/cloud sessions, routine runs included; in the local CLI the variable is unset and the hook prints nothing. This is the autonomy rule arriving as context instead of hoping the model re-read CLAUDE.md.
 
 ### Stop -- review reminder
 
@@ -229,9 +265,11 @@ Trigger: `PreToolUse`. Forces the permission prompt instead of only mentioning t
 ## Notes
 
 - **Hook input arrives as a JSON payload on stdin**, not via environment variables. Relevant fields: `.tool_input.command` (Bash tool), `.tool_input.file_path` (Edit/Write), `.prompt` (UserPromptSubmit). The snippets parse stdin with `jq` -- there are no `$CLAUDE_TOOL_INPUT` / `$CLAUDE_USER_PROMPT` env vars.
-- `$CLAUDE_PROJECT_DIR` IS a real environment variable (absolute project root), usable in any hook command.
-- **`jq` is required** for every snippet that reads stdin. Without `jq` the hook errors out and does NOT block -- for reminder hooks that's harmless, but the two BLOCK hooks then provide no protection. Verify `jq` is installed wherever you rely on them.
+- `$CLAUDE_PROJECT_DIR` IS a real environment variable (absolute project root), usable in any hook command; `${CLAUDE_PROJECT_DIR}` is also substituted inside `command`. `$CLAUDE_CODE_REMOTE` (`"true"` in web/cloud sessions, unset locally) and `$CLAUDE_EFFORT` are available the same way.
+- **`jq` is required** for every snippet that reads stdin. Without `jq` the hook errors out and does NOT block -- for reminder hooks that's harmless, but the two BLOCK hooks then provide no protection. Verify `jq` is installed wherever you rely on them. The Tier-1 quality-config guard in `.claude/settings.json` is the one that tests for `jq` itself and reports when it cannot run; copy that leading test into any snippet here whose silence would be mistaken for protection.
 - **Exit-0 stdout reaches the agent only on `SessionStart` / `UserPromptSubmit` / `UserPromptExpansion`.** Everywhere else it lands in the debug log -- see _Reaching the agent_ above for the `additionalContext` / `permissionDecision` / `systemMessage` alternatives. An `echo 'WARNING...'` on `PreToolUse` or `PostToolUse` is a no-op.
 - Exit code `2` from a `PreToolUse` hook blocks the tool call and feeds **stderr** back to Claude -- block messages must go to stderr (`>&2`). On `PostToolUse` the tool already ran, so exit 2 cannot block; stderr is still shown to Claude. Other non-zero exits print stderr but don't block.
 - Hooks run in the user's shell. Quote paths, escape `$` carefully when copying.
 - After modifying `.claude/settings.json`, restart the Claude Code session (or review via `/hooks`) for changes to take effect.
+
+<!-- Generated by claude-code-optimizer v1.37.0 -->

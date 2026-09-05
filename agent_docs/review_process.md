@@ -40,13 +40,13 @@ Commit
 
 ## Automated Checks
 
-Run in this order before the review:
+Run in this order before the review -- the same order everywhere it appears (CLAUDE.md _Commands_, `.claude/loop.md`, the routines' `verify:` chain):
 
 ```bash
 npm install              # Dependencies current
 npm run format           # Prettier write -- FIRST, or CI's format:check fails on drift
+npx tsc --noEmit         # Types pass (CI runs typecheck before lint)
 npm run lint             # ESLint (correctness rules; Prettier owns formatting)
-npx tsc --noEmit         # Types pass
 npm test                 # Tests (vitest)
 npm run build            # Build succeeds
 ```
@@ -94,35 +94,60 @@ External boundaries (HTTP, DB, queue, LLM, payment, mail) -> always mock or use 
 
 Ordered by priority.
 
+Eight categories, fixed numbering -- the report table indexes into them, so the set and the order do not change. What counts as a finding inside a category is current engineering knowledge applied to this stack (TypeScript strict, React 19, Next.js 16 App Router), not a list maintained here (optimizer Invariant 6); the **scope line** is what fixes the boundary between neighbouring categories.
+
 ### P0 -- Critical (always fix immediately)
 
-| #   | Category                | What to check                                                                                                                                                                                                   |
-| --- | ----------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 1   | **Security**            | Injection (SQL/command/template), XSS, CSRF, hardcoded secrets, unsafe dynamic code execution, prototype pollution, insecure crypto, improper auth checks, unvalidated input at trust boundaries                |
-| 2   | **Bugs & Logic Errors** | Off-by-one, null/undefined access, race conditions, incorrect conditionals, missing error handling at boundaries, wrong operator precedence, async pitfalls (unhandled promises, deadlocks), unclosed resources |
+| #   | Category                | Scope -- where this category starts and stops                                                                                                                                 |
+| --- | ----------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | **Security**            | Anything an attacker could reach: untrusted input crossing a trust boundary, authn/authz, secrets, unsafe execution, crypto misuse. Deeper audit: the `security-review` skill |
+| 2   | **Bugs & Logic Errors** | Code that is wrong for inputs it is _meant_ to handle -- control flow, state, concurrency, resource lifetime, unhandled failure at boundaries                                 |
 
 ### P1 -- Important (fix by default, defer only if disproportionate effort)
 
-| #   | Category                    | What to check                                                                                                                                                  |
-| --- | --------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 3   | **Edge Cases**              | Empty collections, null/undefined, boundary values (0, -1, MAX), empty strings, concurrent access, missing/malformed input, network failures, timeout handling |
-| 4   | **Typing & Type Safety**    | Correct types, no unsafe casts without reason, proper generics, exhaustive switch/union/enum handling, return type accuracy (TypeScript strict mode)           |
-| 5   | **Modern Coding Standards** | Idiomatic patterns (React 19, ES2024+, TypeScript strict), current best practices, no deprecated APIs, clean imports, proper naming, DRY, KISS, SRP            |
+| #   | Category                    | Scope -- where this category starts and stops                                                                                                                            |
+| --- | --------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| 3   | **Edge Cases**              | Code that is wrong for inputs it is _not_ meant to handle -- empty, absent, boundary, malformed, concurrent, slow, failing                                               |
+| 4   | **Typing & Type Safety**    | Whether the type system is actually carrying its weight: honest signatures, no escape hatches without a reason, exhaustiveness where the language offers it              |
+| 5   | **Modern Coding Standards** | Idiom and currency for _this_ project's stack and version -- including APIs deprecated since the code was written. Judge against what is current now, not against a list |
 
 ### P2 -- Contextual (review when relevant, defer freely)
 
-| #   | Category                          | What to check                                                                                                                                                  |
-| --- | --------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 6   | **Code Smells**                   | Duplicated code, dead code, high cyclomatic complexity, god objects/functions, long parameter lists, magic numbers/strings, tight coupling                     |
-| 7   | **Performance**                   | Unnecessary re-renders/recomputations, missing memoization where beneficial, N+1 queries, unbounded loops/allocations, large imports that could be lazy-loaded |
-| 8   | **Readability & Maintainability** | Clear naming, self-documenting code, consistent style, logical code organization, comments for non-obvious logic                                               |
+| #   | Category                          | Scope -- where this category starts and stops                                                                                                                                  |
+| --- | --------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| 6   | **Code Smells**                   | Structure that will cost the next change: duplication, dead weight, oversized units, coupling                                                                                  |
+| 7   | **Performance**                   | Cost that scales the wrong way -- per-item work that should be batched, repeated work that should be cached, unbounded growth. Measured or clearly reasoned, never speculative |
+| 8   | **Readability & Maintainability** | Whether the next agent can follow it: naming, organization, and comments where the _why_ is not in the code                                                                    |
+
+## Pre-Report Gate
+
+The category tables decide _what_ is worth looking for. This gate decides what is worth **reporting** -- and it applies to every finding, in every category, P0 included.
+
+A review whose findings are half taste and half guesswork is worse than no review: the reader stops trusting the table, and the two real defects in it are read as fast as the eleven opinions. So each candidate finding answers all four questions before it gets a row. **Any "no" or "not sure" drops it, or downgrades it one severity.**
+
+| #   | Question                                                                            | Why it disqualifies                                                                                                                                                |
+| --- | ----------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| 1   | **Can I name file and line?**                                                       | A finding that cannot be located cannot be acted on. "Somewhere in the auth layer" is a hunch with a category attached                                             |
+| 2   | **Can I state the concrete failure -- this input, this state, this wrong outcome?** | If the trigger cannot be named, the pattern was matched, not the code. This is the question that separates a bug from a resemblance to one                         |
+| 3   | **Did I read the surrounding context -- callers, imports, the tests?**              | Most apparent defects are already handled one frame up or made impossible by a type. Reporting without looking spends the author's time to save the reviewer's     |
+| 4   | **Is it in the diff?**                                                              | Findings in untouched code are out of scope -- **except at P0**, which is reported wherever it is found. Everything else goes to `BACKLOG.md` instead of the table |
+
+Two more rules that keep the table readable:
+
+- **Confidence floor: report at ~80% or better.** Below that, either look until you are above it or leave it out. A maybe-finding costs a real investigation and returns nothing.
+- **Consolidate by cause, not by occurrence.** Twelve call sites missing the same guard are **one** finding with a count and one representative location -- never twelve rows. Twelve rows hide the single fix behind twelve decisions.
+
+Taste is not a finding. A different-but-equivalent way to write something is only reportable when it violates a convention this project has actually written down (`CLAUDE.md` -> _Coding Conventions_, `agent_docs/coding-conventions.md`); otherwise it is the reviewer's preference wearing a severity.
+
+**The gate is reported, not silent.** The summary line names how many candidates it dropped -- that number is the evidence the filter ran, and a review that drops nothing across a large diff is a filter that was skipped, not a clean diff.
 
 ## Review Execution
 
 1. **Re-read every changed file** with the Read tool -- completely, not from memory. New files in full.
 2. Evaluate each file against all categories (P0 first, then P1, then P2 where relevant).
-3. Fix findings inline where possible.
-4. Present results:
+3. **Run every candidate finding through the Pre-Report Gate** -- before fixing anything. A finding that does not survive it is not worth a fix either, and fixing first is how the gate gets skipped in practice.
+4. Fix findings inline where possible.
+5. Present results:
 
 ```
 ### Code Review Results
@@ -134,7 +159,7 @@ Ordered by priority.
 | 3 | Edge Cases | P1 | Pass | -- | -- |
 | ... | ... | ... | ... | ... | ... |
 
-Summary: X categories checked | Y fixed | Z deferred -> Backlog
+Summary: X categories checked | Y fixed | Z deferred -> Backlog | N dropped at the Pre-Report Gate
 ```
 
 **Status:** Pass | Fixed | Blocked (needs user input) | Deferred -> Backlog
@@ -207,3 +232,5 @@ Only commit when:
 - [ ] Commit message follows project's Git Conventions
 - [ ] UI review done (if UI changed)
 - [ ] (If GitNexus available) `gitnexus_detect_changes()` confirmed scope
+
+<!-- Generated by claude-code-optimizer v1.37.0 -->

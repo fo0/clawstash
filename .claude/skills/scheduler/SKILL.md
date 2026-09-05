@@ -1,7 +1,9 @@
 ---
 name: scheduler
 description: "Use when work should happen later or repeatedly — 'schedule', 'routine', 'nightly', 'every morning', 'cron', 'remind me later', 'check back in an hour', 'watch this PR', '/scheduler'. Picks the right scheduler for the lifetime the work needs (cloud routine / session loop / desktop task), creates, lists, updates and deletes jobs, and cleans up every job the agent created for its own bookkeeping before the run ends."
-argument-hint: "[list|new|clean]"
+argument-hint: '[list|new|clean]'
+metadata:
+  origin: claude-code-optimizer
 ---
 
 # Scheduler — Routines, Loops and Cron Jobs
@@ -14,21 +16,26 @@ argument-hint: "[list|new|clean]"
 
 Sub-commands (bare `/scheduler` routes by what the request asks for):
 
-| Argument | Does                                                                              |
-| -------- | --------------------------------------------------------------------------------- |
+| Argument | Does                                                                                            |
+| -------- | ----------------------------------------------------------------------------------------------- |
 | `list`   | Every job visible from this surface — `CronList`, plus `list_triggers` where the MCP is present |
-| `new`    | Create one, after picking the layer in step 1                                     |
-| `clean`  | Run the cleanup contract now instead of at the end of the run                     |
+| `new`    | Create one, after picking the layer in step 1                                                   |
+| `clean`  | Run the cleanup contract now instead of at the end of the run                                   |
+
+## Scope Boundaries
+
+**Owns:** _when_ work runs and on which surface, and the cleanup contract for jobs the agent created for its own bookkeeping.
+**Does not own:** _how_ the work is divided once it runs (`orca`), what a bare `/loop` actually does (`.claude/loop.md`), or the cross-turn stop condition -- that is Claude Code's own `/goal`.
 
 ## 1. Pick the layer by lifetime — this is the whole decision
 
-| Need                                                    | Layer                            | How                                                                                  | Lifetime                                     |
-| ------------------------------------------------------- | -------------------------------- | ------------------------------------------------------------------------------------ | -------------------------------------------- |
-| Runs without this session, machine off, ≥ 1 h apart     | **Routine** (cloud)              | see _Surfaces_ below                                                                  | Durable, until deleted                       |
-| Poll something while this session stays open            | **`/loop`** or `CronCreate`      | `/loop 10m <prompt>` · `/loop <prompt>` (agent picks the interval)                     | This session; recurring jobs expire after 7 days |
-| One-off "come back to this later" inside the session    | `CronCreate` one-shot            | or plain natural language ("in 45 minutes, check the tests")                            | This session; fires once, deletes itself     |
-| Needs local files / local tools on a schedule           | **Desktop scheduled task**       | user creates it in the Desktop app                                                     | Durable, machine must be on                  |
-| React to an event instead of polling                    | **not a scheduler**              | `subscribe_pr_activity` for PR events, a GitHub trigger on a routine, `Monitor` for a stream | —                                            |
+| Need                                                 | Layer                       | How                                                                                          | Lifetime                                         |
+| ---------------------------------------------------- | --------------------------- | -------------------------------------------------------------------------------------------- | ------------------------------------------------ |
+| Runs without this session, machine off, ≥ 1 h apart  | **Routine** (cloud)         | see _Surfaces_ below                                                                         | Durable, until deleted                           |
+| Poll something while this session stays open         | **`/loop`** or `CronCreate` | `/loop 10m <prompt>` · `/loop <prompt>` (agent picks the interval)                           | This session; recurring jobs expire after 7 days |
+| One-off "come back to this later" inside the session | `CronCreate` one-shot       | or plain natural language ("in 45 minutes, check the tests")                                 | This session; fires once, deletes itself         |
+| Needs local files / local tools on a schedule        | **Desktop scheduled task**  | user creates it in the Desktop app                                                           | Durable, machine must be on                      |
+| React to an event instead of polling                 | **not a scheduler**         | `subscribe_pr_activity` for PR events, a GitHub trigger on a routine, `Monitor` for a stream | —                                                |
 
 **Default to the event, not the poll.** A five-minute cron that greps CI is worse in every dimension than one PR-activity
 subscription. Reach for an interval only when nothing pushes the state at you -- binding form in _Hard rules_ below.
