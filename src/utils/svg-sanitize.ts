@@ -44,8 +44,25 @@ const FORBIDDEN_ELEMENTS = 'script, iframe, object, embed, base, link, meta';
  */
 const ANIMATION_ELEMENTS = new Set(['animate', 'animatetransform', 'animatemotion', 'set']);
 
-/** URL schemes that execute instead of addressing a resource. */
-const UNSAFE_URL = /^(?:javascript|vbscript|data:text\/html)/;
+/**
+ * URL schemes that execute instead of addressing a resource.
+ *
+ * `data:image/svg+xml` is listed alongside the two script schemes and
+ * `data:text/html` because an SVG document carries its own script context: the
+ * payload is markup this sanitiser never inspects (it lives inside an opaque,
+ * possibly base64-encoded attribute value), so the `on*` and element checks
+ * below cannot reach it. `isUnsafeUrl()` in `utils/markdown.ts` already rejects
+ * it on the Markdown surface — and both modules document that the two
+ * normalisations are deliberately kept in step, so a scheme blocked on one
+ * surface must not survive on the other.
+ *
+ * Raster data URIs (`data:image/png`, `data:image/jpeg`, …) stay allowed: they
+ * cannot carry script, and blocking every `data:` URI could strip a legitimate
+ * inline icon out of a diagram. Mermaid emits no `data:` URIs at all today, so
+ * this is defence-in-depth against a future producer, not a change to how any
+ * diagram currently renders.
+ */
+const UNSAFE_URL = /^(?:javascript|vbscript|data:text\/html|data:image\/svg\+xml)/;
 
 /** Attributes carrying a URL that must not be a script URL. */
 const URL_ATTRS = new Set(['href', 'xlink:href', 'src', 'action', 'formaction']);
