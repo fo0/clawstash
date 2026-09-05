@@ -23,8 +23,15 @@ import { checkVersion } from './version';
  * what its caller is allowed to do.
  */
 export interface McpAuthContext {
-  /** Scopes granted to the caller, as resolved by `server/auth.ts`. */
-  scopes: readonly TokenScope[];
+  /**
+   * Scopes granted to the caller, as resolved by `server/auth.ts`.
+   *
+   * `readonly` on BOTH the property and the array: `LOCAL_STDIO_AUTH` below is
+   * a shared module singleton, and without the property modifier
+   * `LOCAL_STDIO_AUTH.scopes = []` (or `= ['admin']`) type-checks and silently
+   * re-authorizes every stdio server in the process.
+   */
+  readonly scopes: readonly TokenScope[];
 }
 
 /**
@@ -35,8 +42,15 @@ export interface McpAuthContext {
  * over the process's stdin/stdout — there is no network boundary and no token
  * to check. It therefore keeps the full scope set it has always had; gating it
  * would break every local stdio setup without closing any attack surface.
+ *
+ * Deep-frozen because it is a shared module singleton: `allScopes()` hands out
+ * a fresh array precisely "so callers can mutate without poisoning the shared
+ * constant" (see `auth.ts`), and a full-trust constant that any importer could
+ * mutate would reintroduce exactly that hazard one level up.
  */
-export const LOCAL_STDIO_AUTH: McpAuthContext = { scopes: allScopes() };
+export const LOCAL_STDIO_AUTH: McpAuthContext = Object.freeze({
+  scopes: Object.freeze(allScopes()),
+});
 
 /** Tool handler shape. Args are validated against the tool's Zod schema by the SDK. */
 type ToolHandler = (args: Record<string, any>) => Promise<CallToolResult>;

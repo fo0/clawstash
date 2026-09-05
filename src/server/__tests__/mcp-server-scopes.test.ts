@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { PassThrough } from 'node:stream';
-import { readFileSync } from 'node:fs';
+import { spawn } from 'node:child_process';
+import { readFileSync, readdirSync } from 'node:fs';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { InMemoryTransport } from '@modelcontextprotocol/sdk/inMemory.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
@@ -368,8 +369,113 @@ describe('stdio MCP server', () => {
     }
   });
 
-  it('the stdio entrypoint opts into that full-trust context explicitly', () => {
-    const source = readFileSync(new URL('../mcp.ts', import.meta.url), 'utf8');
-    expect(source).toContain('LOCAL_STDIO_AUTH');
+  /**
+   * The shipped entrypoint, end to end.
+   *
+   * A source-text assertion is not a guard here: the identifier
+   * `LOCAL_STDIO_AUTH` also appears in a comment in `mcp.ts`, so
+   * `toContain('LOCAL_STDIO_AUTH')` stays green even if the call is rewritten
+   * to `createMcpServer(db, undefined, { scopes: [] })`. So spawn what
+   * `npm run mcp` spawns, speak JSON-RPC to it over real pipes and require a
+   * write to succeed. `DATABASE_PATH=:memory:` keeps it hermetic — no file is
+   * written and the child's DB dies with it.
+   */
+  it('the shipped entrypoint still writes when spawned like `npm run mcp`', async () => {
+    const repoRoot = new URL('../../../', import.meta.url).pathname;
+    const child = spawn(process.execPath, ['--import', 'tsx', 'src/server/mcp.ts'], {
+      cwd: repoRoot,
+      env: { ...process.env, DATABASE_PATH: ':memory:' },
+      stdio: ['pipe', 'pipe', 'pipe'],
+    });
+
+    const pending = new Map<number, (value: Record<string, unknown>) => void>();
+    let buffer = '';
+    child.stdout.on('data', (chunk: Buffer) => {
+      buffer += chunk.toString('utf8');
+      let index = buffer.indexOf('\n');
+      while (index !== -1) {
+        const line = buffer.slice(0, index).trim();
+        buffer = buffer.slice(index + 1);
+        // The DB migration logger writes plain text to stdout on first run, so
+        // anything that is not JSON-RPC is skipped rather than parsed.
+        if (line.startsWith('{')) {
+          const message = JSON.parse(line) as { id?: number };
+          if (typeof message.id === 'number') {
+            pending.get(message.id)?.(message as Record<string, unknown>);
+            pending.delete(message.id);
+          }
+        }
+        index = buffer.indexOf('\n');
+      }
+    });
+
+    const request = (id: number, method: string, params: unknown) =>
+      new Promise<Record<string, unknown>>((resolve) => {
+        pending.set(id, resolve);
+        child.stdin.write(`${JSON.stringify({ jsonrpc: '2.0', id, method, params })}\n`);
+      });
+
+    try {
+      const init = await request(1, 'initialize', {
+        protocolVersion: LATEST_PROTOCOL_VERSION,
+        capabilities: {},
+        clientInfo: { name: 'stdio-spawn-test', version: '1.0.0' },
+      });
+      expect(init.error).toBeUndefined();
+      child.stdin.write(
+        `${JSON.stringify({ jsonrpc: '2.0', method: 'notifications/initialized' })}\n`,
+      );
+
+      const call = await request(2, 'tools/call', {
+        name: 'create_stash',
+        arguments: { name: 'spawned', files: [{ filename: 'a.txt', content: 'x' }] },
+      });
+      expect(call.error).toBeUndefined();
+      const result = (call.result ?? {}) as ToolCallResult;
+      // Fails loudly if the entrypoint ever hands createMcpServer anything but
+      // full local trust — the denial text is surfaced instead of a bare flag.
+      expect(resultText(result)).not.toContain('requires the "write" scope');
+      expect(result.isError).toBeFalsy();
+      expect((JSON.parse(resultText(result)) as { name: string }).name).toBe('spawned');
+    } finally {
+      child.kill('SIGKILL');
+    }
+  }, 60_000);
+});
+
+// ---------------------------------------------------------------------------
+// Structural guards — assertions the docs make, made true
+// ---------------------------------------------------------------------------
+
+describe('MCP scope-gate structure', () => {
+  const mcpServerSource = readFileSync(new URL('../mcp-server.ts', import.meta.url), 'utf8');
+
+  it('routes every tool through the gated register() helper', () => {
+    // `register()` is documented as "the only path to server.registerTool", so
+    // a second call site would silently register an ungated tool. One
+    // occurrence = the one inside register() itself.
+    const occurrences = mcpServerSource.match(/\.registerTool\(/g) ?? [];
+    expect(occurrences).toHaveLength(1);
+  });
+
+  it('keeps the full-trust stdio context out of every request-served module', () => {
+    // LOCAL_STDIO_AUTH grants every scope unconditionally. It belongs to the
+    // locally spawned stdio process only — importing it anywhere under
+    // src/app/** (routes, pages) would hand an HTTP caller full trust and undo
+    // this whole fix. See BACKLOG #149 for the stronger factory-based fix.
+    const appDir = new URL('../../app/', import.meta.url);
+    const offenders: string[] = [];
+    const walk = (dir: URL, prefix: string) => {
+      for (const entry of readdirSync(dir, { withFileTypes: true })) {
+        if (entry.isDirectory()) {
+          walk(new URL(`${entry.name}/`, dir), `${prefix}${entry.name}/`);
+        } else if (entry.name.endsWith('.ts') || entry.name.endsWith('.tsx')) {
+          const source = readFileSync(new URL(entry.name, dir), 'utf8');
+          if (source.includes('LOCAL_STDIO_AUTH')) offenders.push(`${prefix}${entry.name}`);
+        }
+      }
+    };
+    walk(appDir, 'src/app/');
+    expect(offenders).toEqual([]);
   });
 });

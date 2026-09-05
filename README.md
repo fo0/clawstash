@@ -96,10 +96,13 @@ Create API tokens in the web GUI under **Settings > API & Tokens** (scopes: `rea
 >
 > **Who is affected:** anyone whose agent uses a token with `mcp` but without `write` (or
 > without `read`). Its calls now come back as MCP tool errors naming the missing scope.
-> **Fix:** issue a new token with `read`, `write` and `mcp` — the combination the
-> onboarding guide has always recommended — and swap it into the agent's MCP config.
-> Tokens that already carry `read`/`write`/`mcp` (or `admin`) are unaffected, and so is the
-> local **stdio** transport, which carries no token at all.
+> **Fix:** issue a new token with `read`, `write` and `mcp` and swap it into the agent's
+> MCP config. Expect to need this: the scope combination was recommended here and in
+> [docs/openclaw-onboarding-prompt.md](docs/openclaw-onboarding-prompt.md), but the
+> self-onboarding endpoint `GET /api/mcp-onboarding` and [docs/mcp.md](docs/mcp.md) named
+> only `mcp` until this release — a token created by following those two must be reissued.
+> Unaffected: tokens that already carry `read`/`write`/`mcp` (or `admin`), and the local
+> **stdio** transport, which carries no token at all.
 
 ## MCP Tools
 
