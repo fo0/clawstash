@@ -2,7 +2,7 @@
 
 Ready-to-paste hook snippets that enforce optimizer rules beyond the Tier-1 minimum in `.claude/settings.json`. Copy what fits, paste into `.claude/settings.json` under the matching trigger.
 
-> **Tier-1 hooks** (already in `.claude/settings.json`): GitNexus read-only pre-commit guard (no auto-analyze), context budget guard (CLAUDE.md / MEMORY.md / SCRATCHPAD.md), quality-config guard (a `PreToolUse` deny on `.prettierrc.json` / `eslint.config.js` / `tsconfig.json` -- a red check is fixed in the code, never by weakening the rule that caught it), SessionStart memory reminder.
+> **Tier-1 hooks** (already in `.claude/settings.json`): GitNexus read-only pre-commit guard (no auto-analyze), context budget guard (CLAUDE.md / MEMORY.md / SCRATCHPAD.md), quality-config guard (a `PreToolUse` deny on `.prettierrc.json` / `eslint.config.js` -- a red check is fixed in the code, never by weakening the rule that caught it), SessionStart memory reminder.
 > **Tier-2** = recommended, default off -- copy if relevant.
 > **Tier-3** = optional, situational -- copy only if you actively want the behavior.
 
