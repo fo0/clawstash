@@ -35,12 +35,29 @@ API tokens authenticate REST API and MCP requests. Create them in the web GUI.
 
 ### Token Scopes
 
-| Scope   | Access                                               |
-| ------- | ---------------------------------------------------- |
-| `read`  | Read stashes and data                                |
-| `write` | Read + write (implies read)                          |
-| `admin` | Full access including token management (implies all) |
-| `mcp`   | MCP server access                                    |
+| Scope   | Access                                                                        |
+| ------- | ----------------------------------------------------------------------------- |
+| `read`  | Read stashes and data                                                         |
+| `write` | Read + write (implies read)                                                   |
+| `admin` | Full access including token management (implies all)                          |
+| `mcp`   | **Transport gate only** — permits connecting to `/mcp`, grants no data access |
+
+`read`, `write` and `admin` form a ladder (`admin` implies everything, `write` implies
+`read`). `mcp` sits outside it: it decides whether a token may speak MCP at all, not what
+it may do once connected.
+
+### The `mcp` scope is not a capability
+
+Every MCP tool requires the same scope its REST equivalent does — `read` for the tools
+that read stash data, `write` for `create_stash`, `update_stash`, `archive_stash` and
+`delete_stash`. A token holding only `mcp` can connect and ask the server to describe
+itself (`get_mcp_spec`, `get_rest_api_spec`, `refresh_tools`), nothing else. A call its
+scopes do not cover returns a normal MCP tool error (`isError: true`) naming the missing
+scope.
+
+A token for full agent use therefore carries **`read`, `write` and `mcp`** — the
+combination `/api/mcp-onboarding` and [docs/openclaw-onboarding-prompt.md](openclaw-onboarding-prompt.md)
+have always recommended.
 
 ### Use a Token
 
@@ -87,6 +104,8 @@ Tokens are stored as SHA-256 hashes in the database — the plain token is only 
 - Use HTTPS in production to protect tokens in transit
 - The `admin` scope implies all other scopes
 - The `write` scope implies `read`
+- The `mcp` scope is a transport gate, not a capability — MCP tools are authorized by
+  `read` / `write` exactly like the REST routes
 - `/api/health` and `/api/version` always answer `200` so uptime probes work without
   credentials, but once auth is enabled they withhold their detail fields from
   unauthorised callers: `health` omits the stash/file counts, `version` returns

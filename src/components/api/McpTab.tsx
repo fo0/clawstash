@@ -128,7 +128,8 @@ export default function McpTab({
           <div className="api-section-label">Streamable HTTP (remote)</div>
           <p className="api-hint">
             Add this to your MCP client configuration (e.g. Claude Desktop, Cursor, etc.). Replace
-            YOUR_API_TOKEN with an API token that has the MCP scope.
+            YOUR_API_TOKEN with an API token that has the MCP scope plus the scopes its tools need
+            &mdash; Read to read stashes, Write to create, change or delete them.
           </p>
           <div className="api-code-block-wrapper">
             <pre className="api-code-block">{streamableConfigJson}</pre>

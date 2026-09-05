@@ -51,8 +51,16 @@ export const getMcpSpecText = memoizeByBaseUrl((baseUrl: string): string => {
   // Format tool definitions — input schemas auto-derived from Zod via zodToJsonSchema
   const toolsSection = TOOL_DEFS.map((t) => {
     const jsonSchema = zodToJsonSchema(t.schema, { target: 'openApi3' });
+    // The required scope is part of the tool contract: `mcp` alone only opens
+    // the transport, so an agent has to know which tools its token can call.
+    const scopeLine =
+      t.scope === 'none'
+        ? '**Required scope:** none beyond `mcp` (server self-description)'
+        : `**Required scope:** \`${t.scope}\``;
     return `### ${t.name}
 ${t.description}
+
+${scopeLine}
 
 **Input Schema:**
 \`\`\`json
@@ -85,8 +93,16 @@ ${CLAWSTASH_PURPOSE}
 - **Transport:** Streamable HTTP
 - **Endpoint:** ${baseUrl}/mcp
 - **Method:** POST
-- **Authentication:** Bearer token with MCP scope
+- **Authentication:** Bearer token with the \`mcp\` scope
 - **Header:** \`Authorization: Bearer <your-token>\`
+
+### Scopes
+\`mcp\` is a **transport gate**: it permits connecting to this endpoint, nothing more.
+Each tool additionally requires the scope listed with it below — \`read\` for tools that
+read stash data, \`write\` for tools that create, change or delete it. A call the token's
+scopes do not cover comes back as a normal tool error (\`isError: true\`) naming the
+missing scope. The usual ladder applies: \`admin\` implies everything, \`write\` implies
+\`read\`. A token for full agent use therefore carries \`read\`, \`write\` and \`mcp\`.
 
 ## Client Configuration (Streamable HTTP)
 \`\`\`json
@@ -126,7 +142,10 @@ You are reading the ClawStash MCP onboarding specification. This document contai
 
 1. **Endpoint:** \`POST ${baseUrl}/mcp\`
 2. **Transport:** Streamable HTTP (stateless)
-3. **Auth:** \`Authorization: Bearer <token>\` — token needs \`mcp\` scope
+3. **Auth:** \`Authorization: Bearer <token>\` — the token needs the \`mcp\` scope to reach this
+   endpoint at all, plus \`read\` for the read tools and \`write\` for the write tools. \`mcp\` on
+   its own is only a transport gate and grants no data access; the recommended token for an
+   agent carries \`read\`, \`write\` and \`mcp\`.
 4. **First steps after connecting:**
    - Call \`get_stats\` to see what's stored
    - Call \`list_tags\` to discover content categories

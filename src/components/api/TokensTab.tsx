@@ -282,7 +282,9 @@ export default function TokensTab({
                 scopes)
               </div>
               <div className="api-scope-hierarchy-item">
-                <strong>MCP</strong> &mdash; MCP server access (/mcp endpoint)
+                <strong>MCP</strong> &mdash; Transport gate for the /mcp endpoint only. Grants no
+                data access: combine it with Read and Write, which the MCP tools require just like
+                the REST routes do.
               </div>
             </div>
           </div>

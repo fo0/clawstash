@@ -39,7 +39,12 @@ export async function POST(req: NextRequest) {
   }
 
   const baseUrl = getBaseUrl(req);
-  const mcpServer = createMcpServer(db, baseUrl);
+  // The `mcp` scope checked above is a TRANSPORT gate — it says the token may
+  // speak MCP, not that it may do anything through it. Hand the caller's real
+  // scopes to the server so every tool is authorized individually (write tools
+  // need `write`, read tools need `read`); without this the MCP endpoint would
+  // be a privilege-escalation path around the REST scope checks.
+  const mcpServer = createMcpServer(db, baseUrl, { scopes: auth.scopes });
   const transport = new WebStandardStreamableHTTPServerTransport({
     sessionIdGenerator: undefined,
     enableJsonResponse: true,

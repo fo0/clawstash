@@ -89,7 +89,7 @@ Detailed pattern descriptions for clawstash internals. CLAUDE.md keeps a short i
 - Token format: `cs_` prefix + 48 hex chars (24 random bytes)
 - Tokens stored as SHA-256 hashes in the database
 - Admin protection via shared auth (admin session or API token with admin scope)
-- Scopes: read, write, admin, mcp
+- Scopes: read, write, admin, mcp. `read < write < admin` is a ladder (`hasScope()` in `auth.ts`); `mcp` sits outside it as a **transport gate** for `/mcp` -- it grants no data access, and every MCP tool is authorized by `read`/`write` exactly like the REST routes
 
 ## Spec Architecture (Single Source of Truth)
 
@@ -266,8 +266,9 @@ Detailed pattern descriptions for clawstash internals. CLAUDE.md keeps a short i
 
 ## MCP Server (src/server/mcp-server.ts, src/server/mcp.ts)
 
-- Factory function `createMcpServer(db)` in `mcp-server.ts` registers all tools
-- Tool definitions (name, description, Zod schema) imported from `tool-defs.ts` -- only handlers are defined in mcp-server.ts
+- Factory function `createMcpServer(db, baseUrl, auth)` in `mcp-server.ts` registers all tools. `auth` (`McpAuthContext`) is REQUIRED and carries the caller's scopes -- the route passes the scopes it resolved, the stdio entrypoint passes `LOCAL_STDIO_AUTH` (full local trust, no token to check)
+- Tool definitions (name, scope, description, Zod schema) imported from `tool-defs.ts` -- only handlers are defined in mcp-server.ts
+- **Scope gating lives in the local `register()` helper**, the only path to `server.registerTool` -- a new tool cannot bypass it. Required scope comes from `def.scope` in tool-defs.ts, checked with `hasScope()` from `auth.ts` (same ladder as REST: `admin` implies all, `write` implies `read`). `mcp` is a transport gate, never a capability; a denied call returns a normal tool error (`isError: true`), never an exception. "Only path" is enforced, not just asserted: `mcp-server-scopes.test.ts` fails if `.registerTool(` appears more than once in the file, and if any module under `src/app/**` mentions `LOCAL_STDIO_AUTH` (BACKLOG #149 tracks the stronger factory-based fix)
 - Passes `def.schema.shape` to `server.tool()` (MCP SDK expects raw Zod shape, not ZodObject)
 - Streamable HTTP transport at `/mcp` endpoint (Next.js route handler in `src/app/mcp/route.ts`)
 - Stdio transport via `npm run mcp` for local CLI integration (`src/server/mcp.ts`)
