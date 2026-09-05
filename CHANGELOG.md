@@ -6,6 +6,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/), and this
 
 ## [Unreleased]
 
+### Security
+
+- **BREAKING — MCP tools are now scope-gated.** `POST /mcp` checked the `mcp` scope and nothing else, and the tools themselves checked nothing at all, so a token holding **only** `mcp` could call `create_stash`, `update_stash`, `archive_stash` and `delete_stash` while every REST write route rejected the same token for a missing `write` scope — the MCP transport was a privilege-escalation path around the REST scope checks. `mcp` is now what it always read as in the onboarding guide: a **transport gate** that permits connecting to `/mcp`, not a capability. Each tool declares its required scope in `src/server/tool-defs.ts` (the same source of truth that feeds the OpenAPI and MCP specs) and `createMcpServer` enforces it centrally on every `tools/call`, using the existing ladder from `src/server/auth.ts` (`admin` implies everything, `write` implies `read`): `write` for `create_stash` / `update_stash` / `archive_stash` / `delete_stash`, `read` for the tools that read stash data, and no additional scope for the three self-description tools (`get_mcp_spec`, `get_rest_api_spec`, `refresh_tools`), whose REST twins are unauthenticated too. A call the token's scopes do not cover returns a normal MCP tool error (`isError: true`) naming the missing scope — nothing is written and no exception crosses the transport.
+
+  **Migration.** Affected: any agent whose token carries `mcp` but not `write` (or not `read`) — its tool calls now fail with the scope error instead of succeeding. Fix: create a new token with the scopes `read`, `write` and `mcp` under **Settings > API & Tokens** and swap it into the agent's MCP client config. This is the combination `GET /api/mcp-onboarding` and `docs/openclaw-onboarding-prompt.md` have recommended all along, so a token created by following the documented onboarding already works unchanged; the same goes for `admin` tokens and for open mode (no `ADMIN_PASSWORD`). The local **stdio** transport (`npm run mcp`) is unaffected: the MCP client spawns it as a local process with the operator's own privileges and there is no token to check, so it keeps full access.
+
 ### Added
 
 - Stash viewer → History: a file in a version's detail view can be downloaded, not just copied — the current version has offered both since the viewer shipped. The saved name carries the version (`config.v3.yml`), so several revisions of the same file land side by side instead of overwriting each other

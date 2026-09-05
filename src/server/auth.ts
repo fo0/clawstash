@@ -12,7 +12,7 @@ import type { ClawStashDB, TokenScope } from './db';
  * can mutate without poisoning the shared constant.
  */
 const ALL_SCOPES: readonly TokenScope[] = ['read', 'write', 'admin', 'mcp'];
-const allScopes = (): TokenScope[] => [...ALL_SCOPES];
+export const allScopes = (): TokenScope[] => [...ALL_SCOPES];
 
 export interface AuthResult {
   authenticated: boolean;
@@ -125,6 +125,29 @@ export function isAuthEnabled(): boolean {
 }
 
 /**
+ * The scope ladder, applied to an already-resolved scope set.
+ *
+ * `admin` implies every other scope and `write` implies `read`; `mcp` sits
+ * outside the ladder — it is a transport gate ("this token may speak MCP"),
+ * never a capability grant, so it never satisfies `read` or `write`.
+ *
+ * Exported so callers that authenticate once and authorise many times — the
+ * MCP server authenticates the request, then gates each `tools/call` — use
+ * the SAME ladder as the REST routes instead of growing a second
+ * authorization model. `requireScopeAuth` is the request-shaped wrapper
+ * around it.
+ */
+export function hasScope(scopes: readonly TokenScope[], required: TokenScope): boolean {
+  // Admin scope implies all other scopes
+  if (scopes.includes('admin')) return true;
+
+  // Write scope implies read
+  if (required === 'read' && scopes.includes('write')) return true;
+
+  return scopes.includes(required);
+}
+
+/**
  * Check if a token has a specific scope.
  * Returns true if no ADMIN_PASSWORD is set (open mode) or if token has the required scope.
  */
@@ -143,15 +166,7 @@ export function requireScopeAuth(
   const auth = validateAuth(db, token);
   if (!auth.authenticated) return null;
 
-  // Admin scope implies all other scopes
-  if (auth.scopes.includes('admin')) return auth;
-
-  // Write scope implies read
-  if (scope === 'read' && auth.scopes.includes('write')) return auth;
-
-  if (auth.scopes.includes(scope)) return auth;
-
-  return null;
+  return hasScope(auth.scopes, scope) ? auth : null;
 }
 
 /**

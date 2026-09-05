@@ -87,6 +87,20 @@ Add to your MCP client config (OpenClaw, Claude Code, Cursor, etc.):
 
 Create API tokens in the web GUI under **Settings > API & Tokens** (scopes: `read`, `write`, `mcp`).
 
+> **Breaking change — MCP tokens need `read` / `write`.** The `mcp` scope is a transport
+> gate: it lets a token connect to `/mcp`, and nothing more. Each MCP tool is authorized
+> separately, with the same scope its REST equivalent requires — `read` to read stashes,
+> `write` for `create_stash`, `update_stash`, `archive_stash` and `delete_stash`. Until
+> now the MCP endpoint checked only `mcp`, so a token carrying just that scope could write
+> through MCP while every REST write route rejected it.
+>
+> **Who is affected:** anyone whose agent uses a token with `mcp` but without `write` (or
+> without `read`). Its calls now come back as MCP tool errors naming the missing scope.
+> **Fix:** issue a new token with `read`, `write` and `mcp` — the combination the
+> onboarding guide has always recommended — and swap it into the agent's MCP config.
+> Tokens that already carry `read`/`write`/`mcp` (or `admin`) are unaffected, and so is the
+> local **stdio** transport, which carries no token at all.
+
 ## MCP Tools
 
 | Tool                | What it does                                       |

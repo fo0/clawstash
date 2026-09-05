@@ -86,9 +86,29 @@ const McpMetadataSchema = z
 // Tool definition type
 // ---------------------------------------------------------------------------
 
+/**
+ * Authorization a tool call requires, on top of the `mcp` transport gate.
+ *
+ * The `mcp` scope only says "this token may speak MCP" — it is a transport
+ * gate, not a capability grant. Every tool therefore declares what it
+ * actually needs, and `mcp-server.ts` enforces it on each `tools/call`:
+ *
+ * - `'read'`  — reads stash data (mirrors the `read` scope on the REST twin)
+ * - `'write'` — creates, mutates or deletes stash data
+ * - `'none'`  — self-description only (server specs); touches no stash data,
+ *   and the REST twins (`/api/openapi`, `/api/mcp-spec`,
+ *   `/api/mcp-onboarding`) are unauthenticated as well
+ *
+ * The scope ladder from `server/auth.ts` applies: `admin` implies everything,
+ * `write` implies `read`.
+ */
+export type ToolScope = 'read' | 'write' | 'none';
+
 export interface ToolDef<T extends z.ZodRawShape = z.ZodRawShape> {
   name: string;
   description: string;
+  /** Scope required to CALL this tool. Enforced centrally in mcp-server.ts. */
+  scope: ToolScope;
   schema: z.ZodObject<T>;
   returns: string;
 }
@@ -100,6 +120,7 @@ export interface ToolDef<T extends z.ZodRawShape = z.ZodRawShape> {
 export const TOOL_DEFS = [
   {
     name: 'create_stash',
+    scope: 'write',
     description: `Create a new stash with one or more files.
 
 Returns a confirmation with the stash ID and file list (no echoed content, to save tokens).
@@ -141,6 +162,7 @@ Tips:
   },
   {
     name: 'read_stash',
+    scope: 'read',
     description: `Retrieve a stash by ID. Returns stash metadata, tags, and a file list with sizes.
 
 By default, file content is NOT included to save tokens. The response includes:
@@ -165,6 +187,7 @@ To get file content:
   },
   {
     name: 'read_stash_file',
+    scope: 'read',
     description: `Read the content of a specific file within a stash. This is the most token-efficient way to access file content.
 
 Use read_stash first (without include_content) to see the file list, then use this tool to read only the files you need.
@@ -182,6 +205,7 @@ Returns the file content as text along with filename and language metadata.`,
   },
   {
     name: 'list_stashes',
+    scope: 'read',
     description: `List stashes with optional filtering. Returns summaries only (name, description, tags, file names with sizes) — no file content or metadata.
 
 Results are paginated (default: 50 per page). Use the 'total' field in the response to determine if more pages are available.
@@ -215,6 +239,7 @@ File sizes (character counts) are included to help estimate content volume befor
   },
   {
     name: 'update_stash',
+    scope: 'write',
     description: `Update an existing stash. Only fields you provide will be changed — omitted fields remain unchanged.
 
 Returns a confirmation with updated metadata (no echoed file content, to save tokens).
@@ -254,6 +279,7 @@ Important:
   },
   {
     name: 'delete_stash',
+    scope: 'write',
     description: `Permanently delete a stash and all its files. This action cannot be undone.`,
     schema: z.object({
       id: z.string().describe('The stash ID to delete'),
@@ -262,6 +288,7 @@ Important:
   },
   {
     name: 'archive_stash',
+    scope: 'write',
     description: `Archive or unarchive a stash. Archived stashes are hidden from default listings but remain accessible by ID.
 
 Use this to declutter your workspace without deleting stashes permanently. Archived stashes can be found by:
@@ -275,6 +302,7 @@ Use this to declutter your workspace without deleting stashes permanently. Archi
   },
   {
     name: 'search_stashes',
+    scope: 'read',
     description: `Full-text search across stash names, descriptions, tags, filenames, and file content. Uses FTS5 with BM25 relevance ranking — results are sorted by best match, not recency.
 
 This is the best tool for finding stashes when you don't know the ID.
@@ -313,12 +341,14 @@ Use read_stash to get full stash metadata, or read_stash_file to read specific f
   },
   {
     name: 'list_tags',
+    scope: 'read',
     description: `List all tags that are currently in use, with the number of stashes using each tag. Useful for discovering available categories before filtering with list_stashes.`,
     schema: z.object({}),
     returns: '[{ tag: string, count: number }]',
   },
   {
     name: 'get_tag_graph',
+    scope: 'read',
     description: `Get the tag relationship graph: tags as nodes (with usage counts) and co-occurrence edges (tags that appear together on the same stash).
 
 Returns:
@@ -368,6 +398,7 @@ Incremental exploration strategy for large graphs:
   },
   {
     name: 'get_stats',
+    scope: 'read',
     description: `Get storage statistics: total stashes, total files, total content size in bytes, and top programming languages. Useful for getting an overview of what's stored.`,
     schema: z.object({}),
     returns:
@@ -375,6 +406,7 @@ Incremental exploration strategy for large graphs:
   },
   {
     name: 'get_rest_api_spec',
+    scope: 'none',
     description: `Get the full OpenAPI 3.0 specification for the ClawStash REST API.
 
 Returns the complete API schema as JSON, including all endpoints, request/response schemas, and authentication details.
@@ -384,6 +416,7 @@ Use this to understand the REST API capabilities and integrate programmatically.
   },
   {
     name: 'get_mcp_spec',
+    scope: 'none',
     description: `Get the full MCP (Model Context Protocol) specification for ClawStash.
 
 Returns a comprehensive markdown document with all tool definitions, input schemas, return types, data types, connection details, and token-efficient usage patterns.
@@ -393,6 +426,7 @@ Use this to understand all available MCP tools and how to use them optimally.`,
   },
   {
     name: 'refresh_tools',
+    scope: 'none',
     description: `Tool update — returns the current MCP tool specification so you can refresh your knowledge.
 
 Call this tool periodically to stay up-to-date. Tool definitions, schemas, and capabilities may change over time.
@@ -408,6 +442,7 @@ The response includes:
   },
   {
     name: 'check_version',
+    scope: 'read',
     description: `Check the current ClawStash version and whether a newer version is available on GitHub.
 
 Returns the running build version (date-based, e.g. "v20260215-1628"), commit SHA, and build date. Compares against the latest commit on the GitHub main branch to detect available updates.

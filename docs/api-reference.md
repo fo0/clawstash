@@ -12,6 +12,10 @@ curl -H "Authorization: Bearer cs_your_token" http://localhost:3000/api/stashes
 
 See [authentication.md](authentication.md) for token creation and scopes.
 
+> The MCP endpoint (`POST /mcp`) is authorized the same way: the `mcp` scope only opens the
+> transport, and each MCP tool then requires `read` or `write` exactly like its REST
+> equivalent — see [mcp.md → Scopes](mcp.md#scopes).
+
 ## Endpoints
 
 ### Stashes

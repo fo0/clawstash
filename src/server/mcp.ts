@@ -1,9 +1,13 @@
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { ClawStashDB } from './db';
-import { createMcpServer } from './mcp-server';
+import { createMcpServer, LOCAL_STDIO_AUTH } from './mcp-server';
 
 const db = new ClawStashDB();
-const server = createMcpServer(db);
+// stdio has no HTTP layer and no token to check: the MCP client spawns this
+// process locally with the operator's own privileges. It therefore runs with
+// the full scope set (LOCAL_STDIO_AUTH) — unchanged from before the MCP tools
+// were scope-gated.
+const server = createMcpServer(db, undefined, LOCAL_STDIO_AUTH);
 
 // Start server with stdio transport
 async function main() {
