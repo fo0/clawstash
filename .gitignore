@@ -6,6 +6,12 @@ data/
 *.db
 *.sqlite
 .env
+# Next.js also loads `.env.local`, `.env.production`, `.env.*.local`. Only the
+# bare `.env` was ignored, so any of those would have been offered by `git add`
+# — `.dockerignore` already guards `.env.*`, this keeps the two in step. The
+# negation keeps the committed template tracked.
+.env.*
+!.env.example
 .DS_Store
 *.log
 *.pem
