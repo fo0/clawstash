@@ -180,13 +180,17 @@ clawstash/
 │   │   ├── useQuickSearchHint.ts # Platform-aware quick-search shortcut label (Ctrl+K / ⌘K), resolved after mount
 │   │   └── __tests__/          # Hook unit tests (vitest + @testing-library/react)
 │   ├── utils/
+│   │   ├── access-log-filter.ts  # Client-side source filtering (api / mcp / ui chips) for the Access Log tab
 │   │   ├── archived.ts         # localStorage persistence for the "show archived" dashboard toggle
 │   │   ├── clipboard.ts        # Copy-to-clipboard with fallback for non-HTTPS
 │   │   ├── code-copy.ts        # Copy-button markup emitted into the Markdown blob + shared click-target resolver
 │   │   ├── constants.ts        # Shared client/server constants
 │   │   ├── contrast.ts         # Pick a readable label colour for text drawn onto canvas node shapes
+│   │   ├── download.ts         # Client-side text-file download via a temporary object URL (no server round-trip)
 │   │   ├── dpr.ts              # Watch `devicePixelRatio` changes so canvas bitmaps stay crisp
+│   │   ├── editor-draft.ts     # Crash-recovery draft of the stash editor in localStorage, offered back on reopen
 │   │   ├── favorites.ts        # Favorite-stash localStorage helpers
+│   │   ├── file-import.ts      # Drop/pick file reading for the editor: filename sanitization, caps, rejection reasons
 │   │   ├── format.ts           # Date formatting (formatDate, formatDateTime, formatRelativeTime)
 │   │   ├── highlight.ts        # Split text into matched/unmatched segments to <mark> search terms
 │   │   ├── html.ts             # HTML sanitization helpers
@@ -198,12 +202,15 @@ clawstash/
 │   │   ├── nav-guard.ts        # Pure popstate decision for the dirty-editor back-navigation guard
 │   │   ├── platform.ts         # SSR-safe platform detection for keyboard-shortcut labels
 │   │   ├── recent-views.ts     # Recently-viewed stashes MRU list (localStorage) for the search overlay
+│   │   ├── sidebar-width.ts    # Persisted sidebar width (localStorage) + clamp/bounds helpers
 │   │   ├── sort.ts             # Dashboard sort-order state + pure sort helper
 │   │   ├── stash-url.ts        # Build a shareable deep-link URL for a stash
 │   │   ├── svg-sanitize.ts     # Defense-in-depth sanitizer for rendered Mermaid SVG before innerHTML
 │   │   └── __tests__/          # Util unit tests (vitest)
 │   ├── components/
+│   │   ├── ErrorBoundary.tsx   # Top-level crash guard around the SPA: retry / reload / back-to-dashboard fallback
 │   │   ├── Sidebar.tsx         # Left sidebar with search, tag filter, stash list, settings nav
+│   │   ├── SidebarResizer.tsx  # Drag + keyboard resize handle on the sidebar edge (utils/sidebar-width.ts)
 │   │   ├── Footer.tsx          # App footer with version (fetched from /api/version), build info toggle
 │   │   ├── Dashboard.tsx       # Home view with grid/list of stash cards
 │   │   ├── GraphViewer.tsx     # Force-directed tag graph visualization (canvas-based)
