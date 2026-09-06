@@ -61,13 +61,15 @@ Open http://localhost:3000 — done. Database persists in `./data/`.
 > Change port mapping (e.g. `"8080:3000"`) for a different port. Uncomment `ADMIN_PASSWORD` to protect the instance.
 > If login fails and the logs show `SQLITE_READONLY` (data directory created by an older version), run `sudo chown -R 1000:1000 ./data` once and restart — details in [Deployment → Bind mounts & file permissions](docs/deployment.md#bind-mounts--file-permissions).
 
-After starting, point your AI agent at the onboarding endpoint to self-configure:
+After starting, hand your AI agent the onboarding prompt from **Settings → API & Tokens → MCP API** ("Copy onboarding prompt for your agent" — the token banner offers the same prompt with a freshly created token filled in). Or point the agent at the server's own guides:
 
 ```
-GET http://<HOST_OR_IP>:<PORT>/api/mcp-onboarding
+GET http://<HOST_OR_IP>:<PORT>/api/agent-skill      # SKILL.md — when to store, workflow, conventions, limits, errors, maintenance
+GET http://<HOST_OR_IP>:<PORT>/api/mcp-onboarding   # the skill plus the complete MCP specification (every tool's JSON Schema)
+GET http://<HOST_OR_IP>:<PORT>/llms.txt             # discovery index when the agent only knows the host
 ```
 
-This returns all available MCP tools, schemas, and recommended workflows — your agent reads it and starts using ClawStash immediately.
+Connected via MCP, the agent gets the same guidance without fetching anything: the server hands out usage `instructions` on `initialize`, exposes the two guides as resources (`clawstash://guide/skill`, `clawstash://guide/onboarding`), and `get_server_info` returns the token's scopes, the callable tools, the size limits and every endpoint in one call.
 
 ## MCP Connection
 
@@ -122,7 +124,8 @@ Create API tokens in the web GUI under **Settings > API & Tokens** (scopes: `rea
 | `get_rest_api_spec` | Fetch the OpenAPI 3.0 schema (JSON)                |
 | `get_mcp_spec`      | Fetch the full MCP specification (markdown)        |
 | `refresh_tools`     | Get latest tool specs (for connected agents)       |
-| `check_version`     | Check for updates                                  |
+| `check_version`     | Check for updates (with upgrade instructions)      |
+| `get_server_info`   | Orient: scopes, callable tools, limits, endpoints  |
 
 ## Documentation
 

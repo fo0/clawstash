@@ -25,7 +25,7 @@ flowchart TD
             TokenRoutes["Token Routes (/api/tokens/*)"]
             AdminRoutes["Admin Routes (/api/admin/*)"]
             BackupRoutes["Backup Routes (/api/backup/*)"]
-            SpecRoutes["Spec Routes (openapi, mcp-spec, health)"]
+            SpecRoutes["Spec Routes (openapi, mcp-spec, agent-skill, llms.txt, health)"]
         end
 
         subgraph "MCP Server"
@@ -43,6 +43,7 @@ flowchart TD
         SharedText["Shared Text Constants"]
         OpenAPI["OpenAPI Schema Generator"]
         MCPSpec["MCP Spec Generator"]
+        AgentGuide["Agent Guide (instructions, SKILL.md, limits, llms.txt)"]
         DBSingleton["DB Singleton (globalThis HMR)"]
         BackupScheduler["Backup Scheduler (interval + mutation debounce)"]
         BackupService["Backup Sync Engine (hash diff, commits)"]
@@ -99,6 +100,10 @@ flowchart TD
     MCPSpec --> ToolDefs
     OpenAPI --> SharedText
     MCPSpec --> SharedText
+    MCPSpec --> AgentGuide
+    MCPServer --> AgentGuide
+    SpecRoutes --> AgentGuide
+    AgentGuide --> Validation
 
     Auth --> DBSingleton
     StashRoutes --> DBSingleton
@@ -143,6 +148,7 @@ flowchart TD
     click SharedText "src/server/shared-text.ts"
     click OpenAPI "src/server/openapi.ts"
     click MCPSpec "src/server/mcp-spec.ts"
+    click AgentGuide "src/server/agent-guide.ts"
     click DBSingleton "src/server/singleton.ts"
     click DB "src/server/db.ts"
     click BackupRoutes "src/app/api/backup"

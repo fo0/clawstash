@@ -120,14 +120,16 @@ Mirror stashes into a GitHub repository — full guide: [backup.md](backup.md).
 
 ### System
 
-| Endpoint              | Method | Description                                                                    |
-| --------------------- | ------ | ------------------------------------------------------------------------------ |
-| `/api/health`         | GET    | Health check (no auth required) — returns status, timestamp, database stats    |
-| `/api/openapi`        | GET    | OpenAPI 3.0 schema (JSON)                                                      |
-| `/api/mcp-spec`       | GET    | MCP specification (markdown)                                                   |
-| `/api/mcp-onboarding` | GET    | MCP onboarding guide for AI agents                                             |
-| `/api/mcp-tools`      | GET    | MCP tool summaries (JSON)                                                      |
-| `/api/version`        | GET    | Current version + latest available (build details need `read` when auth is on) |
+| Endpoint              | Method | Description                                                                                                        |
+| --------------------- | ------ | ------------------------------------------------------------------------------------------------------------------ |
+| `/api/health`         | GET    | Health check (no auth required) — returns status, timestamp, database stats                                        |
+| `/api/openapi`        | GET    | OpenAPI 3.0 schema (JSON)                                                                                          |
+| `/api/mcp-spec`       | GET    | MCP specification (markdown)                                                                                       |
+| `/api/mcp-onboarding` | GET    | MCP onboarding guide for AI agents (operational guide + full specification)                                        |
+| `/api/agent-skill`    | GET    | SKILL.md for AI agents (Agent Skills format; also MCP resource `clawstash://guide/skill`)                          |
+| `/llms.txt`           | GET    | Discovery index for agents that only know the host (llms.txt convention)                                           |
+| `/api/mcp-tools`      | GET    | MCP tool summaries (JSON)                                                                                          |
+| `/api/version`        | GET    | Current version + latest available + `upgrade` steps (build details and upgrade block need `read` when auth is on) |
 
 ## Examples
 

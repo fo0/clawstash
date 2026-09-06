@@ -124,3 +124,37 @@ ${openApiJson}
 
   return text;
 }
+
+export const AGENT_TOKEN_PLACEHOLDER = 'YOUR_API_TOKEN';
+
+/**
+ * The one thing a user hands their agent: a short prompt that names this
+ * instance, the token (or a placeholder), and the three steps to onboard —
+ * read the skill, connect via MCP (REST as fallback), orient with
+ * get_server_info. Everything else the agent fetches itself from the server,
+ * so this text never has to carry tool lists or schemas.
+ */
+export function buildAgentOnboardingPrompt(baseUrl: string, token?: string): string {
+  const t = token || AGENT_TOKEN_PLACEHOLDER;
+  const mcpConfig = JSON.stringify({
+    mcpServers: {
+      clawstash: {
+        type: 'streamable-http',
+        url: `${baseUrl}/mcp`,
+        headers: { Authorization: `Bearer ${t}` },
+      },
+    },
+  });
+  return `Connect to my ClawStash instance and use it as your persistent storage from now on.
+
+Instance: ${baseUrl}
+API token: ${t} (scopes: read, write, mcp)
+
+1. Read ${baseUrl}/api/agent-skill and follow it. It explains when to store something, the workflow, naming conventions and the size limits. If you load skills from files, save it as SKILL.md.
+2. Connect via MCP (Streamable HTTP): POST ${baseUrl}/mcp with the header "Authorization: Bearer ${t}". Client config:
+   ${mcpConfig}
+   If you cannot use MCP, use the REST API at ${baseUrl}/api with the same Bearer token (OpenAPI: ${baseUrl}/api/openapi).
+3. Call get_server_info first, then get_stats and list_tags, and tell me what is already stored.
+
+Store notes, decisions, configs and reference material there instead of keeping them in context, search before you create, and tell me the stash name and ID whenever you store something.`;
+}

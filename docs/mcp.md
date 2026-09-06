@@ -77,11 +77,13 @@ Details: [docs/authentication.md → Token Scopes](authentication.md#token-scope
 | `get_rest_api_spec` | —       | Full OpenAPI 3.0 REST API specification (JSON).                                                           |
 | `get_mcp_spec`      | —       | Full MCP specification (markdown with tool schemas).                                                      |
 | `refresh_tools`     | —       | Get current tool specs — useful for long-running agents to stay up-to-date.                               |
-| `check_version`     | `read`  | Check current version and whether an update is available.                                                 |
+| `check_version`     | `read`  | Check current version and whether an update is available; `upgrade` carries the steps + compare URL.      |
+| `get_server_info`   | —       | Orient in one call: your scopes, callable tools, size limits, endpoints, next steps. Call it first.       |
 
 Tools marked — need no scope beyond `mcp`: they describe the server itself and touch no
 stash data, matching their unauthenticated REST twins (`/api/openapi`, `/api/mcp-spec`,
-`/api/mcp-onboarding`).
+`/api/mcp-onboarding`, `/api/agent-skill`). `get_server_info` reports the running build
+version only to tokens that hold `read` — the same rule `/api/version` applies.
 
 ## Token-Efficient Usage
 
@@ -106,15 +108,32 @@ Write operations (`create_stash`, `update_stash`) return confirmation summaries,
 
 ## Self-Onboarding
 
-ClawStash provides an onboarding endpoint for AI agents to bootstrap themselves:
+Every piece of guidance an agent needs is served by the instance itself, from one source of
+truth (`src/server/agent-guide.ts`), so the three ways in never disagree:
 
-```
-GET http://localhost:3000/api/mcp-onboarding
-```
+| Surface                                 | What it is                                                                                                                                                                                                  |
+| --------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| MCP `instructions`                      | Returned on `initialize`. Compact usage guide (start with `get_server_info`, workflow, conventions, error handling). Clients such as Claude Code and Cursor put it into the model's context automatically.  |
+| `get_server_info` tool                  | The first call of a session: the token's scopes, which tools it can call and which need a higher scope, size limits, every endpoint of the instance, the build version (with `read`), suggested next steps. |
+| `clawstash://guide/skill` resource      | SKILL.md in [Agent Skills](https://agentskills.io) format — same text as `GET /api/agent-skill`. Save it under `skills/clawstash/SKILL.md` if your agent loads skills from files.                           |
+| `clawstash://guide/onboarding` resource | The skill plus the complete MCP specification (every tool's JSON Schema, data types) — same text as `GET /api/mcp-onboarding`.                                                                              |
+| `GET /api/agent-skill`                  | SKILL.md over REST, unauthenticated. When to store, workflow with the REST twin of every tool, naming/tagging conventions, limits, errors, maintenance.                                                     |
+| `GET /api/mcp-onboarding`               | Operational guide first, full specification second. Unauthenticated.                                                                                                                                        |
+| `GET /llms.txt`                         | Discovery index ([llms.txt](https://llmstxt.org)): purpose, endpoints, links to the guides. Fetch it when you only know the host.                                                                           |
 
-This returns a complete text guide with all tools, schemas, data types, and recommended workflows. Point your agent at this URL before first use — it can read the guide and immediately start working with ClawStash.
+The web GUI (**Settings → API & Tokens → MCP API**) offers a ready-to-paste onboarding prompt
+that names the instance, the token placeholder and these URLs; the banner shown once after
+creating a token offers the same prompt with the token filled in.
 
-Connected agents can call `refresh_tools` periodically to stay up-to-date with any tool changes.
+### Keeping up to date
+
+- `check_version` (REST: `GET /api/version`) compares the running build with `main`. When
+  `update_available` is true, `upgrade` carries copy-pasteable steps (`docker compose pull &&
+docker compose up -d`, or the plain-Node equivalent), a GitHub compare URL listing the commits
+  in between, and the changelog link — an agent reports these to the user and never upgrades an
+  instance on its own.
+- `refresh_tools` returns the full current specification. Call it after a tool call failed with
+  an unknown tool or argument, or right after an upgrade — not routinely, it is the whole spec.
 
 ## Tool Examples
 

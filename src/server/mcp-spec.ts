@@ -4,34 +4,29 @@
  * Tool definitions come from tool-defs.ts (single source of truth).
  * Input schemas are auto-converted from Zod → JSON Schema via zodToJsonSchema.
  * Data type schemas come from openapi.ts (shared with REST API).
+ * Operational guidance (workflow, conventions, limits, errors, maintenance)
+ * comes from agent-guide.ts, the same blocks the MCP `instructions`, the
+ * SKILL.md and `get_server_info` use — so the three surfaces cannot drift.
  */
 import { zodToJsonSchema } from 'zod-to-json-schema';
 import { getOpenApiSpec } from './openapi';
 import { CLAWSTASH_PURPOSE, TOKEN_EFFICIENT_GUIDE } from './shared-text';
 import { TOOL_DEFS } from './tool-defs';
-
-/**
- * Single-entry memoization keyed by baseUrl. Last-write-wins; previous entry
- * is dropped when the key changes. Bounded growth (one entry per cache var).
- *
- * Three MCP spec generators (spec, onboarding, refresh) share this caching
- * shape. Per-baseUrl variation is rare in practice (typically one production
- * host) but the cache cheaply absorbs repeated spec re-fetches inside a
- * single baseUrl without leaking memory across hosts.
- */
-function memoizeByBaseUrl<T>(generator: (baseUrl: string) => T): (baseUrl: string) => T {
-  let cache: { key: string; value: T } | null = null;
-  return (baseUrl: string): T => {
-    if (cache?.key === baseUrl) return cache.value;
-    const value = generator(baseUrl);
-    cache = { key: baseUrl, value };
-    return value;
-  };
-}
+import {
+  AGENT_CONVENTIONS_MD,
+  AGENT_ERRORS_MD,
+  AGENT_WHEN_TO_USE_MD,
+  AGENT_WORKFLOW_MD,
+  formatLimitsMarkdown,
+  getAgentEndpoints,
+  getAgentMaintenanceMd,
+  memoizeByBaseUrl,
+} from './agent-guide';
 
 export const getMcpSpecText = memoizeByBaseUrl((baseUrl: string): string => {
   const openapi = getOpenApiSpec(baseUrl);
   const schemas = openapi.components.schemas;
+  const endpoints = getAgentEndpoints(baseUrl);
 
   // Format data types from OpenAPI schemas
   const schemaNames = [
@@ -75,7 +70,7 @@ ${JSON.stringify(jsonSchema, null, 2)}
       mcpServers: {
         clawstash: {
           type: 'streamable-http',
-          url: `${baseUrl}/mcp`,
+          url: endpoints.mcp,
           headers: { Authorization: 'Bearer YOUR_API_TOKEN' },
         },
       },
@@ -90,11 +85,12 @@ ${JSON.stringify(jsonSchema, null, 2)}
 ${CLAWSTASH_PURPOSE}
 
 ## Connection
-- **Transport:** Streamable HTTP
-- **Endpoint:** ${baseUrl}/mcp
+- **Transport:** Streamable HTTP (stateless — no session to keep alive)
+- **Endpoint:** ${endpoints.mcp}
 - **Method:** POST
 - **Authentication:** Bearer token with the \`mcp\` scope
 - **Header:** \`Authorization: Bearer <your-token>\`
+- **On initialize** the server returns \`instructions\` (a compact usage guide) — clients that support them put them into the model's context automatically.
 
 ### Scopes
 \`mcp\` is a **transport gate**: it permits connecting to this endpoint, nothing more.
@@ -103,6 +99,7 @@ read stash data, \`write\` for tools that create, change or delete it. A call th
 scopes do not cover comes back as a normal tool error (\`isError: true\`) naming the
 missing scope. The usual ladder applies: \`admin\` implies everything, \`write\` implies
 \`read\`. A token for full agent use therefore carries \`read\`, \`write\` and \`mcp\`.
+\`get_server_info\` tells you which tools the current token can call.
 
 ## Client Configuration (Streamable HTTP)
 \`\`\`json
@@ -111,6 +108,14 @@ ${clientConfig}
 
 ## Token-Efficient Usage Patterns
 ${TOKEN_EFFICIENT_GUIDE}
+
+## Limits
+${formatLimitsMarkdown()}
+
+## Resources
+Besides tools the server exposes two static MCP resources (read them with \`resources/read\`):
+- \`clawstash://guide/skill\` — SKILL.md, the compact operational guide (also \`GET ${endpoints.agent_skill}\`)
+- \`clawstash://guide/onboarding\` — this specification wrapped in the onboarding guide (also \`GET ${endpoints.mcp_onboarding}\`)
 
 ## Tools (${TOOL_DEFS.length})
 
@@ -125,40 +130,52 @@ ${dataTypesSection}`;
 });
 
 // ---------------------------------------------------------------------------
-// MCP Onboarding Text — wraps the spec with self-onboarding instructions
+// MCP Onboarding Text — the operational guide first, the full spec after it
 // ---------------------------------------------------------------------------
 
 export const getMcpOnboardingText = memoizeByBaseUrl((baseUrl: string): string => {
   const spec = getMcpSpecText(baseUrl);
+  const endpoints = getAgentEndpoints(baseUrl);
 
   const result = `# ClawStash MCP Onboarding Guide
 
 ## How to Use This Document
-You are reading the ClawStash MCP onboarding specification. This document contains everything you need to connect and interact with this ClawStash instance via MCP (Model Context Protocol).
-
-**Once connected via MCP**, call the \`refresh_tools\` tool periodically to stay up-to-date — tool definitions and capabilities may change over time. You can also re-fetch this document at \`${baseUrl}/api/mcp-onboarding\`.
+You are reading the onboarding guide of the ClawStash instance at ${baseUrl}. Part 1 is the
+operational guide (how to connect, when to store, how to work, what the limits are); Part 2 is
+the complete MCP specification with every tool's JSON Schema. A shorter, skill-file-shaped
+version of Part 1 is served at \`${endpoints.agent_skill}\` — save it as \`SKILL.md\` if your
+agent loads skills from files.
 
 ## Quick Start
 
-1. **Endpoint:** \`POST ${baseUrl}/mcp\`
-2. **Transport:** Streamable HTTP (stateless)
-3. **Auth:** \`Authorization: Bearer <token>\` — the token needs the \`mcp\` scope to reach this
+1. **Endpoint:** \`POST ${endpoints.mcp}\` — Streamable HTTP, stateless.
+2. **Auth:** \`Authorization: Bearer <token>\` — the token needs the \`mcp\` scope to reach this
    endpoint at all, plus \`read\` for the read tools and \`write\` for the write tools. \`mcp\` on
    its own is only a transport gate and grants no data access; the recommended token for an
-   agent carries \`read\`, \`write\` and \`mcp\`.
-4. **First steps after connecting:**
-   - Call \`get_stats\` to see what's stored
-   - Call \`list_tags\` to discover content categories
-   - Call \`list_stashes\` to browse available stashes
-   - Call \`search_stashes\` to find specific content by keyword
+   agent carries \`read\`, \`write\` and \`mcp\`. Tokens are created in the web GUI under
+   **Settings → API & Tokens**; when the instance runs without \`ADMIN_PASSWORD\` no token is needed.
+3. **Client config:**
+   \`\`\`json
+   {"mcpServers":{"clawstash":{"type":"streamable-http","url":"${endpoints.mcp}","headers":{"Authorization":"Bearer <token>"}}}}
+   \`\`\`
+4. **First call:** \`get_server_info\` — one round-trip that returns your scopes, the tools you may
+   call, the size limits and every endpoint of this instance. Then \`get_stats\` and \`list_tags\`
+   to see what is already stored.
 
-## Recommended Workflow
+## When to Store Something
+${AGENT_WHEN_TO_USE_MD}
 
-1. **Discover** — Use \`list_stashes\`, \`list_tags\`, or \`search_stashes\` to find relevant stashes (returns summaries only, no file content).
-2. **Inspect** — Use \`read_stash\` to get metadata and file list with sizes (no content by default).
-3. **Read** — Use \`read_stash_file\` to selectively read only the files you need (most token-efficient).
-4. **Store** — Use \`create_stash\` or \`update_stash\` to save new data. Use descriptive names, descriptions, and tags for discoverability.
-5. **Refresh** — Call the \`refresh_tools\` MCP tool whenever you need to re-check available tools and capabilities.
+## Workflow
+${AGENT_WORKFLOW_MD}
+
+## Conventions
+${AGENT_CONVENTIONS_MD}
+
+## Errors
+${AGENT_ERRORS_MD}
+
+## Maintenance
+${getAgentMaintenanceMd(baseUrl)}
 
 ---
 
@@ -173,12 +190,17 @@ ${spec}`;
 
 export const getMcpRefreshText = memoizeByBaseUrl((baseUrl: string): string => {
   const spec = getMcpSpecText(baseUrl);
+  const endpoints = getAgentEndpoints(baseUrl);
 
   const result = `# ClawStash MCP Tool Update
 
-**Call \`refresh_tools\` periodically to stay up-to-date.** Tool definitions and capabilities may change over time.
+This is the current tool specification of the ClawStash instance at ${baseUrl}. Compare it with
+what you know: tool names, argument names and required scopes are the parts that change between
+releases. There is no need to call \`refresh_tools\` routinely — call it after a failed tool call
+or after the instance was upgraded (\`check_version\`).
 
-For initial onboarding (before MCP is connected), use the REST endpoint: \`GET ${baseUrl}/api/mcp-onboarding\`
+Operational guide (workflow, conventions, limits): \`GET ${endpoints.agent_skill}\` · full onboarding:
+\`GET ${endpoints.mcp_onboarding}\`
 
 ---
 

@@ -142,6 +142,12 @@ export default function App() {
   const [searchOpen, setSearchOpen] = useState(false);
   const [shortcutsHelpOpen, setShortcutsHelpOpen] = useState(false);
   const [analyzeStashId, setAnalyzeStashId] = useState<string | null>(null);
+  // The stash the graph view was opened FROM — via the viewer's "Analyze"
+  // button or the /stash/:id/graph deep link. The graph's back button and
+  // Escape return there instead of to the dashboard; null when the graph was
+  // opened from the sidebar. Distinct from `analyzeStashId`, which the canvas
+  // consumes (and clears) once it has highlighted the stash.
+  const [graphOriginStashId, setGraphOriginStashId] = useState<string | null>(null);
   const [showArchived, setShowArchived] = useState<boolean>(loadShowArchived);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   // Desktop sidebar width (persisted). Seeded with the default and adopted from
@@ -251,6 +257,20 @@ export default function App() {
     selectedStashRef.current = selectedStash;
   }, [selectedStash]);
 
+  // Same mirroring for the hotkey handler's graph case: Escape in a graph that
+  // was opened from a stash returns to that stash (like the header's back
+  // button). That path may fetch, so it runs outside the setState updater and
+  // reads the current view / origin / handler through refs.
+  const viewRef = useRef<ViewMode>('home');
+  useEffect(() => {
+    viewRef.current = view;
+  }, [view]);
+  const graphOriginRef = useRef<string | null>(null);
+  useEffect(() => {
+    graphOriginRef.current = graphOriginStashId;
+  }, [graphOriginStashId]);
+  const graphBackRef = useRef<() => void>(() => {});
+
   /**
    * In-app navigation guard: ask before discarding unsaved editor changes.
    * Returns true when navigation may proceed. Uses the native confirm dialog
@@ -345,6 +365,13 @@ export default function App() {
           return next;
         });
       } else if (e.key === 'Escape') {
+        // Graph opened from a stash: Escape returns to that stash, exactly like
+        // the header's back button. Runs outside the updater — it may fetch.
+        if (viewRef.current === 'graph' && graphOriginRef.current) {
+          e.preventDefault();
+          graphBackRef.current();
+          return;
+        }
         setView((currentView) => {
           if (currentView === 'edit') {
             // Never let Escape silently discard unsaved editor work — the
@@ -426,6 +453,9 @@ export default function App() {
     } else {
       setView(route.view);
       if (route.analyzeStashId) setAnalyzeStashId(route.analyzeStashId);
+      // A /stash/:id/graph deep link has an origin too: its back button leads
+      // to that stash, not to the dashboard.
+      setGraphOriginStashId(route.analyzeStashId);
     }
     return () => {
       cancelled = true;
@@ -494,6 +524,7 @@ export default function App() {
         setView(route.view);
         if (route.view === 'home') setSelectedStash(null);
         setAnalyzeStashId(route.analyzeStashId);
+        setGraphOriginStashId(route.analyzeStashId);
       }
     };
     window.addEventListener('popstate', onPopState);
@@ -946,17 +977,44 @@ export default function App() {
     if (!confirmDiscardUnsaved()) return;
     setSelectedStash(null);
     setAnalyzeStashId(null);
+    setGraphOriginStashId(null);
     setView('graph');
     pushUrl('/graph');
     setSidebarOpen(false);
   };
 
   const handleAnalyzeStash = (id: string) => {
-    setSelectedStash(null);
+    // `selectedStash` is deliberately kept: the graph's back button returns to
+    // this stash and can switch back synchronously (no refetch, no flash)
+    // while it is still held. The viewer is not rendered in graph view.
     setAnalyzeStashId(id);
+    setGraphOriginStashId(id);
     setView('graph');
     pushUrl(`/stash/${id}/graph`);
   };
+
+  // Back out of the graph view: to the stash it was opened from (viewer's
+  // "Analyze" button / deep link), otherwise to the dashboard. Previously every
+  // path led home, so "open stash → Analyze → back" lost the stash.
+  const handleGraphBack = () => {
+    const origin = graphOriginStashId;
+    if (!origin) {
+      handleGoHome();
+      return;
+    }
+    setAnalyzeStashId(null);
+    if (selectedStash?.id === origin) {
+      setView('view');
+      pushUrl(`/stash/${origin}`);
+      setSidebarOpen(false);
+      return;
+    }
+    // Deep link or reload: the stash is not loaded — fetch it like a click.
+    void handleSelectStash(origin);
+  };
+  useEffect(() => {
+    graphBackRef.current = handleGraphBack;
+  });
 
   const handleSettingsView = () => {
     if (!confirmDiscardUnsaved()) return;
@@ -1197,7 +1255,8 @@ export default function App() {
               tags={tags}
               onFilterTag={handleGraphFilterTag}
               onSelectStash={handleSelectStash}
-              onGoHome={handleGoHome}
+              onBack={handleGraphBack}
+              backTarget={graphOriginStashId ? 'stash' : 'dashboard'}
               analyzeStashId={analyzeStashId}
               onAnalyzeStashConsumed={() => setAnalyzeStashId(null)}
             />
