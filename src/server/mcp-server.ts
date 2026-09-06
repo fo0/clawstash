@@ -3,8 +3,9 @@ import type { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
 import { allScopes, hasScope } from './auth';
 import type { ClawStashDB, TokenScope } from './db';
 import { getOpenApiSpec } from './openapi';
-import { getMcpSpecText, getMcpRefreshText } from './mcp-spec';
-import { TOKEN_EFFICIENT_GUIDE } from './shared-text';
+import { getMcpSpecText, getMcpRefreshText, getMcpOnboardingText } from './mcp-spec';
+import { getAgentSkillText, getMcpInstructionsText } from './agent-guide';
+import { buildServerInfo } from './server-info';
 import { getToolDef } from './tool-defs';
 import type { ToolDef, ToolName } from './tool-defs';
 import { checkVersion } from './version';
@@ -87,15 +88,57 @@ export function createMcpServer(
   // without a request-derived base URL (e.g. stdio transport).
   const fallbackBaseUrl = baseUrl || `http://localhost:${process.env.PORT || '3000'}`;
 
-  const server = new McpServer({
-    name: 'clawstash',
-    version: '1.0.0',
-    description: `ClawStash – AI-optimized stash storage. Stores text and files with name, description, tags, and metadata.
+  // `instructions` is the MCP-native channel for guidance: clients hand it to
+  // the model on `initialize` (Claude Code, Cursor and others put it into the
+  // system prompt), so an agent knows how to use this instance before its
+  // first tool call. Kept compact on purpose — it lives in the agent's context
+  // for the whole session; the long form is the SKILL.md resource below.
+  const server = new McpServer(
+    {
+      name: 'clawstash',
+      version: '1.0.0',
+      description:
+        'ClawStash — persistent, searchable storage for AI agents: stashes of text files with name, description, tags and metadata.',
+    },
+    { instructions: getMcpInstructionsText(fallbackBaseUrl) },
+  );
 
-## Token-efficient usage guide for AI clients
-
-${TOKEN_EFFICIENT_GUIDE}`,
-  });
+  // Guides as MCP resources, for clients that surface resources to the model
+  // or let the user attach them. Static URIs; the REST twins are unauthenticated.
+  server.registerResource(
+    'clawstash-skill',
+    'clawstash://guide/skill',
+    {
+      title: 'ClawStash SKILL.md',
+      description:
+        'Compact operational guide for agents: when to store, workflow, conventions, limits, errors, maintenance. Same text as GET /api/agent-skill.',
+      mimeType: 'text/markdown',
+    },
+    async (uri) => ({
+      contents: [
+        { uri: uri.href, mimeType: 'text/markdown', text: getAgentSkillText(fallbackBaseUrl) },
+      ],
+    }),
+  );
+  server.registerResource(
+    'clawstash-onboarding',
+    'clawstash://guide/onboarding',
+    {
+      title: 'ClawStash MCP onboarding guide',
+      description:
+        'The skill plus the complete MCP specification (every tool with its JSON Schema, data types). Same text as GET /api/mcp-onboarding.',
+      mimeType: 'text/markdown',
+    },
+    async (uri) => ({
+      contents: [
+        {
+          uri: uri.href,
+          mimeType: 'text/markdown',
+          text: getMcpOnboardingText(fallbackBaseUrl),
+        },
+      ],
+    }),
+  );
 
   // Convention: a tool result that reports a failure MUST carry
   // `isError: true`. Without it the MCP spec says the call succeeded, so a
@@ -143,6 +186,7 @@ ${TOKEN_EFFICIENT_GUIDE}`,
       metadata: stash.metadata,
       total_size: fileInfos.reduce((sum, f) => sum + f.size, 0),
       files: fileInfos,
+      version: stash.version,
       created_at: stash.created_at,
     };
     return {
@@ -168,6 +212,7 @@ ${TOKEN_EFFICIENT_GUIDE}`,
         tags: stash.tags,
         archived: stash.archived,
         metadata: stash.metadata,
+        version: stash.version,
         created_at: stash.created_at,
         updated_at: stash.updated_at,
         total_size: stash.files.reduce((sum, f) => sum + f.content.length, 0),
@@ -276,6 +321,7 @@ ${TOKEN_EFFICIENT_GUIDE}`,
       metadata: stash.metadata,
       total_size: fileInfos.reduce((sum, f) => sum + f.size, 0),
       files: fileInfos,
+      version: stash.version,
       updated_at: stash.updated_at,
     };
     return {
@@ -379,6 +425,18 @@ ${TOKEN_EFFICIENT_GUIDE}`,
   // Check version (current + latest from GitHub)
   register('check_version', async () => {
     const info = await checkVersion();
+    return {
+      content: [{ type: 'text', text: JSON.stringify(info, null, 2) }],
+    };
+  });
+
+  // Server info — the one call an agent makes first. Self-description only
+  // (scope 'none'), but the build fingerprint follows the same rule as
+  // /api/version and check_version: it is withheld unless the caller holds
+  // `read`, so an mcp-only token learns which tools it may call, not which
+  // commit is deployed.
+  register('get_server_info', async () => {
+    const info = buildServerInfo(auth, fallbackBaseUrl, baseUrl ? 'streamable-http' : 'stdio');
     return {
       content: [{ type: 'text', text: JSON.stringify(info, null, 2) }],
     };

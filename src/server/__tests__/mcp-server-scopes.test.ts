@@ -101,6 +101,7 @@ const EXPECTED_TOOL_SCOPES: Record<string, ToolScope> = {
   get_mcp_spec: 'none',
   refresh_tools: 'none',
   check_version: 'read',
+  get_server_info: 'none',
 };
 
 describe('MCP tool inventory', () => {
@@ -180,7 +181,7 @@ describe('MCP tools with an mcp-only token', () => {
   });
 
   it('still serves the self-description tools (transport gate only)', async () => {
-    for (const name of ['get_mcp_spec', 'get_rest_api_spec', 'refresh_tools']) {
+    for (const name of ['get_mcp_spec', 'get_rest_api_spec', 'refresh_tools', 'get_server_info']) {
       const result = await h.call(name);
       expect(result.isError, `${name} should be allowed`).toBeFalsy();
     }

@@ -35,7 +35,7 @@ See [authentication.md](authentication.md) for token creation and scopes.
 | `/api/stashes/graph`                   | GET    | Tag relationship graph (`?tag=&depth=&min_weight=&min_count=&limit=`) |
 | `/api/stashes/graph/stashes`           | GET    | Stash relationship graph                                              |
 
-> **`?archived=` query param**: only the literal strings `true` and `false` are honored. Any other value (e.g. `?archived=1`, `?archived=yes`) is rejected with `400 Bad Request` and `{ "error": "Invalid 'archived' value. Use 'true' or 'false'." }`. Omit the parameter entirely to use the default (active stashes only).
+> **`?archived=` query param**: only the literal strings `true` and `false` are honored. Any other value (e.g. `?archived=1`, `?archived=yes`) is rejected with `400 Bad Request` and `{ "error": "Invalid 'archived' value. Use 'true' or 'false'." }`. Omit the parameter entirely to get active **and** archived stashes (the web GUI passes `archived=false` itself; `/api/stashes/tags` excludes archived stashes by default).
 
 > **Archived stashes in listings**: `/api/stashes/tags` and `/api/stashes/graph/stashes` exclude archived stashes by default, matching the default `/api/stashes` behaviour. Pass `?include_archived=true` to either one to get the legacy "count everything" result. On the stash graph this also applies to `total_stashes`, so the returned total always describes the same population as `nodes`.
 
@@ -120,14 +120,16 @@ Mirror stashes into a GitHub repository — full guide: [backup.md](backup.md).
 
 ### System
 
-| Endpoint              | Method | Description                                                                    |
-| --------------------- | ------ | ------------------------------------------------------------------------------ |
-| `/api/health`         | GET    | Health check (no auth required) — returns status, timestamp, database stats    |
-| `/api/openapi`        | GET    | OpenAPI 3.0 schema (JSON)                                                      |
-| `/api/mcp-spec`       | GET    | MCP specification (markdown)                                                   |
-| `/api/mcp-onboarding` | GET    | MCP onboarding guide for AI agents                                             |
-| `/api/mcp-tools`      | GET    | MCP tool summaries (JSON)                                                      |
-| `/api/version`        | GET    | Current version + latest available (build details need `read` when auth is on) |
+| Endpoint              | Method | Description                                                                                                        |
+| --------------------- | ------ | ------------------------------------------------------------------------------------------------------------------ |
+| `/api/health`         | GET    | Health check (no auth required) — returns status, timestamp, database stats                                        |
+| `/api/openapi`        | GET    | OpenAPI 3.0 schema (JSON)                                                                                          |
+| `/api/mcp-spec`       | GET    | MCP specification (markdown)                                                                                       |
+| `/api/mcp-onboarding` | GET    | MCP onboarding guide for AI agents (operational guide + full specification)                                        |
+| `/api/agent-skill`    | GET    | SKILL.md for AI agents (Agent Skills format; also MCP resource `clawstash://guide/skill`)                          |
+| `/llms.txt`           | GET    | Discovery index for agents that only know the host (llms.txt convention)                                           |
+| `/api/mcp-tools`      | GET    | MCP tool summaries (JSON)                                                                                          |
+| `/api/version`        | GET    | Current version + latest available + `upgrade` steps (build details and upgrade block need `read` when auth is on) |
 
 ## Examples
 

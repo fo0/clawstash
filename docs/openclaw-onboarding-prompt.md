@@ -101,19 +101,21 @@ Install ClawStash on my server and set it up as your persistent storage.
    curl -s $BASE/api/stashes -H "Authorization: Bearer $TOKEN"
    ```
 
-8. **Initialize MCP connection** — fetch the onboarding spec and configure yourself:
+8. **Initialize MCP connection** — fetch the skill and the onboarding spec, then configure yourself:
 
    ```bash
-   curl -s http://<HOST_OR_IP>:<PORT>/api/mcp-onboarding
+   curl -s http://<HOST_OR_IP>:<PORT>/api/agent-skill      # SKILL.md: when to store, workflow, conventions, limits
+   curl -s http://<HOST_OR_IP>:<PORT>/api/mcp-onboarding   # the skill plus every tool's JSON Schema
    ```
 
-   Read the returned specification carefully. It contains all available MCP tools,
-   their schemas, and the recommended workflow. Configure your MCP connection:
+   Follow the skill (save it as `skills/clawstash/SKILL.md` if you load skills from files) and
+   read the specification for the tool schemas. Configure your MCP connection:
    - Transport: Streamable HTTP
    - URL: `http://<HOST_OR_IP>:<PORT>/mcp`
    - Auth header: `Authorization: Bearer <YOUR_API_TOKEN>`
 
 9. **Test MCP** — once connected, run these tools to verify:
+   - `get_server_info` — should list your scopes (`read`, `write`, `mcp`) and every tool as callable
    - `get_stats` — should show 2 stashes
    - `list_stashes` — should return the test stashes
    - `search_stashes` with query "onboarding" — should find both test stashes

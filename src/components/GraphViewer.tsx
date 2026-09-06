@@ -29,7 +29,10 @@ interface Props {
   tags: TagInfo[];
   onFilterTag: (tag: string) => void;
   onSelectStash: (id: string) => void;
-  onGoHome: () => void;
+  /** Header back button + Escape. App decides where "back" leads. */
+  onBack: () => void;
+  /** Labels the back button: the stash the graph was opened from, or the dashboard. */
+  backTarget: 'dashboard' | 'stash';
   analyzeStashId?: string | null;
   onAnalyzeStashConsumed?: () => void;
 }
@@ -313,7 +316,8 @@ export default function GraphViewer({
   tags,
   onFilterTag,
   onSelectStash,
-  onGoHome,
+  onBack,
+  backTarget,
   analyzeStashId,
   onAnalyzeStashConsumed,
 }: Props) {
@@ -1419,6 +1423,7 @@ export default function GraphViewer({
   const nodeCount = nodesRef.current.length;
 
   const isStashTab = graphTab === 'stashes';
+  const backLabel = backTarget === 'stash' ? 'Back to stash' : 'Back to dashboard';
 
   // The active tab was signalled by the `active` CSS class alone, so assistive
   // tech could not tell which graph is on screen (WCAG 4.1.2). `aria-pressed`
@@ -1458,9 +1463,9 @@ export default function GraphViewer({
           <div className="graph-title">
             <button
               className="graph-back-btn"
-              onClick={onGoHome}
-              title="Back to dashboard"
-              aria-label="Back to dashboard"
+              onClick={onBack}
+              title={backLabel}
+              aria-label={backLabel}
             >
               <svg
                 aria-hidden="true"
@@ -1491,9 +1496,9 @@ export default function GraphViewer({
         <div className="graph-title">
           <button
             className="graph-back-btn"
-            onClick={onGoHome}
-            title="Back to dashboard"
-            aria-label="Back to dashboard"
+            onClick={onBack}
+            title={backLabel}
+            aria-label={backLabel}
           >
             <svg aria-hidden="true" width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
               <path d="M7.78 12.53a.75.75 0 0 1-1.06 0L2.47 8.28a.75.75 0 0 1 0-1.06l4.25-4.25a.75.75 0 0 1 1.06 1.06L4.81 7h7.44a.75.75 0 0 1 0 1.5H4.81l2.97 2.97a.75.75 0 0 1 0 1.06Z" />

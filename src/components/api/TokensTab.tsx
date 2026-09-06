@@ -4,7 +4,12 @@ import { api } from '../../api';
 import { formatDateTime } from '../../utils/format';
 import Spinner from '../shared/Spinner';
 import SpecPreview from './SpecPreview';
-import { SCOPE_LABELS, SCOPE_OPTIONS, getRestConfigText } from './api-data';
+import {
+  SCOPE_LABELS,
+  SCOPE_OPTIONS,
+  buildAgentOnboardingPrompt,
+  getRestConfigText,
+} from './api-data';
 import {
   BookIcon,
   KeyIcon,
@@ -330,6 +335,23 @@ export default function TokensTab({
                 aria-label="Copy token"
               >
                 <CopyIcon />
+              </button>
+            </div>
+            {/* The token is on screen exactly once — this is the moment a user
+                hands it to an agent, so offer the onboarding prompt with the
+                token already filled in (the MCP tab has the placeholder form). */}
+            <div className="api-spec-copy-buttons" style={{ marginTop: 10 }}>
+              <button
+                className="btn btn-secondary btn-sm"
+                onClick={() =>
+                  handleCopy(
+                    buildAgentOnboardingPrompt(baseUrl, newlyCreated.token),
+                    'Agent onboarding prompt',
+                  )
+                }
+                title="Copy a prompt for your agent that contains this token, the endpoints of this instance and the steps to onboard itself"
+              >
+                <CopyIcon size={12} /> Copy agent onboarding prompt (with this token)
               </button>
             </div>
           </div>

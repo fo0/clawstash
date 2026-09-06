@@ -285,6 +285,30 @@ export function getOpenApiSpec(baseUrl: string): OpenApiSpec {
               type: 'boolean',
               description: 'True if the latest commit SHA differs from the current build SHA',
             },
+            upgrade: {
+              type: 'object',
+              nullable: true,
+              description:
+                'How to bring the instance up to date. Null when the build fingerprint is withheld (auth enabled, caller without `read`). Agents: report `compare_url` and `instructions` to the user — never upgrade an instance on your own.',
+              properties: {
+                image: {
+                  type: 'string',
+                  description: 'Published container image (ghcr.io/fo0/clawstash:latest)',
+                },
+                instructions: {
+                  type: 'string',
+                  description:
+                    'Copy-pasteable upgrade steps: Docker Compose first, plain Node checkout second, then re-check the version',
+                },
+                compare_url: {
+                  type: 'string',
+                  nullable: true,
+                  description:
+                    'GitHub compare view from the running commit to main; null unless an update is available and both commits are known',
+                },
+                changelog_url: { type: 'string', description: 'CHANGELOG.md on the main branch' },
+              },
+            },
             github_url: { type: 'string', description: 'GitHub repository URL' },
             checked_at: {
               type: 'string',
@@ -906,6 +930,30 @@ export function getOpenApiSpec(baseUrl: string): OpenApiSpec {
                 },
               },
             },
+          },
+        },
+      },
+      '/api/agent-skill': {
+        get: {
+          tags: ['System'],
+          summary: 'Agent skill (SKILL.md) for AI self-onboarding',
+          description:
+            'Returns a compact operational guide in Agent Skills format (YAML frontmatter + Markdown): when to store something, the read/write workflow with MCP tools and their REST twins, naming and tagging conventions, the size limits the server enforces, how errors surface, and how to keep the integration healthy (update checks, refreshing tool knowledge). Save it as `SKILL.md` in the agent’s skill directory and re-fetch it after an upgrade. No authentication required. Also exposed as the MCP resource `clawstash://guide/skill`.',
+          security: [],
+          responses: {
+            200: { description: 'SKILL.md as text/markdown' },
+          },
+        },
+      },
+      '/llms.txt': {
+        get: {
+          tags: ['System'],
+          summary: 'Discovery index for AI agents (llms.txt)',
+          description:
+            'Plain-text index in the llms.txt convention: one-paragraph purpose, the MCP and REST endpoints, and links to the agent skill, the onboarding guide, the specifications and the status endpoints. Fetch this first when you only know the host. No authentication required.',
+          security: [],
+          responses: {
+            200: { description: 'llms.txt as text/plain (markdown)' },
           },
         },
       },

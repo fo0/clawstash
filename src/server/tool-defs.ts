@@ -158,7 +158,7 @@ Tips:
       ),
     }),
     returns:
-      '{ id, name, description, tags, archived, metadata, total_size, files: [{ filename, language, size }], created_at }',
+      '{ id, name, description, tags, archived, metadata, total_size, files: [{ filename, language, size }], version, created_at }',
   },
   {
     name: 'read_stash',
@@ -183,7 +183,7 @@ To get file content:
         ),
     }),
     returns:
-      '{ id, name, description, tags, archived, metadata, created_at, updated_at, total_size, files: [{ filename, language, size, content? }] }',
+      '{ id, name, description, tags, archived, metadata, version, created_at, updated_at, total_size, files: [{ filename, language, size, content? }] }',
   },
   {
     name: 'read_stash_file',
@@ -206,13 +206,13 @@ Returns the file content as text along with filename and language metadata.`,
   {
     name: 'list_stashes',
     scope: 'read',
-    description: `List stashes with optional filtering. Returns summaries only (name, description, tags, file names with sizes) — no file content or metadata.
+    description: `List stashes with optional filtering. Returns summaries only (name, description, tags, version, archive flag, file names with sizes) — no file content or metadata.
 
-Results are paginated (default: 50 per page). Use the 'total' field in the response to determine if more pages are available.
+Ordered by last update, newest first. Results are paginated (default: 50 per page, maximum 1000). Use the 'total' field in the response to determine if more pages are available.
 
 To get full details for a specific stash, use read_stash with its ID.
 To read file content, use read_stash_file.
-To search by text content, use search_stashes.
+To search by text content, use search_stashes (this tool's 'search' parameter routes to the same ranked full-text search).
 
 File sizes (character counts) are included to help estimate content volume before reading.`,
     schema: z.object({
@@ -233,7 +233,10 @@ File sizes (character counts) are included to help estimate content volume befor
           'Filter by archive status. true = only archived, false = only active (non-archived). Omit to show all.',
         ),
       page: z.number().optional().describe('Page number for pagination (default: 1)'),
-      limit: z.number().optional().describe('Results per page (default: 50, max recommended: 100)'),
+      limit: z
+        .number()
+        .optional()
+        .describe('Results per page (default: 50, hard maximum: 1000; larger values are clamped)'),
     }),
     returns: '{ stashes: StashListItem[], total: number }',
   },
@@ -275,7 +278,7 @@ Important:
       ),
     }),
     returns:
-      '{ id, name, description, tags, archived, metadata, total_size, files: [{ filename, language, size }], updated_at }',
+      '{ id, name, description, tags, archived, metadata, total_size, files: [{ filename, language, size }], version, updated_at }',
   },
   {
     name: 'delete_stash',
@@ -289,11 +292,12 @@ Important:
   {
     name: 'archive_stash',
     scope: 'write',
-    description: `Archive or unarchive a stash. Archived stashes are hidden from default listings but remain accessible by ID.
+    description: `Archive or unarchive a stash. Archived stashes stay readable by ID and are hidden from the web GUI's default listing; over MCP and REST they are still returned by list_stashes / search_stashes unless you pass archived=false (list_tags excludes them by default).
 
-Use this to declutter your workspace without deleting stashes permanently. Archived stashes can be found by:
-- Passing archived=true to list_stashes or search_stashes
-- Reading directly by ID with read_stash`,
+Use this to declutter without deleting stashes permanently:
+- archived=false on list_stashes / search_stashes → only active stashes
+- archived=true → only archived stashes
+- read_stash by ID works regardless of the flag`,
     schema: z.object({
       id: z.string().describe('The stash ID to archive or unarchive'),
       archived: z.boolean().describe('true to archive, false to unarchive (restore to active)'),
@@ -333,11 +337,14 @@ Use read_stash to get full stash metadata, or read_stash_file to read specific f
         .describe(
           'Filter by archive status. true = only archived, false = only active. Omit to search all.',
         ),
-      limit: z.number().optional().describe('Maximum number of results (default: 20)'),
+      limit: z
+        .number()
+        .optional()
+        .describe('Results per page (default: 20, hard maximum: 1000; larger values are clamped)'),
       page: z.number().optional().describe('Page number for pagination (default: 1)'),
     }),
     returns:
-      '{ stashes: SearchStashItem[], total: number, query: string } — each stash includes relevance score and match snippets',
+      '{ stashes: SearchStashItem[], total: number, query: string } — each stash is a StashListItem plus relevance score and match snippets',
   },
   {
     name: 'list_tags',
@@ -429,7 +436,7 @@ Use this to understand all available MCP tools and how to use them optimally.`,
     scope: 'none',
     description: `Tool update — returns the current MCP tool specification so you can refresh your knowledge.
 
-Call this tool periodically to stay up-to-date. Tool definitions, schemas, and capabilities may change over time.
+Call it when a tool call fails with an unknown tool or unexpected argument, or right after the instance was upgraded (check_version) — not routinely: the response is the full specification and costs accordingly.
 This is the MCP-side equivalent of the REST onboarding endpoint (GET /api/mcp-onboarding) — use that for initial onboarding before connecting via MCP.
 
 The response includes:
@@ -447,10 +454,29 @@ The response includes:
 
 Returns the running build version (date-based, e.g. "v20260215-1628"), commit SHA, and build date. Compares against the latest commit on the GitHub main branch to detect available updates.
 
+When update_available is true, 'upgrade' carries ready-to-run instructions (Docker Compose and plain Node) plus a compare URL listing the commits between the running build and main. Report both to the user and let them decide — never upgrade an instance on your own.
+
 Useful for automated upgrade checks and monitoring. The GitHub check is cached for 1 hour.`,
     schema: z.object({}),
     returns:
-      '{ current: { version, commit_sha, build_date, branch }, latest: { commit_sha, commit_date, commit_message } | null, update_available, github_url, checked_at }',
+      '{ current: { version, commit_sha, build_date, branch }, latest: { commit_sha, commit_date, commit_message } | null, update_available, upgrade: { image, instructions, compare_url | null, changelog_url }, github_url, checked_at }',
+  },
+  {
+    name: 'get_server_info',
+    scope: 'none',
+    description: `Orient yourself — call this once at the start of a session.
+
+Returns, in one round-trip, everything you need before touching stash data:
+- your token's scopes and, derived from them, which tools you can call and which need a higher scope
+- the size limits the server enforces (name, description, tags, metadata, files, paging, version history)
+- every endpoint of this instance (MCP, REST base, OpenAPI, specs, SKILL.md, health, version)
+- the running build version (only when your token has the read scope)
+- suggested next steps
+
+Needs no scope beyond the mcp transport gate. Cheap: no stash data is read.`,
+    schema: z.object({}),
+    returns:
+      '{ server: { name, version | null }, transport, base_url, endpoints, auth: { scopes, tools: { callable, requires_scope: [{ tool, scope }] } }, limits, tool_count, next_steps: string[] }',
   },
 ] satisfies ToolDef[];
 

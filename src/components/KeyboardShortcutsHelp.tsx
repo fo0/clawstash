@@ -25,7 +25,10 @@ const STATIC_SHORTCUT_GROUPS: ShortcutGroup[] = [
       { keys: ['n'], description: 'New stash' },
       { keys: ['e'], description: 'Edit current stash (in viewer)' },
       { keys: ['a'], description: 'Toggle archived stashes on the dashboard' },
-      { keys: ['Esc'], description: 'Back to dashboard / close overlay' },
+      {
+        keys: ['Esc'],
+        description: 'Back to dashboard (or the stash you came from) / close overlay',
+      },
       { keys: ['?'], description: 'Show / hide keyboard shortcuts' },
     ],
   },

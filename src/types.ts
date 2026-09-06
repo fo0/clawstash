@@ -106,6 +106,13 @@ export interface VersionResponse {
     commit_message: string | null;
   } | null;
   update_available: boolean;
+  /** Upgrade steps + compare link; null when the build fingerprint is withheld. */
+  upgrade: {
+    image: string;
+    instructions: string;
+    compare_url: string | null;
+    changelog_url: string;
+  } | null;
   github_url: string;
   checked_at: string;
 }

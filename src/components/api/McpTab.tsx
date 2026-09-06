@@ -1,4 +1,8 @@
-import { buildMcpStreamableConfig, buildMcpStdioConfig } from './api-data';
+import {
+  buildAgentOnboardingPrompt,
+  buildMcpStreamableConfig,
+  buildMcpStdioConfig,
+} from './api-data';
 import { ServerIcon, WifiIcon, KeyIcon, CopyIcon, ChevronIcon, CheckIcon } from './icons';
 import { useCopyToast, useExpandableSpecs } from './useCopyToast';
 import CodeExample from './CodeExample';
@@ -45,6 +49,57 @@ export default function McpTab({
           assistants like Claude Desktop, Cursor, or any MCP client can access your stashes
           directly.
         </p>
+
+        {/* Agent onboarding — the one thing to hand an agent. Sits above the
+            spec copy because a short prompt that points the agent at the
+            server's own guides is what most users need; the full spec below
+            stays for clients that cannot fetch URLs themselves. */}
+        <div className="api-copy-config-section">
+          <div className="api-spec-copy-buttons">
+            <button
+              className="btn btn-primary api-copy-config-btn"
+              onClick={() =>
+                handleCopy(buildAgentOnboardingPrompt(baseUrl), 'Agent onboarding prompt')
+              }
+              title="Copy a ready-to-paste prompt that tells your agent how to connect to this instance and how to use it"
+            >
+              <CopyIcon size={16} /> Copy onboarding prompt for your agent
+            </button>
+            <a
+              className="btn btn-ghost btn-sm"
+              href={`${baseUrl}/api/agent-skill`}
+              target="_blank"
+              rel="noreferrer"
+              title="Open the SKILL.md this instance serves to agents (new tab)"
+              // The global anchor rule underlines it; as a .btn it should read
+              // like its button siblings.
+              style={{ textDecoration: 'none' }}
+            >
+              Open SKILL.md
+            </a>
+            <button
+              className="btn btn-ghost btn-sm api-spec-preview-toggle"
+              onClick={() => toggleSpecPreview('mcp-onboarding-prompt')}
+              title={expandedSpecs.has('mcp-onboarding-prompt') ? 'Hide preview' : 'Show preview'}
+            >
+              <ChevronIcon expanded={expandedSpecs.has('mcp-onboarding-prompt')} /> Preview
+            </button>
+          </div>
+          <span className="api-hint" style={{ marginBottom: 0 }}>
+            Paste the prompt into your agent and replace YOUR_API_TOKEN. It points the agent at{' '}
+            <code>/api/agent-skill</code> (the operational guide: when to store, workflow,
+            conventions, limits), the MCP endpoint and the REST API, and asks it to orient itself
+            with <code>get_server_info</code>. The token banner under API Tokens offers the same
+            prompt with a freshly created token filled in.
+          </span>
+          {expandedSpecs.has('mcp-onboarding-prompt') && (
+            <SpecPreview
+              content={buildAgentOnboardingPrompt(baseUrl)}
+              failed={false}
+              label="Onboarding prompt"
+            />
+          )}
+        </div>
 
         {/* Copy Config for AI */}
         <div className="api-copy-config-section">

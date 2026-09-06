@@ -156,21 +156,81 @@ async function fetchLatestCommit(): Promise<LatestCache> {
 // Public API
 // ---------------------------------------------------------------------------
 
+export interface CurrentBuild {
+  version: string;
+  commit_sha: string;
+  build_date: string;
+  branch: string;
+}
+
+/**
+ * How to bring this instance up to date. Aimed at agents: `check_version` and
+ * `/api/version` report *that* an update exists; this says *what to do* about
+ * it, so an agent can hand the user a ready-to-run command instead of a bare
+ * "please upgrade".
+ */
+export interface UpgradeInfo {
+  /** The published image every deployment guide uses. */
+  image: string;
+  /** Copy-pasteable steps — Docker Compose first, plain Node checkout second. */
+  instructions: string;
+  /** GitHub compare view from the running commit to main; null until both SHAs are known and differ. */
+  compare_url: string | null;
+  changelog_url: string;
+}
+
 export interface VersionInfo {
-  current: {
-    version: string;
-    commit_sha: string;
-    build_date: string;
-    branch: string;
-  };
+  current: CurrentBuild;
   latest: {
     commit_sha: string | null;
     commit_date: string | null;
     commit_message: string | null;
   } | null;
   update_available: boolean;
+  upgrade: UpgradeInfo;
   github_url: string;
   checked_at: string;
+}
+
+export const DOCKER_IMAGE = `ghcr.io/${GITHUB_OWNER}/${GITHUB_REPO}:latest`;
+
+export const UPGRADE_INSTRUCTIONS = [
+  'Docker Compose (the documented setup): in the directory holding docker-compose.yml run `docker compose pull && docker compose up -d`. The ./data volume with the SQLite database is kept, pending schema migrations run automatically on start, and the service is unavailable only while the container restarts.',
+  'Plain Node.js checkout: `git pull && npm install && npm run build`, then restart `npm start`.',
+  'Afterwards call check_version (or GET /api/version) again — update_available must be false — and re-read /api/agent-skill, because tool definitions may have changed.',
+].join(' ');
+
+/**
+ * Build the upgrade block of a version response. Pure. The compare URL is
+ * only emitted when an update is actually available and both commits are
+ * known, so a failed GitHub check never yields a half-formed link.
+ */
+export function buildUpgradeInfo(
+  currentSha: string,
+  latestSha: string | null,
+  updateAvailable: boolean,
+): UpgradeInfo {
+  const compareUrl =
+    updateAvailable && currentSha !== '' && latestSha
+      ? `${GITHUB_URL}/compare/${currentSha}...${latestSha}`
+      : null;
+  return {
+    image: DOCKER_IMAGE,
+    instructions: UPGRADE_INSTRUCTIONS,
+    compare_url: compareUrl,
+    changelog_url: `${GITHUB_URL}/blob/main/CHANGELOG.md`,
+  };
+}
+
+/** The running build — no network access, no cache involved. */
+export function getCurrentBuild(): CurrentBuild {
+  const info = getBuildInfo();
+  return {
+    version: formatBuildVersion(info.buildDate) ?? UNKNOWN_VERSION,
+    commit_sha: info.commitHash,
+    build_date: info.buildDate,
+    branch: info.branch,
+  };
 }
 
 /**
@@ -179,9 +239,11 @@ export interface VersionInfo {
  * keeps its non-nullable `current` contract for the MCP tool and the OpenAPI
  * schema.
  */
-export interface PublicVersionInfo extends Omit<VersionInfo, 'current' | 'latest'> {
+export interface PublicVersionInfo extends Omit<VersionInfo, 'current' | 'latest' | 'upgrade'> {
   current: null;
   latest: null;
+  /** Withheld with the fingerprint: the compare URL inside it would name the running commit. */
+  upgrade: null;
 }
 
 /**
@@ -203,6 +265,7 @@ export function getPublicVersionInfo(): PublicVersionInfo {
     current: null,
     latest: null,
     update_available: false,
+    upgrade: null,
     github_url: GITHUB_URL,
     checked_at: new Date().toISOString(),
   };
@@ -231,13 +294,9 @@ export async function checkVersion(): Promise<VersionInfo> {
     getBuildInfo().commitHash !== '' &&
     cache.commit_sha !== getBuildInfo().commitHash;
 
+  const current = getCurrentBuild();
   return {
-    current: {
-      version: formatBuildVersion(getBuildInfo().buildDate) ?? UNKNOWN_VERSION,
-      commit_sha: getBuildInfo().commitHash,
-      build_date: getBuildInfo().buildDate,
-      branch: getBuildInfo().branch,
-    },
+    current,
     latest: cache.commit_sha
       ? {
           commit_sha: cache.commit_sha,
@@ -246,6 +305,7 @@ export async function checkVersion(): Promise<VersionInfo> {
         }
       : null,
     update_available: updateAvailable,
+    upgrade: buildUpgradeInfo(current.commit_sha, cache.commit_sha, updateAvailable),
     github_url: GITHUB_URL,
     checked_at: cache.checked_at,
   };

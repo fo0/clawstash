@@ -167,13 +167,7 @@ New runtime dependencies only after user approval with reasoning; devDependencie
 
 ## Environment Variables
 
-| Variable                   | Description                       | Default               |
-| -------------------------- | --------------------------------- | --------------------- |
-| `DATABASE_PATH`            | SQLite database file              | `./data/clawstash.db` |
-| `ADMIN_PASSWORD`           | Admin login (unset = open access) | --                    |
-| `CLAWSTASH_ENCRYPTION_KEY` | Secrets at rest, 64 hex chars     | auto-generated        |
-
-Full list (incl. `PORT`, `TRUST_PROXY`) + secret locations: `agent_docs/env-vars.md`, `.env.example`. Never `gh secret set` without an explicit user command; `security-review` scans for committed secrets.
+Core three: `DATABASE_PATH` (SQLite file, default `./data/clawstash.db`), `ADMIN_PASSWORD` (unset = open access), `CLAWSTASH_ENCRYPTION_KEY` (secrets at rest, 64 hex chars, auto-generated). Full table (incl. `PORT`, `TRUST_PROXY`, `STASH_VERSION_LIMIT`) + secret locations: `agent_docs/env-vars.md`, `.env.example`. Never `gh secret set` without an explicit user command; `security-review` scans for committed secrets.
 
 ## Deployment
 
@@ -183,7 +177,7 @@ Full list (incl. `PORT`, `TRUST_PROXY`) + secret locations: `agent_docs/env-vars
 
 ## API / Interfaces
 
-REST API with Bearer token auth + MCP server (Streamable HTTP + stdio). OpenAPI at `/api/openapi`, MCP spec at `/api/mcp-spec`.
+REST API with Bearer token auth + MCP server (Streamable HTTP + stdio). OpenAPI at `/api/openapi`, MCP spec at `/api/mcp-spec`. Agent self-onboarding (SKILL.md, `/llms.txt`, MCP `instructions` / resources / `get_server_info`) is generated from `src/server/agent-guide.ts` -- `docs/mcp.md -> Self-Onboarding`.
 
 Full reference: `docs/api-reference.md` -- MCP tools: `docs/mcp.md` -- auth/scopes: `docs/authentication.md`.
 
