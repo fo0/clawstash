@@ -39,7 +39,7 @@ describe('getAgentLimits', () => {
     expect(l.description_max_chars).toBe(MAX_DESCRIPTION_LENGTH);
     expect(l.tags_max).toBe(MAX_TAGS);
     expect(l.files_per_stash_max).toBe(MAX_FILES);
-    expect(l.file_content_max_bytes).toBe(MAX_FILE_CONTENT_LENGTH);
+    expect(l.file_content_max_chars).toBe(MAX_FILE_CONTENT_LENGTH);
     expect(l.page_limit_max).toBe(MAX_PAGE_LIMIT);
     expect(l.version_history_limit).toBe(DEFAULT_STASH_VERSION_LIMIT);
   });
@@ -54,7 +54,10 @@ describe('getAgentLimits', () => {
     const md = formatLimitsMarkdown();
     expect(md).toContain(`1–${MAX_FILES} per stash`);
     expect(md).toContain(`hard maximum ${MAX_PAGE_LIMIT} per page`);
-    expect(md).toContain('10 MB per file');
+    // The cap is a character count (z.string().max), not a byte count — the
+    // guide must say so or an agent measuring UTF-8 bytes gets it wrong.
+    expect(md).toContain(`${MAX_FILE_CONTENT_LENGTH.toLocaleString('en-US')} characters per file`);
+    expect(md).toContain('not UTF-8 bytes');
   });
 });
 

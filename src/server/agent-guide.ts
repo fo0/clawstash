@@ -66,7 +66,7 @@ export interface AgentLimits {
   metadata_max_depth: number;
   files_per_stash_max: number;
   filename_max_chars: number;
-  file_content_max_bytes: number;
+  file_content_max_chars: number;
   list_default_limit: number;
   search_default_limit: number;
   page_limit_max: number;
@@ -85,7 +85,7 @@ export function getAgentLimits(): AgentLimits {
     metadata_max_depth: MAX_METADATA_DEPTH,
     files_per_stash_max: MAX_FILES,
     filename_max_chars: MAX_FILENAME_LENGTH,
-    file_content_max_bytes: MAX_FILE_CONTENT_LENGTH,
+    file_content_max_chars: MAX_FILE_CONTENT_LENGTH,
     list_default_limit: LIST_DEFAULT_LIMIT,
     search_default_limit: SEARCH_DEFAULT_LIMIT,
     page_limit_max: MAX_PAGE_LIMIT,
@@ -107,7 +107,7 @@ export function formatLimitsMarkdown(): string {
       ? 'unlimited (`STASH_VERSION_LIMIT=0`)'
       : `${l.version_history_limit} snapshots per stash (oldest pruned on the next update; \`STASH_VERSION_LIMIT\`)`;
   return `- Stash: \`name\` ≤ ${l.name_max_chars} chars · \`description\` ≤ ${l.description_max_chars.toLocaleString('en-US')} chars · ${l.tags_max} tags × ${l.tag_max_chars} chars · metadata ≤ ${l.metadata_max_keys} keys, ${l.metadata_max_depth} levels deep
-- Files: 1–${l.files_per_stash_max} per stash · filename ≤ ${l.filename_max_chars} chars, unique within the stash · content ≤ ${formatBytes(l.file_content_max_bytes)} per file, text only (no binaries)
+- Files: 1–${l.files_per_stash_max} per stash · filename ≤ ${l.filename_max_chars} chars, unique within the stash · content ≤ ${l.file_content_max_chars.toLocaleString('en-US')} characters per file (${formatBytes(l.file_content_max_chars)} of ASCII — the limit and every reported \`size\` count characters, not UTF-8 bytes), text only (no binaries)
 - Paging: list default ${l.list_default_limit}, search default ${l.search_default_limit}, hard maximum ${l.page_limit_max} per page — use \`total\` to decide whether another page exists
 - Version history: ${history}`;
 }
@@ -159,11 +159,11 @@ export const AGENT_WHEN_TO_USE_MD = `**Store** information that must outlive the
 
 /** The read/write workflow, phrased for MCP tools with the REST twins in brackets. */
 export const AGENT_WORKFLOW_MD = `1. **Orient** — call \`get_server_info\` once per session (REST: \`GET /api/version\`, \`POST /api/tokens/validate\`): it returns your scopes, which tools you may call, the size limits and the instance's endpoints.
-2. **Find before you create** — \`search_stashes\` (REST: \`GET /api/stashes?search=\`) is ranked full-text search over names, descriptions, tags, filenames and content; \`list_stashes\` + \`list_tags\` browse. Both return summaries with file sizes, never content.
+2. **Find before you create** — \`search_stashes\` (REST: \`GET /api/stashes?search=\`) is ranked full-text search over names, descriptions, tags, filenames and content; \`list_stashes\` browses, \`list_tags\` shows the tags in use with counts. Search and list return stash summaries with file sizes, never content.
 3. **Inspect, then read selectively** — \`read_stash\` returns metadata and the file list with sizes; \`read_stash_file\` returns one file. Use \`read_stash(include_content=true)\` only when \`total_size\` is small (a few thousand characters).
 4. **Store** — \`create_stash\` (REST: \`POST /api/stashes\`) with a descriptive name, a searchable description, 2–6 tags and meaningful filenames. The response is a confirmation with the new \`id\`, not an echo of the content.
 5. **Change in place** — \`update_stash\` (REST: \`PATCH /api/stashes/{id}\`) changes only the fields you send, but \`files\`, \`tags\` and \`metadata\` are each replaced wholesale: read first, then send the complete list. Every update snapshots the previous state; history and restore are available over REST (\`/api/stashes/{id}/versions\`).
-6. **Archive rather than delete** — \`archive_stash\` hides a stash from default listings while keeping it readable by ID; \`delete_stash\` is permanent.`;
+6. **Archive rather than delete** — \`archive_stash\` marks a stash archived and keeps it readable by ID; \`delete_stash\` is permanent. The web GUI hides archived stashes by default, but \`list_stashes\` and \`search_stashes\` (and \`GET /api/stashes\`) return them unless you pass \`archived: false\` — so filter explicitly when you want only active material. \`list_tags\` already excludes archived stashes.`;
 
 /** Naming and tagging conventions so several agents (and the user) can find each other's stashes. */
 export const AGENT_CONVENTIONS_MD = `- **name**: short and specific, the way a human would title a document ("Auth service — rollout plan"), no IDs or timestamps.
@@ -176,7 +176,7 @@ export const AGENT_CONVENTIONS_MD = `- **name**: short and specific, the way a h
 /** How failures surface and how to react. */
 export const AGENT_ERRORS_MD = `- MCP tool failures are ordinary results with \`isError: true\` and a text that starts with \`Error:\` — read it, it names the cause (\`… not found\`, a validation message, or the missing scope).
 - A scope error means your token lacks \`read\` or \`write\` for that tool; the \`mcp\` scope alone only opens the transport. Ask the operator for a token with \`read\`, \`write\` and \`mcp\` — do not retry the same call.
-- REST: \`400\` carries \`{ "error": "<validation message>" }\`, \`401\` means no/invalid token (the \`WWW-Authenticate\` header says how to authenticate), \`403\` means insufficient scope, \`404\` unknown stash or file, \`429\` you hit the auth rate limit (honour \`Retry-After\`).
+- REST: \`400\` carries \`{ "error": "<validation message>" }\`, \`401\` means no token was sent (the \`WWW-Authenticate\` header says how to authenticate), \`403\` means the token was sent but is invalid, revoked or lacks the scope — ask the operator to check the token, \`404\` unknown stash or file, \`429\` you hit the auth rate limit (honour \`Retry-After\`). Only \`POST /mcp\` answers an invalid token with \`401\`.
 - \`update_stash\` with \`files\` replaces **all** files — a missing entry deletes that file. Include every file you want to keep.`;
 
 /** Keeping the integration healthy over time. */

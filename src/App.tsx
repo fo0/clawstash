@@ -954,6 +954,9 @@ export default function App() {
 
   const handleGraphFilterTag = (tag: string) => {
     handleFilterTag(tag);
+    // The graph keeps `selectedStash` (its back button returns there); leaving
+    // for the dashboard must drop it, or the sidebar keeps that stash active.
+    setSelectedStash(null);
     setView('home');
     pushUrl('/');
   };

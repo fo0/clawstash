@@ -292,11 +292,12 @@ Important:
   {
     name: 'archive_stash',
     scope: 'write',
-    description: `Archive or unarchive a stash. Archived stashes are hidden from default listings but remain accessible by ID.
+    description: `Archive or unarchive a stash. Archived stashes stay readable by ID and are hidden from the web GUI's default listing; over MCP and REST they are still returned by list_stashes / search_stashes unless you pass archived=false (list_tags excludes them by default).
 
-Use this to declutter your workspace without deleting stashes permanently. Archived stashes can be found by:
-- Passing archived=true to list_stashes or search_stashes
-- Reading directly by ID with read_stash`,
+Use this to declutter without deleting stashes permanently:
+- archived=false on list_stashes / search_stashes → only active stashes
+- archived=true → only archived stashes
+- read_stash by ID works regardless of the flag`,
     schema: z.object({
       id: z.string().describe('The stash ID to archive or unarchive'),
       archived: z.boolean().describe('true to archive, false to unarchive (restore to active)'),

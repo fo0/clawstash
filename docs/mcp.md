@@ -69,14 +69,14 @@ Details: [docs/authentication.md → Token Scopes](authentication.md#token-scope
 | `list_stashes`      | `read`  | List/search stashes with filters (tag, archived). Returns summaries with file sizes (no content).         |
 | `update_stash`      | `write` | Update an existing stash. Returns confirmation only.                                                      |
 | `delete_stash`      | `write` | Delete a stash.                                                                                           |
-| `archive_stash`     | `write` | Archive or unarchive a stash (hide from default listings without deleting).                               |
+| `archive_stash`     | `write` | Archive or unarchive a stash. Hidden in the GUI by default; MCP/REST listings need `archived: false`.     |
 | `search_stashes`    | `read`  | Full-text search with BM25 ranking, Porter stemming, and match snippets. Supports tag and archive filter. |
 | `list_tags`         | `read`  | List all tags with usage counts.                                                                          |
 | `get_tag_graph`     | `read`  | Tag relationship graph with optional focus tag, depth, and filters.                                       |
 | `get_stats`         | `read`  | Storage statistics.                                                                                       |
 | `get_rest_api_spec` | —       | Full OpenAPI 3.0 REST API specification (JSON).                                                           |
 | `get_mcp_spec`      | —       | Full MCP specification (markdown with tool schemas).                                                      |
-| `refresh_tools`     | —       | Get current tool specs — useful for long-running agents to stay up-to-date.                               |
+| `refresh_tools`     | —       | Get current tool specs — after a failed tool call or an upgrade, not routinely (it is the whole spec).    |
 | `check_version`     | `read`  | Check current version and whether an update is available; `upgrade` carries the steps + compare URL.      |
 | `get_server_info`   | —       | Orient in one call: your scopes, callable tools, size limits, endpoints, next steps. Call it first.       |
 
