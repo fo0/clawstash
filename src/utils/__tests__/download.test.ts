@@ -1,6 +1,11 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { downloadTextFile, versionedFilename } from '../download';
+import {
+  downloadCanvasPng,
+  downloadTextFile,
+  graphImageFilename,
+  versionedFilename,
+} from '../download';
 
 afterEach(() => {
   vi.restoreAllMocks();
@@ -22,6 +27,38 @@ describe('versionedFilename', () => {
 
   it('treats a leading dot as part of a dotfile name, not an extension', () => {
     expect(versionedFilename('.env', 5)).toBe('.env.v5');
+  });
+});
+
+describe('graphImageFilename', () => {
+  it('dates the file in local time so it matches the day of the click', () => {
+    expect(graphImageFilename('tag-graph', new Date(2026, 8, 7, 23, 30))).toBe(
+      'clawstash-tag-graph-2026-09-07.png',
+    );
+  });
+
+  it('zero-pads month and day', () => {
+    expect(graphImageFilename('stash-graph', new Date(2026, 0, 5))).toBe(
+      'clawstash-stash-graph-2026-01-05.png',
+    );
+  });
+});
+
+describe('downloadCanvasPng', () => {
+  it('refuses a canvas with no pixels instead of writing an empty file', () => {
+    const canvas = document.createElement('canvas');
+    canvas.width = 0;
+    canvas.height = 0;
+    expect(downloadCanvasPng(canvas, 'graph.png')).toBe(false);
+  });
+
+  it('reports failure when the environment cannot encode a canvas', () => {
+    // jsdom ships no 2D context (and no `toBlob`) — the same shape as a browser
+    // that refuses the export. The caller must be able to tell the user.
+    const canvas = document.createElement('canvas');
+    canvas.width = 200;
+    canvas.height = 100;
+    expect(downloadCanvasPng(canvas, 'graph.png')).toBe(false);
   });
 });
 

@@ -4,6 +4,8 @@ import { api } from '../api';
 import { formatDateTime, pluralize } from '../utils/format';
 import { watchDevicePixelRatio } from '../utils/dpr';
 import { badgeTextColor } from '../utils/contrast';
+import { graphImageFilename } from '../utils/download';
+import { usePngExport } from '../hooks/usePngExport';
 
 interface Props {
   onSelectStash: (id: string) => void;
@@ -1389,6 +1391,14 @@ export default function StashGraphCanvas({
     return () => window.removeEventListener('keydown', onKeyDown, true);
   }, [popup]);
 
+  // "Save PNG": the graph is a canvas, so the arrangement on screen — layout,
+  // zoom, pan, whatever is analysed — could only be kept with an external
+  // screenshot tool before.
+  const pngExport = usePngExport();
+  const handleSavePng = () => {
+    pngExport.save(canvasRef.current, graphImageFilename('stash-graph'));
+  };
+
   const handleReset = () => {
     targetZoomRef.current = null;
     targetPanRef.current = null;
@@ -1628,6 +1638,25 @@ export default function StashGraphCanvas({
             {hoveredLabel}
           </span>
         )}
+        <button
+          className="btn graph-reset-btn"
+          onClick={handleSavePng}
+          title={
+            pngExport.status === 'failed'
+              ? 'Could not create the image — your browser refused the canvas export'
+              : 'Save the graph as it looks right now as a PNG image'
+          }
+          aria-label="Save the stash graph as a PNG image"
+        >
+          <svg aria-hidden="true" width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
+            <path d="M8.75 1.75a.75.75 0 0 0-1.5 0v6.44L5.28 6.22a.75.75 0 1 0-1.06 1.06l3.25 3.25a.75.75 0 0 0 1.06 0l3.25-3.25a.75.75 0 0 0-1.06-1.06L8.75 8.19Zm-6 8.5a.75.75 0 0 0-1.5 0v2A2.75 2.75 0 0 0 4 15h8a2.75 2.75 0 0 0 2.75-2.75v-2a.75.75 0 0 0-1.5 0v2c0 .69-.56 1.25-1.25 1.25H4c-.69 0-1.25-.56-1.25-1.25Z" />
+          </svg>
+          {pngExport.status === 'saved'
+            ? 'Saved'
+            : pngExport.status === 'failed'
+              ? 'Failed'
+              : 'PNG'}
+        </button>
         <button
           className="btn graph-reset-btn"
           onClick={handleReset}
