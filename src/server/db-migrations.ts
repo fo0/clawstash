@@ -9,6 +9,13 @@ import crypto from 'crypto';
 // tracks which versions have already run. Ordering is enforced by
 // `version` (ascending). All pending migrations apply inside a single
 // transaction so a partial failure cannot leave the schema half-migrated.
+//
+// Progress is reported on **stderr** (`console.error`), never on stdout.
+// `src/server/mcp.ts` opens this same DB from the stdio MCP transport, where
+// stdout IS the JSON-RPC channel: a `[DB] Running migration …` line printed
+// there is the first thing a client reads, ahead of any JSON-RPC frame, and a
+// strict client may treat it as a protocol violation. Migration logging is not
+// an error, but stderr is the only stream that is free to carry it.
 
 export interface Migration {
   version: number;
@@ -186,7 +193,7 @@ export const MIGRATIONS: Migration[] = [
         }
       }
 
-      console.log(`[DB] Backfilled initial version records for ${stashes.length} stash(es)`);
+      console.error(`[DB] Backfilled initial version records for ${stashes.length} stash(es)`);
     },
   },
   {
@@ -242,7 +249,9 @@ export const MIGRATIONS: Migration[] = [
         insertFts.run(s.id, s.name, s.description, tags, filenames, fileContent);
       }
 
-      console.log(`[DB] FTS5 search index created and backfilled for ${stashes.length} stash(es)`);
+      console.error(
+        `[DB] FTS5 search index created and backfilled for ${stashes.length} stash(es)`,
+      );
     },
   },
   {
@@ -362,7 +371,7 @@ export function applyPendingMigrations(db: Database.Database): number {
 
   const runMigrations = db.transaction(() => {
     for (const migration of pending) {
-      console.log(`[DB] Running migration ${migration.version}: ${migration.name}`);
+      console.error(`[DB] Running migration ${migration.version}: ${migration.name}`);
       migration.up(db);
       db.prepare('INSERT INTO schema_migrations (version, name, applied_at) VALUES (?, ?, ?)').run(
         migration.version,
@@ -373,6 +382,6 @@ export function applyPendingMigrations(db: Database.Database): number {
   });
 
   runMigrations();
-  console.log(`[DB] ${pending.length} migration(s) applied successfully`);
+  console.error(`[DB] ${pending.length} migration(s) applied successfully`);
   return pending.length;
 }

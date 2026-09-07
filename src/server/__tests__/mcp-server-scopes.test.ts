@@ -390,6 +390,10 @@ describe('stdio MCP server', () => {
     });
 
     const pending = new Map<number, (value: Record<string, unknown>) => void>();
+    // Every stdout line that is not JSON-RPC. `DATABASE_PATH=:memory:` means the
+    // child migrates a fresh schema on every spawn, so this is exactly the first
+    // run that used to print `[DB] Running migration 1: …` ahead of any frame.
+    const nonJsonLines: string[] = [];
     let buffer = '';
     child.stdout.on('data', (chunk: Buffer) => {
       buffer += chunk.toString('utf8');
@@ -397,8 +401,10 @@ describe('stdio MCP server', () => {
       while (index !== -1) {
         const line = buffer.slice(0, index).trim();
         buffer = buffer.slice(index + 1);
-        // The DB migration logger writes plain text to stdout on first run, so
-        // anything that is not JSON-RPC is skipped rather than parsed.
+        // stdout carries JSON-RPC only (the migration logger writes to stderr,
+        // BACKLOG #150); anything else is recorded and asserted on below rather
+        // than parsed.
+        if (line !== '' && !line.startsWith('{')) nonJsonLines.push(line);
         if (line.startsWith('{')) {
           const message = JSON.parse(line) as { id?: number };
           if (typeof message.id === 'number') {
@@ -438,6 +444,10 @@ describe('stdio MCP server', () => {
       expect(resultText(result)).not.toContain('requires the "write" scope');
       expect(result.isError).toBeFalsy();
       expect((JSON.parse(resultText(result)) as { name: string }).name).toBe('spawned');
+      // stdout is the JSON-RPC channel itself: nothing but frames may travel on
+      // it, not even the migration progress this very run produces (BACKLOG
+      // #150 — it went to stdout until the logger moved to stderr).
+      expect(nonJsonLines).toEqual([]);
     } finally {
       child.kill('SIGKILL');
     }
@@ -459,11 +469,25 @@ describe('MCP scope-gate structure', () => {
     expect(occurrences).toHaveLength(1);
   });
 
+  it('keeps the full-trust stdio context unexported', () => {
+    // BACKLOG #149: while LOCAL_STDIO_AUTH was exported, any module could write
+    // `createMcpServer(db, baseUrl, LOCAL_STDIO_AUTH)` and undo the scope gate,
+    // and only a source-text scan of src/app/** stood in the way. It is now
+    // module-private behind createLocalStdioMcpServer(), which is the guarantee
+    // this asserts — a re-export would put the escape hatch back.
+    expect(mcpServerSource).not.toMatch(/export\s+(const|declare const)\s+LOCAL_STDIO_AUTH\b/);
+    expect(mcpServerSource).toMatch(/export function createLocalStdioMcpServer\(/);
+    // The factory takes no auth argument, so a caller cannot smuggle one in.
+    expect(mcpServerSource).toMatch(
+      /export function createLocalStdioMcpServer\(\s*db: ClawStashDB,?\s*\)/,
+    );
+  });
+
   it('keeps the full-trust stdio context out of every request-served module', () => {
-    // LOCAL_STDIO_AUTH grants every scope unconditionally. It belongs to the
-    // locally spawned stdio process only — importing it anywhere under
-    // src/app/** (routes, pages) would hand an HTTP caller full trust and undo
-    // this whole fix. See BACKLOG #149 for the stronger factory-based fix.
+    // Defence in depth behind the export guard above: importing the identifier
+    // anywhere under src/app/** (routes, pages) would hand an HTTP caller full
+    // trust. With the constant private such an import no longer resolves, so
+    // this scan now catches the re-export-and-use case in one step.
     const appDir = new URL('../../app/', import.meta.url);
     const offenders: string[] = [];
     const walk = (dir: URL, prefix: string) => {
