@@ -2361,7 +2361,8 @@ body {
   color: var(--accent-blue);
 }
 
-.viewer-files-collapse-all {
+.viewer-files-collapse-all,
+.viewer-files-download-all {
   display: inline-flex;
   align-items: center;
   gap: 6px;

@@ -79,6 +79,17 @@ function setEditorWrapPreference(enabled: boolean): void {
   }
 }
 
+/**
+ * One-line summary of a file whose editor is folded away: size and line count,
+ * or just "empty" — "empty · 1 line" would be a contradiction. Size is measured
+ * in string length, the same measure the save-time oversize check uses.
+ */
+function describeFileContent(content: string): string {
+  if (!content) return 'empty';
+  const lines = content.split('\n').length;
+  return `${formatBytes(content.length)} · ${lines} line${lines !== 1 ? 's' : ''}`;
+}
+
 function InfoIcon({ tooltip }: { tooltip: string }) {
   return (
     <span className="info-icon" title={tooltip}>
@@ -1028,11 +1039,9 @@ export default function StashEditor({ stash, template, onSave, onCancel, onDirty
                     className="editor-file-collapsed-summary"
                     onClick={() => toggleFileCollapsed(fileId)}
                     title={`Expand ${fileLabel}`}
+                    aria-label={`Expand ${fileLabel}`}
                   >
-                    {file.content ? formatBytes(file.content.length) : 'empty'}
-                    {' · '}
-                    {file.content.split('\n').length} line
-                    {file.content.split('\n').length !== 1 ? 's' : ''}
+                    {describeFileContent(file.content)}
                   </button>
                 ) : (
                   <div className="code-editor-wrapper" id={`stash-file-editor-${fileId}`}>

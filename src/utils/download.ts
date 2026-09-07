@@ -50,10 +50,12 @@ function resolveCanvasBackground(canvas: HTMLCanvasElement): string {
   if (typeof getComputedStyle !== 'function') return CANVAS_EXPORT_FALLBACK_BG;
   const host = canvas.parentElement ?? canvas;
   const background = getComputedStyle(host).backgroundColor;
-  // `transparent` and any zero-alpha rgba() would export as transparency again.
-  if (background && background !== 'transparent' && !/,\s*0\s*\)$/.test(background)) {
-    return background;
-  }
+  // `transparent` and any fully transparent rgba() would export as
+  // transparency again. Anchored to the rgba() form on purpose: a bare
+  // `rgb(21, 27, 0)` also ends in ", 0)" and is perfectly opaque.
+  const invisible =
+    !background || background === 'transparent' || /^rgba\(.*,\s*0(\.0+)?\s*\)$/.test(background);
+  if (!invisible) return background;
   const variable = getComputedStyle(document.documentElement)
     .getPropertyValue('--bg-secondary')
     .trim();
