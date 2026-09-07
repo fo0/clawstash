@@ -390,6 +390,10 @@ describe('stdio MCP server', () => {
     });
 
     const pending = new Map<number, (value: Record<string, unknown>) => void>();
+    // Every stdout line that is not JSON-RPC. `DATABASE_PATH=:memory:` means the
+    // child migrates a fresh schema on every spawn, so this is exactly the first
+    // run that used to print `[DB] Running migration 1: …` ahead of any frame.
+    const nonJsonLines: string[] = [];
     let buffer = '';
     child.stdout.on('data', (chunk: Buffer) => {
       buffer += chunk.toString('utf8');
@@ -397,8 +401,10 @@ describe('stdio MCP server', () => {
       while (index !== -1) {
         const line = buffer.slice(0, index).trim();
         buffer = buffer.slice(index + 1);
-        // The DB migration logger writes plain text to stdout on first run, so
-        // anything that is not JSON-RPC is skipped rather than parsed.
+        // stdout carries JSON-RPC only (the migration logger writes to stderr,
+        // BACKLOG #150); anything else is recorded and asserted on below rather
+        // than parsed.
+        if (line !== '' && !line.startsWith('{')) nonJsonLines.push(line);
         if (line.startsWith('{')) {
           const message = JSON.parse(line) as { id?: number };
           if (typeof message.id === 'number') {
@@ -438,6 +444,10 @@ describe('stdio MCP server', () => {
       expect(resultText(result)).not.toContain('requires the "write" scope');
       expect(result.isError).toBeFalsy();
       expect((JSON.parse(resultText(result)) as { name: string }).name).toBe('spawned');
+      // stdout is the JSON-RPC channel itself: nothing but frames may travel on
+      // it, not even the migration progress this very run produces (BACKLOG
+      // #150 — it went to stdout until the logger moved to stderr).
+      expect(nonJsonLines).toEqual([]);
     } finally {
       child.kill('SIGKILL');
     }
