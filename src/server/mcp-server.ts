@@ -48,10 +48,32 @@ export interface McpAuthContext {
  * a fresh array precisely "so callers can mutate without poisoning the shared
  * constant" (see `auth.ts`), and a full-trust constant that any importer could
  * mutate would reintroduce exactly that hazard one level up.
+ *
+ * NOT exported: `createLocalStdioMcpServer()` below is the only door to it, so
+ * an HTTP path cannot import full local trust and hand it to `createMcpServer`
+ * (BACKLOG #149).
  */
-export const LOCAL_STDIO_AUTH: McpAuthContext = Object.freeze({
+const LOCAL_STDIO_AUTH: McpAuthContext = Object.freeze({
   scopes: Object.freeze(allScopes()),
 });
+
+/**
+ * The single door to a full-trust MCP server: the locally spawned stdio process.
+ *
+ * Takes no auth argument on purpose. While `LOCAL_STDIO_AUTH` was exported,
+ * nothing mechanical stopped a future request-served module from writing
+ * `createMcpServer(db, baseUrl, LOCAL_STDIO_AUTH)` and silently undoing the MCP
+ * scope gate — the guard against it was a test that greps `src/app/**` for the
+ * identifier. With the constant module-private, an HTTP path has no way to
+ * reach full trust: it can only call `createMcpServer` and must pass the scopes
+ * its own caller actually holds.
+ *
+ * No `baseUrl`: stdio has no request to derive one from, so `createMcpServer`
+ * falls back to the local port for the spec-emitting tools, exactly as before.
+ */
+export function createLocalStdioMcpServer(db: ClawStashDB): McpServer {
+  return createMcpServer(db, undefined, LOCAL_STDIO_AUTH);
+}
 
 /** Tool handler shape. Args are validated against the tool's Zod schema by the SDK. */
 type ToolHandler = (args: Record<string, any>) => Promise<CallToolResult>;

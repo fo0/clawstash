@@ -469,11 +469,25 @@ describe('MCP scope-gate structure', () => {
     expect(occurrences).toHaveLength(1);
   });
 
+  it('keeps the full-trust stdio context unexported', () => {
+    // BACKLOG #149: while LOCAL_STDIO_AUTH was exported, any module could write
+    // `createMcpServer(db, baseUrl, LOCAL_STDIO_AUTH)` and undo the scope gate,
+    // and only a source-text scan of src/app/** stood in the way. It is now
+    // module-private behind createLocalStdioMcpServer(), which is the guarantee
+    // this asserts — a re-export would put the escape hatch back.
+    expect(mcpServerSource).not.toMatch(/export\s+(const|declare const)\s+LOCAL_STDIO_AUTH\b/);
+    expect(mcpServerSource).toMatch(/export function createLocalStdioMcpServer\(/);
+    // The factory takes no auth argument, so a caller cannot smuggle one in.
+    expect(mcpServerSource).toMatch(
+      /export function createLocalStdioMcpServer\(\s*db: ClawStashDB,?\s*\)/,
+    );
+  });
+
   it('keeps the full-trust stdio context out of every request-served module', () => {
-    // LOCAL_STDIO_AUTH grants every scope unconditionally. It belongs to the
-    // locally spawned stdio process only — importing it anywhere under
-    // src/app/** (routes, pages) would hand an HTTP caller full trust and undo
-    // this whole fix. See BACKLOG #149 for the stronger factory-based fix.
+    // Defence in depth behind the export guard above: importing the identifier
+    // anywhere under src/app/** (routes, pages) would hand an HTTP caller full
+    // trust. With the constant private such an import no longer resolves, so
+    // this scan now catches the re-export-and-use case in one step.
     const appDir = new URL('../../app/', import.meta.url);
     const offenders: string[] = [];
     const walk = (dir: URL, prefix: string) => {
