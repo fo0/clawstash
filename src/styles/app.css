@@ -3046,6 +3046,32 @@ body {
   align-items: center;
 }
 
+/* A folded file keeps its header row but drops the separator, so a run of
+   collapsed files reads as a list instead of a stack of boxed headers —
+   same treatment the viewer gives `.viewer-file-collapsed`. */
+.editor-file-collapsed .editor-file-header {
+  border-bottom: none;
+}
+
+/* Clickable summary line that replaces the code editor while a file is folded.
+   Styled as a quiet strip rather than a button so it reads as part of the
+   collapsed row; it stays a real <button> for keyboard and assistive tech. */
+.editor-file-collapsed-summary {
+  display: block;
+  width: 100%;
+  padding: 6px 16px 8px 40px;
+  border: none;
+  background: var(--bg-secondary);
+  color: var(--text-secondary);
+  font-size: 12px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.editor-file-collapsed-summary:hover {
+  color: var(--text-primary);
+}
+
 .file-name-input {
   flex: 1;
   min-width: 0;
