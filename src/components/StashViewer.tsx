@@ -29,6 +29,7 @@ import {
 import { formatBytes } from '../utils/format';
 import { escapeHtml } from '../utils/html';
 import { buildStashUrl } from '../utils/stash-url';
+import { buildAllFilesText, bundleFilename } from '../utils/stash-bundle';
 import MermaidDiagram from './MermaidDiagram';
 import MarkdownBody from './MarkdownBody';
 import Spinner from './shared/Spinner';
@@ -842,10 +843,17 @@ export default function StashViewer({
   }, [renderedContent, renderOverrides, activeTab, collapsedFiles]);
 
   const copyAllFiles = () => {
-    const allContent = stash.files
-      .map((f) => `// === ${f.filename} ===\n${f.content}`)
-      .join('\n\n');
-    copyAllClipboard.copy(allContent);
+    copyAllClipboard.copy(buildAllFilesText(stash.files));
+  };
+
+  /**
+   * Save every file of the stash as one text file. Downloading a multi-file
+   * stash meant one click per file (and browsers throttle a burst of them), so
+   * the bundle "Copy All" already builds is offered on disk too — same format,
+   * one download.
+   */
+  const downloadAllFiles = () => {
+    downloadTextFile(bundleFilename(stash), buildAllFilesText(stash.files));
   };
 
   /**
@@ -1340,6 +1348,19 @@ export default function StashViewer({
                   </button>
                 ))}
               </nav>
+              {/* Saving a multi-file stash meant one Download click per file,
+                  and browsers throttle a burst of them. One file, same bundle
+                  the "Copy All" button puts on the clipboard. */}
+              <button
+                type="button"
+                className="btn btn-sm btn-ghost viewer-files-download-all"
+                onClick={downloadAllFiles}
+                title={`Download all ${stash.files.length} files as one text file (${bundleFilename(stash)})`}
+                aria-label={`Download all ${stash.files.length} files as one text file`}
+              >
+                <DownloadIcon size={12} />
+                Download all
+              </button>
               <button
                 type="button"
                 className="btn btn-sm btn-ghost viewer-files-collapse-all"

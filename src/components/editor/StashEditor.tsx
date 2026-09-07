@@ -79,6 +79,17 @@ function setEditorWrapPreference(enabled: boolean): void {
   }
 }
 
+/**
+ * One-line summary of a file whose editor is folded away: size and line count,
+ * or just "empty" — "empty · 1 line" would be a contradiction. Size is measured
+ * in string length, the same measure the save-time oversize check uses.
+ */
+function describeFileContent(content: string): string {
+  if (!content) return 'empty';
+  const lines = content.split('\n').length;
+  return `${formatBytes(content.length)} · ${lines} line${lines !== 1 ? 's' : ''}`;
+}
+
 function InfoIcon({ tooltip }: { tooltip: string }) {
   return (
     <span className="info-icon" title={tooltip}>
@@ -119,6 +130,12 @@ export default function StashEditor({ stash, template, onSave, onCancel, onDirty
   // Soft-wrap long lines in the file editors (persisted, applies to all files
   // of the stash — same scope as the viewer's wrap toggle).
   const [wrapLines, setWrapLines] = useState<boolean>(getEditorWrapPreference);
+  // Ids (see `fileIds` below) of the files whose editor is folded away. A
+  // stash may hold up to 100 files and every one of them renders a full code
+  // editor, so editing file 9 of 12 meant scrolling past eight open editors —
+  // the viewer has offered per-file collapse all along. Not persisted: it is a
+  // per-session working state, like the viewer's.
+  const [collapsedFiles, setCollapsedFiles] = useState<Set<number>>(new Set());
   // File import (picker + drag & drop): in-flight flag, drag highlight, and
   // the per-file reasons for anything the import refused.
   const [importing, setImporting] = useState(false);
@@ -246,6 +263,8 @@ export default function StashEditor({ stash, template, onSave, onCancel, onDirty
     // Fresh ids so every file editor remounts with the restored content
     // instead of reusing the row that happened to sit at the same index.
     fileIds.current = restoredFiles.map(() => fileIdCounter.current++);
+    // The old ids are gone with the old rows — start the restored files unfolded.
+    setCollapsedFiles(new Set());
     // The restored content differs from what the server holds, and the first
     // filename came from the draft — keep the name auto-fill off.
     setFirstFileManuallyEdited(true);
@@ -312,6 +331,31 @@ export default function StashEditor({ stash, template, onSave, onCancel, onDirty
       setEditorWrapPreference(next);
       return next;
     });
+  };
+
+  /**
+   * Fold a single file's editor away (or unfold it). Only the code editor is
+   * hidden — the filename and language inputs stay editable in the header, and
+   * the content itself lives in `files` state, so folding never touches it.
+   */
+  const toggleFileCollapsed = useCallback((fileId: number) => {
+    setCollapsedFiles((prev) => {
+      const next = new Set(prev);
+      if (next.has(fileId)) next.delete(fileId);
+      else next.add(fileId);
+      return next;
+    });
+  }, []);
+
+  // True when every file on screen is folded. Checked against the live id list
+  // rather than by comparing sizes, so an id left over from a removed row can
+  // never make the master toggle claim the wrong state.
+  const allFilesCollapsed =
+    files.length > 0 && fileIds.current.every((id) => collapsedFiles.has(id));
+
+  /** Fold every file away, or — when all of them already are — unfold them all. */
+  const toggleAllFilesCollapsed = () => {
+    setCollapsedFiles(allFilesCollapsed ? new Set() : new Set(fileIds.current));
   };
 
   /**
@@ -401,7 +445,15 @@ export default function StashEditor({ stash, template, onSave, onCancel, onDirty
     markDirty();
     setConfirmRemoveIndex(null);
     setFiles(files.filter((_, i) => i !== index));
-    fileIds.current.splice(index, 1);
+    const [removedId] = fileIds.current.splice(index, 1);
+    // Drop the removed row's collapse flag — a stale id would otherwise sit in
+    // the set forever and could be handed back to a later file if ids ever wrap.
+    setCollapsedFiles((prev) => {
+      if (!prev.has(removedId)) return prev;
+      const next = new Set(prev);
+      next.delete(removedId);
+      return next;
+    });
   };
 
   const updateFile = useCallback((index: number, field: keyof FileInput, value: string) => {
@@ -772,6 +824,28 @@ export default function StashEditor({ stash, template, onSave, onCancel, onDirty
               <InfoIcon tooltip="Each stash can contain one or more files. Files are the actual content you want to store — code snippets, configs, prompts, or any text. The language is auto-detected from the file extension." />
             </h3>
             <div className="files-header-actions">
+              {files.length > 1 && (
+                <button
+                  type="button"
+                  className="btn btn-sm btn-ghost editor-files-collapse-all"
+                  onClick={toggleAllFilesCollapsed}
+                  aria-expanded={!allFilesCollapsed}
+                  title={allFilesCollapsed ? 'Expand all files' : 'Collapse all files'}
+                  aria-label={allFilesCollapsed ? 'Expand all files' : 'Collapse all files'}
+                >
+                  <svg
+                    width="12"
+                    height="12"
+                    viewBox="0 0 16 16"
+                    fill="currentColor"
+                    className={`file-collapse-chevron ${allFilesCollapsed ? '' : 'expanded'}`}
+                    aria-hidden="true"
+                  >
+                    <path d="M6.22 3.22a.75.75 0 0 1 1.06 0l4.25 4.25a.75.75 0 0 1 0 1.06l-4.25 4.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042L9.94 8 6.22 4.28a.75.75 0 0 1 0-1.06Z" />
+                  </svg>
+                  {allFilesCollapsed ? 'Expand all' : 'Collapse all'}
+                </button>
+              )}
               <button
                 className={`btn btn-sm btn-ghost wrap-toggle ${wrapLines ? 'wrap-active' : ''}`}
                 onClick={toggleWrapLines}
@@ -875,69 +949,113 @@ export default function StashEditor({ stash, template, onSave, onCancel, onDirty
             </div>
           )}
 
-          {files.map((file, index) => (
-            <div key={fileIds.current[index]} className="editor-file">
-              <div className="editor-file-header">
-                <input
-                  id={`stash-file-name-${fileIds.current[index]}`}
-                  type="text"
-                  value={file.filename}
-                  onChange={(e) => updateFile(index, 'filename', e.target.value)}
-                  placeholder="filename.ext"
-                  className="form-input file-name-input"
-                  // Mirrors MAX_FILENAME_LENGTH in server/validation.ts.
-                  maxLength={MAX_FILENAME_LENGTH}
-                  aria-label={`File ${index + 1} filename`}
-                  title="Filename with extension (e.g. config.yml, main.py). The language is auto-detected from the extension."
-                />
-                <input
-                  type="text"
-                  value={file.language}
-                  onChange={(e) => updateFile(index, 'language', e.target.value)}
-                  placeholder="language (auto)"
-                  className="form-input file-lang-input"
-                  aria-label={`File ${index + 1} language`}
-                  title="Programming language. Leave blank to auto-detect from the file extension."
-                />
-                {files.length > 1 &&
-                  (confirmRemoveIndex === index ? (
-                    <button
-                      className="btn btn-sm btn-danger btn-remove"
-                      onClick={() => removeFile(index)}
-                      title="This file has content — click again to remove it"
-                      aria-label="Confirm removing this file and its content"
+          {files.map((file, index) => {
+            const fileId = fileIds.current[index];
+            const collapsed = collapsedFiles.has(fileId);
+            const fileLabel = file.filename.trim() || `file ${index + 1}`;
+            return (
+              <div
+                key={fileId}
+                className={`editor-file${collapsed ? ' editor-file-collapsed' : ''}`}
+              >
+                <div className="editor-file-header">
+                  <button
+                    type="button"
+                    className="btn btn-sm btn-ghost file-collapse-toggle"
+                    onClick={() => toggleFileCollapsed(fileId)}
+                    aria-expanded={!collapsed}
+                    aria-controls={`stash-file-editor-${fileId}`}
+                    title={collapsed ? `Expand ${fileLabel}` : `Collapse ${fileLabel}`}
+                    aria-label={collapsed ? `Expand ${fileLabel}` : `Collapse ${fileLabel}`}
+                  >
+                    <svg
+                      width="12"
+                      height="12"
+                      viewBox="0 0 16 16"
+                      fill="currentColor"
+                      className={`file-collapse-chevron ${collapsed ? '' : 'expanded'}`}
+                      aria-hidden="true"
                     >
-                      Remove?
-                    </button>
-                  ) : (
-                    <button
-                      className="btn btn-sm btn-ghost btn-remove"
-                      onClick={() => removeFile(index)}
-                      title="Remove this file"
-                      aria-label="Remove this file"
-                    >
-                      <svg
-                        aria-hidden="true"
-                        width="14"
-                        height="14"
-                        viewBox="0 0 16 16"
-                        fill="currentColor"
+                      <path d="M6.22 3.22a.75.75 0 0 1 1.06 0l4.25 4.25a.75.75 0 0 1 0 1.06l-4.25 4.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042L9.94 8 6.22 4.28a.75.75 0 0 1 0-1.06Z" />
+                    </svg>
+                  </button>
+                  <input
+                    id={`stash-file-name-${fileIds.current[index]}`}
+                    type="text"
+                    value={file.filename}
+                    onChange={(e) => updateFile(index, 'filename', e.target.value)}
+                    placeholder="filename.ext"
+                    className="form-input file-name-input"
+                    // Mirrors MAX_FILENAME_LENGTH in server/validation.ts.
+                    maxLength={MAX_FILENAME_LENGTH}
+                    aria-label={`File ${index + 1} filename`}
+                    title="Filename with extension (e.g. config.yml, main.py). The language is auto-detected from the extension."
+                  />
+                  <input
+                    type="text"
+                    value={file.language}
+                    onChange={(e) => updateFile(index, 'language', e.target.value)}
+                    placeholder="language (auto)"
+                    className="form-input file-lang-input"
+                    aria-label={`File ${index + 1} language`}
+                    title="Programming language. Leave blank to auto-detect from the file extension."
+                  />
+                  {files.length > 1 &&
+                    (confirmRemoveIndex === index ? (
+                      <button
+                        className="btn btn-sm btn-danger btn-remove"
+                        onClick={() => removeFile(index)}
+                        title="This file has content — click again to remove it"
+                        aria-label="Confirm removing this file and its content"
                       >
-                        <path d="M11 1.75V3h2.25a.75.75 0 0 1 0 1.5H2.75a.75.75 0 0 1 0-1.5H5V1.75C5 .784 5.784 0 6.75 0h2.5C10.216 0 11 .784 11 1.75ZM4.496 6.675l.66 6.6a.25.25 0 0 0 .249.225h5.19a.25.25 0 0 0 .249-.225l.66-6.6a.75.75 0 0 1 1.492.149l-.66 6.6A1.748 1.748 0 0 1 10.595 15h-5.19a1.75 1.75 0 0 1-1.741-1.575l-.66-6.6a.75.75 0 1 1 1.492-.15ZM6.5 1.75V3h3V1.75a.25.25 0 0 0-.25-.25h-2.5a.25.25 0 0 0-.25.25Z" />
-                      </svg>
-                    </button>
-                  ))}
+                        Remove?
+                      </button>
+                    ) : (
+                      <button
+                        className="btn btn-sm btn-ghost btn-remove"
+                        onClick={() => removeFile(index)}
+                        title="Remove this file"
+                        aria-label="Remove this file"
+                      >
+                        <svg
+                          aria-hidden="true"
+                          width="14"
+                          height="14"
+                          viewBox="0 0 16 16"
+                          fill="currentColor"
+                        >
+                          <path d="M11 1.75V3h2.25a.75.75 0 0 1 0 1.5H2.75a.75.75 0 0 1 0-1.5H5V1.75C5 .784 5.784 0 6.75 0h2.5C10.216 0 11 .784 11 1.75ZM4.496 6.675l.66 6.6a.25.25 0 0 0 .249.225h5.19a.25.25 0 0 0 .249-.225l.66-6.6a.75.75 0 0 1 1.492.149l-.66 6.6A1.748 1.748 0 0 1 10.595 15h-5.19a1.75 1.75 0 0 1-1.741-1.575l-.66-6.6a.75.75 0 1 1 1.492-.15ZM6.5 1.75V3h3V1.75a.25.25 0 0 0-.25-.25h-2.5a.25.25 0 0 0-.25.25Z" />
+                        </svg>
+                      </button>
+                    ))}
+                </div>
+                {collapsed ? (
+                  // Folded: name what is hidden, so a wall of headers still says
+                  // which file is the big one. Length, not bytes on the wire —
+                  // the same measure the save-time size check uses.
+                  <button
+                    type="button"
+                    id={`stash-file-editor-${fileId}`}
+                    className="editor-file-collapsed-summary"
+                    onClick={() => toggleFileCollapsed(fileId)}
+                    title={`Expand ${fileLabel}`}
+                    aria-label={`Expand ${fileLabel}`}
+                  >
+                    {describeFileContent(file.content)}
+                  </button>
+                ) : (
+                  <div className="code-editor-wrapper" id={`stash-file-editor-${fileId}`}>
+                    <FileCodeEditor
+                      file={file}
+                      index={index}
+                      updateFile={updateFile}
+                      wrap={wrapLines}
+                    />
+                  </div>
+                )}
               </div>
-              <div className="code-editor-wrapper">
-                <FileCodeEditor
-                  file={file}
-                  index={index}
-                  updateFile={updateFile}
-                  wrap={wrapLines}
-                />
-              </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </div>
     </div>
