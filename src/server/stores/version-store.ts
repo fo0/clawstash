@@ -326,7 +326,15 @@ export class VersionStore {
     if (result.changes > 0) {
       // Deleting user data is never silent: say how much went, for which
       // stash, and which limit caused it.
-      console.log(
+      //
+      // stderr, not stdout: this store also runs inside the stdio MCP process
+      // (`npm run mcp` → src/server/mcp.ts), where stdout IS the JSON-RPC
+      // channel. A prune is triggered by the very writes an agent performs
+      // over MCP (create_stash / update_stash → insertVersionSnapshot), so a
+      // `console.log` here injects a non-JSON line into the protocol stream
+      // and breaks the session. Every other diagnostic on this path already
+      // uses console.error/warn for the same reason.
+      console.error(
         `[DB] Pruned ${result.changes} version snapshot(s) of stash ${stashId} (STASH_VERSION_LIMIT=${this.versionLimit})`,
       );
     }
