@@ -69,7 +69,7 @@ export default function McpTab({
               className="btn btn-ghost btn-sm"
               href={`${baseUrl}/api/agent-skill`}
               target="_blank"
-              rel="noreferrer"
+              rel="noopener noreferrer"
               title="Open the SKILL.md this instance serves to agents (new tab)"
               // The global anchor rule underlines it; as a .btn it should read
               // like its button siblings.

@@ -19,6 +19,21 @@ const REQUEST_TIMEOUT_MS = 30_000;
 // larger files go through the blob endpoint as base64.
 const INLINE_CONTENT_MAX_CHARS = 256 * 1024;
 
+/**
+ * Build a `/repos/{owner}/{repo}` path with both segments percent-encoded.
+ *
+ * `repoOwner` / `repoName` are pattern-validated in `server/validation.ts`, so
+ * today every value reaching this client is already URL-safe. Encoding them
+ * here makes the URL construction correct on its own terms instead of relying
+ * on a guard one layer up: a segment carrying `/` or `..` would otherwise
+ * re-target the request at a different API endpoint rather than producing a
+ * clean 404. Two call sites already encoded their ref segment; this makes the
+ * rule uniform across the client and removes the repeated prefix.
+ */
+function repoPath(owner: string, repo: string, suffix = ''): string {
+  return `/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}${suffix}`;
+}
+
 export class GitHubApiError extends Error {
   constructor(
     public readonly status: number,
@@ -142,7 +157,7 @@ export class GitHubClient {
   }
 
   async getRepo(owner: string, repo: string): Promise<RepoInfo> {
-    const data = (await this.request('GET', `/repos/${owner}/${repo}`)) as {
+    const data = (await this.request('GET', repoPath(owner, repo))) as {
       full_name: string;
       default_branch: string;
       private: boolean;
@@ -184,7 +199,7 @@ export class GitHubClient {
   }
 
   async listBranches(owner: string, repo: string): Promise<string[]> {
-    const data = (await this.request('GET', `/repos/${owner}/${repo}/branches?per_page=100`)) as {
+    const data = (await this.request('GET', repoPath(owner, repo, '/branches?per_page=100'))) as {
       name: string;
     }[];
     return data.map((b) => b.name);
@@ -197,7 +212,7 @@ export class GitHubClient {
     try {
       const data = (await this.request(
         'GET',
-        `/repos/${owner}/${repo}/git/ref/${encodeURIComponent(`heads/${branch}`)}`,
+        repoPath(owner, repo, `/git/ref/${encodeURIComponent(`heads/${branch}`)}`),
       )) as { object: { sha: string } };
       return data.object.sha;
     } catch (err) {
@@ -210,7 +225,7 @@ export class GitHubClient {
   async getCommitTreeSha(owner: string, repo: string, commitSha: string): Promise<string> {
     const data = (await this.request(
       'GET',
-      `/repos/${owner}/${repo}/git/commits/${commitSha}`,
+      repoPath(owner, repo, `/git/commits/${encodeURIComponent(commitSha)}`),
     )) as { tree: { sha: string } };
     return data.tree.sha;
   }
@@ -223,7 +238,7 @@ export class GitHubClient {
   ): Promise<{ paths: Set<string>; truncated: boolean }> {
     const data = (await this.request(
       'GET',
-      `/repos/${owner}/${repo}/git/trees/${treeSha}?recursive=1`,
+      repoPath(owner, repo, `/git/trees/${encodeURIComponent(treeSha)}?recursive=1`),
     )) as { tree: { path: string; type: string }[]; truncated: boolean };
     const paths = new Set<string>();
     for (const entry of data.tree) {
@@ -233,7 +248,7 @@ export class GitHubClient {
   }
 
   async createBlob(owner: string, repo: string, content: string): Promise<string> {
-    const data = (await this.request('POST', `/repos/${owner}/${repo}/git/blobs`, {
+    const data = (await this.request('POST', repoPath(owner, repo, '/git/blobs'), {
       content: Buffer.from(content, 'utf8').toString('base64'),
       encoding: 'base64',
     })) as { sha: string };
@@ -269,7 +284,7 @@ export class GitHubClient {
         tree.push({ path: entry.path, mode: '100644', type: 'blob', sha: entry.sha });
       }
     }
-    const data = (await this.request('POST', `/repos/${owner}/${repo}/git/trees`, {
+    const data = (await this.request('POST', repoPath(owner, repo, '/git/trees'), {
       tree,
       ...(baseTreeSha ? { base_tree: baseTreeSha } : {}),
     })) as { sha: string };
@@ -281,7 +296,7 @@ export class GitHubClient {
     repo: string,
     input: { message: string; treeSha: string; parents: string[]; author: CommitAuthor },
   ): Promise<string> {
-    const data = (await this.request('POST', `/repos/${owner}/${repo}/git/commits`, {
+    const data = (await this.request('POST', repoPath(owner, repo, '/git/commits'), {
       message: input.message,
       tree: input.treeSha,
       parents: input.parents,
@@ -291,7 +306,7 @@ export class GitHubClient {
   }
 
   async createRef(owner: string, repo: string, branch: string, sha: string): Promise<void> {
-    await this.request('POST', `/repos/${owner}/${repo}/git/refs`, {
+    await this.request('POST', repoPath(owner, repo, '/git/refs'), {
       ref: `refs/heads/${branch}`,
       sha,
     });
@@ -301,7 +316,7 @@ export class GitHubClient {
   async updateRef(owner: string, repo: string, branch: string, sha: string): Promise<void> {
     await this.request(
       'PATCH',
-      `/repos/${owner}/${repo}/git/refs/${encodeURIComponent(`heads/${branch}`)}`,
+      repoPath(owner, repo, `/git/refs/${encodeURIComponent(`heads/${branch}`)}`),
       { sha, force: false },
     );
   }

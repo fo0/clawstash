@@ -146,8 +146,10 @@ describe('stash_versions retention', () => {
     expect(versionNumbers(d, stashId)).toEqual([1, 2, 3, 4, 5, 6]);
   });
 
-  it('logs every prune with the count, the stash and the effective limit', () => {
-    const log = vi.spyOn(console, 'log').mockImplementation(() => {});
+  // The prune notice goes to stderr, never stdout: this store also runs in the
+  // stdio MCP process, where stdout carries the JSON-RPC frames.
+  it('logs every prune to stderr with the count, the stash and the effective limit', () => {
+    const log = vi.spyOn(console, 'error').mockImplementation(() => {});
     const d = openDb('2');
     const stashId = makeHistory(d, 5);
 
@@ -159,7 +161,7 @@ describe('stash_versions retention', () => {
   });
 
   it('stays silent while nothing is actually pruned', () => {
-    const log = vi.spyOn(console, 'log').mockImplementation(() => {});
+    const log = vi.spyOn(console, 'error').mockImplementation(() => {});
     const d = openDb('50');
     makeHistory(d, 4);
 
