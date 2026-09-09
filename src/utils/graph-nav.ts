@@ -1,8 +1,6 @@
 /** Where "back" out of the graph view leads. */
 export type GraphBackDecision =
-  | { type: 'home' }
-  | { type: 'switch'; stashId: string }
-  | { type: 'fetch'; stashId: string };
+  { type: 'home' } | { type: 'switch'; stashId: string } | { type: 'fetch'; stashId: string };
 
 /**
  * Pure decision behind App's `handleGraphBack` (also reached by Escape through
