@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
+import type { KeyboardEvent } from 'react';
 import type { ApiTab } from '../../types';
 import { api } from '../../api';
 import TokensTab from './TokensTab';
@@ -129,6 +130,30 @@ export default function ApiManager({ onBack, embedded }: Props) {
     { id: 'mcp', label: 'MCP API' },
   ];
 
+  // Arrow/Home/End navigation across the tabs, per the ARIA APG tabs pattern
+  // and matching the stash viewer's tablist. It is what makes the roving
+  // tabindex below usable: with only one tab in the tab order, the others are
+  // otherwise unreachable by keyboard. The handler sits on the tab buttons
+  // rather than the tablist container — the container is not a tab stop, so a
+  // key event can only originate on a tab anyway.
+  const handleTabKeyDown = (e: KeyboardEvent<HTMLButtonElement>) => {
+    const current = tabs.findIndex((t) => t.id === activeTab);
+    let nextIndex: number | null = null;
+    if (e.key === 'ArrowRight') nextIndex = (current + 1) % tabs.length;
+    else if (e.key === 'ArrowLeft') nextIndex = (current - 1 + tabs.length) % tabs.length;
+    else if (e.key === 'Home') nextIndex = 0;
+    else if (e.key === 'End') nextIndex = tabs.length - 1;
+    if (nextIndex === null) return;
+    e.preventDefault();
+    const next = tabs[nextIndex].id;
+    selectTab(next);
+    // The roving tabindex only updates after the re-render, so move focus on
+    // the next frame — otherwise focus would land on a tabIndex={-1} button.
+    requestAnimationFrame(() => {
+      document.getElementById(`api-tab-${next}`)?.focus();
+    });
+  };
+
   return (
     <div className={`api-manager ${embedded ? 'api-manager-embedded' : ''}`}>
       {/* Header - only shown in standalone mode */}
@@ -175,8 +200,10 @@ export default function ApiManager({ onBack, embedded }: Props) {
             role="tab"
             aria-selected={activeTab === tab.id}
             aria-controls={`api-panel-${tab.id}`}
+            tabIndex={activeTab === tab.id ? 0 : -1}
             className={`api-tab ${activeTab === tab.id ? 'active' : ''}`}
             onClick={() => selectTab(tab.id)}
+            onKeyDown={handleTabKeyDown}
           >
             {tab.label}
           </button>

@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import type { KeyboardEvent } from 'react';
 import type { BackupSettingsResponse } from '../../types';
 import { api } from '../../api';
 import Spinner from '../shared/Spinner';
@@ -60,6 +61,30 @@ export default function BackupSection() {
   const retryLoad = () => {
     setLoadError(null);
     setRetryNonce((n) => n + 1);
+  };
+
+  // Arrow/Home/End navigation across the tabs, per the ARIA APG tabs pattern
+  // and matching the stash viewer and the API manager. It is what makes the
+  // roving tabindex below usable: with only one tab in the tab order, the
+  // others are otherwise unreachable by keyboard. The handler sits on the tab
+  // buttons rather than the tablist container — the container is not a tab
+  // stop, so a key event can only originate on a tab anyway.
+  const handleTabKeyDown = (e: KeyboardEvent<HTMLButtonElement>) => {
+    const current = TABS.findIndex((t) => t.id === activeTab);
+    let nextIndex: number | null = null;
+    if (e.key === 'ArrowRight') nextIndex = (current + 1) % TABS.length;
+    else if (e.key === 'ArrowLeft') nextIndex = (current - 1 + TABS.length) % TABS.length;
+    else if (e.key === 'Home') nextIndex = 0;
+    else if (e.key === 'End') nextIndex = TABS.length - 1;
+    if (nextIndex === null) return;
+    e.preventDefault();
+    const next = TABS[nextIndex].id;
+    setActiveTab(next);
+    // The roving tabindex only updates after the re-render, so move focus on
+    // the next frame — otherwise focus would land on a tabIndex={-1} button.
+    requestAnimationFrame(() => {
+      document.getElementById(`backup-tab-${next}`)?.focus();
+    });
   };
 
   useEffect(() => {
@@ -146,8 +171,10 @@ export default function BackupSection() {
                   aria-selected={activeTab === tab.id}
                   // The alert dot is visual-only — mirror it for screen readers.
                   aria-label={showAlert ? `${tab.label} — has sync failures` : undefined}
+                  tabIndex={activeTab === tab.id ? 0 : -1}
                   className={`api-tab ${activeTab === tab.id ? 'active' : ''}`}
                   onClick={() => setActiveTab(tab.id)}
+                  onKeyDown={handleTabKeyDown}
                 >
                   {tab.label}
                   {showAlert && (

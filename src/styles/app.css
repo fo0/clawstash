@@ -8,6 +8,15 @@
 }
 
 :root {
+  /* ClawStash ships a single dark palette, but the browser was never told:
+     without this, user-agent UI keeps rendering from the light palette on top
+     of a dark page — the native <select> drop-down lists (sort order, backup
+     interval, delete mode), the un-skinned checkbox in the backup settings,
+     the login field's autofill highlight, and the scrollbars in every engine
+     that ignores ::-webkit-scrollbar. One declaration switches all of them to
+     their dark form; nothing the app styles itself is affected. */
+  color-scheme: dark;
+
   --bg-primary: #0d1117;
   --bg-secondary: #151b23;
   --bg-tertiary: #1c2333;
