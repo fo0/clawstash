@@ -245,7 +245,13 @@ function createMdParser(headingIdPrefix: string): Marked {
         const finalSlug = headingIdPrefix + slug;
         const rendered = this.parser.parseInline(tokens);
         const safeSlug = escapeHtml(finalSlug);
-        return `<h${depth} id="${safeSlug}"><a class="heading-anchor" href="#${safeSlug}" aria-hidden="true">#</a>${rendered}</h${depth}>\n`;
+        // tabindex="-1": the anchor is aria-hidden AND invisible until the
+        // heading is hovered (`.heading-anchor` is `color: transparent`), so a
+        // tab stop here parks focus on something assistive tech is told does
+        // not exist and sighted keyboard users cannot see — the classic
+        // aria-hidden-focus failure (WCAG 4.1.2 / 2.4.7). Pointer users keep
+        // the anchor; it just stops being a tab stop.
+        return `<h${depth} id="${safeSlug}"><a class="heading-anchor" href="#${safeSlug}" aria-hidden="true" tabindex="-1">#</a>${rendered}</h${depth}>\n`;
       },
       // Open external links in a new tab; keep anchor links in-page
       link({ href, title, tokens }) {
