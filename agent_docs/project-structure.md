@@ -192,6 +192,7 @@ clawstash/
 │   │   ├── favorites.ts        # Favorite-stash localStorage helpers
 │   │   ├── file-import.ts      # Drop/pick file reading for the editor: filename sanitization, caps, rejection reasons
 │   │   ├── format.ts           # Date formatting (formatDate, formatDateTime, formatRelativeTime)
+│   │   ├── graph-nav.ts        # Pure decision for leaving the graph view -- origin stash vs. dashboard
 │   │   ├── highlight.ts        # Split text into matched/unmatched segments to <mark> search terms
 │   │   ├── html.ts             # HTML sanitization helpers
 │   │   ├── link-click.ts       # `isModifiedClick()` -- let the browser handle Ctrl/Cmd/Shift/middle-click on SPA `<a href>` rows
