@@ -16,6 +16,7 @@ import { loadShowArchived, saveShowArchived } from './utils/archived';
 import { recordRecentView } from './utils/recent-views';
 import { SEARCH_DEBOUNCE_MS, STASH_PAGE_SIZE } from './utils/constants';
 import { decidePopState } from './utils/nav-guard';
+import { resolveGraphBack } from './utils/graph-nav';
 import { SIDEBAR_DEFAULT_WIDTH, loadSidebarWidth, saveSidebarWidth } from './utils/sidebar-width';
 import Sidebar from './components/Sidebar';
 import SidebarResizer from './components/SidebarResizer';
@@ -1000,20 +1001,20 @@ export default function App() {
   // "Analyze" button / deep link), otherwise to the dashboard. Previously every
   // path led home, so "open stash → Analyze → back" lost the stash.
   const handleGraphBack = () => {
-    const origin = graphOriginStashId;
-    if (!origin) {
+    const decision = resolveGraphBack(graphOriginStashId, selectedStash?.id);
+    if (decision.type === 'home') {
       handleGoHome();
       return;
     }
     setAnalyzeStashId(null);
-    if (selectedStash?.id === origin) {
+    if (decision.type === 'switch') {
       setView('view');
-      pushUrl(`/stash/${origin}`);
+      pushUrl(`/stash/${decision.stashId}`);
       setSidebarOpen(false);
       return;
     }
     // Deep link or reload: the stash is not loaded — fetch it like a click.
-    void handleSelectStash(origin);
+    void handleSelectStash(decision.stashId);
   };
   useEffect(() => {
     graphBackRef.current = handleGraphBack;
