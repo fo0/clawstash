@@ -11,17 +11,53 @@ interface Props {
   embedded?: boolean;
 }
 
+const ACTIVE_TAB_KEY = 'clawstash-api-tab';
+const VALID_TABS: ApiTab[] = ['tokens', 'rest', 'mcp'];
+
+/**
+ * Read the last-used API tab from localStorage. Defaults to 'tokens'.
+ *
+ * The stash viewer has remembered its own tab since it shipped; this tab bar
+ * did not, so anyone living in the MCP tab (the agent-onboarding surface) was
+ * dropped back on API Tokens every single time the section was opened. Only an
+ * explicit tab click is remembered, so a first-time user still lands on tokens.
+ */
+function getTabPreference(): ApiTab {
+  try {
+    const stored = localStorage.getItem(ACTIVE_TAB_KEY);
+    if (stored && (VALID_TABS as string[]).includes(stored)) return stored as ApiTab;
+  } catch {
+    /* ignore — storage disabled or full; the default stands */
+  }
+  return 'tokens';
+}
+
+function setTabPreference(tab: ApiTab): void {
+  try {
+    localStorage.setItem(ACTIVE_TAB_KEY, tab);
+  } catch {
+    /* ignore — the choice stays in memory only */
+  }
+}
+
 export default function ApiManager({ onBack, embedded }: Props) {
-  const [activeTab, setActiveTab] = useState<ApiTab>('tokens');
+  // Read in a lazy initializer, not an effect: this component only ever mounts
+  // after the user has navigated to the settings view, i.e. well past
+  // hydration, so reading storage here cannot desync server and client markup
+  // (the same reason StashViewer restores its tab this way).
+  const [activeTab, setActiveTab] = useState<ApiTab>(getTabPreference);
   // Panels stay mounted once visited (hidden via the `hidden` attribute, the
   // same deliberate pattern as BackupSection): switching away must not
   // destroy TokensTab's once-only new-token banner. Lazy-mount on first
   // activation so hidden tabs don't fetch eagerly — most notably RestTab's
   // SwaggerViewer, which pulls the Swagger UI bundle from a CDN on mount.
-  const [visitedTabs, setVisitedTabs] = useState<Set<ApiTab>>(() => new Set(['tokens']));
+  // Seeded with the restored tab, not a hard-coded 'tokens': the visible panel
+  // has to be one of the mounted ones.
+  const [visitedTabs, setVisitedTabs] = useState<Set<ApiTab>>(() => new Set<ApiTab>([activeTab]));
 
   const selectTab = (id: ApiTab) => {
     setActiveTab(id);
+    setTabPreference(id);
     setVisitedTabs((prev) => (prev.has(id) ? prev : new Set(prev).add(id)));
   };
   const [openApiJson, setOpenApiJson] = useState('');

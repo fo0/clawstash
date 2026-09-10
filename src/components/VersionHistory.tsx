@@ -37,7 +37,13 @@ export default function VersionHistory({ stashId, currentVersion, onRestore }: P
   // on a slow fetch the click read as "nothing happened".
   const [loadingVersion, setLoadingVersion] = useState<number | null>(null);
   const detailLoading = loadingVersion !== null;
-  const [restoring, setRestoring] = useState(false);
+  // Version number whose restore is in flight, or null. Was a plain boolean:
+  // the detail view could say "Restoring..." because it shows one version, but
+  // the list only knew "some restore is running" and left every row's button
+  // disabled with unchanged text — a multi-second restore of a large stash read
+  // as a dead click. Mirrors `loadingVersion` above.
+  const [restoringVersion, setRestoringVersion] = useState<number | null>(null);
+  const restoring = restoringVersion !== null;
   const [confirmRestore, setConfirmRestore] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
   // Bumped by the Retry button to re-run the load effect. Every other failing
@@ -148,14 +154,14 @@ export default function VersionHistory({ stashId, currentVersion, onRestore }: P
       );
       return;
     }
-    setRestoring(true);
+    setRestoringVersion(version);
     try {
       const stash = await api.restoreVersion(stashId, version);
       onRestore(stash);
     } catch {
       setError('Failed to restore version');
     } finally {
-      setRestoring(false);
+      setRestoringVersion(null);
       setConfirmRestore(null);
     }
   };
@@ -280,13 +286,14 @@ export default function VersionHistory({ stashId, currentVersion, onRestore }: P
             className={`btn btn-sm ${confirmRestore === selectedVersion.version ? 'btn-danger' : 'btn-secondary'}`}
             onClick={() => handleRestore(selectedVersion.version)}
             disabled={restoring || selectedVersion.version === currentVersion}
+            aria-busy={restoringVersion === selectedVersion.version || undefined}
             title={
               selectedVersion.version === currentVersion
                 ? 'This is the current version'
                 : 'Restore this version as the current state'
             }
           >
-            {restoring
+            {restoringVersion === selectedVersion.version
               ? 'Restoring...'
               : confirmRestore === selectedVersion.version
                 ? 'Confirm Restore?'
@@ -547,8 +554,29 @@ export default function VersionHistory({ stashId, currentVersion, onRestore }: P
                     className={`btn btn-sm ${confirmRestore === v.version ? 'btn-danger' : 'btn-ghost'}`}
                     onClick={() => handleRestore(v.version)}
                     disabled={restoring}
+                    aria-busy={restoringVersion === v.version || undefined}
+                    // The button carried no title at all: a restore in flight
+                    // disables every row, and neither the busy row nor the
+                    // waiting ones said why.
+                    title={
+                      restoringVersion === v.version
+                        ? `Restoring version ${v.version}...`
+                        : restoring
+                          ? `Restoring version ${restoringVersion} — please wait`
+                          : confirmRestore === v.version
+                            ? `Click again to restore version ${v.version} as the current state`
+                            : `Restore version ${v.version} as the current state`
+                    }
                   >
-                    {confirmRestore === v.version ? 'Confirm?' : 'Restore'}
+                    {restoringVersion === v.version ? (
+                      <>
+                        <Spinner size={12} /> Restoring...
+                      </>
+                    ) : confirmRestore === v.version ? (
+                      'Confirm?'
+                    ) : (
+                      'Restore'
+                    )}
                   </button>
                 )}
               </div>
