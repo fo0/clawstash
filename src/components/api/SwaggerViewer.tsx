@@ -31,6 +31,14 @@ export default function SwaggerViewer() {
   const mountedRef = useRef(true);
   const [hasError, setHasError] = useState(false);
   const [loading, setLoading] = useState(true);
+  // Bumped by the Retry button to re-run the load effect below. Swagger UI is
+  // the one surface in the app whose failure used to be a dead end: a blocked
+  // or briefly unreachable CDN (a self-hosted instance behind a proxy is the
+  // common case) left an error banner with no way forward short of reloading
+  // the whole page. Every other failing fetch here — dashboard, storage stats,
+  // access log, version history, the spec loads one level up in ApiManager —
+  // offers a retry.
+  const [attempt, setAttempt] = useState(0);
 
   useEffect(() => {
     // Re-arm on every setup: under React StrictMode the effect runs
@@ -131,13 +139,31 @@ export default function SwaggerViewer() {
         attachedScript.removeEventListener('error', onErrorListener);
       }
     };
-  }, []);
+  }, [attempt]);
+
+  const handleRetry = () => {
+    // Drop the asset tags of the failed attempt first. A <script> / <link>
+    // that has already errored never fires load or error again, so the
+    // effect's "an element for this src already exists" branch would attach
+    // listeners to a dead tag and wait forever. Removing them makes the next
+    // run append fresh ones, which is what actually re-requests the CDN.
+    document
+      .querySelectorAll('script[src*="swagger-ui-bundle.js"], link[href*="swagger-ui.css"]')
+      .forEach((el) => el.remove());
+    initializedRef.current = false;
+    setHasError(false);
+    setLoading(true);
+    setAttempt((n) => n + 1);
+  };
 
   if (hasError) {
     return (
       <div className="api-error-banner" role="alert">
         Swagger UI could not be loaded. Check your network connection or use the OpenAPI JSON
-        section.
+        section.{' '}
+        <button className="btn btn-secondary btn-sm" onClick={handleRetry}>
+          Retry
+        </button>
       </div>
     );
   }
