@@ -100,6 +100,15 @@ export function sanitizeHtml(html: string): string {
     'foreignobject',
     'template',
   ]);
+  const URL_ATTRS = new Set([
+    'href',
+    'src',
+    'xlink:href',
+    'action',
+    'formaction',
+    'poster',
+    'background',
+  ]);
   doc.querySelectorAll('*').forEach((el) => {
     if (FOREIGN_ELEMENTS.has(el.tagName.toLowerCase())) {
       el.remove();
@@ -108,19 +117,45 @@ export function sanitizeHtml(html: string): string {
     for (const attr of [...el.attributes]) {
       const lowerName = attr.name.toLowerCase();
       const isEventHandler = lowerName.startsWith('on');
-      const isUrlAttr =
-        lowerName === 'href' ||
-        lowerName === 'src' ||
-        lowerName === 'xlink:href' ||
-        lowerName === 'action' ||
-        lowerName === 'formaction';
+      // Single-URL attributes: the whole value is one URL, so it can be
+      // scheme-checked directly. `poster` (<video>) and `background`
+      // (legacy <body>/<table>) are reachable here because neither element is
+      // removed above — without them a `data:`/`javascript:` value in either
+      // slipped past a check that already covered `src`.
+      const isUrlAttr = URL_ATTRS.has(lowerName);
+      // `srcset` is a comma-separated candidate list ("a.png 1x, b.png 2x"),
+      // so the single-value check above would only ever inspect the first
+      // candidate. Check every candidate instead.
+      //
+      // Each candidate is handed to `isUnsafeUrl` WHOLE rather than split on
+      // whitespace to isolate the URL from its width/density descriptor:
+      // `isUnsafeUrl` strips control chars and spaces itself, so splitting
+      // first would break `jav<TAB>ascript:x 1x` into a harmless-looking
+      // `jav` and hide the scheme it is meant to catch. Passing the whole
+      // candidate cannot produce a false positive — a descriptor only ever
+      // trails the URL, so it can never turn a safe scheme into a listed one.
+      const isUnsafeSrcset =
+        lowerName === 'srcset' && attr.value.split(',').some((c) => isUnsafeUrl(c));
+      // Drop `ping` unconditionally rather than scheme-checking it. Its value
+      // is a *safe* scheme by design (`https://attacker.example`), so
+      // `isUnsafeUrl` would never fire — yet the attribute exists solely to
+      // fire an outbound POST beacon when a user clicks the link, handing a
+      // third party the click, the referring stash URL and the reader's IP.
+      // Markdown never needs it, so this is the same call as `style` below.
+      const isPingAttr = lowerName === 'ping';
       // Drop inline style entirely. Modern browsers no longer execute
       // `javascript:` inside CSS url(), but `style` is still a vector for UI
       // redress / data exfil via background-image, and historically for IE
       // `expression()`. Markdown descriptions never need inline styles, so
       // stripping is the safe default.
       const isStyleAttr = lowerName === 'style';
-      if (isEventHandler || isStyleAttr || (isUrlAttr && isUnsafeUrl(attr.value))) {
+      if (
+        isEventHandler ||
+        isStyleAttr ||
+        isPingAttr ||
+        isUnsafeSrcset ||
+        (isUrlAttr && isUnsafeUrl(attr.value))
+      ) {
         el.removeAttribute(attr.name);
       }
     }
