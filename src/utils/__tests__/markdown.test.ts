@@ -107,13 +107,41 @@ describe('sanitizeHtml — dangerous attributes', () => {
     expect(out).not.toContain('style');
   });
 
-  it.each(['href', 'src', 'xlink:href', 'action', 'formaction'])(
+  it.each(['href', 'src', 'xlink:href', 'action', 'formaction', 'poster', 'background'])(
     'strips unsafe scheme from %s',
     (attr) => {
       const out = sanitizeHtml(`<a ${attr}="javascript:alert(1)">x</a>`);
       expect(out).not.toContain('javascript:');
     },
   );
+
+  it('strips ping regardless of scheme', () => {
+    // `ping` fires an outbound POST beacon on click, so its value is a
+    // perfectly "safe" https scheme by design — a scheme check never catches
+    // it and the attribute has to go unconditionally.
+    const out = sanitizeHtml('<a href="https://example.com" ping="https://evil.example/t">x</a>');
+    expect(out).not.toContain('ping');
+    expect(out).toContain('href="https://example.com"');
+  });
+
+  it('strips srcset when any candidate carries an unsafe scheme', () => {
+    // A comma-separated candidate list: checking only the first entry would
+    // let the second one through.
+    const out = sanitizeHtml('<img srcset="ok.png 1x, data:image/svg+xml;base64,PHN2Zz4= 2x">');
+    expect(out).not.toContain('srcset');
+  });
+
+  it('strips srcset whose candidate hides its scheme behind a control char', () => {
+    // Splitting the candidate on whitespace to isolate the URL from its
+    // descriptor would break this into a harmless-looking `jav`.
+    const out = sanitizeHtml('<img srcset="jav\tascript:alert(1) 1x">');
+    expect(out).not.toContain('srcset');
+  });
+
+  it('keeps a srcset whose candidates are all safe', () => {
+    const out = sanitizeHtml('<img srcset="a.png 1x, b.png 2x">');
+    expect(out).toContain('srcset="a.png 1x, b.png 2x"');
+  });
 
   it('keeps the element when only the URL attribute is unsafe', () => {
     const out = sanitizeHtml('<a href="javascript:alert(1)">label</a>');
