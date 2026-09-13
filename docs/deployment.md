@@ -100,7 +100,7 @@ docker compose up -d
 
 ## Node.js (without Docker)
 
-**Prerequisites:** Node.js 20.9+ — the floor `package.json` declares in `engines` (`>=20.9.0`); Docker and CI run Node 26, and `better-sqlite3` 12.x supports 20.x–26.x
+**Prerequisites:** Node.js 22+ in practice — `package.json` declares `engines: { "node": ">=20.9.0" }`, but `better-sqlite3` 13.x declares `engines: { "node": ">=22" }`, so Node 20.x/21.x draw an `EBADENGINE` warning for it. Docker and CI run Node 26.
 
 ### Development
 

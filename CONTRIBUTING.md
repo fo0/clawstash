@@ -4,7 +4,7 @@ Thanks for your interest in contributing to ClawStash! Here's how to get started
 
 ## Development Setup
 
-**Prerequisites:** Node.js 20.9+ — the floor `package.json` declares in `engines` (`>=20.9.0`), matching `next`'s own requirement; below it `npm install` prints an `EBADENGINE` warning. Docker/CI pin Node 26, and `better-sqlite3` 12.x supports 20.x–26.x, so no dependency needs 26+ for local dev.
+**Prerequisites:** Node.js 22+ in practice. `package.json` still declares `engines: { "node": ">=20.9.0" }`, matching `next`'s own requirement, and below that floor `npm install` prints an `EBADENGINE` warning. `better-sqlite3` 13.x, however, declares `engines: { "node": ">=22" }`, so Node 20.x and 21.x draw an `EBADENGINE` warning for that dependency too. Docker/CI pin Node 26.
 
 ```bash
 git clone https://github.com/fo0/clawstash.git

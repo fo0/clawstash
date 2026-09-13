@@ -140,7 +140,7 @@ Create API tokens in the web GUI under **Settings > API & Tokens** (scopes: `rea
 
 ## Development
 
-**Prerequisites:** Node.js 20.9+ — the floor declared in `package.json` (`engines: { "node": ">=20.9.0" }`), so `npm install` prints an `EBADENGINE` warning on 20.0–20.8. Docker and CI run Node 26.
+**Prerequisites:** Node.js 22+ in practice. `package.json` declares `engines: { "node": ">=20.9.0" }`, so `npm install` prints an `EBADENGINE` warning below 20.9 — but `better-sqlite3` 13.x declares `engines: { "node": ">=22" }`, which warns on Node 20.x and 21.x as well. Docker and CI run Node 26.
 
 ```bash
 git clone https://github.com/fo0/clawstash.git
