@@ -65,7 +65,7 @@ Three lifetimes: **Routines** (cloud, durable, >= 1 h), **`/loop` + `Cron*`** (t
 
 ## Tech Stack
 
-TypeScript 6 (strict, ESM) · Next.js 16 App Router + React 19 · Node.js >= 20.9 (CI + Docker run 26) · SQLite via better-sqlite3 13 · Zod 3.24 · `@modelcontextprotocol/sdk` 1.30 · vitest 4 · ESLint 9 flat + typescript-eslint 8 · Prettier 3.9 · marked / mermaid / diff / PrismJS for rendering · Docker standalone -> GHCR · npm (`package-lock.json`). Exact versions: `package.json`.
+TypeScript 6 (strict, ESM) · Next.js 16 App Router + React 19 · Node.js >= 22 in practice (`engines` still declares >= 20.9; better-sqlite3 13 needs >= 22; CI + Docker run 26) · SQLite via better-sqlite3 13 · Zod 3.24 · `@modelcontextprotocol/sdk` 1.30 · vitest 4 · ESLint 9 flat + typescript-eslint 8 · Prettier 3.9 · marked / mermaid / diff / PrismJS for rendering · Docker standalone -> GHCR · npm (`package-lock.json`). Exact versions: `package.json`.
 
 ## Project Structure
 
