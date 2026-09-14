@@ -3056,6 +3056,26 @@ body {
   align-items: center;
 }
 
+/* Reorder buttons: a tight pair so they read as one control, kept quiet next
+   to the filename inputs. A disabled end button stays visible rather than
+   disappearing — the row would otherwise reflow every time a file reaches an
+   end of the list. */
+.editor-file-move {
+  display: inline-flex;
+  flex-shrink: 0;
+  gap: 0;
+}
+
+.file-move-btn {
+  padding: 3px 4px;
+  color: var(--text-muted);
+}
+
+.file-move-btn:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
 /* A folded file keeps its header row but drops the separator, so a run of
    collapsed files reads as a list instead of a stack of boxed headers —
    same treatment the viewer gives `.viewer-file-collapsed`. */

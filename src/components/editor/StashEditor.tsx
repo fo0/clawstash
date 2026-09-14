@@ -5,6 +5,7 @@ import { DELETE_CONFIRM_TIMEOUT_MS } from '../../utils/constants';
 import { formatBytes, formatRelativeTime } from '../../utils/format';
 import { clearDraft, loadDraft, saveDraft, type EditorDraft } from '../../utils/editor-draft';
 import { MAX_IMPORT_FILES, readImportedFiles } from '../../utils/file-import';
+import { moveItem } from '../../utils/array-move';
 import FileCodeEditor from './FileCodeEditor';
 import TagCombobox from './TagCombobox';
 import type { TagComboboxHandle } from './TagCombobox';
@@ -453,6 +454,42 @@ export default function StashEditor({ stash, template, onSave, onCancel, onDirty
       const next = new Set(prev);
       next.delete(removedId);
       return next;
+    });
+  };
+
+  /**
+   * Move a file row one position up or down.
+   *
+   * The order is the stash's order — the viewer renders files in it, and both
+   * "Copy All" and the download bundle concatenate them in it — but until now
+   * the only way to change it was cutting content from one row into another.
+   *
+   * `fileIds` is moved in lockstep with `files`: the ids are the React keys
+   * and the members of the collapse set, so letting the two arrays drift would
+   * hand a row someone else's editor and fold the wrong file away.
+   */
+  const moveFile = (index: number, delta: -1 | 1) => {
+    const target = index + delta;
+    if (target < 0 || target >= files.length) return;
+    markDirty();
+    // An armed Remove is stored as an index; after the move that index is a
+    // different file, so disarm instead of letting the next click hit it.
+    setConfirmRemoveIndex(null);
+    // Deliberate ordering of filenames — stop the stash name from later
+    // overwriting whatever ends up in row 1, the same way an import does.
+    if (index === 0 || target === 0) setFirstFileManuallyEdited(true);
+    const movedId = fileIds.current[index];
+    fileIds.current = moveItem(fileIds.current, index, target);
+    setFiles((prev) => moveItem(prev, index, target));
+    // React moves the row's existing DOM nodes, so focus rides along — unless
+    // the button that was clicked is the one the new position disables. Then
+    // focus would drop to <body> mid-keyboard-reorder; put it on the row's
+    // opposite button instead.
+    const landsAtEnd = target === 0 || target === files.length - 1;
+    if (!landsAtEnd) return;
+    requestAnimationFrame(() => {
+      const opposite = document.getElementById(`stash-file-move-${-delta}-${movedId}`);
+      if (opposite instanceof HTMLButtonElement) opposite.focus();
     });
   };
 
@@ -1000,6 +1037,62 @@ export default function StashEditor({ stash, template, onSave, onCancel, onDirty
                     aria-label={`File ${index + 1} language`}
                     title="Programming language. Leave blank to auto-detect from the file extension."
                   />
+                  {/* Reordering: the stash's file order is what the viewer and
+                      every bundle render, so it is worth an affordance of its
+                      own rather than cut-and-paste between rows. Two buttons
+                      instead of drag & drop — the rows carry a code editor
+                      that owns its own pointer events, and buttons work from
+                      the keyboard without a drag alternative. */}
+                  {files.length > 1 && (
+                    <div
+                      className="editor-file-move"
+                      role="group"
+                      aria-label={`Reorder ${fileLabel}`}
+                    >
+                      <button
+                        type="button"
+                        id={`stash-file-move--1-${fileId}`}
+                        className="btn btn-sm btn-ghost file-move-btn"
+                        onClick={() => moveFile(index, -1)}
+                        disabled={index === 0}
+                        title={index === 0 ? 'Already the first file' : `Move ${fileLabel} up`}
+                        aria-label={`Move ${fileLabel} up`}
+                      >
+                        <svg
+                          aria-hidden="true"
+                          width="12"
+                          height="12"
+                          viewBox="0 0 16 16"
+                          fill="currentColor"
+                        >
+                          <path d="M3.22 10.53a.75.75 0 0 1 0-1.06l4.25-4.25a.75.75 0 0 1 1.06 0l4.25 4.25a.75.75 0 1 1-1.06 1.06L8 6.81l-3.72 3.72a.75.75 0 0 1-1.06 0Z" />
+                        </svg>
+                      </button>
+                      <button
+                        type="button"
+                        id={`stash-file-move-1-${fileId}`}
+                        className="btn btn-sm btn-ghost file-move-btn"
+                        onClick={() => moveFile(index, 1)}
+                        disabled={index === files.length - 1}
+                        title={
+                          index === files.length - 1
+                            ? 'Already the last file'
+                            : `Move ${fileLabel} down`
+                        }
+                        aria-label={`Move ${fileLabel} down`}
+                      >
+                        <svg
+                          aria-hidden="true"
+                          width="12"
+                          height="12"
+                          viewBox="0 0 16 16"
+                          fill="currentColor"
+                        >
+                          <path d="M12.78 5.47a.75.75 0 0 1 0 1.06l-4.25 4.25a.75.75 0 0 1-1.06 0L3.22 6.53a.75.75 0 0 1 1.06-1.06L8 9.19l3.72-3.72a.75.75 0 0 1 1.06 0Z" />
+                        </svg>
+                      </button>
+                    </div>
+                  )}
                   {files.length > 1 &&
                     (confirmRemoveIndex === index ? (
                       <button
