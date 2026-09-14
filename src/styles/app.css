@@ -3056,6 +3056,26 @@ body {
   align-items: center;
 }
 
+/* Reorder buttons: a tight pair so they read as one control, kept quiet next
+   to the filename inputs. A disabled end button stays visible rather than
+   disappearing — the row would otherwise reflow every time a file reaches an
+   end of the list. */
+.editor-file-move {
+  display: inline-flex;
+  flex-shrink: 0;
+  gap: 0;
+}
+
+.file-move-btn {
+  padding: 3px 4px;
+  color: var(--text-muted);
+}
+
+.file-move-btn:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
 /* A folded file keeps its header row but drops the separator, so a run of
    collapsed files reads as a list instead of a stack of boxed headers —
    same treatment the viewer gives `.viewer-file-collapsed`. */
@@ -5453,6 +5473,30 @@ textarea.code-editor-plain.code-editor-wrap {
   display: none;
 }
 
+/* "Update available" badge — the only footer element that is not neutral
+   chrome, so it carries the accent colour the rest of the row avoids. Its
+   label rides on .footer-info-label and so disappears below 640px: the footer
+   row is a fixed-height, non-wrapping flex row, and a third labelled control
+   would push the right-hand icons off a phone screen. The accent pill and the
+   anchor's aria-label carry it there. */
+.footer-update-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 8px;
+  border: 1px solid var(--accent-blue);
+  border-radius: var(--radius);
+  color: var(--accent-blue);
+  font-size: 12px;
+  font-weight: 500;
+  white-space: nowrap;
+  transition: all 0.15s;
+}
+
+.footer-update-badge:hover {
+  background: var(--bg-tertiary);
+}
+
 .footer-details-desktop {
   display: none;
   align-items: center;
@@ -6905,6 +6949,17 @@ textarea.code-editor-plain.code-editor-wrap {
   color: var(--text-secondary);
   margin-bottom: 16px;
   line-height: 1.6;
+}
+
+/* Bundle actions above an older version's file list. Deliberately not
+   `.viewer-files-toolbar`: that one carries a negative bottom margin tuned to
+   the viewer's gapped file column, and `.version-detail` is a plain block. */
+.version-files-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-bottom: 8px;
 }
 
 .version-detail-files {
