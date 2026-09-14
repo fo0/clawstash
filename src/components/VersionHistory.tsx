@@ -5,8 +5,9 @@ import RelativeTime from './shared/RelativeTime';
 import VersionDiff from './VersionDiff';
 import { highlightCode, resolvePrismLanguage } from '../languages';
 import { DELETE_CONFIRM_TIMEOUT_MS } from '../utils/constants';
-import { useClipboardWithKey } from '../hooks/useClipboard';
+import { useClipboard, useClipboardWithKey } from '../hooks/useClipboard';
 import { downloadTextFile, versionedFilename } from '../utils/download';
+import { buildAllFilesText, bundleFilename } from '../utils/stash-bundle';
 import { CopyIcon, CheckIcon, XIcon, DownloadIcon } from './shared/icons';
 import Spinner from './shared/Spinner';
 
@@ -70,6 +71,8 @@ export default function VersionHistory({ stashId, currentVersion, onRestore }: P
   // affordance the main StashViewer offers — keyed by filename so each file
   // button tracks its own "Copied!" state.
   const fileClipboard = useClipboardWithKey();
+  // Whole-version bundle copy, the counterpart of the viewer's "Copy All".
+  const bundleClipboard = useClipboard();
 
   useEffect(() => {
     let cancelled = false;
@@ -271,6 +274,13 @@ export default function VersionHistory({ stashId, currentVersion, onRestore }: P
   ) : null;
 
   if (subView === 'detail' && selectedVersion) {
+    // Named after the version's own stash name, with the version in it, so
+    // several revisions land side by side in the download folder. Computed
+    // once because the button both saves under it and names it in its tooltip.
+    const versionBundleName = versionedFilename(
+      bundleFilename({ id: stashId, name: selectedVersion.name }),
+      selectedVersion.version,
+    );
     return (
       <div className="version-detail">
         {errorAlert}
@@ -318,6 +328,54 @@ export default function VersionHistory({ stashId, currentVersion, onRestore }: P
         </div>
         {selectedVersion.description && (
           <p className="version-detail-desc">{selectedVersion.description}</p>
+        )}
+        {/* Whole-version bundle actions. The current version has offered
+            "Copy All" and "Download all" since the viewer shipped; an older
+            revision could only be taken one file at a time, and a burst of
+            per-file downloads is throttled by most browsers. Same bundle
+            format as the viewer (`buildAllFilesText`), and the version goes
+            into the saved name so revisions land side by side. */}
+        {selectedVersion.files.length > 1 && (
+          <div className="version-files-toolbar">
+            <button
+              type="button"
+              className="btn btn-sm btn-ghost"
+              onClick={() => bundleClipboard.copy(buildAllFilesText(selectedVersion.files))}
+              title={
+                bundleClipboard.copied
+                  ? 'Copied!'
+                  : bundleClipboard.status === 'failed'
+                    ? 'Copy failed'
+                    : `Copy all ${selectedVersion.files.length} files of v${selectedVersion.version} to the clipboard`
+              }
+              aria-label={`Copy all files of version ${selectedVersion.version}`}
+            >
+              {bundleClipboard.copied ? (
+                <>
+                  <CheckIcon size={12} /> Copied!
+                </>
+              ) : bundleClipboard.status === 'failed' ? (
+                <>
+                  <XIcon size={12} /> Failed
+                </>
+              ) : (
+                <>
+                  <CopyIcon size={12} /> Copy all
+                </>
+              )}
+            </button>
+            <button
+              type="button"
+              className="btn btn-sm btn-ghost"
+              onClick={() =>
+                downloadTextFile(versionBundleName, buildAllFilesText(selectedVersion.files))
+              }
+              title={`Download all ${selectedVersion.files.length} files of v${selectedVersion.version} as one text file (${versionBundleName})`}
+              aria-label={`Download all files of version ${selectedVersion.version} as one text file`}
+            >
+              <DownloadIcon size={12} /> Download all
+            </button>
+          </div>
         )}
         <div className="version-detail-files">
           {selectedVersion.files.map((file) => {

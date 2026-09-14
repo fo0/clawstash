@@ -6951,6 +6951,17 @@ textarea.code-editor-plain.code-editor-wrap {
   line-height: 1.6;
 }
 
+/* Bundle actions above an older version's file list. Deliberately not
+   `.viewer-files-toolbar`: that one carries a negative bottom margin tuned to
+   the viewer's gapped file column, and `.version-detail` is a plain block. */
+.version-files-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
 .version-detail-files {
   display: flex;
   flex-direction: column;
