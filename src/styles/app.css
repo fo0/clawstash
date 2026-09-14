@@ -5453,6 +5453,30 @@ textarea.code-editor-plain.code-editor-wrap {
   display: none;
 }
 
+/* "Update available" badge — the only footer element that is not neutral
+   chrome, so it carries the accent colour the rest of the row avoids. Its
+   label rides on .footer-info-label and so disappears below 640px: the footer
+   row is a fixed-height, non-wrapping flex row, and a third labelled control
+   would push the right-hand icons off a phone screen. The accent pill and the
+   anchor's aria-label carry it there. */
+.footer-update-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 8px;
+  border: 1px solid var(--accent-blue);
+  border-radius: var(--radius);
+  color: var(--accent-blue);
+  font-size: 12px;
+  font-weight: 500;
+  white-space: nowrap;
+  transition: all 0.15s;
+}
+
+.footer-update-badge:hover {
+  background: var(--bg-tertiary);
+}
+
 .footer-details-desktop {
   display: none;
   align-items: center;

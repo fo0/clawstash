@@ -19,6 +19,7 @@ AI agents lose context between sessions. ClawStash gives them a persistent memor
 - **Mermaid diagrams** — `.mmd` files and inline ` ```mermaid ` blocks in Markdown render as diagrams (lazy-loaded, no bundle bloat)
 - **One-click code copy** — every fenced code block in rendered Markdown gets a copy button (keyboard reachable, always visible on touch)
 - **Web GUI included** — dark-themed dashboard to browse, search, and manage stashes manually, with a resizable sidebar that remembers its width
+- **Update notice** — the footer says when a newer commit is on `main` and links to the commits since your build
 
 ## Get Started
 

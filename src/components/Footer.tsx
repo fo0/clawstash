@@ -1,11 +1,26 @@
 import { useState, useEffect } from 'react';
-import { formatBuildVersion } from '../utils/format';
+import { formatBuildVersion, formatRelativeTime } from '../utils/format';
 import { api } from '../api';
 
 interface BuildInfo {
   buildDate: string;
   commitHash: string;
   branch: string;
+}
+
+/**
+ * What the footer needs to report an available update. Set only when
+ * `/api/version` says `update_available`, which the server reports as false to
+ * callers without the `read` scope — so an unauthorised visitor never sees the
+ * badge. Every `latest*` field is null when GitHub did not answer, and
+ * `compareUrl` until both commits are known.
+ */
+interface UpdateInfo {
+  latestShort: string | null;
+  latestDate: string | null;
+  latestMessage: string | null;
+  compareUrl: string | null;
+  changelogUrl: string;
 }
 
 interface FooterProps {
@@ -29,15 +44,38 @@ interface FooterProps {
 export default function Footer({ onShowShortcuts, authToken }: FooterProps) {
   const [showDetails, setShowDetails] = useState(false);
   const [buildInfo, setBuildInfo] = useState<BuildInfo | null>(null);
+  const [update, setUpdate] = useState<UpdateInfo | null>(null);
 
   useEffect(() => {
     let cancelled = false;
     api
       .getBuildVersion()
       .then((data) => {
+        if (cancelled) return;
+        // The instance already compares itself against the newest commit on
+        // main on every /api/version call, but the answer only ever reached
+        // agents (check_version / the MCP tools) — surface it to whoever is
+        // looking at the page. Written before BOTH guards below, and written
+        // as null rather than skipped: this effect re-runs on an auth-token
+        // change, so null is what retires a badge left over from the previous
+        // session, and an unparseable local build date (the second guard) says
+        // nothing about whether an update exists.
+        setUpdate(
+          data.update_available && data.upgrade
+            ? {
+                // Already shortened by the version checker; slicing again keeps
+                // the badge readable if it ever stops doing so.
+                latestShort: data.latest?.commit_sha ? data.latest.commit_sha.slice(0, 7) : null,
+                latestDate: data.latest?.commit_date ?? null,
+                latestMessage: data.latest?.commit_message ?? null,
+                compareUrl: data.upgrade.compare_url,
+                changelogUrl: data.upgrade.changelog_url,
+              }
+            : null,
+        );
         // `current` is null when the caller lacks the `read` scope — leave the
-        // footer in its default state rather than rendering placeholders.
-        if (cancelled || !data.current) return;
+        // build details in their default state rather than rendering placeholders.
+        if (!data.current) return;
         // Validate build_date is a parseable string before storing — an
         // unparseable value would otherwise render as "vNaNNaNNaN-NaNNaN"
         // (formatBuildVersion now also guards, but rejecting up-front
@@ -77,6 +115,18 @@ export default function Footer({ onShowShortcuts, authToken }: FooterProps) {
     minute: '2-digit',
   });
   const buildVersion = buildInfo ? formatBuildVersion(buildInfo.buildDate) : null;
+  // The badge's tooltip carries everything known about the newer commit; each
+  // part drops out when the version checker could not read it.
+  const latestParts = update
+    ? [update.latestShort, update.latestDate ? formatRelativeTime(update.latestDate) : null].filter(
+        (part): part is string => !!part,
+      )
+    : [];
+  const updateSummary = update
+    ? `A newer commit is available on main${latestParts.length > 0 ? ` (${latestParts.join(', ')})` : ''}${
+        update.latestMessage ? `: ${update.latestMessage}` : ''
+      }`
+    : null;
 
   return (
     <footer className="app-footer">
@@ -114,6 +164,31 @@ export default function Footer({ onShowShortcuts, authToken }: FooterProps) {
               </svg>
               <span className="footer-info-label">Build Info</span>
             </button>
+          )}
+          {/* The one place a human learns their instance is behind. Links to
+              the compare view, or the changelog when the checker could not
+              name both commits — never to a half-formed URL. */}
+          {update && (
+            <a
+              className="footer-update-badge"
+              href={update.compareUrl ?? update.changelogUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              // The label below is hidden on a phone-width footer.
+              aria-label="Update available"
+              title={`${updateSummary}. Opens ${update.compareUrl ? 'the commits since this build' : 'the changelog'} on GitHub.`}
+            >
+              <svg
+                aria-hidden="true"
+                width="14"
+                height="14"
+                viewBox="0 0 16 16"
+                fill="currentColor"
+              >
+                <path d="M8 1a.75.75 0 0 1 .53.22l3.25 3.25a.75.75 0 1 1-1.06 1.06L8.75 3.81v6.44a.75.75 0 0 1-1.5 0V3.81L5.28 5.53a.75.75 0 1 1-1.06-1.06L7.47 1.22A.75.75 0 0 1 8 1ZM2.75 12.5h10.5a.75.75 0 0 1 0 1.5H2.75a.75.75 0 0 1 0-1.5Z" />
+              </svg>
+              <span className="footer-info-label">Update available</span>
+            </a>
           )}
         </div>
 
