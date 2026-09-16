@@ -1679,7 +1679,10 @@ export default function StashGraphCanvas({
         />
 
         {loading && (
-          <div className="graph-empty">
+          // Polite counterpart to the `role="alert"` error branch below — see
+          // GraphViewer: while the graph loads the `role="img"` canvas has
+          // nothing to announce, so the wait was silent for assistive tech.
+          <div className="graph-empty" role="status" aria-live="polite">
             <p>Loading stash graph...</p>
           </div>
         )}
