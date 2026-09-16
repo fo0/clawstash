@@ -1136,7 +1136,18 @@ export default function App() {
             onClick={handleGoHome}
             role="button"
             tabIndex={0}
-            onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && handleGoHome()}
+            onKeyDown={(e) => {
+              // Space on a `role="button"` element still performs its native
+              // action — scrolling the page — unless the default is prevented.
+              // Every other custom button in this codebase already guards it
+              // (StashCard's tag chips, RelativeTime, the dashboard's
+              // new-stash card); this one did not, so activating the title
+              // from the keyboard also scrolled the view behind it.
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                handleGoHome();
+              }
+            }}
             aria-label="Go to dashboard"
           >
             ClawStash
