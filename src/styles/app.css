@@ -3133,6 +3133,20 @@ body {
   outline: none;
 }
 
+/* The rule above drops the browser's focus ring (it would draw a box around the
+   transparent textarea that sits on top of the highlighted <pre>), but nothing
+   replaced it — the file-content field was the only control in the editor form
+   with no visible keyboard focus indicator (WCAG 2.4.7 Focus Visible), while
+   every .form-input beside it gets an accent border plus glow on :focus. Put
+   the ring on the scroll container instead, in the same inset spelling
+   `.mermaid-viewer:focus-visible` uses. `:focus-within` covers both editor
+   modes — the highlighted react-simple-code-editor textarea and the plain
+   large-file fallback — since the focus lands on a descendant either way. */
+.editor-file .code-editor-wrapper:focus-within {
+  outline: 2px solid var(--accent-blue);
+  outline-offset: -2px;
+}
+
 /* Large-file fallback: plain textarea (no per-keystroke re-highlight). Inherits
    font/colors from .code-editor; mirrors the react-simple-code-editor padding. */
 .code-editor-plain {
