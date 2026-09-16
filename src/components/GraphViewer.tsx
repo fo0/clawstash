@@ -1812,7 +1812,13 @@ export default function GraphViewer({
         />
 
         {loading && (
-          <div className="graph-empty">
+          // The canvas next to this is `role="img"` with a node/edge count in
+          // its label, so while the graph loads there is nothing for assistive
+          // tech to read and no signal that a wait is in progress. The error
+          // branch below already announces itself via `role="alert"`; this is
+          // the polite counterpart, matching every other loading state in the
+          // app (SwaggerViewer, SpecPreview, Settings, MermaidDiagram).
+          <div className="graph-empty" role="status" aria-live="polite">
             <p>Loading tag graph...</p>
           </div>
         )}
@@ -1904,7 +1910,11 @@ export default function GraphViewer({
             <div className="graph-popup-section">
               <div className="graph-popup-section-title">Stashes</div>
               {popup.loadingStashes ? (
-                <div className="graph-popup-loading">Loading...</div>
+                // Same reason as the canvas loading state above: the popup is a
+                // `role="dialog"` whose stash list arrives asynchronously.
+                <div className="graph-popup-loading" role="status" aria-live="polite">
+                  Loading...
+                </div>
               ) : popup.stashes.length > 0 ? (
                 <div className="graph-popup-stashes">
                   {popup.stashes.map((s) => (
