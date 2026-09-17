@@ -26,7 +26,9 @@ interface Props {
  *
  * Without them the editor let a user add a 51st tag, or a tag longer than 100
  * characters, and said nothing — the limit only surfaced as a rejected save
- * once the whole stash had been composed.
+ * once the whole stash had been composed. Both are enforced in `commitTag`
+ * rather than on the input, because the field takes a comma-separated list and
+ * an input-level cap would truncate a valid paste of many short tags.
  */
 const MAX_TAGS = 50;
 const MAX_TAG_LENGTH = 100;
@@ -149,6 +151,9 @@ export default function TagCombobox({
   };
 
   const removeTag = (tag: string) => {
+    // Drop any refusal notice: removing a tag frees capacity, so a "Tag limit
+    // reached" message would now be describing a state that no longer holds.
+    setWarning(null);
     onChange(tags.filter((t) => t !== tag));
   };
 
@@ -232,11 +237,13 @@ export default function TagCombobox({
                 ? 'Type to add tags...'
                 : 'Add more...'
           }
-          // Mirrors the server's per-tag cap, the same way StashEditor mirrors
-          // the name and filename caps. The input stays enabled at the tag
-          // limit so existing text can still be edited or cleared — commitTag
-          // is what refuses the add, with a reason.
-          maxLength={MAX_TAG_LENGTH}
+          // Deliberately NO `maxLength`, unlike the single-value name and
+          // filename fields: this input accepts a comma-separated list, so a
+          // per-tag cap applied to the whole field would truncate a legitimate
+          // paste of many short tags. commitTag measures each part instead,
+          // which covers typed and pasted input alike. The input also stays
+          // enabled at the tag limit so existing text can be edited or
+          // cleared — commitTag is what refuses the add, with a reason.
           className="tag-combobox-input"
           autoComplete="off"
           role="combobox"

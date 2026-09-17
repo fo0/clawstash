@@ -65,14 +65,49 @@ describe('TagCombobox limits', () => {
     expect(screen.getByRole('status').textContent).toContain('longer than 100 characters');
   });
 
-  it('caps typed input at 100 characters and offers no suggestions at the tag limit', () => {
+  it('does not truncate a long comma-separated paste of short tags', () => {
+    const ref = createRef<TagComboboxHandle>();
+    const onChange = vi.fn();
+
+    render(<TagCombobox ref={ref} tags={[]} onChange={onChange} availableTags={[]} />);
+
+    // 20 short tags is well over 100 characters in total while every single
+    // tag is far under the per-tag cap. A `maxLength` on the field would have
+    // silently cut this paste in half — the per-part check must be what
+    // enforces the limit.
+    const many = Array.from({ length: 20 }, (_, i) => `tag-number-${i}`);
+    expect(many.join(', ').length).toBeGreaterThan(100);
+
+    expect(commit(ref, many.join(', '))).toEqual(many);
+    expect(onChange).toHaveBeenCalledWith(many);
+    expect(screen.queryByRole('status')).toBeNull();
+  });
+
+  it('clears a stale limit warning once a tag is removed', () => {
+    const ref = createRef<TagComboboxHandle>();
+    const onChange = vi.fn();
+
+    const { rerender } = render(
+      <TagCombobox ref={ref} tags={manyTags(50)} onChange={onChange} availableTags={[]} />,
+    );
+
+    commit(ref, 'one-too-many');
+    expect(screen.getByRole('status').textContent).toContain('Tag limit reached (50)');
+
+    // Removing a tag frees capacity, so the notice no longer describes reality.
+    rerender(<TagCombobox ref={ref} tags={manyTags(50)} onChange={onChange} availableTags={[]} />);
+    fireEvent.click(screen.getByRole('button', { name: 'Remove tag "tag-0"' }));
+
+    expect(screen.queryByRole('status')).toBeNull();
+  });
+
+  it('offers no suggestions at the tag limit', () => {
     const onChange = vi.fn();
     const { rerender } = render(
       <TagCombobox tags={[]} onChange={onChange} availableTags={[{ tag: 'ops', count: 3 }]} />,
     );
 
     const input = screen.getByRole('combobox');
-    expect(input).toHaveProperty('maxLength', 100);
 
     // Below the cap the suggestion listbox opens as before.
     fireEvent.focus(input);

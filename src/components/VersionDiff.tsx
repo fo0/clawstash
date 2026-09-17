@@ -119,10 +119,16 @@ export default function VersionDiff({ v1, v2 }: Props) {
   // was the one place a result could not be taken out of the app.
   // Built lazily on click — a large diff should not be serialised on every
   // render of a view where nobody may press it.
-  const diffClipboard = useClipboard();
+  // Destructured, not held as one object: `useClipboard` builds a fresh return
+  // object every render (only `useClipboardWithKey` memoizes its shape — see
+  // the note there), so depending on the object would rebuild this callback on
+  // every render. `copy` is itself a useCallback over stable inputs, and
+  // naming it directly is also what `react-hooks/exhaustive-deps` requires —
+  // it rejects a member expression as a dependency.
+  const { copy: copyToClipboard, copied, status: copyStatus } = useClipboard();
   const copyDiff = useCallback(() => {
-    void diffClipboard.copy(buildUnifiedDiff(fileDiffs));
-  }, [diffClipboard, fileDiffs]);
+    void copyToClipboard(buildUnifiedDiff(fileDiffs));
+  }, [copyToClipboard, fileDiffs]);
 
   return (
     <div className="version-diff">
@@ -148,19 +154,19 @@ export default function VersionDiff({ v1, v2 }: Props) {
             className="btn btn-sm btn-ghost diff-copy"
             onClick={copyDiff}
             title={
-              diffClipboard.copied
+              copied
                 ? 'Copied!'
-                : diffClipboard.status === 'failed'
+                : copyStatus === 'failed'
                   ? 'Copy failed'
                   : 'Copy this comparison as a unified diff (the format git and diff viewers read)'
             }
             aria-label="Copy this comparison as a unified diff"
           >
-            {diffClipboard.copied ? (
+            {copied ? (
               <>
                 <CheckIcon size={12} /> Copied!
               </>
-            ) : diffClipboard.status === 'failed' ? (
+            ) : copyStatus === 'failed' ? (
               <>
                 <XIcon size={12} /> Failed
               </>

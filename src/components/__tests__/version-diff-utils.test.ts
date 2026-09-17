@@ -150,7 +150,9 @@ describe('computeFileDiffs', () => {
 
 // The rendered diff table cannot be copied out of the DOM (line numbers,
 // markers and content are separate cells), so this is the only text form of a
-// version comparison — it has to be a diff a tool actually accepts.
+// version comparison. It has to be a real unified diff — correct paths,
+// correct markers and hunk ranges that match the lines that follow — not a
+// prettified dump that merely looks like one.
 describe('buildUnifiedDiff', () => {
   it('emits git-style headers and markers for a modified file', () => {
     const v1 = v([{ filename: 'app.txt', content: 'one\ntwo' }]);
