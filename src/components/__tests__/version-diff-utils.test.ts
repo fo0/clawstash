@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import {
+  buildUnifiedDiff,
   computeFileDiffs,
   diffAddedFile,
   diffRemovedFile,
@@ -144,5 +145,77 @@ describe('computeFileDiffs', () => {
     expect(diffs).toHaveLength(1);
     expect(diffs[0].status).toBe('unchanged');
     expect(diffs[0].hunks).toEqual([]);
+  });
+});
+
+// The rendered diff table cannot be copied out of the DOM (line numbers,
+// markers and content are separate cells), so this is the only text form of a
+// version comparison — it has to be a diff a tool actually accepts.
+describe('buildUnifiedDiff', () => {
+  it('emits git-style headers and markers for a modified file', () => {
+    const v1 = v([{ filename: 'app.txt', content: 'one\ntwo' }]);
+    const v2 = v([{ filename: 'app.txt', content: 'one\nTWO' }]);
+
+    const out = buildUnifiedDiff(computeFileDiffs(v1, v2));
+
+    expect(out).toContain('--- a/app.txt');
+    expect(out).toContain('+++ b/app.txt');
+    expect(out).toContain(' one');
+    expect(out).toContain('-two');
+    expect(out).toContain('+TWO');
+    // Context + removal on the old side, context + addition on the new side.
+    expect(out).toContain('@@ -1,2 +1,2 @@');
+    expect(out.endsWith('\n')).toBe(true);
+  });
+
+  it('uses /dev/null for the missing side of an added or removed file', () => {
+    const added = buildUnifiedDiff(
+      computeFileDiffs(v([]), v([{ filename: 'new.txt', content: 'a' }])),
+    );
+    expect(added).toContain('--- /dev/null');
+    expect(added).toContain('+++ b/new.txt');
+    expect(added).toContain('@@ -0,0 +1,1 @@');
+    expect(added).toContain('+a');
+
+    const removed = buildUnifiedDiff(
+      computeFileDiffs(v([{ filename: 'old.txt', content: 'a' }]), v([])),
+    );
+    expect(removed).toContain('--- a/old.txt');
+    expect(removed).toContain('+++ /dev/null');
+    expect(removed).toContain('@@ -1,1 +0,0 @@');
+    expect(removed).toContain('-a');
+  });
+
+  it('skips unchanged files and returns empty string when nothing changed', () => {
+    const same = v([{ filename: 'same.txt', content: 'foo' }]);
+    expect(
+      buildUnifiedDiff(computeFileDiffs(same, v([{ filename: 'same.txt', content: 'foo' }]))),
+    ).toBe('');
+  });
+
+  it('keeps an unchanged file out of a diff that also has a changed one', () => {
+    const v1 = v([
+      { filename: 'kept.txt', content: 'x' },
+      { filename: 'changed.txt', content: 'a' },
+    ]);
+    const v2 = v([
+      { filename: 'kept.txt', content: 'x' },
+      { filename: 'changed.txt', content: 'b' },
+    ]);
+
+    const out = buildUnifiedDiff(computeFileDiffs(v1, v2));
+
+    expect(out).toContain('changed.txt');
+    expect(out).not.toContain('kept.txt');
+  });
+
+  it('emits an empty-file add as a header-only entry, not a phantom line', () => {
+    const out = buildUnifiedDiff(
+      computeFileDiffs(v([]), v([{ filename: 'empty.txt', content: '' }])),
+    );
+    expect(out).toContain('@@ -0,0 +0,0 @@');
+    // `diffAddedFile` guards against ''.split('\n') producing [''] — nothing
+    // may follow the hunk header for an empty file.
+    expect(out.trimEnd().split('\n').at(-1)).toBe('@@ -0,0 +0,0 @@');
   });
 });

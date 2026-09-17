@@ -7059,6 +7059,19 @@ textarea.code-editor-plain.code-editor-wrap {
   margin-left: auto;
 }
 
+/* "Copy diff" and "Collapse all" form one right-aligned action group in the
+   summary bar. Copy renders for any changed file, Collapse all only from two
+   files up, so whichever comes first takes the auto margin — without the
+   second rule both would claim one and the pair would be split across the
+   whole bar. */
+.diff-copy {
+  margin-left: auto;
+}
+
+.diff-copy + .diff-collapse-all {
+  margin-left: 0;
+}
+
 .diff-file-collapsed .diff-file-header {
   border-bottom: none;
 }

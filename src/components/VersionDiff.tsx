@@ -1,7 +1,9 @@
 import { useCallback, useMemo, useState } from 'react';
 import type { StashVersion } from '../types';
 import type { FileDiff } from './version-diff-utils';
-import { computeFileDiffs } from './version-diff-utils';
+import { buildUnifiedDiff, computeFileDiffs } from './version-diff-utils';
+import { useClipboard } from '../hooks/useClipboard';
+import { CopyIcon, CheckIcon, XIcon } from './shared/icons';
 
 /** Spelled-out form of the single-letter A / D / M status badge. */
 const STATUS_WORD: Record<FileDiff['status'], string> = {
@@ -110,6 +112,18 @@ export default function VersionDiff({ v1, v2 }: Props) {
     return { additions, deletions };
   }, [fileDiffs]);
 
+  // The rendered table is not copyable: line numbers, markers and content are
+  // separate cells, so a mouse selection produces interleaved gutter numbers
+  // instead of a patch. Every neighbouring surface (the version detail, the
+  // stash viewer, every fenced code block) has a copy button; the comparison
+  // was the one place a result could not be taken out of the app.
+  // Built lazily on click — a large diff should not be serialised on every
+  // render of a view where nobody may press it.
+  const diffClipboard = useClipboard();
+  const copyDiff = useCallback(() => {
+    void diffClipboard.copy(buildUnifiedDiff(fileDiffs));
+  }, [diffClipboard, fileDiffs]);
+
   return (
     <div className="version-diff">
       {/* "+12 / -3 / A / D / M" carry their whole meaning in a sign or a single
@@ -128,6 +142,35 @@ export default function VersionDiff({ v1, v2 }: Props) {
         <span className="diff-stat-files">
           {changedFiles.length} file{changedFiles.length !== 1 ? 's' : ''} changed
         </span>
+        {changedFiles.length > 0 && (
+          <button
+            type="button"
+            className="btn btn-sm btn-ghost diff-copy"
+            onClick={copyDiff}
+            title={
+              diffClipboard.copied
+                ? 'Copied!'
+                : diffClipboard.status === 'failed'
+                  ? 'Copy failed'
+                  : 'Copy this comparison as a unified diff (the format git and diff viewers read)'
+            }
+            aria-label="Copy this comparison as a unified diff"
+          >
+            {diffClipboard.copied ? (
+              <>
+                <CheckIcon size={12} /> Copied!
+              </>
+            ) : diffClipboard.status === 'failed' ? (
+              <>
+                <XIcon size={12} /> Failed
+              </>
+            ) : (
+              <>
+                <CopyIcon size={12} /> Copy diff
+              </>
+            )}
+          </button>
+        )}
         {changedFiles.length > 1 && (
           <button
             type="button"
