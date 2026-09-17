@@ -112,6 +112,39 @@ function pushUrl(path: string) {
   }
 }
 
+/**
+ * Explicit dismiss control for the two global toasts.
+ *
+ * Both toasts already dismissed on a click anywhere on their body, but that is
+ * a pointer-only affordance with nothing to see and nothing to tab to: a
+ * keyboard-only user had no way to close either one, and on the success toast
+ * a stray click destroyed the "Undo" follow-up before it could be used. The
+ * body click stays exactly as it was — this only adds a real, focusable
+ * target next to it.
+ *
+ * `stopPropagation` keeps the button's click from also running the body
+ * handler; the two are idempotent today, but relying on that would break the
+ * moment a toast body does anything other than dismiss.
+ */
+function ToastCloseButton({ onDismiss }: { onDismiss: () => void }) {
+  return (
+    <button
+      type="button"
+      className="app-toast-close"
+      onClick={(e) => {
+        e.stopPropagation();
+        onDismiss();
+      }}
+      title="Dismiss"
+      aria-label="Dismiss notification"
+    >
+      <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
+        <path d="M3.72 3.72a.75.75 0 0 1 1.06 0L8 6.94l3.22-3.22a.749.749 0 0 1 1.275.326.749.749 0 0 1-.215.734L9.06 8l3.22 3.22a.749.749 0 0 1-.326 1.275.749.749 0 0 1-.734-.215L8 9.06l-3.22 3.22a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042L6.94 8 3.72 4.78a.75.75 0 0 1 0-1.06Z" />
+      </svg>
+    </button>
+  );
+}
+
 export default function App() {
   const [stashes, setStashes] = useState<StashListItem[]>([]);
   const [total, setTotal] = useState(0);
@@ -629,6 +662,16 @@ export default function App() {
     if (successToastTimerRef.current) clearTimeout(successToastTimerRef.current);
     setSuccessToast(null);
     setSuccessAction(null);
+  }, []);
+
+  /**
+   * Dismiss the error toast. Mirrors `dismissSuccess` — clearing the timer
+   * matters because the auto-dismiss would otherwise still be pending and fire
+   * a redundant state update after the user already closed the toast.
+   */
+  const dismissError = useCallback(() => {
+    if (errorToastTimerRef.current) clearTimeout(errorToastTimerRef.current);
+    setErrorToast(null);
   }, []);
 
   /**
@@ -1317,6 +1360,7 @@ export default function App() {
               {successAction.label}
             </button>
           )}
+          <ToastCloseButton onDismiss={dismissSuccess} />
         </div>
       )}
       {errorToast && (
@@ -1324,13 +1368,16 @@ export default function App() {
           className="app-error-toast"
           role="alert"
           aria-live="assertive"
-          onClick={() => setErrorToast(null)}
+          onClick={dismissError}
           title="Click to dismiss"
         >
           <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
             <path d="M6.457 1.047c.659-1.234 2.427-1.234 3.086 0l6.082 11.378A1.75 1.75 0 0 1 14.082 15H1.918a1.75 1.75 0 0 1-1.543-2.575Zm1.763.707a.25.25 0 0 0-.44 0L1.698 13.132a.25.25 0 0 0 .22.368h12.164a.25.25 0 0 0 .22-.368Zm.53 3.996v2.5a.75.75 0 0 1-1.5 0v-2.5a.75.75 0 0 1 1.5 0ZM9 11a1 1 0 1 1-2 0 1 1 0 0 1 2 0Z" />
           </svg>
-          {errorToast}
+          {/* Same message column the success toast uses, so a long error
+              cannot squeeze the close button out of the row. */}
+          <span className="app-toast-message">{errorToast}</span>
+          <ToastCloseButton onDismiss={dismissError} />
         </div>
       )}
     </div>

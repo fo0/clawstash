@@ -1,7 +1,9 @@
 import { useCallback, useMemo, useState } from 'react';
 import type { StashVersion } from '../types';
 import type { FileDiff } from './version-diff-utils';
-import { computeFileDiffs } from './version-diff-utils';
+import { buildUnifiedDiff, computeFileDiffs } from './version-diff-utils';
+import { useClipboard } from '../hooks/useClipboard';
+import { CopyIcon, CheckIcon, XIcon } from './shared/icons';
 
 /** Spelled-out form of the single-letter A / D / M status badge. */
 const STATUS_WORD: Record<FileDiff['status'], string> = {
@@ -110,6 +112,24 @@ export default function VersionDiff({ v1, v2 }: Props) {
     return { additions, deletions };
   }, [fileDiffs]);
 
+  // The rendered table is not copyable: line numbers, markers and content are
+  // separate cells, so a mouse selection produces interleaved gutter numbers
+  // instead of a patch. Every neighbouring surface (the version detail, the
+  // stash viewer, every fenced code block) has a copy button; the comparison
+  // was the one place a result could not be taken out of the app.
+  // Built lazily on click — a large diff should not be serialised on every
+  // render of a view where nobody may press it.
+  // Destructured, not held as one object: `useClipboard` builds a fresh return
+  // object every render (only `useClipboardWithKey` memoizes its shape — see
+  // the note there), so depending on the object would rebuild this callback on
+  // every render. `copy` is itself a useCallback over stable inputs, and
+  // naming it directly is also what `react-hooks/exhaustive-deps` requires —
+  // it rejects a member expression as a dependency.
+  const { copy: copyToClipboard, copied, status: copyStatus } = useClipboard();
+  const copyDiff = useCallback(() => {
+    void copyToClipboard(buildUnifiedDiff(fileDiffs));
+  }, [copyToClipboard, fileDiffs]);
+
   return (
     <div className="version-diff">
       {/* "+12 / -3 / A / D / M" carry their whole meaning in a sign or a single
@@ -128,6 +148,35 @@ export default function VersionDiff({ v1, v2 }: Props) {
         <span className="diff-stat-files">
           {changedFiles.length} file{changedFiles.length !== 1 ? 's' : ''} changed
         </span>
+        {changedFiles.length > 0 && (
+          <button
+            type="button"
+            className="btn btn-sm btn-ghost diff-copy"
+            onClick={copyDiff}
+            title={
+              copied
+                ? 'Copied!'
+                : copyStatus === 'failed'
+                  ? 'Copy failed'
+                  : 'Copy this comparison as a unified diff (the format git and diff viewers read)'
+            }
+            aria-label="Copy this comparison as a unified diff"
+          >
+            {copied ? (
+              <>
+                <CheckIcon size={12} /> Copied!
+              </>
+            ) : copyStatus === 'failed' ? (
+              <>
+                <XIcon size={12} /> Failed
+              </>
+            ) : (
+              <>
+                <CopyIcon size={12} /> Copy diff
+              </>
+            )}
+          </button>
+        )}
         {changedFiles.length > 1 && (
           <button
             type="button"

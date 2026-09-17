@@ -141,12 +141,14 @@ export default tseslint.config(
       'jsx-a11y/click-events-have-key-events': 'warn',
       // no-static-element-interactions: 10 violations, largely the same sites.
       'jsx-a11y/no-static-element-interactions': 'warn',
-      // no-noninteractive-element-interactions: 6 violations. Four are
-      // deliberate (the two modal backdrops close on click-outside and both
-      // dialogs already handle Escape; the Mermaid region and the sidebar
-      // separator are focusable widgets). The remaining two are the App
-      // toasts, which dismiss on click and need a real dismiss affordance —
-      // a design decision, not a mechanical edit.
+      // no-noninteractive-element-interactions: 6 violations, all deliberate.
+      // Four are the two modal backdrops (close on click-outside, and both
+      // dialogs already handle Escape) plus the Mermaid region and the sidebar
+      // separator, which are focusable widgets. The remaining two are the App
+      // toasts: each now carries a real focusable close button
+      // (`ToastCloseButton`), so the keyboard path exists and the click
+      // handler that stays on the body is pointer convenience on top of it —
+      // which is precisely what the rule cannot see.
       'jsx-a11y/no-noninteractive-element-interactions': 'warn',
     },
   },

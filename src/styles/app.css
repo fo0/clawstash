@@ -7059,6 +7059,19 @@ textarea.code-editor-plain.code-editor-wrap {
   margin-left: auto;
 }
 
+/* "Copy diff" and "Collapse all" form one right-aligned action group in the
+   summary bar. Copy renders for any changed file, Collapse all only from two
+   files up, so whichever comes first takes the auto margin — without the
+   second rule both would claim one and the pair would be split across the
+   whole bar. */
+.diff-copy {
+  margin-left: auto;
+}
+
+.diff-copy + .diff-collapse-all {
+  margin-left: 0;
+}
+
 .diff-file-collapsed .diff-file-header {
   border-bottom: none;
 }
@@ -7673,6 +7686,37 @@ textarea.code-editor-plain.code-editor-wrap {
 }
 
 .app-toast-action:focus-visible {
+  outline: 2px solid var(--accent-blue);
+  outline-offset: 2px;
+}
+
+/* Explicit dismiss control on both global toasts. The toast body still closes
+   on click; this is the keyboard-reachable, visible affordance next to it.
+   Sized to a 24px box so it stays a usable touch target inside the toast. */
+.app-toast-close {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  margin-right: -6px;
+  padding: 0;
+  border: none;
+  border-radius: var(--radius);
+  background: transparent;
+  color: inherit;
+  opacity: 0.65;
+  cursor: pointer;
+}
+
+.app-toast-close:hover {
+  opacity: 1;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.app-toast-close:focus-visible {
+  opacity: 1;
   outline: 2px solid var(--accent-blue);
   outline-offset: 2px;
 }
