@@ -18,6 +18,19 @@ interface Props {
   ref?: Ref<TagComboboxHandle>;
 }
 
+/**
+ * Mirrors `MAX_TAGS` / `MAX_TAG_LENGTH` in `src/server/validation.ts`. Copied
+ * rather than imported for the same reason `StashEditor` mirrors
+ * `MAX_NAME_LENGTH` and `MAX_FILENAME_LENGTH`: these are client components and
+ * `server/validation.ts` is server code.
+ *
+ * Without them the editor let a user add a 51st tag, or a tag longer than 100
+ * characters, and said nothing — the limit only surfaced as a rejected save
+ * once the whole stash had been composed.
+ */
+const MAX_TAGS = 50;
+const MAX_TAG_LENGTH = 100;
+
 export interface TagComboboxHandle {
   /**
    * Commit any half-typed tag text (same logic as the blur handler) and
@@ -39,10 +52,11 @@ export default function TagCombobox({
   const [input, setInput] = useState('');
   const [showDropdown, setShowDropdown] = useState(false);
   const [activeIndex, setActiveIndex] = useState(-1);
-  // Inline notice shown when the user tries to add an already-present tag.
-  // Mirrors MetadataEditor's dupWarning — a duplicate add used to be a
-  // silent no-op that still cleared the input.
-  const [dupWarning, setDupWarning] = useState<string | null>(null);
+  // Inline notice for an add that was refused: an already-present tag, a tag
+  // over the length limit, or one past the tag count limit. Mirrors
+  // MetadataEditor's dupWarning — a refused add used to be a silent no-op that
+  // still cleared the input.
+  const [warning, setWarning] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const wrapperRef = useRef<HTMLDivElement>(null);
 
@@ -52,11 +66,16 @@ export default function TagCombobox({
     .filter((t) => !tags.some((existing) => existing.toLowerCase() === t.tag.toLowerCase()))
     .filter((t) => !input || t.tag.toLowerCase().includes(input.toLowerCase()));
 
+  // At the cap no further tag can be committed, so the suggestion list and the
+  // "Create" entry would only offer adds that commitTag is about to refuse.
+  const atTagLimit = tags.length >= MAX_TAGS;
+
   // Build the full option list: filtered suggestions + optional "Create" entry
   const showCreate =
+    !atTagLimit &&
     !!input.trim() &&
     !availableTags.some((t) => t.tag.toLowerCase() === input.trim().toLowerCase());
-  const visibleOptions = filtered.slice(0, 10);
+  const visibleOptions = atTagLimit ? [] : filtered.slice(0, 10);
   const totalOptions = visibleOptions.length + (showCreate ? 1 : 0);
 
   // Commit without touching focus — used by the blur handler, where pulling
@@ -69,24 +88,51 @@ export default function TagCombobox({
       .split(',')
       .map((p) => p.trim().toLowerCase())
       .filter(Boolean);
-    const added: string[] = [];
+    const candidates: string[] = [];
     const dups: string[] = [];
+    const tooLong: string[] = [];
     for (const part of parts) {
-      if (added.includes(part)) continue; // repeated within the same input
+      if (candidates.includes(part)) continue; // repeated within the same input
       if (tags.includes(part)) {
         dups.push(part);
+      } else if (part.length > MAX_TAG_LENGTH) {
+        // `maxLength` on the input bounds what can be TYPED, but a pasted
+        // "a, <100+ chars>, c" arrives as one field value, so every part still
+        // has to be measured here.
+        tooLong.push(part);
       } else {
-        added.push(part);
+        candidates.push(part);
       }
     }
+    // Take only what still fits. Splitting rather than rejecting the whole
+    // input keeps a paste that straddles the limit from losing the tags that
+    // did fit.
+    const capacity = Math.max(0, MAX_TAGS - tags.length);
+    const added = candidates.slice(0, capacity);
+    const overflow = candidates.length - added.length;
     if (added.length > 0) {
       onChange([...tags, ...added]);
     }
-    setDupWarning(
-      dups.length > 0
-        ? `Tag${dups.length !== 1 ? 's' : ''} ${dups.map((d) => `"${d}"`).join(', ')} already added.`
-        : null,
-    );
+
+    const problems: string[] = [];
+    if (dups.length > 0) {
+      problems.push(
+        `Tag${dups.length !== 1 ? 's' : ''} ${dups.map((d) => `"${d}"`).join(', ')} already added.`,
+      );
+    }
+    if (tooLong.length > 0) {
+      // Deliberately not quoted back: these are by definition over 100
+      // characters and would bury the message they belong to.
+      problems.push(
+        `${tooLong.length} tag${tooLong.length !== 1 ? 's' : ''} skipped — longer than ${MAX_TAG_LENGTH} characters.`,
+      );
+    }
+    if (overflow > 0) {
+      problems.push(
+        `Tag limit reached (${MAX_TAGS}) — ${overflow} tag${overflow !== 1 ? 's' : ''} not added.`,
+      );
+    }
+    setWarning(problems.length > 0 ? problems.join(' ') : null);
     setInput('');
     setShowDropdown(false);
     setActiveIndex(-1);
@@ -163,7 +209,7 @@ export default function TagCombobox({
             setInput(e.target.value);
             setShowDropdown(true);
             setActiveIndex(-1);
-            if (dupWarning) setDupWarning(null);
+            if (warning) setWarning(null);
           }}
           onFocus={() => setShowDropdown(true)}
           onBlur={() => {
@@ -179,7 +225,18 @@ export default function TagCombobox({
             }
           }}
           onKeyDown={handleKeyDown}
-          placeholder={tags.length === 0 ? 'Type to add tags...' : 'Add more...'}
+          placeholder={
+            atTagLimit
+              ? `Tag limit reached (${MAX_TAGS})`
+              : tags.length === 0
+                ? 'Type to add tags...'
+                : 'Add more...'
+          }
+          // Mirrors the server's per-tag cap, the same way StashEditor mirrors
+          // the name and filename caps. The input stays enabled at the tag
+          // limit so existing text can still be edited or cleared — commitTag
+          // is what refuses the add, with a reason.
+          maxLength={MAX_TAG_LENGTH}
           className="tag-combobox-input"
           autoComplete="off"
           role="combobox"
@@ -189,12 +246,12 @@ export default function TagCombobox({
           aria-controls="tag-combobox-listbox"
           aria-labelledby={inputLabelledBy}
           aria-activedescendant={activeOptionId}
-          aria-invalid={dupWarning ? true : undefined}
+          aria-invalid={warning ? true : undefined}
           // The warning below is a polite live region, so it is announced once
           // as it appears — a user who tabs back into an already-invalid field
           // heard nothing but "invalid". Point at it so the reason travels
           // with the field.
-          aria-describedby={dupWarning ? 'tag-combobox-warning' : undefined}
+          aria-describedby={warning ? 'tag-combobox-warning' : undefined}
         />
       </div>
       {dropdownVisible && (
@@ -248,15 +305,15 @@ export default function TagCombobox({
           ))}
         </div>
       )}
-      {dupWarning && (
+      {warning && (
         <div
           id="tag-combobox-warning"
-          className="tag-combobox-dup-warning"
+          className="tag-combobox-warning"
           role="status"
           aria-live="polite"
           style={{ color: 'var(--accent-orange)', fontSize: 12, marginTop: 4 }}
         >
-          {dupWarning}
+          {warning}
         </div>
       )}
     </div>
