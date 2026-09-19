@@ -120,6 +120,19 @@ const STRICT_TRANSPORT_SECURITY = 'max-age=31536000'; // 1 year
 // caching headers so the static shell and `_next` assets stay cacheable.
 const CACHE_CONTROL_API = 'no-store';
 
+// Self-describing agent endpoints that live OUTSIDE `/api/` but whose body is
+// built from `getBaseUrl(req)` — i.e. from the request's own `Host` header
+// (`src/app/api/_helpers.ts`). Their four siblings under `/api/`
+// (`agent-skill`, `mcp-onboarding`, `mcp-spec`, `openapi`) are already covered
+// by `isApiRoute` below and therefore never storable; `/llms.txt` was the one
+// Host-reflecting response a shared cache or CDN in front of ClawStash could
+// keep. A cache keyed on path alone would then hand every agent that fetches
+// the discovery document a base URL an earlier caller chose via a spoofed
+// `Host` header — the classic Host-header cache-poisoning shape, pointing
+// agents (and the tokens they send) at an attacker's host. Mark them
+// non-storable so the whole self-description surface is treated alike.
+const NO_STORE_PATHS = new Set(['/llms.txt']);
+
 function isHttpsRequest(req: NextRequest): boolean {
   if (req.nextUrl.protocol === 'https:') return true;
   // Mirrors isTrustedProxy() in src/server/auth-rate-limit.ts. That module
@@ -157,12 +170,17 @@ export function middleware(req: NextRequest) {
     for (const [key, value] of Object.entries(CORS_HEADERS)) {
       response.headers.set(key, value);
     }
-    // API/MCP responses carry stash content, token metadata and backup
-    // configuration. Mark them non-storable so neither the browser cache nor
-    // an intermediary keeps a copy. `Authorization` alone is not enough here:
-    // ClawStash also accepts `?token=` (see server/auth.ts), and a response to
-    // a request WITHOUT an Authorization header is storable by a shared cache
-    // under RFC 9111 — so a proxy could serve one caller's stash to the next.
+  }
+
+  // API/MCP responses carry stash content, token metadata and backup
+  // configuration. Mark them non-storable so neither the browser cache nor
+  // an intermediary keeps a copy. `Authorization` alone is not enough here:
+  // ClawStash also accepts `?token=` (see server/auth.ts), and a response to
+  // a request WITHOUT an Authorization header is storable by a shared cache
+  // under RFC 9111 — so a proxy could serve one caller's stash to the next.
+  // `NO_STORE_PATHS` extends the same rule to the Host-reflecting discovery
+  // documents that sit outside `/api/`.
+  if (isApiRoute || NO_STORE_PATHS.has(pathname)) {
     response.headers.set('Cache-Control', CACHE_CONTROL_API);
   }
 
