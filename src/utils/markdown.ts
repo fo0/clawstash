@@ -159,6 +159,42 @@ export function sanitizeHtml(html: string): string {
         el.removeAttribute(attr.name);
       }
     }
+    // Force `rel="noopener noreferrer"` on every anchor carrying a `target`
+    // other than `_self`. The markdown link renderers (above, and the file-
+    // Markdown one in StashViewer) already emit it, but `marked` passes RAW
+    // HTML through untouched, so `<a href="…" target="_blank">` written
+    // directly into a stash description or `.md` file reaches this sanitiser
+    // with whatever `rel` it carries — usually none. Such a link hands the
+    // opened page a live `window.opener` back into ClawStash, which it can
+    // navigate to a spoofed login form (reverse tabnabbing).
+    //
+    // `Cross-Origin-Opener-Policy: same-origin` in src/middleware.ts already
+    // severs that link on browsers that honour COOP, and its comment states
+    // the invariant this closes: "Every external link it renders already
+    // carries rel=noopener noreferrer". Raw-HTML anchors were the one
+    // producer for which that was not true.
+    //
+    // The net is deliberately wider than `_blank` and named targets: `_top`
+    // and `_parent` reuse an existing context and create no opener at all, so
+    // `noopener` is inert on them and `noreferrer` only withholds a Referer
+    // from a third-party site. Nothing in ClawStash reads either, and a
+    // sanitiser that has to enumerate the harmless cases is one exotic target
+    // value away from a hole — so the rule is "anything but `_self`".
+    //
+    // Existing `rel` tokens are preserved (a hand-written `nofollow` survives)
+    // and the two tokens are merged into the set, so output for anchors that
+    // already carry them is byte-identical. A `rel` value crafted to break out
+    // of the attribute cannot: the tokens are re-serialised by the DOM, which
+    // escapes `"` — covered by the `preserves existing rel tokens` case.
+    if (el.tagName.toLowerCase() === 'a' && el.hasAttribute('target')) {
+      const target = (el.getAttribute('target') || '').trim().toLowerCase();
+      if (target !== '' && target !== '_self') {
+        const rel = new Set((el.getAttribute('rel') || '').split(/\s+/).filter(Boolean));
+        rel.add('noopener');
+        rel.add('noreferrer');
+        el.setAttribute('rel', [...rel].join(' '));
+      }
+    }
   });
   return doc.body.innerHTML;
 }

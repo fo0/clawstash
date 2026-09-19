@@ -159,6 +159,52 @@ describe('sanitizeHtml — dangerous attributes', () => {
     expect(sanitizeHtml('<a href="JaVaScRiPt:alert(1)">x</a>')).not.toContain('alert');
     expect(sanitizeHtml('<a href=" \tjavascript:alert(1)">x</a>')).not.toContain('alert');
   });
+
+  // `marked` passes raw HTML through, so a hand-written anchor never goes near
+  // the link renderer that adds `rel`. Without the sanitiser adding it, such a
+  // link hands the opened page a live `window.opener` back into ClawStash
+  // (reverse tabnabbing) — and breaks the invariant middleware.ts cites as the
+  // reason its COOP header is behaviour-neutral.
+  it('adds rel="noopener noreferrer" to raw-HTML anchors that open a new context', () => {
+    const out = sanitizeHtml('<a href="https://evil.example" target="_blank">x</a>');
+    expect(out).toContain('rel="noopener noreferrer"');
+  });
+
+  it('adds rel to any non-_self target, including a named one', () => {
+    const out = sanitizeHtml('<a href="https://evil.example" target="win">x</a>');
+    expect(out).toContain('noopener');
+    expect(out).toContain('noreferrer');
+  });
+
+  it('preserves existing rel tokens while adding the two', () => {
+    const out = sanitizeHtml('<a href="https://example.com" target="_blank" rel="nofollow">x</a>');
+    expect(out).toContain('nofollow');
+    expect(out).toContain('noopener');
+    expect(out).toContain('noreferrer');
+  });
+
+  it('leaves anchors without a target (and _self) untouched', () => {
+    expect(sanitizeHtml('<a href="https://example.com">x</a>')).not.toContain('rel=');
+    expect(sanitizeHtml('<a href="#h" target="_self">x</a>')).not.toContain('rel=');
+  });
+
+  // Re-writing an attribute the sanitiser did not author is only safe because
+  // the DOM re-serialises it: a `rel` crafted to terminate the attribute and
+  // append an event handler must come back escaped, not executable.
+  it('cannot be used to break out of the rel attribute', () => {
+    const out = sanitizeHtml(
+      '<a href="https://example.com" target="_blank" rel=\'" onload="alert(1)\'>x</a>',
+    );
+    expect(out.toLowerCase()).not.toContain('onload="alert');
+    expect(out).toContain('&quot;');
+    expect(out).toContain('noopener noreferrer');
+  });
+
+  it('still strips an unsafe href on an anchor that gains rel', () => {
+    const out = sanitizeHtml('<a href="javascript:alert(1)" target="_blank">x</a>');
+    expect(out).not.toContain('javascript:');
+    expect(out).toContain('rel="noopener noreferrer"');
+  });
 });
 
 describe('sanitizeHtml — legitimate markup survives', () => {
