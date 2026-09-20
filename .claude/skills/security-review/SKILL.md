@@ -27,7 +27,7 @@ Diff-based by default. Full-codebase only on explicit user request (`/security-r
 
 ```
 1. git status + git diff                              -> identify changed files
-2. Read CLAUDE.md "Architecture Principles" + env vars -> understand trust boundaries
+2. Read CLAUDE.md "Coding Conventions" + env vars -> understand trust boundaries
 3. (If GitNexus available) gitnexus_impact on changed auth/input symbols
 4. Read every changed file completely
 5. Evaluate against the coverage contract below

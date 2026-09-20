@@ -2,6 +2,8 @@
 
 Review findings not immediately fixed. **Only work on these upon explicit request.**
 
+> **Refactoring candidates live here too.** Refactoring is never automatic -- explicit request, repeated review smells, or structure that blocks a feature only. Principles: `agent_docs/refactoring_guidelines.md`; the current candidate list with line counts: `agent_docs/development-notes.md -> Refactoring candidates`.
+
 ## Open
 
 > **Extractions (rule 8 — a retired ID is never reused).** Entries lifted out of this table into GitHub issues, each with the reason it was out of reach for a sweep-sized change:
