@@ -15,7 +15,11 @@ interface Props {
   /** True when the last stash list load failed — with an empty list, the
    * "No stashes yet" empty state would be misleading; show an error + retry. */
   loadError: boolean;
-  onRetryLoad: () => void;
+  /** Re-fetch the stash list. Backs both the failed-load retry and the
+   * header's Refresh button — the list is only loaded on auth / search /
+   * filter changes, so a stash an agent wrote over REST or MCP is otherwise
+   * invisible until a full page reload. */
+  onReload: () => void;
   /** Active sidebar search term — it filters this list, so the dashboard
    * must show it (filter chip + honest empty state). */
   search: string;
@@ -43,7 +47,7 @@ export default function Dashboard({
   sortMode,
   loading,
   loadError,
-  onRetryLoad,
+  onReload,
   search,
   onClearSearch,
   hasMore,
@@ -143,6 +147,23 @@ export default function Dashboard({
               </button>
             </span>
           )}
+          {/* The list is only fetched on auth / search / tag / archive
+              changes — nothing polls. A stash an agent just wrote over REST
+              or MCP therefore stayed invisible until a full page reload, on
+              the one screen that exists to watch that storage. */}
+          <button
+            type="button"
+            className="dashboard-refresh-btn"
+            onClick={onReload}
+            disabled={loading}
+            aria-busy={loading || undefined}
+            title="Refresh the stash list — picks up stashes created by an agent over the API or MCP"
+            aria-label="Refresh stash list"
+          >
+            <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
+              <path d="M8 2.5a5.487 5.487 0 0 0-4.131 1.869l1.204 1.204A.25.25 0 0 1 4.896 6H1.25A.25.25 0 0 1 1 5.75V2.104a.25.25 0 0 1 .427-.177l1.38 1.38A7 7 0 0 1 15 8a.75.75 0 0 1-1.5 0 5.5 5.5 0 0 0-5.5-5.5Zm-6.203 5.5a.75.75 0 0 1 .75.75A5.5 5.5 0 0 0 12.131 11.63l-1.204-1.204A.25.25 0 0 1 11.104 10h3.646a.25.25 0 0 1 .25.25v3.646a.25.25 0 0 1-.427.177l-1.38-1.38A7 7 0 0 1 1.047 8.75a.75.75 0 0 1 .75-.75Z" />
+            </svg>
+          </button>
           <label className="sort-control" title="Change how stashes are ordered">
             <span className="sr-only">Sort stashes by</span>
             <svg
@@ -237,7 +258,7 @@ export default function Dashboard({
             </svg>
           </div>
           <p>Failed to load stashes. Check your connection and try again.</p>
-          <button className="btn btn-secondary" onClick={onRetryLoad}>
+          <button className="btn btn-secondary" onClick={onReload}>
             Retry
           </button>
         </div>

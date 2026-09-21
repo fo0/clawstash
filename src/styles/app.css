@@ -1621,6 +1621,37 @@ body {
   color: var(--accent-orange);
 }
 
+/* Manual reload for the stash list. Sized and coloured like `.layout-btn`
+   next to it so the header reads as one row of controls; square, because it
+   carries an icon only (the accessible name lives on `aria-label`). */
+.dashboard-refresh-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius);
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: color 0.15s;
+}
+
+.dashboard-refresh-btn:hover:not(:disabled) {
+  color: var(--text-primary);
+}
+
+.dashboard-refresh-btn:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.dashboard-refresh-btn:focus-visible {
+  outline: 2px solid var(--accent-blue);
+  outline-offset: 2px;
+}
+
 .sort-control {
   display: inline-flex;
   align-items: center;
@@ -2825,6 +2856,21 @@ body {
   align-items: center;
 }
 
+/* "Unsaved changes" marker in the editor header. Quiet by design — it is a
+   state read-out next to the Save button, not a warning to act on. */
+.editor-dirty-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: var(--radius);
+  background: rgba(210, 153, 34, 0.1);
+  color: var(--accent-orange);
+  font-size: 12px;
+  line-height: 1.4;
+  white-space: nowrap;
+}
+
 .cancel-confirm-inline {
   display: flex;
   align-items: center;
@@ -3028,6 +3074,20 @@ body {
 .files-header h3 {
   font-size: 15px;
   font-weight: 600;
+}
+
+/* File-count read-out beside the Files heading — mirrors
+   `.description-char-count`, including the warn colour at the cap. */
+.files-count {
+  margin-left: 8px;
+  font-size: 11px;
+  font-weight: 400;
+  color: var(--text-muted);
+}
+
+.files-count-warn {
+  color: var(--accent-orange);
+  font-weight: 500;
 }
 
 /* Groups the Wrap + Add File buttons so `.files-header`'s space-between keeps
@@ -5982,7 +6042,16 @@ textarea.code-editor-plain.code-editor-wrap {
   .editor-header-actions {
     width: 100%;
     display: flex;
+    /* The row can carry an "Unsaved changes" marker or the inline discard
+       confirm next to Cancel + Save; at phone width that overflows unless
+       the extras are allowed onto their own line. */
+    flex-wrap: wrap;
     gap: 6px;
+  }
+
+  .editor-header-actions .editor-dirty-badge,
+  .editor-header-actions .cancel-confirm-inline {
+    flex-basis: 100%;
   }
 
   .editor-header-actions .btn {

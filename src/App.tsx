@@ -1227,7 +1227,7 @@ export default function App() {
               sortMode={sortMode}
               loading={loading}
               loadError={loadError}
-              onRetryLoad={loadStashes}
+              onReload={loadStashes}
               search={search}
               onClearSearch={() => handleSearchChange('')}
               hasMore={stashes.length < total}
