@@ -46,6 +46,13 @@ const MAX_FILENAME_LENGTH = 255;
  * `content.length` — not a byte count — and stays exactly as strict.
  */
 const MAX_FILE_CONTENT_LENGTH = 10 * 1024 * 1024;
+/**
+ * Mirror of `MAX_FILES`. The server rejects the whole stash past this count,
+ * and the editor could walk straight past it — "Add File" had no cap at all
+ * and an import appended unconditionally, so the limit first surfaced as a
+ * rejected save with every file already composed.
+ */
+const MAX_FILES = 100;
 
 /**
  * Soft-wrap preference for the file editors. Kept separate from the viewer's
@@ -366,6 +373,9 @@ export default function StashEditor({ stash, template, onSave, onCancel, onDirty
     setCollapsedFiles(allFilesCollapsed ? new Set() : new Set(fileIds.current));
   };
 
+  /** The stash cannot hold another file — both ways of adding one stand down. */
+  const filesAtLimit = files.length >= MAX_FILES;
+
   /**
    * Add picked or dropped files as file rows. Getting an existing file into a
    * stash previously meant opening it elsewhere, copying its content and
@@ -382,19 +392,29 @@ export default function StashEditor({ stash, template, onSave, onCancel, onDirty
         selected,
         MAX_FILE_CONTENT_LENGTH,
       );
-      if (imported.length > 0) {
+      const blankStart =
+        files.length === 1 && !files[0].filename.trim() && !files[0].content.trim();
+      const baseFiles = blankStart ? [] : files;
+      const baseIds = blankStart ? [] : fileIds.current;
+      // Only as many as the stash can still hold — appending past MAX_FILES
+      // would read as a successful import and then fail the save.
+      const room = Math.max(0, MAX_FILES - baseFiles.length);
+      const accepted = imported.slice(0, room);
+      const refused = imported.slice(accepted.length);
+      if (accepted.length > 0) {
         markDirty();
-        const blankStart =
-          files.length === 1 && !files[0].filename.trim() && !files[0].content.trim();
-        const baseFiles = blankStart ? [] : files;
-        const baseIds = blankStart ? [] : fileIds.current;
-        fileIds.current = [...baseIds, ...imported.map(() => fileIdCounter.current++)];
-        setFiles([...baseFiles, ...imported]);
+        fileIds.current = [...baseIds, ...accepted.map(() => fileIdCounter.current++)];
+        setFiles([...baseFiles, ...accepted]);
         // The imported filename is the user's choice of name — stop the stash
         // name from overwriting row 1 the next time the name field changes.
         setFirstFileManuallyEdited(true);
       }
-      setImportSkipped(skipped);
+      setImportSkipped([
+        ...skipped,
+        // Same shape as every other skipped line ("<name> — <reason>.") so the
+        // list reads as one set of reasons, not two.
+        ...refused.map((f) => `${f.filename} — a stash holds at most ${MAX_FILES} files.`),
+      ]);
     } finally {
       setImporting(false);
     }
@@ -426,6 +446,9 @@ export default function StashEditor({ stash, template, onSave, onCancel, onDirty
   };
 
   const addFile = () => {
+    // The button is disabled at the cap; the guard also covers a keyboard
+    // activation that races the re-render.
+    if (filesAtLimit) return;
     markDirty();
     const newId = fileIdCounter.current++;
     setFiles([...files, { filename: '', content: '', language: '' }]);
@@ -880,6 +903,17 @@ export default function StashEditor({ stash, template, onSave, onCancel, onDirty
             <h3>
               Files
               <InfoIcon tooltip="Each stash can contain one or more files. Files are the actual content you want to store — code snippets, configs, prompts, or any text. The language is auto-detected from the file extension." />
+              {/* Same read-out as the description's character count: the limit
+                  is only worth screen space once there is more than one file,
+                  and it turns warning-coloured as it comes into reach. */}
+              {files.length > 1 && (
+                <span
+                  className={`files-count${filesAtLimit ? ' files-count-warn' : ''}`}
+                  aria-label={`${files.length} of ${MAX_FILES} files`}
+                >
+                  {files.length} / {MAX_FILES}
+                </span>
+              )}
             </h3>
             <div className="files-header-actions">
               {files.length > 1 && (
@@ -942,9 +976,13 @@ export default function StashEditor({ stash, template, onSave, onCancel, onDirty
               <button
                 className="btn btn-sm btn-ghost"
                 onClick={() => fileInputRef.current?.click()}
-                disabled={importing}
+                disabled={importing || filesAtLimit}
                 aria-busy={importing || undefined}
-                title={`Read files from disk into this stash (or drop them here, up to ${MAX_IMPORT_FILES} at a time)`}
+                title={
+                  filesAtLimit
+                    ? `A stash holds at most ${MAX_FILES} files — remove one to import another`
+                    : `Read files from disk into this stash (or drop them here, up to ${MAX_IMPORT_FILES} at a time)`
+                }
               >
                 <svg
                   aria-hidden="true"
@@ -960,7 +998,12 @@ export default function StashEditor({ stash, template, onSave, onCancel, onDirty
               <button
                 className="btn btn-sm btn-secondary"
                 onClick={addFile}
-                title="Add another file to this stash"
+                disabled={filesAtLimit}
+                title={
+                  filesAtLimit
+                    ? `A stash holds at most ${MAX_FILES} files — remove one to add another`
+                    : 'Add another file to this stash'
+                }
               >
                 <svg
                   aria-hidden="true"
@@ -978,7 +1021,9 @@ export default function StashEditor({ stash, template, onSave, onCancel, onDirty
 
           {dragActive && (
             <div className="editor-files-drop-hint" aria-hidden="true">
-              Drop to add {MAX_IMPORT_FILES} files at most as new file rows
+              {filesAtLimit
+                ? `This stash already holds ${MAX_FILES} files — nothing more can be added`
+                : `Drop to add ${MAX_IMPORT_FILES} files at most as new file rows`}
             </div>
           )}
 

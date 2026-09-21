@@ -3076,6 +3076,20 @@ body {
   font-weight: 600;
 }
 
+/* File-count read-out beside the Files heading — mirrors
+   `.description-char-count`, including the warn colour at the cap. */
+.files-count {
+  margin-left: 8px;
+  font-size: 11px;
+  font-weight: 400;
+  color: var(--text-muted);
+}
+
+.files-count-warn {
+  color: var(--accent-orange);
+  font-weight: 500;
+}
+
 /* Groups the Wrap + Add File buttons so `.files-header`'s space-between keeps
    the heading left and both actions together on the right. */
 .files-header-actions {
@@ -6028,7 +6042,16 @@ textarea.code-editor-plain.code-editor-wrap {
   .editor-header-actions {
     width: 100%;
     display: flex;
+    /* The row can carry an "Unsaved changes" marker or the inline discard
+       confirm next to Cancel + Save; at phone width that overflows unless
+       the extras are allowed onto their own line. */
+    flex-wrap: wrap;
     gap: 6px;
+  }
+
+  .editor-header-actions .editor-dirty-badge,
+  .editor-header-actions .cancel-confirm-inline {
+    flex-basis: 100%;
   }
 
   .editor-header-actions .btn {
