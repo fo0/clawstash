@@ -36,6 +36,16 @@ Setup hints, runtime quirks and operational details for ClawStash. CLAUDE.md kee
 - **Two GitHub-managed workflows run without a file in the repo:** CodeQL (default setup -- `Analyze (actions)` / `Analyze (javascript-typescript)`, runs on every PR and gates merge) and Dependabot Updates.
 - The local Automated Checks in CLAUDE.md -> _Commands_ remain the real gate for correctness.
 
+### Toolchain quirk: `localStorage` in jsdom tests depends on the Node version
+
+`docker-publish.yml` pins `node-version: '26'`, while `engines` says `>=20.9` and most machines run 22. That gap is not cosmetic for the test suite:
+
+- Node 24+ defines `localStorage` / `sessionStorage` on `globalThis` itself. Without `--localstorage-file` the accessor yields `undefined` or throws.
+- Vitest's jsdom environment only copies the window keys the Node global does not already carry, and its `window` **is** `globalThis` -- so jsdom's own Storage is unreachable and a bare `localStorage.setItem(...)` in a component test fails with `Cannot read properties of undefined`.
+- On Node 22 there is no such global, jsdom's Storage lands, and the same test passes. **A storage-backed component test can therefore be green locally and red in CI.**
+
+`vitest.setup.ts` (wired in through `setupFiles`) closes the gap: where the environment's Storage is unusable it installs an in-memory one, so component tests behave the same on every supported Node. Reproduce the CI-side failure locally with `NODE_OPTIONS='--experimental-webstorage' npx vitest run`.
+
 ## Refactoring candidates
 
 When refactoring is allowed to happen at all, plus the principles: `agent_docs/refactoring_guidelines.md`. This section is only the candidate list -- it is not a work queue.
