@@ -1621,6 +1621,37 @@ body {
   color: var(--accent-orange);
 }
 
+/* Manual reload for the stash list. Sized and coloured like `.layout-btn`
+   next to it so the header reads as one row of controls; square, because it
+   carries an icon only (the accessible name lives on `aria-label`). */
+.dashboard-refresh-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius);
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: color 0.15s;
+}
+
+.dashboard-refresh-btn:hover:not(:disabled) {
+  color: var(--text-primary);
+}
+
+.dashboard-refresh-btn:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.dashboard-refresh-btn:focus-visible {
+  outline: 2px solid var(--accent-blue);
+  outline-offset: 2px;
+}
+
 .sort-control {
   display: inline-flex;
   align-items: center;
