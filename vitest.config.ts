@@ -13,6 +13,10 @@ export default defineConfig({
   test: {
     environment: 'node',
     include: ['src/**/*.{test,spec}.{ts,tsx}'],
+    // Restores jsdom's `localStorage`/`sessionStorage` on `globalThis`, which a
+    // Node >= 24 runtime shadows with its own (unconfigured) web storage —
+    // see the file for the full story.
+    setupFiles: ['./vitest.setup.ts'],
     // Type-checking happens separately via `npx tsc --noEmit` to keep the
     // test runner fast.
     typecheck: { enabled: false },
