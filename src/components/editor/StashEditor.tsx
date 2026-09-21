@@ -155,6 +155,12 @@ export default function StashEditor({ stash, template, onSave, onCancel, onDirty
   // Track whether the user has made any edits since the editor opened.
   // Used by the beforeunload handler to warn about unsaved changes.
   const dirtyRef = useRef(false);
+  // Render mirror of `dirtyRef`. The ref alone drives the unload guard, the
+  // navigation guard and the recovery draft — all of them invisible, so the
+  // screen itself never said the form held unsaved work. The Save button
+  // reads "Save Stash" whether or not anything changed, which is exactly the
+  // state an interrupted edit is abandoned in.
+  const [dirty, setDirty] = useState(false);
   // Re-entry guard for handleSave: the Ctrl/Cmd+S listener bypasses the
   // disabled Save button, so two quick presses would otherwise fire two
   // createStash calls and produce a duplicate stash.
@@ -186,6 +192,7 @@ export default function StashEditor({ stash, template, onSave, onCancel, onDirty
   const markDirty = () => {
     if (!dirtyRef.current) {
       dirtyRef.current = true;
+      setDirty(true);
       onDirtyChangeRef.current?.(true);
     }
   };
@@ -578,6 +585,7 @@ export default function StashEditor({ stash, template, onSave, onCancel, onDirty
       if (stash) {
         await api.updateStash(stash.id, payload);
         dirtyRef.current = false;
+        setDirty(false);
         onDirtyChangeRef.current?.(false);
         // The work is on the server now — a leftover draft would offer it back
         // as "unsaved" the next time this stash is edited.
@@ -586,6 +594,7 @@ export default function StashEditor({ stash, template, onSave, onCancel, onDirty
       } else {
         const created = await api.createStash(payload);
         dirtyRef.current = false;
+        setDirty(false);
         onDirtyChangeRef.current?.(false);
         clearDraft(draftTargetId);
         onSave(created.id);
@@ -658,6 +667,18 @@ export default function StashEditor({ stash, template, onSave, onCancel, onDirty
       <div className="editor-header">
         <h2>{stash ? 'Edit Stash' : template ? 'Duplicate Stash' : 'New Stash'}</h2>
         <div className="editor-header-actions">
+          {/* The only on-screen sign that the form holds work the server does
+              not have. Deliberately still shown while `saving` is true — the
+              changes are unsaved until the request comes back, and the Save
+              button next to it already reads "Saving...". */}
+          {dirty && (
+            <span className="editor-dirty-badge" role="status">
+              <svg width="8" height="8" viewBox="0 0 8 8" aria-hidden="true">
+                <circle cx="4" cy="4" r="4" fill="currentColor" />
+              </svg>
+              Unsaved changes
+            </span>
+          )}
           {confirmCancel ? (
             <span className="cancel-confirm-inline">
               Discard changes?

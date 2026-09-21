@@ -2856,6 +2856,21 @@ body {
   align-items: center;
 }
 
+/* "Unsaved changes" marker in the editor header. Quiet by design — it is a
+   state read-out next to the Save button, not a warning to act on. */
+.editor-dirty-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: var(--radius);
+  background: rgba(210, 153, 34, 0.1);
+  color: var(--accent-orange);
+  font-size: 12px;
+  line-height: 1.4;
+  white-space: nowrap;
+}
+
 .cancel-confirm-inline {
   display: flex;
   align-items: center;
