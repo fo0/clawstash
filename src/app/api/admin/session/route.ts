@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getDb } from '@/server/singleton';
-import { extractToken, validateAuth, isAuthEnabled } from '@/server/auth';
+import { extractToken, validateAuth, isAuthEnabled, allScopes } from '@/server/auth';
 import {
   checkAndRecordAuthAttempt,
   resetAuthAttempts,
@@ -15,11 +15,16 @@ export const runtime = 'nodejs';
 
 export async function GET(req: NextRequest) {
   if (!isAuthEnabled()) {
+    // `allScopes()` is the single source of truth for the open-mode grant
+    // (server/auth.ts). This branch used to re-list the scopes inline, so a
+    // future scope added to `ALL_SCOPES` would be granted by
+    // `requireScopeAuth`'s open-mode branch while this endpoint kept
+    // reporting the stale set to the UI.
     return NextResponse.json({
       authenticated: true,
       authRequired: false,
       source: 'open',
-      scopes: ['read', 'write', 'admin', 'mcp'],
+      scopes: allScopes(),
     });
   }
 
