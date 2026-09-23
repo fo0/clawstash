@@ -40,6 +40,14 @@ For local-only setups without network:
 }
 ```
 
+The stdio process does **not** read `.env`: Next.js loads that file for `npm run dev` /
+`npm start`, `tsx` does not. Without its own environment it opens `./data/clawstash.db` relative
+to `cwd`, prunes with the default `STASH_VERSION_LIMIT` (200) and writes `http://localhost:3000`
+into its instructions, guide resources and spec tools. When the web server runs with other
+values, hand the same ones to the stdio process through the client's `env` block, e.g.
+`"env": { "DATABASE_PATH": "/path/to/clawstash.db", "STASH_VERSION_LIMIT": "200", "PORT": "3000" }`
+next to `cwd` — every value a string.
+
 > **Note:** Create an API token with the scopes `read`, `write` and `mcp` in the web GUI under **Settings > API & Tokens**. When `ADMIN_PASSWORD` is not set, no token is needed.
 
 ## Scopes
