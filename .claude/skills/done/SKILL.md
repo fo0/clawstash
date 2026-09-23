@@ -14,8 +14,8 @@ metadata:
 
 ## Scope Boundaries
 
-**Owns:** closing a piece of work out -- format, the automated-check chain, scope check, commit, push, issue close.
-**Does not own:** the review itself (`review`), the PR object (`pr`), remote build state (`ci`). It _suggests_ those and never runs them -- that fence is what keeps `/done` predictable enough to type without reading it first.
+**Owns:** closing a piece of work out — format, the automated-check chain, scope check, commit, push, issue close.
+**Does not own:** the review itself (`basic-review`), the PR object (`pr`), remote build state (`ci`). It *suggests* those and never runs them — that fence is what keeps `/done` predictable enough to type without reading it first.
 
 ## Workflow
 
@@ -26,40 +26,32 @@ git rev-parse --abbrev-ref HEAD && git status --porcelain && git log origin/$(gi
 ```
 
 Classify:
-
-- `main` / `master` / `develop` / `trunk` -> **main branch mode** (conservative)
-- anything else -> **feature branch mode** (standard)
+- `main` / `master` / `develop` / `trunk` → **main branch mode** (conservative)
+- anything else → **feature branch mode** (standard)
 
 ### 2. Read CLAUDE.md closure requirements
 
-- **Commands section** -> identify format / lint / typecheck / test / build commands
-- **Git Conventions** -> commit format (Conventional Commits), branch rules, merge strategy
-- **Documentation Rules** -> verify affected docs (CLAUDE.md, README.md, MEMORY.md, SCRATCHPAD.md, BACKLOG.md) are up to date
+- **Commands section** → identify the automated-check commands, in the canonical order stated there
+- **Git Conventions** → commit format (e.g. Conventional Commits), branch rules, merge strategy
+- **Documentation Rules** → verify affected docs (CLAUDE.md, README.md, MEMORY.md, SCRATCHPAD.md, BACKLOG.md) are up to date
 
 ### 3. Auto-format (write mode)
 
-Run the project's format-write command from CLAUDE.md Commands block (`npm run format` -> `prettier --write .`). This MUST run before lint/typecheck/test/build -- formatting drift introduced during the session otherwise reaches CI and fails `format:check`.
+Run **this project's** format-write command, exactly as CLAUDE.md → *Commands* names it. It MUST run before the rest of the chain — formatting drift introduced during the session otherwise reaches CI and fails the format check there.
 
 - If no format-write command is listed in CLAUDE.md, skip this step (project has no formatter configured).
-- If formatting changed files, **stage them with `git add -u` so they go into the upcoming commit (step 6)** -- do NOT split formatting into its own commit.
+- If formatting changed files, **stage them with `git add -u` so they go into the upcoming commit (step 6)** — do NOT split formatting into its own commit.
 - Re-run `git status --porcelain` after formatting to see what changed.
 
 ### 4. Run automated checks
 
-Execute the project's lint/typecheck/test/build commands from CLAUDE.md. If any fail:
-
+Execute the project's check chain from CLAUDE.md → *Commands*, in the order stated there. If any stage fails:
 - **Feature branch:** report failure, stop. Do not commit.
 - **Main branch:** hard stop. Never push to main on red.
 
-### 5. Verify scope + GitNexus read-only guard
+### 5. Verify scope
 
-If GitNexus is available, confirm the change scope (read-only):
-
-```
-gitnexus_detect_changes({scope: "all"})
-```
-
-Surface any unexpected affected processes. Then run `git status` and verify no unexpected `.claude/**`, `CLAUDE.md`, `AGENTS.md`, or `agent_docs/**` changes are staged -- if GitNexus (or anything else) touched them and they weren't the point of the task, revert with `git checkout -- <paths>` before committing.
+Run `git status` and verify no unexpected `.claude/**`, `CLAUDE.md`, `AGENTS.md`, or `agent_docs/**` changes are staged — if a tool (or anything else) touched them and they weren't the point of the task, revert with `git checkout -- <paths>` before committing.
 
 ### 5b. Context budget check
 
@@ -67,19 +59,19 @@ Surface any unexpected affected processes. Then run `git status` and verify no u
 wc -c CLAUDE.md MEMORY.md SCRATCHPAD.md 2>/dev/null
 ```
 
-Over 14,000 / 16,000 / 8,000 chars -> offload per `agent_docs/context_budget.md` **now**, in this commit: move content to `agent_docs/` (or `docs/adr/`, `agent_docs/memory_archive/`) and leave a one-line pointer. Never delete to fit. This is the closure gate that keeps the always-loaded files from drifting -- deferring it just moves the cost to every future session.
+Over 14,000 / 16,000 / 8,000 chars → offload per `agent_docs/context_budget.md` **now**, in this commit: move content to `agent_docs/` (or `docs/adr/`, `agent_docs/memory_archive/`) and leave a one-line pointer. Never delete to fit. This is the closure gate that keeps the always-loaded files from drifting — deferring it just moves the cost to every future session.
 
 ### 6. Commit uncommitted changes (if any)
 
 - Follow project's commit message convention (Conventional Commits if defined)
 - Reference GitHub issue number if applicable (e.g. `feat: add X (#42)`)
-- **Main branch:** if uncommitted diff is large/unfocused -> ask user before committing. Unattended (`$CLAUDE_CODE_REMOTE=true`) nobody answers: leave it uncommitted, report the `git diff --stat` as the open point, and finish the steps that do not depend on it (CLAUDE.md -> _Autonomy_).
+- **Main branch:** if uncommitted diff is large/unfocused → ask user before committing. Unattended (`$CLAUDE_CODE_REMOTE=true`) nobody answers: leave it uncommitted, report the `git diff --stat` as the open point, and finish the steps that do not depend on it (CLAUDE.md → *Autonomy*).
 
 ### 7. Push
 
 - **Feature branch:** `git push` (use `git push -u origin <branch>` on first push). **Project rule (clawstash): do NOT push unless the user explicitly asks.**
-- **Main branch:** `git push origin <branch>` only after all checks green AND explicit user request.
-- **Never force-push** unless user explicitly requests.
+- **Main branch:** `git push origin <branch>` — only after all checks green AND explicit user request
+- **Never force-push** unless user explicitly requests
 
 ### 8. Suggest PR + CI (feature branch only)
 
@@ -99,17 +91,17 @@ After push on a feature branch, suggest follow-ups — do NOT run them automatic
 Strict format, strict limits:
 
 ```
-[OK] <branch>: <what was done>
+✅ <branch>: <what was done>
 
--> Next: <only if something is open; omit entirely if nothing pending>
+→ Next: <only if something is open; omit entirely if nothing pending>
 ```
 
 ## Rules
 
-- **Format-write always runs before lint** -- never commit unformatted files. CI's `format:check` is unforgiving.
-- **Pre-commit guard is a backstop, not a substitute.** If `agent_docs/ci_formatting_guard.md` (husky + lint-staged) is set up, commits auto-format staged files even outside this skill -- but still run format-write here so the diff you review matches what gets committed, and never bypass the hook with `--no-verify`.
+- **Format-write always runs before lint** — never commit unformatted files. CI's `format:check` is unforgiving.
+- **Pre-commit guard is a backstop, not a substitute.** If `agent_docs/ci_formatting_guard.md` is set up, commits auto-format staged files even outside this skill — but still run format-write here so the diff you review matches what gets committed, and never bypass the hook with `--no-verify`.
 - **Never push to `main` with failing checks.** Hard stop.
 - **Never force-push** without explicit user request.
-- **Ambiguous state on main** (large uncommitted diff, unclear scope) -> ask first; unattended -> uncommitted plus a report line (step 6).
-- **The report is the two lines above and nothing else.** No preamble, no postamble, nothing the commit message already says; the `Next:` line only when something is open.
-- If nothing to commit AND nothing to push AND no open issue -> single-line confirmation: `[OK] <branch>: already clean, nothing to do.`
+- **Ambiguous state on main** (large uncommitted diff, unclear scope) → ask first; unattended → uncommitted plus a report line (step 6).
+- **The report is the two lines above and nothing else.** No preamble, no postamble, nothing the commit message already says; the `Next:` line only when something is open — and when it names a step, the one handoff line from `CLAUDE.md → Handoff Prompt` closes the report.
+- If nothing to commit AND nothing to push AND no open issue → single-line confirmation: `✅ <branch>: already clean, nothing to do.`
