@@ -1682,6 +1682,9 @@ export default function GraphViewer({
                   onClick={() => {
                     setSearchQuery('');
                     setSearchOpen(false);
+                    // The button unmounts once the query is empty — hand focus
+                    // back to the field instead of dropping it to <body>.
+                    searchInputRef.current?.focus();
                   }}
                   title="Clear search"
                   aria-label="Clear search"

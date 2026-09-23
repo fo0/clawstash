@@ -457,7 +457,12 @@ export default function Sidebar({
                 <button
                   type="button"
                   className="search-input-clear"
-                  onClick={() => onSearch('')}
+                  onClick={() => {
+                    onSearch('');
+                    // The button unmounts once the field is empty — hand focus
+                    // back to the field instead of dropping it to <body>.
+                    searchInputRef.current?.focus();
+                  }}
                   title="Clear search (Esc)"
                   aria-label="Clear search"
                 >
