@@ -2777,7 +2777,12 @@ body {
   transition: opacity 0.15s;
 }
 
+/* The section header's "Copy JSON" button shares the class but sits outside */
+/* the table, so the row rule never revealed it: on a mouse it stayed       */
+/* invisible (only a keyboard focus ring could show it). Its header row now */
+/* reveals it the same way a table row reveals its value's copy button.     */
 .metadata-table tr:hover .copy-btn-inline,
+.metadata-section-header:hover .copy-btn-inline,
 .copy-btn-inline:focus-visible {
   opacity: 1;
 }
