@@ -1734,7 +1734,9 @@ export default function GraphViewer({
                           className="graph-search-result-focus"
                           onClick={() => handleFocusTag(t.tag)}
                           title="Focus graph on this tag"
-                          aria-label="Focus graph on this tag"
+                          // Every result row has one of these — "this tag"
+                          // alone gives each an identical, context-free name.
+                          aria-label={`Focus graph on tag: ${t.tag}`}
                         >
                           <svg
                             aria-hidden="true"
