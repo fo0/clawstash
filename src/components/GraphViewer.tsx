@@ -1633,7 +1633,18 @@ export default function GraphViewer({
               {hoveredTag}
             </span>
           )}
-          <div className="graph-search-wrapper">
+          <div
+            className="graph-search-wrapper"
+            // Close when focus leaves the whole widget, not just the field:
+            // the result buttons are Tab stops, and closing on the input's own
+            // blur unmounted them before focus could land (WCAG 2.1.1). The
+            // delay stays for pointer clicks in engines that do not focus a
+            // clicked button (relatedTarget null), so the click lands first.
+            onBlur={(e) => {
+              if (e.currentTarget.contains(e.relatedTarget)) return;
+              setTimeout(() => setSearchOpen(false), 150);
+            }}
+          >
             <div className="graph-search-box">
               <svg
                 aria-hidden="true"
@@ -1657,9 +1668,6 @@ export default function GraphViewer({
                   setSearchOpen(true);
                 }}
                 onFocus={() => setSearchOpen(true)}
-                onBlur={() => {
-                  setTimeout(() => setSearchOpen(false), 150);
-                }}
                 onKeyDown={(e) => {
                   if (e.key === 'Escape') {
                     setSearchOpen(false);
@@ -1682,6 +1690,9 @@ export default function GraphViewer({
                   onClick={() => {
                     setSearchQuery('');
                     setSearchOpen(false);
+                    // The button unmounts once the query is empty — hand focus
+                    // back to the field instead of dropping it to <body>.
+                    searchInputRef.current?.focus();
                   }}
                   title="Clear search"
                   aria-label="Clear search"
@@ -1731,7 +1742,9 @@ export default function GraphViewer({
                           className="graph-search-result-focus"
                           onClick={() => handleFocusTag(t.tag)}
                           title="Focus graph on this tag"
-                          aria-label="Focus graph on this tag"
+                          // Every result row has one of these — "this tag"
+                          // alone gives each an identical, context-free name.
+                          aria-label={`Focus graph on tag: ${t.tag}`}
                         >
                           <svg
                             aria-hidden="true"
