@@ -6,19 +6,19 @@
 
 ## Workflow Triggers
 
-Skills: `.claude/skills/<name>/SKILL.md`, trigger in each frontmatter `description` -- `done` ("done" / "fertig"; never auto-runs a review, and **does not push unless asked**) · `pr` · `review` · `security-review` · `rollback` · `ci` · `stuck` · `beacon` · `verify` (browser UI check) · `gitnexus/*` (read-only) · `scheduler` (Routines, `/loop` + `Cron*`, Desktop tasks; bare `/loop`: `.claude/loop.md`) · `orca` (`/orca <objective>`). Diagram -> `agent_docs/diagram_prompt.md`. Findings -> `BACKLOG.md`, knowledge -> `MEMORY.md` / `SCRATCHPAD.md` (`agent_docs/backlog_process.md`, `memory_process.md`).
+Skills: `.claude/skills/<name>/SKILL.md`, trigger in each frontmatter `description` -- `done` ("done" / "fertig"; never auto-runs a review, and **does not push unless asked**) · `pr` · `basic-review` · `basic-sec-review` · `rollback` · `ci` (which workflows actually run: `agent_docs/development-notes.md -> CI/CD`) · `stuck` · `beacon` · `verify` (browser UI check) · `scheduler` (Routines, `/loop` + `Cron*`, Desktop tasks; bare `/loop`: `.claude/loop.md`) · `orca` (`/orca <objective>`). Diagram -> `agent_docs/diagram_prompt.md`. Findings -> `BACKLOG.md`, knowledge -> `MEMORY.md` / `SCRATCHPAD.md` (`agent_docs/backlog_process.md`, `memory_process.md`).
 
 ## Output Languages
 
-Chat to the user: the user's language (default German), technical terms English and never translated ("2 Bugs gefixt", never "Programmfehler"), paths / commands / errors verbatim. **Everything else English** -- code, comments, log output, UI strings, commits (Conventional Commits), PRs, issues, every generated file. Term list: `agent_docs/autonomy.md -> Never-translate term list`.
+Chat to the user: the user's language (default German) -- skill report shapes fix the structure, not the language -- technical terms English and never translated ("2 Bugs gefixt", never "Programmfehler"), paths / commands / errors verbatim. **Everything else English** -- code, comments, log output, UI strings, commits (Conventional Commits), PRs, issues, every generated file. Term list: `agent_docs/autonomy.md -> Never-translate term list`.
 
 ## Performance / Modes
 
-Model: the session's, never pinned here or in `.claude/settings.json`; `/fast` is that model at faster output, not a downgrade. Plan mode for non-trivial strategy only -- a plan put up for approval ends the turn on the user and carries the _Handoff Prompt_. Reference: `agent_docs/autonomy.md -> Mode reference`.
+Model: the session's, never pinned here or in `.claude/settings.json`. Plan mode for non-trivial strategy only -- a plan put up for approval ends the turn on the user and carries the _Handoff Prompt_. Reference: `agent_docs/autonomy.md -> Mode reference`.
 
 ## Caveman Mode -- chat compression (default `full`)
 
-Chat, status and confirmations only -- **never** files, code, commits, PR bodies, issue comments. Shorten by selection, not compression: cut what would not change the reader's next move; no abbreviations, arrow chains or invented shorthand; code and error strings verbatim. Never compressed: the closing summary, security warnings, irreversible-action confirmations, the _Handoff Prompt_. `caveman lite|full|ultra` switches, `stop caveman` turns it off for the session. Full wording: `agent_docs/autonomy.md -> Caveman Mode`.
+Chat, status and confirmations only -- **never** files, code, commits, PR bodies, issue comments. At `full`: drop filler, pleasantries, hedging and articles; fragments are fine for status lines. Shorten by selection, not compression: cut what would not change the reader's next move; no abbreviations, arrow chains or invented shorthand in any mode; code and error strings verbatim. Never compressed: the closing summary, security warnings, irreversible-action confirmations, the _Handoff Prompt_. `caveman lite|full|ultra` switches (`lite` keeps full sentences, `ultra` goes telegraphic), `stop caveman` turns it off for the session. Full wording: `agent_docs/autonomy.md -> Caveman Mode`.
 
 ## Autonomy
 
@@ -36,30 +36,30 @@ Edge cases: `agent_docs/autonomy.md -> Autonomy`.
 A turn that hands a decision back or names a next step / recommendation ends with **exactly one** ready-to-send prompt: your recommendation, not a menu, complete enough that pasting it is the whole instruction, placed last. **Never two** -- no second command, no second block; alternatives go _above_ it as one-line prose (`A -- <label>`). **One single line, no line breaks, <= 4000 characters**: a slash command takes the rest of the message as its argument, so a line break or the cap loses the goal after the paste. Join the parts with `. ` and `·`; too long -> narrow _In scope_, never a second message.
 
 ```
-/goal <objective in one sentence> -- <the recommended path>. In scope: <...>. Out of scope: <...>. Steps: <1 ... n>. /review after every step, one overall review over the combined diff at the end by an agent that wrote none of it, then /done. Done when: <observable condition>.
+/goal <objective in one sentence> -- <the recommended path>. In scope: <...>. Out of scope: <...>. Steps: <1 ... n>. /basic-review after every step, one overall review over the combined diff at the end by an agent that wrote none of it, then /done. Done when: <observable condition>.
 ```
 
-| The work                                       | Starts with                      |
-| ---------------------------------------------- | -------------------------------- |
-| **Default** -- your output shows the condition | `/goal`                          |
-| **You** call it done, the diff is the proof    | `/orca` (width: `/orca <N> ...`) |
-| Waits on external state, or should recur       | `/loop <interval>`               |
+| The work                                                     | The line starts with                                |
+| ------------------------------------------------------------ | --------------------------------------------------- |
+| **Default** -- a stop condition your own output demonstrates | `/goal`                                             |
+| **You** call it done and the diff is the proof               | `/orca` (another width: `/orca <N> ...`, same line) |
+| Waits on external state, or should recur                     | `/loop <interval>`                                  |
 
-`/goal` is out -- take `/orca` -- when its evaluator cannot see the condition (it calls no tools), a decision is still open (a goal turn cannot stop and ask), or the permission mode still prompts (only auto mode runs unattended). **Not on:** a turn with nothing left to do, a yes/no confirmation, an unattended run. Rationale: `agent_docs/autonomy.md -> Handoff Prompt`.
+`/goal` is out -- take `/orca` -- when its evaluator cannot see the condition (it calls no tools), a decision is still open (a goal turn cannot stop and ask), or the permission mode still prompts (only auto mode runs unattended) -- never because the work looks large. **Not on:** a turn with nothing left to do, a yes/no confirmation, an unattended run. Rationale: `agent_docs/autonomy.md -> Handoff Prompt`.
 
 ## Subagents -- orchestrator mode is the default
 
 **Every session starts in orchestrator mode, width 5:** the main agent decomposes, verifies returned diffs, runs the gates and reports; subagents do the task work. `/orca <N>` sets the width, `/orca off` drops to plain behavior for this session; `/orca <objective>` / `/orca <N> <objective>` runs an objective -- steps with an observable result each, a `reviewer` per step, one overall review by an agent that wrote none of it, `/done` to close. Seat only what the change calls for:
 
-| Role          | Earns a seat when                          |
-| ------------- | ------------------------------------------ |
-| `implementer` | any code change                            |
-| `reviewer`    | any code change -- **never its author**    |
-| `architect`   | a boundary added, moved or crossed         |
-| `domain`      | a domain or business rule                  |
-| `product`     | an ambiguous request, drifting scope       |
-| `docs`        | a documented interface or contract changes |
-| `security`    | trust boundaries, untrusted input, secrets |
+| Role          | Earns a seat when                                    |
+| ------------- | ---------------------------------------------------- |
+| `implementer` | any code change                                      |
+| `reviewer`    | any code change -- **never the agent that wrote it** |
+| `architect`   | a boundary added, moved or crossed                   |
+| `domain`      | a domain or business rule                            |
+| `product`     | an ambiguous request, drifting scope                 |
+| `docs`        | a documented interface or contract changes           |
+| `security`    | trust boundaries, untrusted input, secrets           |
 
 Contract: `.claude/skills/orca/SKILL.md`; type table: `agent_docs/review_process.md -> Subagent Delegation`.
 
@@ -97,7 +97,7 @@ npm test                   # test (vitest)
 npm run build              # build
 npx vitest run path/to/file.test.ts   # one test file
 npm start · npm run mcp    # production · MCP over stdio
-npx @mermaid-js/mermaid-cli mmdc -i docs/ARCHITECTURE.mmd -o docs/ARCHITECTURE.svg
+npx -y -p @mermaid-js/mermaid-cli mmdc -i docs/ARCHITECTURE.mmd -o docs/ARCHITECTURE.svg
 ```
 
 ESLint is a correctness gate, not a style one: `agent_docs/development-notes.md -> Linter scope`.
@@ -119,7 +119,7 @@ Beyond what Prettier and ESLint enforce:
 - The server validates everything with Zod at the trust boundary; clients are untrusted.
 - Route handlers gate with `checkScope()` / `checkAdmin()` -- no Express-style middleware.
 - Named imports; `@/*` aliases for server-side imports in route handlers.
-- `.claude/` stays in `.prettierignore` -- GitNexus rewrites those files unformatted.
+- `.claude/` stays in `.prettierignore` -- the optimizer writes those files from its templates, not Prettier-formatted.
 - Max file length: ~300 lines (split), ~500 strongly recommended.
 
 Full conventions: `agent_docs/coding-conventions.md`.
@@ -129,7 +129,6 @@ Full conventions: `agent_docs/coding-conventions.md`.
 - **Branches:** `claude/<description>-<shortId>` agent, `feature/<name>` manual · **Commits:** Conventional Commits `type(scope): description #issue` · **Merge:** squash merge for PRs
 - **Cloud / routine runs** start on `claude/<topic>` unless the task names a branch (`agent_docs/autonomy.md -> Branch rule`).
 - **Dependencies:** new runtime ones only after user approval with reasoning, dev / tooling without; always commit `package-lock.json`.
-- **CI/CD:** `docker-publish.yml` (manual dispatch, Node 26) runs the _Commands_ chain, then pushes to GHCR; `docs-format.yml` gates `**.md`. Dispatch-only, so "no runs" on a pushed branch is configuration, not breakage.
 - **Formatting guard:** not installed -- `npm run format` before commit is it (`agent_docs/ci_formatting_guard.md`); never `--no-verify`.
 
 ## Environment Variables
@@ -138,7 +137,7 @@ Full conventions: `agent_docs/coding-conventions.md`.
 
 ### Secrets Locations
 
-A secret is never committed -- new one: placeholder in `.env.example`, then ask; never `gh secret set` unprompted. Table per secret class: `agent_docs/env-vars.md -> Secrets Locations`.
+Never committed -- `.env` (template `.env.example`), CI secret store, container host env, fixtures synthetic; per-class table: `agent_docs/env-vars.md -> Secrets Locations`. New secret: placeholder in `.env.example`, ask the user; never `gh secret set` unprompted. Scan: `basic-sec-review` skill.
 
 ## Deployment
 
@@ -150,17 +149,15 @@ REST (Bearer token) + MCP (Streamable HTTP + stdio); OpenAPI at `/api/openapi`, 
 
 ## Testing
 
-**vitest 4** · `npm test` · colocated `__tests__/`, collected as `src/**/*.{test,spec}.{ts,tsx}`. Constraints: `agent_docs/review_process.md -> Test execution constraints`. Detail: `agent_docs/testing.md`.
+**vitest 4** · run `npm test` · colocated `__tests__/` (`src/**/*.{test,spec}.{ts,tsx}`) · mocked DB / `fetch`, jsdom for components. Constraints (agent-runnable, zero-cost, deterministic): `agent_docs/review_process.md -> Test execution constraints`. Detail: `agent_docs/testing.md`.
 
 ## External Integrations / MCPs
 
-Catalog: `agent_docs/mcp_catalog.md` (intended: `gitnexus`, `github`, ClawStash's own) -- never auto-detected, never hard-required (fall back to `Read` / `Bash`); an unattended run reaches only a committed `.mcp.json` entry or a claude.ai connector. **Trigger tools** (`permissions.allow`) are prompt-free only in a trusted local workspace. **Self-heal, local only:** append the missing `mcp__<server>__*` glob and commit it -- additive, never `deny`/`ask`; web/cloud names the user-scope fix instead: `agent_docs/mcp_catalog.md -> Prompt-free triggers everywhere`.
-
-**GitNexus is read-only and must never write to this repo** -- no `rename`, no `wiki`, no skill/doc generation; `analyze` only with `--skip-agents-md`, then `git checkout --` what it touched, and `git status` before each commit. Canonical text: root `AGENTS.md`; CLI + Always/Never rules: `agent_docs/gitnexus.md`.
+Catalog: `agent_docs/mcp_catalog.md` (intended: `github`, ClawStash's own) -- never auto-detected, never hard-required (fall back to `Read` / `Bash`); an unattended run reaches only a committed `.mcp.json` entry or a claude.ai connector. **Trigger tools** (`permissions.allow`) are prompt-free only in a trusted local workspace. **Self-heal, local only:** append the missing `mcp__<that server>__*` glob and commit it -- additive, never `deny`/`ask`; web/cloud appends nothing and names the user-scope fix: `agent_docs/mcp_catalog.md -> Prompt-free triggers everywhere`.
 
 ## Architecture Decisions
 
-ADRs in `docs/adr/` (format: `agent_docs/adr_template.md`). Grep `docs/adr/` before contradicting one; reverse with a new ADR `Status: Supersedes ADR-NNNN`, never by editing an accepted one.
+ADRs in `docs/adr/` (format: `agent_docs/adr_template.md`). Grep `docs/adr/` before contradicting one; reverse with a new ADR that supersedes it -- the old one changes only its status (`Superseded by ADR-NNNN`), never its body.
 
 ## Documentation Rules
 
@@ -170,12 +167,4 @@ After a code change, update only what it changed: `README.md` (user-facing) · `
 
 `CLAUDE.md` loads every turn: **12k** target, offload at **14k**, hard 16k. `MEMORY.md` / `SCRATCHPAD.md` load at session start: 8k / 4k target, offload at 16k / 8k. On-demand files (`agent_docs/`, `.claude/skills/`, `docs/`) are unbudgeted. Over -> **move** content out and leave a one-line pointer, never delete to fit -- ladder: `agent_docs/context_budget.md`. The Tier-1 guard flags it after any Edit/Write; act in the same session.
 
-<!-- The GitNexus rule above sits OUTSIDE these markers on purpose -- `gitnexus analyze` overwrites what is between them. Do not move it in. -->
-
-<!-- gitnexus:start -->
-
-Indexed as **clawstash**.
-
-<!-- gitnexus:end -->
-
-<!-- Generated by claude-code-optimizer v1.48.0 -->
+<!-- Generated by claude-code-optimizer v1.49.0 -->

@@ -1,7 +1,7 @@
 ---
 name: orca
 description: "Orchestrator mode — the default working mode of this project, not a toggle to find. The main agent does no task work itself: every unit goes to a role-framed subagent that inherits its model and effort, at most 5 in parallel unless overridden. Takes an objective: '/orca <objective>' or '/orca <N> <objective>' runs it as a delegated objective run — steps, a review per step, one overall review over the combined diff. Load it for that, for the contract (roles, width, write scopes, verification), when the user says '/orca', 'orca mode', 'orchestrator mode', 'orca an/aus', 'delegate everything', or asks what the width is set to. '/orca off' drops to plain behavior for this session only."
-argument-hint: '[on|off|status|N] [objective]'
+argument-hint: "[on|off|status|N] [objective]"
 metadata:
   origin: claude-code-optimizer
 ---
@@ -15,8 +15,8 @@ metadata:
 - "orca mode", "orchestrator mode", "orca an/aus", "ab jetzt alles delegieren", "delegate everything"
 - Session start, when `SCRATCHPAD.md` still carries an Orca line from an earlier session or from before a compaction
 
-Not this skill: choosing a `subagent_type` for one assignment while already orchestrating. That is the type/role
-table in `CLAUDE.md → Subagents`, with the longer form in `agent_docs/review_process.md → Subagent Delegation`.
+Not this skill: choosing a `subagent_type` for one assignment while already orchestrating. That is the `subagent_type`
+table in `agent_docs/review_process.md → Subagent Delegation`; the roles and their seats are in `CLAUDE.md → Subagents`.
 
 ## Scope Boundaries
 
@@ -28,21 +28,21 @@ table in `CLAUDE.md → Subagents`, with the longer form in `agent_docs/review_p
 The text after the skill name is the argument. It arrives substituted at the bottom of this section; parse it in
 this order — the first match wins:
 
-| Argument                    | Reading           | Effect                                                                                                                   |
-| --------------------------- | ----------------- | ------------------------------------------------------------------------------------------------------------------------ |
-| _(empty)_                   | status            | Report state and width, change nothing                                                                                   |
-| exactly `status`            | status            | Report state and width, change nothing                                                                                   |
-| exactly `on` / `off`        | mode              | `off` → plain Claude Code behavior for the rest of **this** session · `on` → back to orchestrating at the last width set |
-| exactly an integer `N`      | width             | Set the parallel width for this session, change nothing else                                                             |
-| integer `N` **+ more text** | width + objective | Set the width, then run the rest as an **objective run** (below)                                                         |
-| anything else               | objective         | An **objective run** at the current width                                                                                |
+| Argument | Reading | Effect |
+|----------|---------|--------|
+| *(empty)* | status | Report state and width, change nothing |
+| exactly `status` | status | Report state and width, change nothing |
+| exactly `on` / `off` | mode | `off` → plain Claude Code behavior for the rest of **this** session · `on` → back to orchestrating at the last width set |
+| exactly an integer `N` | width | Set the parallel width for this session, change nothing else |
+| integer `N` **+ more text** | width + objective | Set the width, then run the rest as an **objective run** (below) |
+| anything else | objective | An **objective run** at the current width |
 
 **A control word counts only as the whole argument.** `/orca off` is the mode command; `/orca off-by-one in the
 paginator` is an objective, because "off" is not the entire string. Same for `on` and `status`. An objective that
 genuinely starts with a bare control word gets rephrased, not guessed at.
 
 **An objective never starts with another slash command.** Claude Code expands stacked skills at the start of a
-message, so `/orca /review src/auth` loads _both_ skills and hands `src/auth` to each — orca never sees the `/review`
+message, so `/orca /basic-review src/auth` loads *both* skills and hands `src/auth` to each — orca never sees the `/basic-review`
 as its objective. Write the objective as prose and name the skill inside it ("review src/auth against …"); the run
 delegates it either way.
 
@@ -57,8 +57,8 @@ ends, and it follows the persistence rule below. `/orca 5` puts it back.
 number to think about, and only if the default is wrong for the task.
 
 **Off is a command, never a default.** The next session orchestrates again, because nothing carries `off` forward —
-not this file, not CLAUDE.md, not `SCRATCHPAD.md`. Only a non-default _width_ is worth persisting: write it to
-`SCRATCHPAD.md` → _Current Work_ as `**Orca** — width <N> (<date>)` so a compaction cannot lose it. **A line there is
+not this file, not CLAUDE.md, not `SCRATCHPAD.md`. Only a non-default *width* is worth persisting: write it to
+`SCRATCHPAD.md` → *Current Work* as `**Orca** — width <N> (<date>)` so a compaction cannot lose it. **A line there is
 authority, not staleness** — obey it and say in one sentence that the width came from the scratchpad; the user has
 `/orca 5` if it is wrong. No line means width 5. (Correcting the line to the default instead would throw away the one
 thing it exists to protect: a same-day compaction and a same-day earlier session are indistinguishable from the date.)
@@ -68,7 +68,7 @@ thing it exists to protect: a same-day compaction and a same-day earlier session
 1. **Every unit of task work is delegated. No exception.** Reading a file for its content, searching, planning,
    editing, writing tests, running checks, reviewing — all of it happens in a subagent, including the units that
    would plainly be faster done directly. "Too small to delegate" is not a judgment this mode makes; `/orca off` is.
-2. **Each assignment names a role, from the roster in CLAUDE.md → _Subagents_.** The role is the lens the brief
+2. **Each assignment names a role, from the roster in CLAUDE.md → *Subagents*.** The role is the lens the brief
    frames — `architect`, `implementer`, `reviewer`, `domain`, `product`, `docs`, `security` — and the wave report
    names it. Seat the roles the change actually calls for, never a standing panel and never two agents with the same
    lens: agreement between identical lenses is not evidence. **A code change always seats `reviewer`, and never the
@@ -99,7 +99,7 @@ An objective run is the contract above pointed at one stated outcome instead of 
 for. It adds no mechanism: it is the ordering of ones this project already has.
 
 1. **Restate the objective in one sentence, and say what is out of scope.** Both go to `SCRATCHPAD.md` →
-   _Current Work_ under `**Orca objective** — <one sentence> (<date>)`, with the out-of-scope list under it. That is
+   *Current Work* under `**Orca objective** — <one sentence> (<date>)`, with the out-of-scope list under it. That is
    what survives a compaction; the conversation is not.
 2. **Cut it into steps, each with an observable result** — a test that passes, a file that exists, a command that
    exits 0. A step whose result cannot be observed is not a step, it is a hope.
@@ -123,13 +123,15 @@ line — the whole briefing behind the command, within the character cap that se
 two — and stop, **at the start, not after a run that was going to end there anyway.**
 A user who typed `/orca` is asking for the work, not for this command; naming the better one costs them one line
 and saves the run. An objective that trips one of that section's three disqualifiers is an objective run, so continue.
+**Unattended** (`$CLAUDE_CODE_REMOTE=true`), nobody can paste a block: Step 0 does not apply, the objective runs, and a
+decision only the user can make lands in the report instead of a stop (CLAUDE.md → *Autonomy*).
 
 **What an objective run is not: `/goal`.** It carries the objective through the run it starts. Claude Code's `/goal`
-is a _cross-turn_ evaluator — a session-scoped prompt Stop hook that re-checks a condition after every turn — and no
+is a *cross-turn* evaluator — a session-scoped prompt Stop hook that re-checks a condition after every turn — and no
 skill can set one: a built-in slash command is not model-invocable, and a Stop hook written into settings mid-session
 does not reach the session that wrote it. The two never both get sent — and there is no exception, not even width:
 a `/goal` turn orchestrates anyway, because that is this project's default, and a non-default width is a sentence
-_inside_ that one line (`work at width 3`), never an `/orca <N>` sent ahead of it. A handoff is one paste.
+*inside* that one line (`work at width 3`), never an `/orca <N>` sent ahead of it. A handoff is one paste.
 **Never generate a skill named `goal` to close this gap** — it would shadow the built-in, which is the defect
 v1.30.0 removed.
 
@@ -138,7 +140,7 @@ v1.30.0 removed.
 - **A failed subagent is a re-assignment, not a takeover.** Sharpen or split the assignment and send it again; the
   orchestrator never "just fixes it quickly" itself. Third failure on the same unit → `.claude/skills/stuck/SKILL.md`.
 - **Unattended runs** (`CLAUDE_CODE_REMOTE=true`) keep the mode and keep the ban on ending a turn with a question —
-  subagents cannot ask either, so the assignment states the assumption it runs under. See `CLAUDE.md` → _Autonomy_.
+  subagents cannot ask either, so the assignment states the assumption it runs under. See `CLAUDE.md` → *Autonomy*.
   An objective run there states its assumption and finishes; it never stops on the decision it cannot get answered.
 - **Skills stay in force.** A skill the user invokes while the mode is on is followed by the orchestrator; the work
   that skill asks for is what gets delegated.

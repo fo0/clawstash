@@ -14,8 +14,8 @@ metadata:
 
 ## Scope Boundaries
 
-**Owns:** reversing git state that already exists -- uncommitted changes, local commits, pushed commits, an open or merged PR, a deleted branch.
-**Does not own:** diagnosing _why_ it broke (`stuck`), fixing a red build forward instead of backward (`ci`), reversing a deployment (CLAUDE.md -> _Deployment_). Reaching for it to escape a confusing state rather than a broken one is the wrong skill: that is `stuck`.
+**Owns:** reversing git state that already exists — uncommitted changes, local commits, pushed commits, an open or merged PR, a deleted branch.
+**Does not own:** diagnosing *why* it broke (`stuck`), fixing a red build forward instead of backward (`ci`), reversing a deployment (CLAUDE.md → *Deployment*). Reaching for it to escape a confusing state rather than a broken one is the wrong skill: that is `stuck`.
 
 ## Auto-Detect Target
 
@@ -30,24 +30,23 @@ gh pr list --head $(git rev-parse --abbrev-ref HEAD) --json number,state 2>/dev/
 
 Decision matrix:
 
-| State                              | Action                                                  |
-| ---------------------------------- | ------------------------------------------------------- |
-| Uncommitted local changes only     | Phase A (discard working tree, opt-in)                  |
-| Local commits, not pushed          | Phase B (reset back N commits)                          |
-| Pushed commits on feature branch   | Phase C (revert + push, or force-with-lease — explicit) |
-| Pushed to main + bad commit on top | Phase D (revert + push)                                 |
-| Merged PR causing breakage         | Phase E (revert PR via gh)                              |
-| Branch deleted by mistake          | Phase F (restore from reflog / origin)                  |
+| State                                   | Action                                  |
+|-----------------------------------------|------------------------------------------|
+| Uncommitted local changes only          | Phase A (discard working tree, opt-in)   |
+| Local commits, not pushed               | Phase B (reset back N commits)           |
+| Pushed commits on feature branch        | Phase C (revert + push, or force-with-lease — explicit) |
+| Pushed to main + bad commit on top      | Phase D (revert + push)                  |
+| Merged PR causing breakage              | Phase E (revert PR via gh)               |
+| Branch deleted by mistake               | Phase F (restore from reflog / origin)   |
 
 Always **print the detected state and proposed action before executing**:
-
 ```
 Detected: pushed 2 commits to feature/x; latest broke build.
 Proposed: git revert HEAD~1..HEAD && git push (no force).
 Proceed? (yes/no)
 ```
 
-**Unattended** (`$CLAUDE_CODE_REMOTE=true`): nobody answers `Proceed?`, and a run that waits for it is a dead run (CLAUDE.md -> _Autonomy_). The phases split by what they destroy. Phases C, E and F add commits or restore a ref -- they run without the prompt, and the detection line above becomes a report line. **Phase D is the exception among the additive phases:** its direct push to the default branch is interactive-only. Unattended, a bad commit on the default branch takes the Phase E path -- revert commit on its own branch, revert PR, merge through the `pr` skill's gate -- because a run that pushes straight to the default branch breaks the repo's own branch rule, whatever it pushes. Phases A and B and every force operation destroy work: they run unattended only when the instruction that invoked this skill ordered exactly that (the `stuck` skill's unattended step ordering the loop work discarded is one); otherwise skip, report the proposed command, and continue with what does not depend on it.
+**Unattended** (`$CLAUDE_CODE_REMOTE=true`): nobody answers `Proceed?`, and a run that waits for it is a dead run (CLAUDE.md → *Autonomy*). The phases split by what they destroy. Phases C, E and F add commits or restore a ref — they run without the prompt, and the detection line above becomes a report line. **Phase D is the exception among the additive phases:** its direct push to the default branch is interactive-only. Unattended, a bad commit on the default branch takes the Phase E path — revert commit on its own branch, revert PR, merge through the `pr` skill's gate — because a run that pushes straight to the default branch breaks the repo's own branch rule, whatever it pushes. Phases A and B and every force operation destroy work: they run unattended only when the instruction that invoked this skill ordered exactly that (the `stuck` skill's unattended step ordering the loop work discarded is one); otherwise skip, report the proposed command, and continue with what does not depend on it.
 
 ## Phase A — Discard uncommitted changes
 
@@ -81,7 +80,7 @@ git push                                  # no force
 
 ## Phase D — Revert on main
 
-Always use `git revert` on the default branch. Never `git reset --hard` there without explicit user override. "Main" is whatever this repo's default branch is called -- resolve the name, never assume it:
+Always use `git revert` on the default branch. Never `git reset --hard` there (*Hard Rules*). "Main" is whatever this repo's default branch is called — resolve the name, never assume it:
 
 ```bash
 BASE=$(gh repo view --json defaultBranchRef --jq .defaultBranchRef.name)   # MCP: the repo's default_branch
@@ -89,24 +88,24 @@ git revert --no-edit <bad-sha>
 git push origin "$BASE"
 ```
 
-If revert produces a conflict -> stop, ask user to resolve manually.
+If revert produces a conflict → stop, ask user to resolve manually.
 
-**Unattended (`$CLAUDE_CODE_REMOTE=true`): never push to `$BASE`.** Run the revert as Phase E with `$PR` replaced by the bad SHA -- branch `revert-pr-<sha>`, `git revert <bad-sha>` without `-m 1` for a non-merge commit -- push that branch, open the revert PR, merge it only through `.claude/skills/pr/SKILL.md -> /pr merge`. The direct push above is the interactive shortcut for a repo whose owner is at the keyboard; unattended, a direct push to the default branch is outside the branch rule in `agent_docs/autonomy.md -> Branch rule`.
+**Unattended (`$CLAUDE_CODE_REMOTE=true`): never push to `$BASE`.** Run the revert as Phase E with `$PR` replaced by the bad SHA — branch `claude/revert-<sha>` (unattended work starts on `claude/`), `git revert <bad-sha>` without `-m 1` for a non-merge commit — push that branch, open the revert PR, merge it only through `.claude/skills/pr/SKILL.md → /pr merge`. The direct push above is the interactive shortcut for a repo whose owner is at the keyboard; unattended, a direct push to the default branch is outside the branch rule in `agent_docs/autonomy.md → Branch rule`.
 
 ## Phase E — Revert merged PR
 
-The `gh` CLI has no `pr revert` subcommand -- build the revert PR manually (CLI equivalent of GitHub's web "Revert" button). A revert **PR** is preferred over a direct push to main: it survives branch protection and keeps the change reviewable.
+The `gh` CLI has no `pr revert` subcommand — build the revert PR manually (CLI equivalent of GitHub's web "Revert" button). A revert **PR** is preferred over a direct push to main: it survives branch protection and keeps the change reviewable. Unattended, the branch is `claude/revert-pr-$PR` instead (`agent_docs/autonomy.md → Branch rule`).
 
 ```bash
 PR=<number>
-BASE=$(gh pr view "$PR" --json baseRefName --jq .baseRefName)     # the branch the PR merged into -- never assume `main`
+BASE=$(gh pr view "$PR" --json baseRefName --jq .baseRefName)     # the branch the PR merged into — never assume `main`
 SHA=$(gh pr view "$PR" --json mergeCommit --jq .mergeCommit.oid)
 git checkout "$BASE" && git pull
 git checkout -b revert-pr-$PR
 git revert -m 1 "$SHA"                  # -m 1 = keep mainline parent
 git push -u origin revert-pr-$PR
-gh pr create --base "$BASE" --title "Revert PR #$PR" --body "Reverts #$PR -- <reason>"
-gh pr comment "$PR" --body "Reverted via #<new-pr-number> -- <reason>"
+gh pr create --base "$BASE" --title "Revert PR #$PR" --body "Reverts #$PR — <reason>"
+gh pr comment "$PR" --body "Reverted via #<new-pr-number> — <reason>"
 ```
 
 ## Phase F — Restore deleted branch
@@ -124,20 +123,19 @@ git push -u origin <name>                # if remote was also gone
 - **Never `git push --force` on main.** Default is revert + new commit.
 - **Never delete a branch** as part of rollback — only restore / revert.
 - **Always print a dry-run diff** of what the rollback will change before executing.
-- **Always confirm with the user before destructive ops** (`reset --hard`, `force-push`, branch delete). Unattended, the confirmation cannot happen, so the op is skipped and reported (_Unattended_ under Auto-Detect Target) -- never assumed.
+- **Always confirm with the user before destructive ops** (`reset --hard`, `force-push`, branch delete). Unattended, the confirmation cannot happen: the op runs only when the invoking instruction ordered exactly that, otherwise it is skipped and reported (*Unattended* under Auto-Detect Target) — never assumed.
 - **Test must pass after rollback.** If the rollback itself breaks the build, stop and surface.
 
 ## After Rollback
 
-1. Run lint / typecheck / test / build per CLAUDE.md.
-2. If GitNexus is enabled: `gitnexus_detect_changes()` to confirm scope.
-3. Comment on the original PR / issue explaining the rollback (English, short).
-4. Recommend a follow-up: open a new branch, fix the root cause, do not just re-apply.
+1. Run the automated checks per CLAUDE.md → *Commands*, in the canonical order.
+2. Comment on the original PR / issue explaining the rollback (English, short).
+3. Recommend a follow-up: open a new branch, fix the root cause, do not just re-apply.
 
 ## Report
 
 ```
-Rollback complete
+↩️ Rollback complete
 Phase: <A/B/C/D/E/F>
 Reverted: <commits or PR number>
 Branch: <branch>
@@ -148,7 +146,7 @@ Next: <link to follow-up branch or issue, if applicable>
 If failed:
 
 ```
-Rollback halted
+❌ Rollback halted
 Reason: <conflict / test failure / missing reflog entry>
 State: <what's currently true on disk + remote>
 Next steps: <concrete commands the user can run>

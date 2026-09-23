@@ -2,7 +2,7 @@
 
 Ready-to-paste hook snippets that enforce optimizer rules beyond the Tier-1 minimum in `.claude/settings.json`. Copy what fits, paste into `.claude/settings.json` under the matching trigger.
 
-> **Tier-1 hooks** (already in `.claude/settings.json`): GitNexus read-only pre-commit guard (no auto-analyze), context budget guard (CLAUDE.md / MEMORY.md / SCRATCHPAD.md), quality-config guard (a `PreToolUse` deny on `.prettierrc.json` / `eslint.config.js` -- a red check is fixed in the code, never by weakening the rule that caught it), SessionStart memory reminder.
+> **Tier-1 hooks** (already in `.claude/settings.json`): context budget guard (CLAUDE.md / MEMORY.md / SCRATCHPAD.md), SessionStart memory reminder, and the quality-config guard (a `PreToolUse` deny on `.prettierrc.json` / `eslint.config.js` -- a red check is fixed in the code, never by weakening the rule that caught it).
 > **Tier-2** = recommended, default off -- copy if relevant.
 > **Tier-3** = optional, situational -- copy only if you actively want the behavior.
 
@@ -20,9 +20,9 @@ Plain stdout from a hook is **only** added to the model's context on `SessionSta
 {"hookSpecificOutput":{"hookEventName":"PostToolUse","additionalContext":"...message..."}}
 ```
 
-Supported on `SessionStart`, `SubagentStart`, `UserPromptSubmit`, `UserPromptExpansion`, `PreToolUse`, `PostToolUse`, `PostToolUseFailure`, `Stop`, `SubagentStop` -- **not** on `PreCompact`, `SessionEnd`, `Notification`. Build the JSON with `jq -nc --arg m "$msg" '...'` whenever the message contains captured output, so quotes and newlines stay escaped. Alternatives: exit 2 + stderr (blocks the call on `PreToolUse`), `{"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"ask"}}` (forces the permission prompt), `{"systemMessage":"..."}` (shown to the user, not the agent).
+`additionalContext` is carried by the tool and turn events -- `PreToolUse`, `PermissionRequest`, `PostToolUse`, `PostToolUseFailure`, `UserPromptSubmit`, `Stop`, `SubagentStop`. Events without it (`PreCompact`, `PostCompact`, `SessionEnd`, `Notification`, `WorktreeCreate`) can only reach the _user_ via `{"systemMessage":"..."}`, or leave a side-file for the next turn to read. Build the JSON with `jq -nc --arg m "$msg" '...'` whenever the message contains captured output, so quotes and newlines stay escaped. Alternatives: exit 2 + stderr (blocks the call on `PreToolUse` and the other blockable events), `{"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"ask"}}` (forces the permission prompt; `"allow"` and `"deny"` are the other two values -- a hook decision never overrides a matching `deny`/`ask` rule), `{"continue":false,"stopReason":"..."}` (ends the turn).
 
-**Two levers most catalogs miss.** `$CLAUDE_CODE_REMOTE` is `"true"` in web/cloud sessions and unset in the local CLI -- the one _resolvable_ test for "is a human watching", which is what makes an autonomy-conditional hook legal (CLAUDE.md -> _Autonomy_). And a hook entry is not only a shell command: `"type"` also accepts `"http"`, `"mcp_tool"`, `"prompt"` (LLM yes/no) and `"agent"`, entries take `"timeout"` and an `"if"` condition, and `${CLAUDE_PROJECT_DIR}` expands inside `command`. Events beyond the ones used below: `Setup`, `PostCompact`, `SessionEnd`, `PermissionRequest`, `PermissionDenied`, `PostToolUseFailure`, `SubagentStart`/`SubagentStop`, `TaskCreated`/`TaskCompleted`, `ConfigChange`, `FileChanged` -- reach for one of those before inventing a polling loop.
+**Two levers most catalogs miss.** `$CLAUDE_CODE_REMOTE` is `"true"` in web/cloud sessions and unset in the local CLI -- the one _resolvable_ test for "is a human watching", which is what lets an autonomy-conditional hook test something it can actually resolve. And a hook entry is not only a shell command: `"type"` also accepts `"http"`, `"mcp_tool"`, `"prompt"` (LLM yes/no) and `"agent"`, entries take `"timeout"` and an `"if"` condition, and `${CLAUDE_PROJECT_DIR}` expands inside `command`. Events beyond the ones used below: `Setup`, `PostCompact`, `SessionEnd`, `PermissionRequest`, `PermissionDenied`, `PostToolUseFailure`, `SubagentStart`/`SubagentStop`, `TaskCreated`/`TaskCompleted`, `ConfigChange`, `FileChanged` -- reach for one of those before inventing a polling loop.
 
 Each snippet below states its **Trigger** and, where it matters, whether it is agent-facing or user-facing.
 
@@ -30,7 +30,7 @@ Each snippet below states its **Trigger** and, where it matters, whether it is a
 
 ## Tier 2 -- Recommended
 
-> **MEMORY.md / SCRATCHPAD.md size warnings are no longer here** -- since v1.18.0 they are part of the Tier-1 **context budget guard** in `.claude/settings.json`, which checks all three budgeted files (`CLAUDE.md` 20k, `MEMORY.md` 16k, `SCRATCHPAD.md` 8k) in a single `PostToolUse` hook and points at `agent_docs/context_budget.md`. Nothing to paste; adjust the thresholds there if this project needs different ones.
+> **MEMORY.md / SCRATCHPAD.md size warnings are no longer here** -- since v1.18.0 they are part of the Tier-1 **context budget guard** in `.claude/settings.json`, which checks all three budgeted files (`CLAUDE.md` 14k, `MEMORY.md` 16k, `SCRATCHPAD.md` 8k) in a single `PostToolUse` hook and points at `agent_docs/context_budget.md`. Nothing to paste. The thresholds are the optimizer's budget table: a re-run replaces a hand-edited one (settings template -> Merge rules).
 
 ### Write -- stray doc-file warning
 
@@ -80,7 +80,7 @@ Trigger: `Stop`. **User-facing** by design: `additionalContext` on `Stop` would 
 }
 ```
 
-Trigger: `PreCompact`. **Neither agent- nor user-facing:** `PreCompact` supports no `additionalContext`, and its stdout only reaches the debug log -- so the snippet writes a side-file instead of printing. The reliable path back into context after a compaction is the SessionStart reminder plus re-reading `SCRATCHPAD.md`. Gitignore the `.bak`.
+Trigger: `PreCompact`. **Neither agent- nor user-facing:** `PreCompact` supports no `additionalContext`, and its stdout only reaches the debug log -- so the snippet writes a side-file instead of printing. The reliable path back into context after a compaction is the SessionStart reminder plus re-reading `SCRATCHPAD.md`; `PostCompact` fires on the other side of the same event and can `systemMessage` the user that the dump is there. Gitignore the `.bak`.
 
 ### SessionStart -- unattended-session banner
 
@@ -127,7 +127,7 @@ Trigger: `Stop`. User-facing (same reasoning as the cleanup reminder above).
 }
 ```
 
-Trigger: `PreToolUse`. Project commands inserted from CLAUDE.md (lint is `npm run lint`, typecheck is `npx tsc --noEmit`, tests are vitest via `npm test`). Requires `jq` -- without it the guard never fires (see Notes). Heuristic and **err-safe**: a bare `git push` is resolved via the currently checked-out branch, and a false positive merely runs the checks -- it only blocks when they are red.
+Trigger: `PreToolUse`. Project commands inserted from CLAUDE.md: typecheck (`npx tsc --noEmit`) and tests (`npm test`) -- the two the snippet actually runs. Requires `jq` -- without it the guard never fires (see Notes). Heuristic and **err-safe**: a bare `git push` is resolved via the currently checked-out branch, and a false positive (e.g. a branch name containing `main`, or pushing a feature ref while `main` is checked out) merely runs the checks -- it only blocks when they are red.
 
 ### Block force-push without confirmation
 
@@ -153,13 +153,13 @@ Trigger: `PreToolUse`. Catches `--force`, `--force-with-lease`, and the short `-
   "hooks": [
     {
       "type": "command",
-      "command": "fp=$(jq -r '.tool_input.file_path // empty'); if echo \"$fp\" | grep -q '\\.mmd$'; then cd \"$CLAUDE_PROJECT_DIR\" || exit 0; out=$(npx -y -p @mermaid-js/mermaid-cli mmdc -i docs/ARCHITECTURE.mmd -o docs/ARCHITECTURE.svg 2>&1) || jq -nc --arg m \"Mermaid render failed -- fix per diagram_prompt.md syntax rules: $(printf '%s' \"$out\" | tail -5)\" '{hookSpecificOutput:{hookEventName:\"PostToolUse\",additionalContext:$m}}'; fi; exit 0"
+      "command": "fp=$(jq -r '.tool_input.file_path // empty'); if echo \"$fp\" | grep -q '\\.mmd$'; then cd \"$CLAUDE_PROJECT_DIR\" || exit 0; out=$(npx -y -p @mermaid-js/mermaid-cli mmdc -i \"$fp\" -o \"${fp%.mmd}.svg\" 2>&1) || jq -nc --arg m \"Mermaid render failed -- fix per diagram_prompt.md syntax rules: $(printf '%s' \"$out\" | tail -5)\" '{hookSpecificOutput:{hookEventName:\"PostToolUse\",additionalContext:$m}}'; fi; exit 0"
     }
   ]
 }
 ```
 
-Trigger: `PostToolUse`
+Trigger: `PostToolUse`. Validates the `.mmd` file that was actually saved; the rendered SVG lands next to it (for `docs/ARCHITECTURE.mmd` that is `docs/ARCHITECTURE.svg`, as before).
 
 ### Doc-update reminder after src/ edit
 
@@ -181,38 +181,6 @@ Trigger: `PostToolUse`
 
 ## Tier 3 -- Optional
 
-### GitNexus pre-edit impact reminder (read-only)
-
-```json
-{
-  "matcher": "Edit|Write",
-  "hooks": [
-    {
-      "type": "command",
-      "command": "fp=$(jq -r '.tool_input.file_path // empty'); if echo \"$fp\" | grep -qE '\\.(ts|tsx|js|jsx|py|rs|go|java|kt|cs|rb|php)$'; then printf '%s' '{\"hookSpecificOutput\":{\"hookEventName\":\"PreToolUse\",\"additionalContext\":\"Pre-edit: run gitnexus_impact({target, direction: \\\"upstream\\\"}) before modifying symbols.\"}}'; fi; exit 0"
-    }
-  ]
-}
-```
-
-Trigger: `PreToolUse`. Read-only reminder only -- GitNexus must never write tracked files (see the Read-Only Analysis Policy in CLAUDE.md).
-
-### GitNexus pre-commit scope check (read-only)
-
-```json
-{
-  "matcher": "Bash",
-  "hooks": [
-    {
-      "type": "command",
-      "command": "cmd=$(jq -r '.tool_input.command // empty'); if echo \"$cmd\" | grep -qE 'git commit'; then printf '%s' '{\"hookSpecificOutput\":{\"hookEventName\":\"PreToolUse\",\"additionalContext\":\"Pre-commit: run gitnexus_detect_changes() to verify scope before this commit.\"}}'; fi; exit 0"
-    }
-  ]
-}
-```
-
-Trigger: `PreToolUse`. Complements the Tier-1 staged-file guard already active in `.claude/settings.json`.
-
 ### Conventional Commits format check
 
 ```json
@@ -227,7 +195,7 @@ Trigger: `PreToolUse`. Complements the Tier-1 staged-file guard already active i
 }
 ```
 
-Trigger: `PreToolUse`. Agent-facing, non-blocking -- the agent sees the message next to the tool result and can correct the message itself.
+Trigger: `PreToolUse`. Agent-facing, non-blocking -- the agent sees the message next to the tool result and can correct the message itself. Matches inline `-m "..."` messages only; heredoc-built messages pass unchecked.
 
 ### Done-skill auto-trigger on "done"/"fertig"
 
@@ -252,13 +220,13 @@ Trigger: `UserPromptSubmit`. One of the three events where bare stdout _is_ adde
   "hooks": [
     {
       "type": "command",
-      "command": "cmd=$(jq -r '.tool_input.command // empty'); if echo \"$cmd\" | grep -qE '(npm|yarn|pnpm|bun) (install|add) |pip install [a-zA-Z]|cargo add |go get |gem install |composer require '; then printf '%s' '{\"hookSpecificOutput\":{\"hookEventName\":\"PreToolUse\",\"permissionDecision\":\"ask\",\"permissionDecisionReason\":\"New dependency -- confirm with the user per the Dependency Management rule in CLAUDE.md.\"}}'; fi; exit 0"
+      "command": "cmd=$(jq -r '.tool_input.command // empty'); if echo \"$cmd\" | grep -qE '(npm|yarn|pnpm|bun) (install|i|add)( +-[^ ]+)* +[^- ]|pip install [a-zA-Z]|uv add |poetry add |cargo add |go get |gem install |composer require '; then printf '%s' '{\"hookSpecificOutput\":{\"hookEventName\":\"PreToolUse\",\"permissionDecision\":\"ask\",\"permissionDecisionReason\":\"New dependency -- confirm with the user per the dependencies line in CLAUDE.md -> Git Conventions.\"}}'; fi; exit 0"
     }
   ]
 }
 ```
 
-Trigger: `PreToolUse`. Forces the permission prompt instead of only mentioning the rule, so the install cannot slip through unconfirmed.
+Trigger: `PreToolUse`. Forces the permission prompt instead of only mentioning the rule, so the install cannot slip through unconfirmed. A lockfile install that names no package (`npm install`, `pnpm install --frozen-lockfile`) does not match -- those are the check chain's own first stage.
 
 ---
 
@@ -267,9 +235,9 @@ Trigger: `PreToolUse`. Forces the permission prompt instead of only mentioning t
 - **Hook input arrives as a JSON payload on stdin**, not via environment variables. Relevant fields: `.tool_input.command` (Bash tool), `.tool_input.file_path` (Edit/Write), `.prompt` (UserPromptSubmit). The snippets parse stdin with `jq` -- there are no `$CLAUDE_TOOL_INPUT` / `$CLAUDE_USER_PROMPT` env vars.
 - `$CLAUDE_PROJECT_DIR` IS a real environment variable (absolute project root), usable in any hook command; `${CLAUDE_PROJECT_DIR}` is also substituted inside `command`. `$CLAUDE_CODE_REMOTE` (`"true"` in web/cloud sessions, unset locally) and `$CLAUDE_EFFORT` are available the same way.
 - **`jq` is required** for every snippet that reads stdin. Without `jq` the hook errors out and does NOT block -- for reminder hooks that's harmless, but the two BLOCK hooks then provide no protection. Verify `jq` is installed wherever you rely on them. The Tier-1 quality-config guard in `.claude/settings.json` is the one that tests for `jq` itself and reports when it cannot run; copy that leading test into any snippet here whose silence would be mistaken for protection.
-- **Exit-0 stdout reaches the agent only on `SessionStart` / `UserPromptSubmit` / `UserPromptExpansion`.** Everywhere else it lands in the debug log -- see _Reaching the agent_ above for the `additionalContext` / `permissionDecision` / `systemMessage` alternatives. An `echo 'WARNING...'` on `PreToolUse` or `PostToolUse` is a no-op.
+- **Exit-0 stdout visibility + the JSON alternatives:** see _Reaching the agent_ at the top of this file. An `echo 'WARNING...'` on `PreToolUse` or `PostToolUse` is a no-op.
 - Exit code `2` from a `PreToolUse` hook blocks the tool call and feeds **stderr** back to Claude -- block messages must go to stderr (`>&2`). On `PostToolUse` the tool already ran, so exit 2 cannot block; stderr is still shown to Claude. Other non-zero exits print stderr but don't block.
 - Hooks run in the user's shell. Quote paths, escape `$` carefully when copying.
 - After modifying `.claude/settings.json`, restart the Claude Code session (or review via `/hooks`) for changes to take effect.
 
-<!-- Generated by claude-code-optimizer v1.46.0 -->
+<!-- Generated by claude-code-optimizer v1.49.0 -->
