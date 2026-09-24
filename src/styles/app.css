@@ -6920,8 +6920,10 @@ textarea.code-editor-plain.code-editor-wrap {
   overflow: hidden;
 }
 
-/* Truncation footer under a full page of versions — mirrors .access-log-footer. */
-.version-list-footer {
+/* Truncation footer under a full page of versions (and of backup sync-log
+   runs) — mirrors .access-log-footer. */
+.version-list-footer,
+.backup-log-footer {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -6930,7 +6932,8 @@ textarea.code-editor-plain.code-editor-wrap {
   padding: 12px 8px 4px;
 }
 
-.version-list-hint {
+.version-list-hint,
+.backup-log-hint {
   font-size: 12px;
   color: var(--text-muted);
 }

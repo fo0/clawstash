@@ -5,6 +5,15 @@ import { formatDateTime } from '../../utils/format';
 import Spinner from '../shared/Spinner';
 import CommitLink from '../shared/CommitLink';
 
+/**
+ * How many sync-log runs the card requests at once, and how far "Show more"
+ * may widen it. `LOG_MAX` mirrors the route's own ceiling
+ * (`Math.min(limit, 200)` in `api/backup/log/route.ts`) — asking for more
+ * would silently return the same page and leave the button useless.
+ */
+const LOG_PAGE_SIZE = 50;
+const LOG_MAX = 200;
+
 interface Props {
   /** Saved backup target for commit links (null when no repo is configured). */
   repoFullName: string | null;
@@ -28,14 +37,23 @@ export default function BackupLogCard({ repoFullName, refreshToken }: Props) {
   // flight at the same time — order of resolution is not guaranteed, so the
   // older one must not overwrite the newer. BACKLOG #139.
   const logRequestGen = useRef(0);
+  // How many runs the card asks for. Pinned at 50, the table rendered the
+  // newest page as if it were the whole log, so older runs were unreachable
+  // and — worse — invisible.
+  const [limit, setLimit] = useState(LOG_PAGE_SIZE);
+  // The limit the rows on screen were fetched with, kept apart from `limit`
+  // so the footer describes the rendered list rather than the request in
+  // flight (otherwise it would vanish under the cursor on "Show more").
+  const [loadedLimit, setLoadedLimit] = useState(LOG_PAGE_SIZE);
 
   const refresh = useCallback(async () => {
     const gen = ++logRequestGen.current;
     setRefreshing(true);
     try {
-      const data = await api.getBackupLog({ limit: 50 });
+      const data = await api.getBackupLog({ limit });
       if (gen !== logRequestGen.current) return;
       setLog(data.entries);
+      setLoadedLimit(limit);
       setLoadFailed(false);
     } catch (err) {
       if (gen !== logRequestGen.current) return;
@@ -47,7 +65,7 @@ export default function BackupLogCard({ repoFullName, refreshToken }: Props) {
         setRefreshing(false);
       }
     }
-  }, []);
+  }, [limit]);
 
   useEffect(() => {
     refresh();
@@ -125,6 +143,29 @@ export default function BackupLogCard({ repoFullName, refreshToken }: Props) {
               ))}
             </tbody>
           </table>
+        </div>
+      )}
+
+      {/* A full page means older runs exist that are NOT on screen — say how
+          many are shown and offer the next page, up to the route's ceiling.
+          Same footer as the access log and the version history. */}
+      {log.length >= loadedLimit && (
+        <div className="backup-log-footer">
+          <span className="backup-log-hint">
+            Showing the {log.length} most recent runs.
+            {loadedLimit >= LOG_MAX && ' This is the maximum the server returns.'}
+          </span>
+          {loadedLimit < LOG_MAX && (
+            <button
+              type="button"
+              className="btn btn-sm btn-ghost"
+              onClick={() => setLimit((current) => Math.min(current + LOG_PAGE_SIZE, LOG_MAX))}
+              disabled={refreshing}
+              aria-busy={refreshing || undefined}
+            >
+              {refreshing ? 'Loading…' : 'Show more'}
+            </button>
+          )}
         </div>
       )}
     </div>
