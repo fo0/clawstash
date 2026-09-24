@@ -85,6 +85,15 @@ export function metadataValueType(entry: MetadataEntry): string | null {
 
 const PREVIEW_COUNT = 3;
 
+/**
+ * Mirrors `MAX_METADATA_KEYS` in `src/server/validation.ts`. Copied, not
+ * imported: this is a client component and that module is server code (same
+ * reason TagCombobox and StashEditor copy their limits). Counted per row, which
+ * can only err on the safe side — a blank or duplicate key row saves as fewer
+ * keys, never more.
+ */
+const MAX_METADATA_KEYS = 50;
+
 export default function MetadataEditor({ entries, onChange, availableKeys, labelledBy }: Props) {
   const [showAll, setShowAll] = useState(false);
   const [keyInput, setKeyInput] = useState('');
@@ -93,9 +102,10 @@ export default function MetadataEditor({ entries, onChange, availableKeys, label
   // -1 = nothing highlighted (mirrors TagCombobox). Keeps the key input
   // arrow-navigable + Enter-selectable instead of mouse-click only.
   const [activeIndex, setActiveIndex] = useState(-1);
-  // Inline notice shown when the user tries to add a key that already exists.
-  // Previously a duplicate add silently cleared the input with no explanation.
-  const [dupWarning, setDupWarning] = useState<string | null>(null);
+  // Inline notice shown when an add is refused — a key that already exists, or
+  // one past the key limit. Previously a duplicate add silently cleared the
+  // input with no explanation.
+  const [addWarning, setAddWarning] = useState<string | null>(null);
   const keyInputRef = useRef<HTMLInputElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
@@ -116,6 +126,9 @@ export default function MetadataEditor({ entries, onChange, availableKeys, label
 
   const displayEntries = showAll ? entries : entries.slice(0, PREVIEW_COUNT);
   const hasMore = entries.length > PREVIEW_COUNT;
+  // The server rejects the whole save past this many keys; without the guard
+  // the limit only surfaced then, after the stash had been composed.
+  const atKeyLimit = entries.length >= MAX_METADATA_KEYS;
 
   const existingKeys = entries.map((e) => e.key);
   // Keys occurring in more than one row (after trimming — save trims too).
@@ -130,7 +143,8 @@ export default function MetadataEditor({ entries, onChange, availableKeys, label
   // Cap mirrors the render slice below so keyboard navigation and the visible
   // option list stay in lockstep.
   const visibleKeys = filteredKeys.slice(0, 8);
-  const dropdownVisible = showKeyDropdown && visibleKeys.length > 0;
+  // At the limit every suggestion would only lead to a refused add.
+  const dropdownVisible = showKeyDropdown && visibleKeys.length > 0 && !atKeyLimit;
   const activeOptionId =
     dropdownVisible && activeIndex >= 0 ? `metadata-key-option-${activeIndex}` : undefined;
 
@@ -143,6 +157,9 @@ export default function MetadataEditor({ entries, onChange, availableKeys, label
   const removeEntry = (index: number) => {
     entryIds.current.splice(index, 1);
     onChange(entries.filter((_, i) => i !== index));
+    // Either refusal may no longer hold once a row is gone (the duplicate was
+    // this row, or this frees a slot under the limit) — don't leave it up.
+    setAddWarning(null);
   };
 
   const addEntry = (key: string) => {
@@ -151,13 +168,20 @@ export default function MetadataEditor({ entries, onChange, availableKeys, label
     if (entries.some((e) => e.key === trimmed)) {
       // Duplicate key — keep the typed value and tell the user why nothing
       // was added instead of silently clearing the field.
-      setDupWarning(`Key "${trimmed}" already exists.`);
+      setAddWarning(`Key "${trimmed}" already exists.`);
+      return;
+    }
+    if (atKeyLimit) {
+      // Same deal: keep the typed key so it survives freeing a slot.
+      setAddWarning(
+        `Metadata limit reached (${MAX_METADATA_KEYS} keys) — remove an entry to add "${trimmed}".`,
+      );
       return;
     }
     entryIds.current.push(idCounter.current++);
     onChange([...entries, { key: trimmed, value: '' }]);
     setShowAll(true);
-    setDupWarning(null);
+    setAddWarning(null);
     setKeyInput('');
     setShowKeyDropdown(false);
     setActiveIndex(-1);
@@ -322,12 +346,14 @@ export default function MetadataEditor({ entries, onChange, availableKeys, label
             setKeyInput(e.target.value);
             setShowKeyDropdown(true);
             setActiveIndex(-1);
-            if (dupWarning) setDupWarning(null);
+            if (addWarning) setAddWarning(null);
           }}
           onFocus={() => setShowKeyDropdown(true)}
           onBlur={handleKeyInputBlur}
           onKeyDown={handleKeyInputKeyDown}
-          placeholder="Add key..."
+          placeholder={
+            atKeyLimit ? `Metadata limit reached (${MAX_METADATA_KEYS} keys)` : 'Add key...'
+          }
           className="form-input metadata-add-input"
           role="combobox"
           aria-expanded={dropdownVisible}
@@ -336,11 +362,11 @@ export default function MetadataEditor({ entries, onChange, availableKeys, label
           aria-controls="metadata-key-listbox"
           aria-activedescendant={activeOptionId}
           aria-label="Add metadata key"
-          aria-invalid={dupWarning ? true : undefined}
+          aria-invalid={addWarning ? true : undefined}
           // Same reason as the entry rows above: the warning is a polite live
           // region announced once, so without this a user returning to an
           // already-invalid field hears "invalid" and no reason.
-          aria-describedby={dupWarning ? 'metadata-add-warning' : undefined}
+          aria-describedby={addWarning ? 'metadata-add-warning' : undefined}
           autoComplete="off"
         />
         <button
@@ -351,7 +377,14 @@ export default function MetadataEditor({ entries, onChange, availableKeys, label
           onClick={() => {
             if (keyInput.trim()) addEntry(keyInput);
           }}
-          title="Add metadata entry"
+          // Left enabled at the limit on purpose: a disabled button drops out
+          // of the tab order and cannot explain itself, while a click here
+          // routes through addEntry, which names the limit in the live region.
+          title={
+            atKeyLimit
+              ? `A stash holds at most ${MAX_METADATA_KEYS} metadata keys — remove one to add another`
+              : 'Add metadata entry'
+          }
         >
           <svg aria-hidden="true" width="12" height="12" viewBox="0 0 16 16" fill="currentColor">
             <path d="M8 2a.75.75 0 0 1 .75.75v4.5h4.5a.75.75 0 0 1 0 1.5h-4.5v4.5a.75.75 0 0 1-1.5 0v-4.5h-4.5a.75.75 0 0 1 0-1.5h4.5v-4.5A.75.75 0 0 1 8 2Z" />
@@ -383,7 +416,7 @@ export default function MetadataEditor({ entries, onChange, availableKeys, label
           </div>
         )}
       </div>
-      {dupWarning && (
+      {addWarning && (
         <div
           id="metadata-add-warning"
           className="metadata-dup-warning"
@@ -391,7 +424,7 @@ export default function MetadataEditor({ entries, onChange, availableKeys, label
           aria-live="polite"
           style={{ color: 'var(--accent-orange)', fontSize: 12, marginTop: 4 }}
         >
-          {dupWarning}
+          {addWarning}
         </div>
       )}
     </div>
