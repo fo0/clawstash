@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { useState } from 'react';
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import MetadataEditor from '../MetadataEditor';
 import type { MetadataEntry } from '../MetadataEditor';
@@ -14,6 +15,12 @@ afterEach(cleanup);
 
 function manyEntries(count: number): MetadataEntry[] {
   return Array.from({ length: count }, (_, i) => ({ key: `key-${i}`, value: `v${i}` }));
+}
+
+/** Owns the entries like StashEditor does, so a removal really removes. */
+function Harness({ initial }: { initial: MetadataEntry[] }) {
+  const [entries, setEntries] = useState(initial);
+  return <MetadataEditor entries={entries} onChange={setEntries} availableKeys={[]} />;
 }
 
 function addInput(): HTMLInputElement {
@@ -106,6 +113,25 @@ describe('MetadataEditor key limit', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Remove metadata entry "key-0"' }));
 
     expect(onChange).toHaveBeenCalledWith(manyEntries(50).slice(1));
+    expect(document.getElementById('metadata-add-warning')).toBeNull();
+  });
+
+  it('keeps a duplicate-key refusal when an unrelated entry is removed', () => {
+    render(<Harness initial={manyEntries(3)} />);
+
+    typeAndEnter('key-0');
+    expect(document.getElementById('metadata-add-warning')?.textContent).toBe(
+      'Key "key-0" already exists.',
+    );
+
+    // key-0 is still there, so the refusal still holds.
+    fireEvent.click(screen.getByRole('button', { name: 'Remove metadata entry "key-1"' }));
+    expect(document.getElementById('metadata-add-warning')?.textContent).toBe(
+      'Key "key-0" already exists.',
+    );
+
+    // Removing the duplicate itself resolves it.
+    fireEvent.click(screen.getByRole('button', { name: 'Remove metadata entry "key-0"' }));
     expect(document.getElementById('metadata-add-warning')).toBeNull();
   });
 });

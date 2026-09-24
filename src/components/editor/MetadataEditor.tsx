@@ -94,6 +94,15 @@ const PREVIEW_COUNT = 3;
  */
 const MAX_METADATA_KEYS = 50;
 
+/** Why `key` cannot be added next to `entries`, or null when it can. */
+function addRefusal(key: string, entries: MetadataEntry[]): string | null {
+  if (entries.some((e) => e.key === key)) return `Key "${key}" already exists.`;
+  if (entries.length >= MAX_METADATA_KEYS) {
+    return `Metadata limit reached (${MAX_METADATA_KEYS} keys) — remove an entry to add "${key}".`;
+  }
+  return null;
+}
+
 export default function MetadataEditor({ entries, onChange, availableKeys, labelledBy }: Props) {
   const [showAll, setShowAll] = useState(false);
   const [keyInput, setKeyInput] = useState('');
@@ -156,26 +165,26 @@ export default function MetadataEditor({ entries, onChange, availableKeys, label
 
   const removeEntry = (index: number) => {
     entryIds.current.splice(index, 1);
-    onChange(entries.filter((_, i) => i !== index));
-    // Either refusal may no longer hold once a row is gone (the duplicate was
-    // this row, or this frees a slot under the limit) — don't leave it up.
-    setAddWarning(null);
+    const remaining = entries.filter((_, i) => i !== index);
+    onChange(remaining);
+    // A shown refusal is about the key still in the input. Re-judge it against
+    // the rows that remain: removing the duplicate row, or freeing a slot under
+    // the limit, resolves it; removing an unrelated row does not.
+    if (addWarning) {
+      const typed = keyInput.trim();
+      setAddWarning(typed ? addRefusal(typed, remaining) : null);
+    }
   };
 
   const addEntry = (key: string) => {
     const trimmed = key.trim();
     if (!trimmed) return;
-    if (entries.some((e) => e.key === trimmed)) {
-      // Duplicate key — keep the typed value and tell the user why nothing
-      // was added instead of silently clearing the field.
-      setAddWarning(`Key "${trimmed}" already exists.`);
-      return;
-    }
-    if (atKeyLimit) {
-      // Same deal: keep the typed key so it survives freeing a slot.
-      setAddWarning(
-        `Metadata limit reached (${MAX_METADATA_KEYS} keys) — remove an entry to add "${trimmed}".`,
-      );
+    // Duplicate key, or past the key limit — keep the typed value (so it
+    // survives freeing a slot) and tell the user why nothing was added instead
+    // of silently clearing the field.
+    const refusal = addRefusal(trimmed, entries);
+    if (refusal) {
+      setAddWarning(refusal);
       return;
     }
     entryIds.current.push(idCounter.current++);
