@@ -73,7 +73,7 @@ async function openDetail(detail: StashVersion) {
   getVersions.mockResolvedValue([listItem(3), listItem(2)]);
   getVersion.mockResolvedValue(detail);
   render(<VersionHistory stashId="abc" currentVersion={3} onRestore={vi.fn()} />);
-  fireEvent.click((await screen.findAllByRole('button', { name: 'View' }))[0]);
+  fireEvent.click(await screen.findByRole('button', { name: 'View version 3' }));
   await waitFor(() => expect(screen.getByText(detail.files[0].filename)).toBeTruthy());
 }
 

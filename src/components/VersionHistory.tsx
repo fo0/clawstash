@@ -598,6 +598,14 @@ export default function VersionHistory({ stashId, currentVersion, onRestore }: P
                   onClick={() => handleViewVersion(v.version)}
                   disabled={detailLoading}
                   aria-busy={loadingVersion === v.version || undefined}
+                  // Every row's button reads just "View" — a screen reader
+                  // listing buttons heard the same word once per version.
+                  // The name starts with the visible text (WCAG 2.5.3).
+                  aria-label={
+                    loadingVersion === v.version
+                      ? `Opening version ${v.version}...`
+                      : `View version ${v.version}`
+                  }
                 >
                   {loadingVersion === v.version ? (
                     <>
@@ -624,6 +632,16 @@ export default function VersionHistory({ stashId, currentVersion, onRestore }: P
                           : confirmRestore === v.version
                             ? `Click again to restore version ${v.version} as the current state`
                             : `Restore version ${v.version} as the current state`
+                    }
+                    // Same gap as View: "Restore" / "Confirm?" named no
+                    // version, so the armed button did not say what it was
+                    // about to overwrite the current state with.
+                    aria-label={
+                      restoringVersion === v.version
+                        ? `Restoring version ${v.version}...`
+                        : confirmRestore === v.version
+                          ? `Confirm restore of version ${v.version}`
+                          : `Restore version ${v.version}`
                     }
                   >
                     {restoringVersion === v.version ? (

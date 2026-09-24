@@ -63,8 +63,7 @@ async function openVersionDetail() {
   getVersion.mockResolvedValue(VERSION_3);
 
   render(<VersionHistory stashId="abc" currentVersion={3} onRestore={vi.fn()} />);
-  const viewButtons = await screen.findAllByRole('button', { name: 'View' });
-  fireEvent.click(viewButtons[0]);
+  fireEvent.click(await screen.findByRole('button', { name: 'View version 3' }));
   await waitFor(() => expect(screen.getByText('config.yml')).toBeTruthy());
 }
 

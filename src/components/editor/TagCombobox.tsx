@@ -56,7 +56,7 @@ export default function TagCombobox({
   const [activeIndex, setActiveIndex] = useState(-1);
   // Inline notice for an add that was refused: an already-present tag, a tag
   // over the length limit, or one past the tag count limit. Mirrors
-  // MetadataEditor's dupWarning — a refused add used to be a silent no-op that
+  // MetadataEditor's addWarning — a refused add used to be a silent no-op that
   // still cleared the input.
   const [warning, setWarning] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
