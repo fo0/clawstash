@@ -132,6 +132,13 @@ Both serve on port 3000 (configurable via `PORT` env variable).
 | `CLAWSTASH_ENCRYPTION_KEY` | Key for secrets at rest (64 hex chars); unset = auto-generated key file `data/.clawstash-key`                                                                                                                                                       | auto-generated        |
 | `STASH_VERSION_LIMIT`      | Version snapshots kept per stash; `0` = unlimited. **Deletes data** — see below                                                                                                                                                                     | `200`                 |
 
+Several of these variables fail silently, so a typo looks like the default rather than an error. The accepted formats:
+
+- `TRUST_PROXY` is on only for exactly `1` or `true`. `yes`, `on` or `TRUE` leave it off: `X-Forwarded-*` headers stay untrusted, and behind a TLS-terminating proxy no HSTS header is sent.
+- `ADMIN_PASSWORD=` (empty) is the same as unset — the instance stays in open mode, which the startup log announces with a `[security] ... OPEN MODE` warning.
+- `ADMIN_SESSION_HOURS` takes plain decimal hours. Only its leading number is read, so `8h` counts as `8`, but `00:30` or `0x10` count as `0` — a session that never expires. A value without a leading number, or a negative one, falls back to `24`.
+- `CLAWSTASH_ENCRYPTION_KEY` is the loud one: a non-empty value that is not exactly 64 hex characters throws the first time a secret is read or written. An empty value counts as unset. The auto-generated key file sits next to the database, at `dirname(DATABASE_PATH)/.clawstash-key` — `data/.clawstash-key` is only the default location, so back it up from the directory that holds the database.
+
 Copy `.env.example` and adjust as needed:
 
 ```bash
