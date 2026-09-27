@@ -46,6 +46,7 @@ clawstash/
 │   ├── diagram_prompt.md       # Architecture diagram generation instructions
 │   ├── autonomy.md             # Full wording behind the compact CLAUDE.md sections (languages, modes, autonomy, handoff)
 │   ├── testing.md              # Test setup, patterns and the constraints pointer
+│   ├── memory_archive/         # MEMORY.md entries archived by relevance or budget (context_budget.md)
 │   └── project-structure.md    # This file
 ├── docs/                       # User-facing documentation (split from README)
 │   ├── api-reference.md        # REST API endpoints, examples, query parameters
