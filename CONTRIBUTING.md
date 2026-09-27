@@ -24,8 +24,8 @@ This starts the Next.js development server on port 3000 with both the frontend a
    the real gate (`docker-publish.yml` runs the same steps but is `workflow_dispatch`-only; only
    `docs-format.yml` and CodeQL are triggered automatically):
    - `npm run format:check` — Prettier formatting
-   - `npm run lint` — ESLint (correctness rules only)
    - `npx tsc --noEmit` — TypeScript type check
+   - `npm run lint` — ESLint (correctness rules only)
    - `npm test` — vitest test suite
    - `npm run build` — production build
 4. Commit with a clear, descriptive message (Conventional Commits)

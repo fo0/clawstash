@@ -68,7 +68,7 @@ clawstash/
 │   ├── ISSUE_TEMPLATE/         # Bug report + feature request templates
 │   ├── pull_request_template.md
 │   └── workflows/
-│       ├── docker-publish.yml  # CI (manual dispatch): format:check, tsc, tests, build, push to GHCR
+│       ├── docker-publish.yml  # CI (manual dispatch): format:check, tsc, lint, tests, build, push to GHCR
 │       └── docs-format.yml     # Prettier-Markdown check on `**.md` (PRs + pushes to main)
 ├── scripts/
 │   └── generate-build-info.js  # Prebuild script: generates build metadata (git branch, commit, date)
