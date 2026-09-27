@@ -14,6 +14,7 @@ How were these changes tested?
 
 - [ ] Formatting passes (`npm run format:check`)
 - [ ] Code compiles without errors (`npx tsc --noEmit`)
+- [ ] Lint passes without errors (`npm run lint`)
 - [ ] Tests pass (`npm test`)
 - [ ] Build succeeds (`npm run build`)
 - [ ] Changes are documented (if applicable)
