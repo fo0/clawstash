@@ -306,12 +306,13 @@ export default function App() {
   }, [graphOriginStashId]);
   const graphBackRef = useRef<() => void>(() => {});
 
-  // Every view renders into the same <main>, so the dashboard used to come
-  // back at whatever offset the stash viewer (or settings, or the editor) was
-  // left at. Keep the dashboard's own offset and restore it on return — only
-  // while the list is still the same one; a changed search, tag, archived
-  // toggle, sort or layout starts at the top instead. The element comes from a
-  // callback ref: <main> mounts only after the session check / login.
+  // Every view renders into the same <main> and the dashboard is unmounted
+  // while another view shows, so nothing kept its offset: back from a stash,
+  // the list started at the top again. Keep the dashboard's own offset and
+  // restore it on return — only while the list is still the same one; a
+  // changed search, tag, archived toggle, sort or layout starts at the top.
+  // The element comes from a callback ref: <main> mounts only after the
+  // session check / login.
   const [mainEl, setMainEl] = useState<HTMLElement | null>(null);
   useScrollMemory(
     mainEl,
@@ -756,7 +757,11 @@ export default function App() {
     if (!adminSession || (!adminSession.authenticated && adminSession.authRequired)) return;
     const searchChanged = prevSearchRef.current !== search;
     prevSearchRef.current = search;
-    if (!searchChanged) {
+    // A cleared search is one discrete action (chip ×, "Clear all", "Clear
+    // filters", Escape), not typing, so it loads at once too: during the
+    // debounce an emptied result list would otherwise sit under no filter at
+    // all and read "No stashes yet" until the fetch caught up.
+    if (!searchChanged || !search) {
       // Tag-filter clicks, the archive toggle, and post-save refreshes load
       // immediately — debouncing them only adds lag and a grid flash.
       loadStashes();
@@ -1119,6 +1124,15 @@ export default function App() {
       setShowArchived(false);
       saveShowArchived(false);
     }
+    // A reload always follows (at least one filter changes, or neither button
+    // would be showing). Flag it in the same commit: from the filtered empty
+    // state, the render before the fetch starts would otherwise already be
+    // unfiltered and still empty, and flash "No stashes yet" for a frame.
+    setLoading(true);
+    // Both buttons that call this disappear with the filters they clear, which
+    // would drop keyboard focus to <body>. Land it on <main> instead — the
+    // skip link's target, right above the refreshed list.
+    mainEl?.focus({ preventScroll: true });
   };
 
   /** Widen the dashboard list by one more page (see STASH_PAGE_SIZE). */

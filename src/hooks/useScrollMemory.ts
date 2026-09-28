@@ -5,11 +5,11 @@ import { useLayoutEffect, useRef } from 'react';
  * on screen, and put it back when that view returns — as long as the view
  * still shows the same thing (`key`).
  *
- * App renders every view into the same `<main>`, so its `scrollTop` is one
- * value that each view inherits from the previous one: opening a stash from
- * deep in the dashboard, reading it, and going back landed the dashboard at
- * whatever offset the stash viewer was left at — the reader's place in a long
- * list was simply lost. This hook keeps a per-view copy instead.
+ * App renders every view into the same `<main>` and unmounts the ones not
+ * showing, so the container's `scrollTop` belongs to no view in particular:
+ * opening a stash from deep in the dashboard and going back started the list
+ * at the top again — the reader's place in a long list was simply lost. This
+ * hook keeps the view's own offset instead.
  *
  * - While `active`, every scroll of the container is recorded together with
  *   the current `key` (the list's search / filter / sort / layout signature).
