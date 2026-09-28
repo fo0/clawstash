@@ -18,6 +18,7 @@ import { SEARCH_DEBOUNCE_MS, STASH_PAGE_SIZE } from './utils/constants';
 import { decidePopState } from './utils/nav-guard';
 import { resolveGraphBack } from './utils/graph-nav';
 import { SIDEBAR_DEFAULT_WIDTH, loadSidebarWidth, saveSidebarWidth } from './utils/sidebar-width';
+import { useScrollMemory } from './hooks/useScrollMemory';
 import Sidebar from './components/Sidebar';
 import SidebarResizer from './components/SidebarResizer';
 import Dashboard from './components/Dashboard';
@@ -304,6 +305,19 @@ export default function App() {
     graphOriginRef.current = graphOriginStashId;
   }, [graphOriginStashId]);
   const graphBackRef = useRef<() => void>(() => {});
+
+  // Every view renders into the same <main>, so the dashboard used to come
+  // back at whatever offset the stash viewer (or settings, or the editor) was
+  // left at. Keep the dashboard's own offset and restore it on return — only
+  // while the list is still the same one; a changed search, tag, archived
+  // toggle, sort or layout starts at the top instead. The element comes from a
+  // callback ref: <main> mounts only after the session check / login.
+  const [mainEl, setMainEl] = useState<HTMLElement | null>(null);
+  useScrollMemory(
+    mainEl,
+    view === 'home',
+    [search, filterTag, String(showArchived), sortMode, layout].join('\u0000'),
+  );
 
   /**
    * In-app navigation guard: ask before discarding unsaved editor changes.
@@ -1232,7 +1246,7 @@ export default function App() {
           </button>
         </header>
         {/* tabIndex={-1} so the skip link can move focus here, not just scroll. */}
-        <main className="main-content" id="main-content" tabIndex={-1}>
+        <main className="main-content" id="main-content" tabIndex={-1} ref={setMainEl}>
           {view === 'home' && (
             <Dashboard
               stashes={stashes}

@@ -180,6 +180,7 @@ clawstash/
 │   │   ├── useCodeBlockCopy.ts # Delegated click handler + copy state for Markdown code-block copy buttons
 │   │   ├── useFocusTrap.ts     # Keep Tab focus inside an open dialog and restore it on close
 │   │   ├── useQuickSearchHint.ts # Platform-aware quick-search shortcut label (Ctrl+K / ⌘K), resolved after mount
+│   │   ├── useScrollMemory.ts  # Per-view scroll offset of the shared <main> (dashboard keeps its place, keyed on the list)
 │   │   └── __tests__/          # Hook unit tests (vitest + @testing-library/react)
 │   ├── utils/
 │   │   ├── access-log-filter.ts  # Client-side source filtering (api / mcp / ui chips) for the Access Log tab
