@@ -179,12 +179,12 @@ Detailed pattern descriptions for clawstash internals. CLAUDE.md keeps a short i
 
 ## Stash Viewer TOC (src/components/StashViewer.tsx)
 
-- **Table of Contents** for stashes with 2+ markdown files: collapsible panel above file list in the Content tab
-- TOC shown only when `renderPreview` is on and stash has multiple markdown files
+- **Table of Contents** for stashes with 2+ markdown files, or a single markdown file with at least `SINGLE_FILE_TOC_MIN_HEADINGS` (3) h1-h3 headings: collapsible panel above file list in the Content tab
+- TOC shown only while a markdown file is rendered (not in Raw view)
 - **File-level entries**: Click to smooth-scroll to the file container (uses `id="stash-file-{index}"` on `.viewer-file` divs)
 - **Heading entries**: Extracts h1-h3 headings from rendered markdown HTML via `extractHeadings()` (DOMParser-based)
-- **Cross-file heading disambiguation**: `renderMarkdown(content, idPrefix)` prepends `f{index}-` prefix to heading IDs when TOC is active, preventing collisions across files
-- Heading extraction runs inside the `renderedContent` useMemo alongside markdown rendering (single DOMParser pass per file, cached)
+- **Cross-file heading disambiguation**: `renderMarkdown(content, idPrefix)` prepends `f{index}-` prefix to heading IDs when the stash holds 2+ markdown files, preventing collisions across files. A lone markdown file keeps unprefixed ids even with a TOC, so shared `#heading` links keep resolving — which is why TOC links hand `scrollToId` the owning file index instead of parsing it out of the id
+- Heading extraction runs inside the `renderedContent` useMemo alongside markdown rendering (single DOMParser pass per file, cached); a lone markdown file whose rendered HTML holds fewer h1-h3 tags than the threshold (`countHeadingTags`) skips it
 - Collapsible via chevron toggle (`tocExpanded` state, default expanded)
 - Accessible: `<nav aria-label="Table of contents">`, semantic anchor links with `href`
 
