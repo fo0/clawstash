@@ -2074,6 +2074,13 @@ body {
   font-size: 15px;
 }
 
+.empty-state-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 10px;
+}
+
 /* === Stash Viewer === */
 .stash-viewer {
   max-width: 100%;

@@ -1093,6 +1093,20 @@ export default function App() {
     });
   };
 
+  /**
+   * Drop every dashboard filter in one step — search, tag and "including
+   * archived" — back to the default listing. The archived toggle is persisted,
+   * so it is written back like its own chip's × does.
+   */
+  const handleClearFilters = () => {
+    handleSearchChange('');
+    setFilterTag('');
+    if (showArchived) {
+      setShowArchived(false);
+      saveShowArchived(false);
+    }
+  };
+
   /** Widen the dashboard list by one more page (see STASH_PAGE_SIZE). */
   const handleLoadMore = () => {
     setLoadedPages((prev) => prev + 1);
@@ -1234,6 +1248,7 @@ export default function App() {
               onLoadMore={handleLoadMore}
               filterTag={filterTag}
               showArchived={showArchived}
+              onClearFilters={handleClearFilters}
               favoriteIds={favoriteIds}
               onToggleFavorite={handleToggleFavorite}
               onToggleShowArchived={handleToggleShowArchived}

@@ -30,6 +30,8 @@ interface Props {
   onLoadMore: () => void;
   filterTag: string;
   showArchived: boolean;
+  /** Drop search, tag filter and "including archived" in one step. */
+  onClearFilters: () => void;
   favoriteIds: ReadonlySet<string>;
   onToggleShowArchived: () => void;
   onLayoutChange: (mode: LayoutMode) => void;
@@ -54,6 +56,7 @@ export default function Dashboard({
   onLoadMore,
   filterTag,
   showArchived,
+  onClearFilters,
   favoriteIds,
   onToggleShowArchived,
   onLayoutChange,
@@ -69,6 +72,11 @@ export default function Dashboard({
     () => sortStashesWithFavorites(sortStashes(stashes, sortMode), favoriteIds),
     [stashes, sortMode, favoriteIds],
   );
+
+  // Each chip clears only its own filter, so undoing a combined filter took
+  // one click per chip. Offered once two or more are active — with a single
+  // chip, its own × already is the one-click way out.
+  const activeFilterCount = [search, filterTag, showArchived].filter(Boolean).length;
 
   return (
     <div className="dashboard">
@@ -146,6 +154,17 @@ export default function Dashboard({
                 <span aria-hidden="true">&times;</span>
               </button>
             </span>
+          )}
+          {activeFilterCount >= 2 && (
+            <button
+              type="button"
+              className="btn btn-ghost btn-sm"
+              onClick={onClearFilters}
+              title="Clear every active filter at once — search, tag and archived"
+              aria-label="Clear all filters"
+            >
+              Clear all
+            </button>
           )}
           {/* The list is only fetched on auth / search / tag / archive
               changes — nothing polls. A stash an agent just wrote over REST
@@ -276,12 +295,29 @@ export default function Dashboard({
                 ? 'No stashes match the current filter.'
                 : 'No stashes yet. Create your first one!'}
           </p>
-          <button className="btn btn-new-stash" onClick={onNewStash}>
-            <svg aria-hidden="true" width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
-              <path d="M8 2a.75.75 0 0 1 .75.75v4.5h4.5a.75.75 0 0 1 0 1.5h-4.5v4.5a.75.75 0 0 1-1.5 0v-4.5h-4.5a.75.75 0 0 1 0-1.5h4.5v-4.5A.75.75 0 0 1 8 2Z" />
-            </svg>
-            New Stash
-          </button>
+          <div className="empty-state-actions">
+            {/* A search or tag filter that hides everything used to offer only
+                "New Stash" — the wrong way out when the stashes exist and the
+                filter is what hides them. "Including archived" alone only ever
+                widens the list, so an empty result there has nothing to clear. */}
+            {(search || filterTag) && (
+              <button type="button" className="btn btn-secondary" onClick={onClearFilters}>
+                Clear filters
+              </button>
+            )}
+            <button className="btn btn-new-stash" onClick={onNewStash}>
+              <svg
+                aria-hidden="true"
+                width="14"
+                height="14"
+                viewBox="0 0 16 16"
+                fill="currentColor"
+              >
+                <path d="M8 2a.75.75 0 0 1 .75.75v4.5h4.5a.75.75 0 0 1 0 1.5h-4.5v4.5a.75.75 0 0 1-1.5 0v-4.5h-4.5a.75.75 0 0 1 0-1.5h4.5v-4.5A.75.75 0 0 1 8 2Z" />
+              </svg>
+              New Stash
+            </button>
+          </div>
         </div>
       ) : (
         <>
