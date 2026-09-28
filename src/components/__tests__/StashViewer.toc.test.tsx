@@ -92,6 +92,22 @@ describe('StashViewer table of contents for a single markdown file', () => {
     expect(screen.queryByRole('button', { name: /Table of Contents/ })).toBeNull();
   });
 
+  it('does not count heading tags written inside a code block', () => {
+    const content = [
+      '# Page',
+      '',
+      '## Markup',
+      '',
+      '```html',
+      '<h1>a</h1>',
+      '<h2>b</h2>',
+      '```',
+    ].join('\n');
+    renderViewer([file(0, 'PAGE.md', content, 'markdown')]);
+
+    expect(screen.queryByRole('button', { name: /Table of Contents/ })).toBeNull();
+  });
+
   it('counts only markdown files — a README next to code still gets one', () => {
     renderViewer([
       file(0, 'README.md', README, 'markdown'),

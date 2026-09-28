@@ -353,6 +353,16 @@ function fileHeadingIdPrefix(fileIndex: number): string {
 const SINGLE_FILE_TOC_MIN_HEADINGS = 3;
 
 /**
+ * Cheap upper bound on what `extractHeadings` can return: rendered h1-h3 tags.
+ * Code blocks are escaped, so a literal `<h2` only ever is a real element.
+ * Lets a lone file with too few headings skip the second DOM parse the
+ * extraction costs — a large heading-less document would pay it for nothing.
+ */
+function countHeadingTags(html: string): number {
+  return html.match(/<h[1-3][\s>]/gi)?.length ?? 0;
+}
+
+/**
  * Extract h1–h3 headings from rendered markdown HTML for TOC generation.
  */
 function extractHeadings(html: string): TocHeading[] {
@@ -532,10 +542,12 @@ export default function StashViewer({
         const prefix = multiMarkdown ? fileHeadingIdPrefix(i) : '';
         const html = renderMarkdown(file.content, prefix);
         contentMap.set(file.id, html);
+        const wantHeadings =
+          multiMarkdown || countHeadingTags(html) >= SINGLE_FILE_TOC_MIN_HEADINGS;
         entries.push({
           fileIndex: i,
           filename: file.filename,
-          headings: extractHeadings(html),
+          headings: wantHeadings ? extractHeadings(html) : [],
         });
       } else if (lang === 'markup') {
         contentMap.set(file.id, buildHtmlPreview(file.content));
