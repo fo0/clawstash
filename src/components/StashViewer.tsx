@@ -336,18 +336,21 @@ interface TocEntry {
 
 /**
  * Heading ids inside rendered markdown carry a per-file prefix whenever the
- * TOC is shown so anchors stay unique across files. Builder and parser live
- * together so the format cannot drift apart.
+ * stash holds two or more markdown files, so anchors stay unique across files.
+ * A lone markdown file keeps its plain ids — links already shared to one of
+ * its headings (`#usage`) must keep resolving.
  */
 function fileHeadingIdPrefix(fileIndex: number): string {
   return `f${fileIndex}-`;
 }
 
-/** Inverse of `fileHeadingIdPrefix` — returns the file index, or null. */
-function parseFileHeadingId(id: string): number | null {
-  const match = /^f(\d+)-/.exec(id);
-  return match ? Number(match[1]) : null;
-}
+/**
+ * A stash with a single markdown file gets a table of contents too, once that
+ * file has enough headings to be worth navigating — a long README was the one
+ * document the TOC skipped, while two short files always got one. Below this
+ * count the TOC would only repeat what fits on screen anyway.
+ */
+const SINGLE_FILE_TOC_MIN_HEADINGS = 3;
 
 /**
  * Extract h1–h3 headings from rendered markdown HTML for TOC generation.
@@ -519,28 +522,29 @@ export default function StashViewer({
     stash.files.forEach((f, i) => {
       if (resolvedLanguages.get(f.id) === 'markdown') mdFileIndices.push(i);
     });
-    const needsToc = mdFileIndices.length >= 2;
+    const multiMarkdown = mdFileIndices.length >= 2;
     const entries: TocEntry[] = [];
 
     for (let i = 0; i < stash.files.length; i++) {
       const file = stash.files[i];
       const lang = resolvedLanguages.get(file.id);
       if (lang === 'markdown') {
-        const prefix = needsToc ? fileHeadingIdPrefix(i) : '';
+        const prefix = multiMarkdown ? fileHeadingIdPrefix(i) : '';
         const html = renderMarkdown(file.content, prefix);
         contentMap.set(file.id, html);
-        if (needsToc) {
-          entries.push({
-            fileIndex: i,
-            filename: file.filename,
-            headings: extractHeadings(html),
-          });
-        }
+        entries.push({
+          fileIndex: i,
+          filename: file.filename,
+          headings: extractHeadings(html),
+        });
       } else if (lang === 'markup') {
         contentMap.set(file.id, buildHtmlPreview(file.content));
       }
     }
-    return { renderedContent: contentMap, tocEntries: entries };
+    const showToc =
+      multiMarkdown ||
+      (entries.length === 1 && entries[0].headings.length >= SINGLE_FILE_TOC_MIN_HEADINGS);
+    return { renderedContent: contentMap, tocEntries: showToc ? entries : [] };
   }, [stash.files, resolvedLanguages]);
 
   // The multi-file table of contents is built from rendered markdown, so it
@@ -726,7 +730,7 @@ export default function StashViewer({
   }, [stash.id]);
 
   const scrollToId = useCallback(
-    (e: React.MouseEvent<HTMLAnchorElement>, id: string) => {
+    (e: React.MouseEvent<HTMLAnchorElement>, id: string, fileIndex: number) => {
       e.preventDefault();
       const el = document.getElementById(id);
       if (el) {
@@ -735,9 +739,10 @@ export default function StashViewer({
       }
       // Heading targets live inside file content, so they are missing from
       // the DOM while their file is collapsed. Expand the owning file and
-      // finish the scroll after the re-render (effect below).
-      const fileIndex = parseFileHeadingId(id);
-      const file = fileIndex !== null ? stash.files[fileIndex] : undefined;
+      // finish the scroll after the re-render (effect below). The caller
+      // names the file: a lone markdown file's heading ids carry no prefix
+      // to read it back from.
+      const file = stash.files[fileIndex];
       if (!file) return;
       pendingScrollIdRef.current = id;
       setCollapsedFiles((prev) => {
@@ -1287,7 +1292,7 @@ export default function StashViewer({
                   <a
                     className="toc-file-link"
                     href={`#stash-file-${entry.fileIndex}`}
-                    onClick={(e) => scrollToId(e, `stash-file-${entry.fileIndex}`)}
+                    onClick={(e) => scrollToId(e, `stash-file-${entry.fileIndex}`, entry.fileIndex)}
                   >
                     <svg
                       aria-hidden="true"
@@ -1304,7 +1309,10 @@ export default function StashViewer({
                     <ul className="toc-headings">
                       {entry.headings.map((h) => (
                         <li key={h.id} className={`toc-heading toc-h${h.depth}`}>
-                          <a href={`#${h.id}`} onClick={(e) => scrollToId(e, h.id)}>
+                          <a
+                            href={`#${h.id}`}
+                            onClick={(e) => scrollToId(e, h.id, entry.fileIndex)}
+                          >
                             {h.text}
                           </a>
                         </li>
