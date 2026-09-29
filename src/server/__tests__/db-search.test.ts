@@ -149,6 +149,22 @@ describe('ClawStashDB searchStashes', () => {
       expect(r.stashes[0].name).toBe('a');
     });
 
+    it('tag filters match tags containing a double quote or backslash', () => {
+      // Both characters are valid in a tag but JSON-escaped in the column.
+      for (const tag of ['say "hi"', 'C:\\dir']) {
+        const s = db.createStash({
+          name: tag,
+          tags: [tag],
+          files: [{ filename: 'a.txt', content: 'match' }],
+        });
+        expect(db.listStashes({ tag }).stashes.map((x) => x.id)).toEqual([s.id]);
+        expect(db.searchStashes('match', { tag }).stashes.map((x) => x.id)).toEqual([s.id]);
+        const graph = db.getStashGraph({ tag });
+        expect(graph.nodes.filter((n) => n.type === 'stash').map((n) => n.id)).toEqual([s.id]);
+        expect(db.getTagGraph({ tag }).nodes.map((n) => n.tag)).toEqual([tag]);
+      }
+    });
+
     it('respects archived filter', () => {
       const a = db.createStash({
         name: 'live',

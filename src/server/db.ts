@@ -9,7 +9,7 @@ import { applyPendingMigrations } from './db-migrations';
 import { TokenStore } from './stores/token-store';
 import { SessionStore } from './stores/session-store';
 import { VersionStore } from './stores/version-store';
-import { SearchStore } from './stores/search-store';
+import { SearchStore, tagLikePattern } from './stores/search-store';
 import { BackupStore } from './stores/backup-store';
 import {
   safeParseTags,
@@ -426,8 +426,7 @@ export class ClawStashDB {
 
     if (tag) {
       conditions.push(`g.tags LIKE ? ESCAPE '\\'`);
-      const escapedTag = tag.replace(/[\\%_]/g, '\\$&');
-      params.push(`%"${escapedTag}"%`);
+      params.push(tagLikePattern(tag));
     }
 
     if (archived !== undefined) {
@@ -894,22 +893,18 @@ export class ClawStashDB {
       if (frontier.size === 0) break;
 
       // Build a LIKE pattern for each frontier tag to match JSON arrays.
-      // Tags are stored as JSON arrays, e.g. '["foo","bar"]'. We match
-      // '"<tag>"' anywhere in the JSON string — a cheap and correct check
-      // since tag values are validated to contain no double-quotes.
-      //
-      // Escape LIKE wildcards (`% _ \`) in the tag and pair every clause with
-      // `ESCAPE '\\'` — a tag literally containing `%`/`_` (both allowed by
-      // TagsSchema) would otherwise over-match unrelated rows and pull
-      // spurious stashes into the focus-tag BFS. Mirrors the escaping used by
-      // every other tag-LIKE in this file (listStashes / getStashGraph) and
-      // search-store.ts.
+      // Tags are stored as JSON arrays, e.g. '["foo","bar"]'. We match the
+      // JSON-encoded '"<tag>"' anywhere in the JSON string. `tagLikePattern`
+      // encodes a `"` or `\` inside the tag the way the column stores it and
+      // escapes the LIKE wildcards (`% _ \`) for `ESCAPE '\\'` — a tag
+      // literally containing `%`/`_` (both allowed by TagsSchema) would
+      // otherwise over-match unrelated rows and pull spurious stashes into the
+      // focus-tag BFS. Same helper as every other tag-LIKE in this file
+      // (listStashes / getStashGraph) and search-store.ts.
       const placeholders = Array.from(frontier)
         .map(() => `tags LIKE ? ESCAPE '\\'`)
         .join(' OR ');
-      const params: string[] = Array.from(frontier).map(
-        (t) => `%"${t.replace(/[\\%_]/g, '\\$&')}"%`,
-      );
+      const params: string[] = Array.from(frontier).map(tagLikePattern);
 
       const rows = this.db
         .prepare(`SELECT id, tags FROM stashes WHERE ${placeholders}`)
@@ -1083,8 +1078,7 @@ export class ClawStashDB {
     }
     if (tag) {
       conditions.push("s.tags LIKE ? ESCAPE '\\'");
-      const escapedTag = tag.replace(/[\\%_]/g, '\\$&');
-      params.push(`%"${escapedTag}"%`);
+      params.push(tagLikePattern(tag));
     }
 
     if (conditions.length > 0) {

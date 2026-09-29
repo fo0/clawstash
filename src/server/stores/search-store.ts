@@ -33,6 +33,18 @@ function formatSnippet(raw: string): string {
 }
 
 /**
+ * LIKE pattern (for `ESCAPE '\'`) matching one tag inside a `stashes.tags`
+ * JSON array. The tag is JSON-encoded exactly as the column stores it, so a
+ * tag containing `"`, `\` or a control character (all allowed by TagsSchema)
+ * matches its escaped form; the LIKE wildcards `% _ \` are then escaped. For
+ * every other tag this is the same `%"<tag>"%` pattern as before, still ASCII
+ * case-insensitive.
+ */
+export function tagLikePattern(tag: string): string {
+  return `%${JSON.stringify(tag).replace(/[\\%_]/g, '\\$&')}%`;
+}
+
+/**
  * FTS5 search + LIKE-fallback (refs #144).
  *
  * Extracted from ClawStashDB as the third of three store splits. The
@@ -199,7 +211,7 @@ export class SearchStore {
     const filterSuffix = { sql: '', params: [] as unknown[] };
     if (tag) {
       filterSuffix.sql += ` AND s.tags LIKE ? ESCAPE '\\'`;
-      filterSuffix.params.push(`%"${tag.replace(/[\\%_]/g, '\\$&')}"%`);
+      filterSuffix.params.push(tagLikePattern(tag));
     }
     if (archived !== undefined) {
       filterSuffix.sql += ' AND s.archived = ?';
