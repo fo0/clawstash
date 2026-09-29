@@ -29,8 +29,15 @@ export function assertDatabaseWritable(dir: string, dbPath: string): void {
   if (!problem) {
     // A stale root-owned -wal/-shm next to a writable main file breaks
     // writes just the same, so probe the sidecar files too.
+    //
+    // `turbopackIgnore`: the database path is a runtime value (DATABASE_PATH),
+    // never a build asset. Without the hint, Turbopack's file tracing cannot
+    // scope this dynamic path and copies the whole project into
+    // `.next/standalone` — `src/`, scripts and config files, and on a local
+    // build even `data/` with its SQLite database — the directory the Docker
+    // image (and any standalone deployment) ships as-is.
     for (const file of [dbPath, `${dbPath}-wal`, `${dbPath}-shm`]) {
-      if (!fs.existsSync(file)) continue;
+      if (!fs.existsSync(/* turbopackIgnore: true */ file)) continue;
       try {
         fs.accessSync(file, fs.constants.W_OK);
       } catch {
