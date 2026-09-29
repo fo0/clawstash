@@ -9,25 +9,22 @@ export async function GET(req: NextRequest, { params }: Params) {
   const scope = checkScope(req, 'read');
   if (!scope.ok) return scope.response;
 
+  // Next.js hands dynamic route params over already percent-decoded, so
+  // `filename` is the stored name as-is. Decoding it a second time broke every
+  // filename containing `%`: `50%off.md` (requested as `50%25off.md`) threw a
+  // URIError and `a%41.txt` resolved to `aA.txt`. A malformed escape in the URL
+  // never reaches this handler — Next.js rejects it while decoding the param.
   const { id, filename } = await params;
-  // decodeURIComponent throws URIError on malformed escapes (e.g., a lone `%`).
-  // Without this guard the route would 500 instead of returning a clear 400.
-  let decodedFilename: string;
-  try {
-    decodedFilename = decodeURIComponent(filename);
-  } catch {
-    return NextResponse.json({ error: 'Invalid filename encoding' }, { status: 400 });
-  }
   // Symmetric validation with the write side: reject path separators,
   // `..` segments and null bytes after URL-decode. The DB lookup is by
   // exact match so traversal can't escape the row today, but rejecting
   // up-front gives a clearer 400 than a misleading 404 and prevents
   // future filesystem-backed storage from inheriting a known-bad path.
-  if (!isValidFilename(decodedFilename)) {
+  if (!isValidFilename(filename)) {
     return NextResponse.json({ error: 'Filename contains invalid characters' }, { status: 400 });
   }
   const db = getDb();
-  const file = db.getStashFile(id, decodedFilename);
+  const file = db.getStashFile(id, filename);
   if (!file) {
     if (!db.stashExists(id)) {
       return NextResponse.json({ error: 'Stash not found' }, { status: 404 });
