@@ -50,6 +50,20 @@ export async function PATCH(req: NextRequest, { params }: Params) {
     metadata !== undefined ||
     files !== undefined;
 
+  // One access-log row per flag this PATCH flips, each with its specific
+  // action verb. Shared by both paths below: the content path used to log
+  // only `archive`/`unarchive`, so a `backup_enabled` flip sent alongside a
+  // content change left no `backup_enable`/`backup_disable` trace.
+  const logFlagChanges = (stashId: string) => {
+    if (archived !== undefined) {
+      db.logAccess(stashId, source, archived ? 'archive' : 'unarchive', ip, userAgent);
+    }
+    if (backup_enabled !== undefined) {
+      const action = backup_enabled ? 'backup_enable' : 'backup_disable';
+      db.logAccess(stashId, source, action, ip, userAgent);
+    }
+  };
+
   // Handle flag-only toggles separately (no version snapshot). Both flags are
   // flipped inside ONE transaction via setStashFlags so that sending `archived`
   // and `backup_enabled` together can never leave one flag flipped and the
@@ -62,18 +76,7 @@ export async function PATCH(req: NextRequest, { params }: Params) {
     }
     // logAccess after the atomic update so each flip is still recorded
     // individually with its specific action verb.
-    if (archived !== undefined) {
-      db.logAccess(stash.id, source, archived ? 'archive' : 'unarchive', ip, userAgent);
-    }
-    if (backup_enabled !== undefined) {
-      db.logAccess(
-        stash.id,
-        source,
-        backup_enabled ? 'backup_enable' : 'backup_disable',
-        ip,
-        userAgent,
-      );
-    }
+    logFlagChanges(stash.id);
     return NextResponse.json(stash);
   }
 
@@ -91,9 +94,7 @@ export async function PATCH(req: NextRequest, { params }: Params) {
     return NextResponse.json({ error: 'Stash not found' }, { status: 404 });
   }
   db.logAccess(stash.id, source, 'update', ip, userAgent);
-  if (archived !== undefined) {
-    db.logAccess(stash.id, source, archived ? 'archive' : 'unarchive', ip, userAgent);
-  }
+  logFlagChanges(stash.id);
   return NextResponse.json(stash);
 }
 
