@@ -1621,6 +1621,41 @@ body {
   color: var(--accent-orange);
 }
 
+/* WCAG 2.2 SC 2.5.8 (Target Size, Minimum) for the icon-only buttons that   */
+/* were still drawn below 24x24 CSS px: the sidebar tag-chip clear (12x12),  */
+/* the sidebar search clear and the stash-title copy button (22x22), the     */
+/* graph steppers, focus/highlight clears (20x20) and graph search clear     */
+/* (18x18). Growing the buttons would make their chips and toolbars taller,  */
+/* so — as for .tag-combobox-tag-remove — a centred 24x24 overlay extends    */
+/* the hit area only; glyphs, hover boxes and layout stay as they are. Every */
+/* overlay stays inside the gap or padding around its button, so none of     */
+/* them reaches a neighbouring control. (.search-input-clear is already      */
+/* absolutely positioned, which anchors its overlay.)                        */
+.sidebar-active-tag-clear,
+.viewer-title-copy-btn,
+.graph-depth-btn,
+.graph-focus-clear,
+.graph-search-clear,
+.graph-highlight-clear {
+  position: relative;
+}
+
+.sidebar-active-tag-clear::after,
+.search-input-clear::after,
+.viewer-title-copy-btn::after,
+.graph-depth-btn::after,
+.graph-focus-clear::after,
+.graph-search-clear::after,
+.graph-highlight-clear::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 24px;
+  height: 24px;
+  transform: translate(-50%, -50%);
+}
+
 /* Manual reload for the stash list. Sized and coloured like `.layout-btn`
    next to it so the header reads as one row of controls; square, because it
    carries an icon only (the accessible name lives on `aria-label`). */
