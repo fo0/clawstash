@@ -1621,6 +1621,41 @@ body {
   color: var(--accent-orange);
 }
 
+/* WCAG 2.2 SC 2.5.8 (Target Size, Minimum) for the icon-only buttons that   */
+/* were still drawn below 24x24 CSS px: the sidebar tag-chip clear (12x12),  */
+/* the sidebar search clear and the stash-title copy button (22x22), the     */
+/* graph steppers, focus/highlight clears (20x20) and graph search clear     */
+/* (18x18). Growing the buttons would make their chips and toolbars taller,  */
+/* so — as for .tag-combobox-tag-remove — a centred 24x24 overlay extends    */
+/* the hit area only; glyphs, hover boxes and layout stay as they are. Every */
+/* overlay stays inside the gap or padding around its button, so none of     */
+/* them reaches a neighbouring control. (.search-input-clear is already      */
+/* absolutely positioned, which anchors its overlay.)                        */
+.sidebar-active-tag-clear,
+.viewer-title-copy-btn,
+.graph-depth-btn,
+.graph-focus-clear,
+.graph-search-clear,
+.graph-highlight-clear {
+  position: relative;
+}
+
+.sidebar-active-tag-clear::after,
+.search-input-clear::after,
+.viewer-title-copy-btn::after,
+.graph-depth-btn::after,
+.graph-focus-clear::after,
+.graph-search-clear::after,
+.graph-highlight-clear::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 24px;
+  height: 24px;
+  transform: translate(-50%, -50%);
+}
+
 /* Manual reload for the stash list. Sized and coloured like `.layout-btn`
    next to it so the header reads as one row of controls; square, because it
    carries an icon only (the accessible name lives on `aria-label`). */
@@ -2574,7 +2609,7 @@ body {
 }
 
 .markdown-body :is(h1, h2, h3, h4, h5, h6):hover .heading-anchor {
-  color: var(--text-tertiary);
+  color: var(--text-muted);
 }
 
 .markdown-body h1 {
@@ -4823,7 +4858,7 @@ textarea.code-editor-plain.code-editor-wrap {
 }
 
 .graph-search-clear:hover {
-  background: var(--bg-hover);
+  background: var(--bg-tertiary);
   color: var(--text-primary);
 }
 
@@ -4868,7 +4903,7 @@ textarea.code-editor-plain.code-editor-wrap {
 }
 
 .graph-search-result-locate:hover {
-  background: var(--bg-hover);
+  background: var(--bg-tertiary);
   color: var(--text-primary);
 }
 
@@ -5816,7 +5851,17 @@ textarea.code-editor-plain.code-editor-wrap {
     min-width: 280px;
     z-index: 200;
     transform: translateX(-100%);
-    transition: transform 0.25s ease;
+    /* A transform only moves the closed drawer off-screen: its search field,
+       tag filter and every stash link stayed in the Tab order and the
+       accessibility tree, so keyboard focus vanished off-canvas and screen
+       readers read a menu nobody could see (WCAG 2.4.3 / 2.4.7) — this layout
+       is also what desktop users get at 400% zoom. `visibility: hidden` takes
+       the closed drawer out of both; the change is delayed until the
+       slide-out has finished, so the closing animation still plays. */
+    visibility: hidden;
+    transition:
+      transform 0.25s ease,
+      visibility 0s linear 0.25s;
     box-shadow: none;
   }
 
@@ -5825,8 +5870,14 @@ textarea.code-editor-plain.code-editor-wrap {
     display: none;
   }
 
+  /* Opening flips visibility at once, before the slide-in starts, so the
+     "/" hotkey can focus the search field on the next frame. */
   .sidebar.sidebar-open {
     transform: translateX(0);
+    visibility: visible;
+    transition:
+      transform 0.25s ease,
+      visibility 0s;
     box-shadow: 4px 0 24px rgba(0, 0, 0, 0.5);
   }
 
