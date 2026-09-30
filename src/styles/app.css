@@ -2609,7 +2609,7 @@ body {
 }
 
 .markdown-body :is(h1, h2, h3, h4, h5, h6):hover .heading-anchor {
-  color: var(--text-tertiary);
+  color: var(--text-muted);
 }
 
 .markdown-body h1 {
@@ -4858,7 +4858,7 @@ textarea.code-editor-plain.code-editor-wrap {
 }
 
 .graph-search-clear:hover {
-  background: var(--bg-hover);
+  background: var(--bg-tertiary);
   color: var(--text-primary);
 }
 
@@ -4903,7 +4903,7 @@ textarea.code-editor-plain.code-editor-wrap {
 }
 
 .graph-search-result-locate:hover {
-  background: var(--bg-hover);
+  background: var(--bg-tertiary);
   color: var(--text-primary);
 }
 
