@@ -220,6 +220,11 @@ export default function Sidebar({
   const [tagHighlight, setTagHighlight] = useState(0);
   const tagFilterRef = useRef<HTMLDivElement>(null);
   const tagOptionsRef = useRef<HTMLDivElement>(null);
+  // Clearing the active tag unmounts the clear button and only renders the
+  // "Filter by tag" button that replaces it after the parent's state update —
+  // so focus is handed over from an effect, not from the click handler.
+  const tagFilterBtnRef = useRef<HTMLButtonElement>(null);
+  const refocusTagFilterRef = useRef(false);
   const searchInputRef = useRef<HTMLInputElement>(null);
   const stashListRef = useRef<HTMLDivElement>(null);
 
@@ -281,6 +286,14 @@ export default function Sidebar({
       applyTagFilter(target.tag);
     }
   };
+
+  // Land keyboard focus on "Filter by tag" once a clear has taken effect,
+  // instead of dropping it to <body> with the unmounted clear button.
+  useEffect(() => {
+    if (!refocusTagFilterRef.current) return;
+    refocusTagFilterRef.current = false;
+    if (!filterTag) tagFilterBtnRef.current?.focus();
+  }, [filterTag]);
 
   // Keep the highlighted option in view while arrowing through a long list.
   useEffect(() => {
@@ -526,8 +539,10 @@ export default function Sidebar({
                     {filterTag}
                   </span>
                   <button
+                    type="button"
                     className="sidebar-active-tag-clear"
                     onClick={() => {
+                      refocusTagFilterRef.current = true;
                       onFilterTag(filterTag);
                       setTagDropdownOpen(false);
                       setTagSearch('');
@@ -548,6 +563,7 @@ export default function Sidebar({
                 </div>
               ) : (
                 <button
+                  ref={tagFilterBtnRef}
                   type="button"
                   className="sidebar-tag-filter-btn"
                   onClick={() => (tagDropdownOpen ? closeTagDropdown() : openTagDropdown())}
