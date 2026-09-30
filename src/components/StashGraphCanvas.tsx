@@ -1657,6 +1657,13 @@ export default function StashGraphCanvas({
               ? 'Failed'
               : 'PNG'}
         </button>
+        {/* The button's fixed aria-label never carries its "Saved" /
+            "Failed" text, so the result is announced here instead. */}
+        <span className="sr-only" role="status" aria-live="polite">
+          {pngExport.status === 'saved' && 'Stash graph saved as a PNG image'}
+          {pngExport.status === 'failed' &&
+            'Could not create the image — your browser refused the canvas export'}
+        </span>
         <button
           className="btn graph-reset-btn"
           onClick={handleReset}
