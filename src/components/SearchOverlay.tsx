@@ -33,6 +33,10 @@ export default function SearchOverlay({ open, onClose, onSelectStash, onSearchAl
   const [total, setTotal] = useState(0);
   const [recent, setRecent] = useState<RecentView[]>([]);
   const [loading, setLoading] = useState(false);
+  // True when the latest search request failed (offline, timeout, server
+  // error). Without it a failure rendered as "No stashes found" — a claim
+  // about the data the request never got to make, with no way to try again.
+  const [failed, setFailed] = useState(false);
   const [activeIndex, setActiveIndex] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
@@ -59,6 +63,7 @@ export default function SearchOverlay({ open, onClose, onSelectStash, onSearchAl
       setTotal(0);
       setActiveIndex(0);
       setLoading(false);
+      setFailed(false);
       // Refresh the "Recently viewed" shortcut list each time the overlay
       // opens so it reflects stashes opened since the last open.
       setRecent(loadRecentViews());
@@ -73,10 +78,12 @@ export default function SearchOverlay({ open, onClose, onSelectStash, onSearchAl
       setResults([]);
       setTotal(0);
       setLoading(false);
+      setFailed(false);
       return;
     }
     const gen = ++searchGenRef.current;
     setLoading(true);
+    setFailed(false);
     try {
       const res = await api.listStashes({ search: q, limit: 12 });
       if (gen !== searchGenRef.current) return;
@@ -87,6 +94,7 @@ export default function SearchOverlay({ open, onClose, onSelectStash, onSearchAl
       if (gen !== searchGenRef.current) return;
       setResults([]);
       setTotal(0);
+      setFailed(true);
     } finally {
       if (gen === searchGenRef.current) setLoading(false);
     }
@@ -106,6 +114,7 @@ export default function SearchOverlay({ open, onClose, onSelectStash, onSearchAl
       setTotal(0);
       setActiveIndex(0);
       setLoading(false);
+      setFailed(false);
       return;
     }
     debounceRef.current = setTimeout(() => {
@@ -130,7 +139,21 @@ export default function SearchOverlay({ open, onClose, onSelectStash, onSearchAl
     setTotal(0);
     setActiveIndex(0);
     setLoading(false);
+    setFailed(false);
     inputRef.current?.focus();
+  };
+
+  // Re-run the query that failed. A pending debounce would fire the same
+  // search again moments later, so it is dropped first. Focus goes back to the
+  // field: the Retry button unmounts as soon as the new search starts, and
+  // focus would otherwise fall to <body>, outside the dialog's focus trap.
+  const handleRetry = () => {
+    if (debounceRef.current) {
+      clearTimeout(debounceRef.current);
+      debounceRef.current = undefined;
+    }
+    inputRef.current?.focus();
+    void doSearch(query);
   };
 
   // Cleanup debounce on unmount
@@ -229,7 +252,18 @@ export default function SearchOverlay({ open, onClose, onSelectStash, onSearchAl
       e.preventDefault();
       setActiveIndex((i) => (i > 0 ? i - 1 : 0));
     } else if (e.key === 'Enter') {
+      // A focused button inside the overlay (Retry, Show all, Clear search)
+      // owns its Enter. Taking it here cancelled the button's own activation
+      // and opened the highlighted result — or, after a failed search,
+      // retried where the user had asked to clear the field.
+      if (e.target instanceof HTMLButtonElement) return;
       e.preventDefault();
+      // After a failed search there is nothing to open — Enter in the field
+      // retries instead, so the keyboard path does not need the Retry button.
+      if (failed && !loading && query.trim()) {
+        handleRetry();
+        return;
+      }
       const item = navItems[activeIndex];
       if (!item) return;
       // Ctrl/Cmd+Enter mirrors the modified click: open the highlighted result
@@ -341,7 +375,24 @@ export default function SearchOverlay({ open, onClose, onSelectStash, onSearchAl
           </div>
         )}
 
-        {!loading && query.trim() && results.length === 0 && (
+        {!loading && query.trim() && failed && (
+          <div className="search-overlay-status search-overlay-status-failed">
+            {/* The alert carries only the text — the Retry button is its
+                sibling, so assistive tech announces the failure without
+                re-reading a control (same split as the result count row). */}
+            <span role="alert">Search failed. Check your connection and try again.</span>
+            <button
+              type="button"
+              className="search-overlay-show-all"
+              onClick={handleRetry}
+              title={`Run the search for "${query.trim()}" again (Enter)`}
+            >
+              Retry
+            </button>
+          </div>
+        )}
+
+        {!loading && query.trim() && !failed && results.length === 0 && (
           <div className="search-overlay-status" role="status" aria-live="polite">
             No stashes found
           </div>

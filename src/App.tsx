@@ -783,6 +783,23 @@ export default function App() {
     }
   }, [loadTags, adminSession]);
 
+  // Settings → Storage → Import replaces every stash and tag on the server,
+  // but both lists live here and are only refetched on search / filter
+  // changes — so on leaving Settings after an import, the sidebar and the
+  // dashboard still listed the replaced stashes, none of which could be
+  // opened any more.
+  // `loadStashes` is read through a ref because the import is awaited inside
+  // Settings: a search typed in the meantime must win, not be overwritten by
+  // the closure's older query.
+  const loadStashesRef = useRef(loadStashes);
+  useEffect(() => {
+    loadStashesRef.current = loadStashes;
+  }, [loadStashes]);
+  const handleDataImported = useCallback(() => {
+    void loadStashesRef.current();
+    void loadTags();
+  }, [loadTags]);
+
   // Clear stale tag filter when the active tag no longer exists
   useEffect(() => {
     if (filterTag && tags.length > 0 && !tags.some((t) => t.tag === filterTag)) {
@@ -1350,6 +1367,7 @@ export default function App() {
               onLayoutChange={handleLayoutChange}
               onSettingsSection={setSettingsSection}
               onFilterTag={handleNavigateToTag}
+              onDataImported={handleDataImported}
             />
           )}
           {view === 'graph' && (

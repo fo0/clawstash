@@ -1058,6 +1058,23 @@ body {
   font-size: 13px;
 }
 
+/* A failed search — text plus its Retry, wrapping on a narrow overlay. */
+.search-overlay-status-failed {
+  flex-wrap: wrap;
+  gap: 8px;
+  color: var(--accent-red-text);
+  text-align: center;
+}
+
+/* The Retry reuses the "Show all" link-button look, sized to the status text
+   and to a 24px-tall target (WCAG 2.2 SC 2.5.8) — the 11px count-row size
+   left it about 15px tall. */
+.search-overlay-status-failed .search-overlay-show-all {
+  min-height: 24px;
+  padding: 2px 8px;
+  font-size: inherit;
+}
+
 .search-overlay-results {
   max-height: 360px;
   overflow-y: auto;

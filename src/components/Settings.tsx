@@ -411,9 +411,14 @@ interface StorageSectionProps {
    * it — the same shape `GraphViewer` already uses.
    */
   onFilterTag?: (tag: string) => void;
+  /**
+   * Called once an import has replaced the data on the server, so the parent
+   * can refetch what it holds outside this section (stash list, tag list).
+   */
+  onDataImported?: () => void;
 }
 
-function StorageSection({ onFilterTag }: StorageSectionProps) {
+function StorageSection({ onFilterTag, onDataImported }: StorageSectionProps) {
   const [stats, setStats] = useState<Stats | null>(null);
   const [tags, setTags] = useState<TagInfo[]>([]);
   const [loading, setLoading] = useState(true);
@@ -540,6 +545,10 @@ function StorageSection({ onFilterTag }: StorageSectionProps) {
     setExportError(null);
     try {
       const result = await api.importData(file);
+      // Before the mount check: the server's data is replaced whether or not
+      // the user is still on this section, and the app's own stash and tag
+      // lists still describe the data that is gone.
+      onDataImported?.();
       if (!sectionMountedRef.current) return;
       setImportResult(
         `Import successful: ${result.imported.stashes} stashes, ${result.imported.files} files, ${result.imported.versions} versions imported.`,
@@ -916,6 +925,8 @@ interface Props {
   onSettingsSection: (section: SettingsSection) => void;
   /** Apply a tag filter and leave settings for the dashboard. */
   onFilterTag?: (tag: string) => void;
+  /** A data import replaced every stash — refetch the app-level lists. */
+  onDataImported?: () => void;
 }
 
 // Every other top-level view (Dashboard, API Documentation) starts with a
@@ -939,6 +950,7 @@ export default function Settings({
   onLayoutChange,
   onSettingsSection,
   onFilterTag,
+  onDataImported,
 }: Props) {
   return (
     <div className="settings">
@@ -958,7 +970,9 @@ export default function Settings({
       )}
       {activeSection === 'api' && <ApiManager embedded />}
       {activeSection === 'backup' && <BackupSection />}
-      {activeSection === 'storage' && <StorageSection onFilterTag={onFilterTag} />}
+      {activeSection === 'storage' && (
+        <StorageSection onFilterTag={onFilterTag} onDataImported={onDataImported} />
+      )}
       {activeSection === 'about' && <AboutSection />}
     </div>
   );
