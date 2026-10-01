@@ -130,6 +130,11 @@ export default function StashEditor({ stash, template, onSave, onCancel, onDirty
   );
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+  // Counts failed save attempts, so every failure — including a repeat of the
+  // same message, which leaves `error` unchanged — brings the banner back into
+  // view. See the effect next to handleSave.
+  const [failedSaves, setFailedSaves] = useState(0);
+  const errorBannerRef = useRef<HTMLDivElement>(null);
   const [confirmCancel, setConfirmCancel] = useState(false);
   // Index of the file whose Remove button is armed (two-click confirm),
   // or null. Removing a file destroys its typed content, so it gets the
@@ -535,6 +540,23 @@ export default function StashEditor({ stash, template, onSave, onCancel, onDirty
     }
   }, []);
 
+  /** End a save attempt with `message` in the error banner. */
+  const failSave = (message: string) => {
+    setError(message);
+    setFailedSaves((n) => n + 1);
+  };
+
+  // The banner sits above the form, while a save is often started far below
+  // it: Ctrl/Cmd+S works from anywhere in the editor, typically from inside
+  // the file being edited. A refused or failed save then changed nothing in
+  // view and read as a keypress that did nothing. Scroll the banner into view
+  // on every failure. Focus stays where it is — the user is mid-edit, and
+  // `role="alert"` already announces the message.
+  useEffect(() => {
+    if (failedSaves === 0) return;
+    errorBannerRef.current?.scrollIntoView({ block: 'nearest' });
+  }, [failedSaves]);
+
   const handleSave = async () => {
     // The Ctrl/Cmd+S listener bypasses the disabled button — bail while a
     // save is already in flight instead of firing a duplicate request.
@@ -553,12 +575,12 @@ export default function StashEditor({ stash, template, onSave, onCancel, onDirty
     // the save instead.
     const missingNameIndex = files.findIndex((f) => f.content.trim() && !f.filename.trim());
     if (missingNameIndex !== -1) {
-      setError(`File ${missingNameIndex + 1} has content but no filename.`);
+      failSave(`File ${missingNameIndex + 1} has content but no filename.`);
       return;
     }
     const validFiles = files.filter((f) => f.filename.trim());
     if (validFiles.length === 0) {
-      setError('At least one file with a filename is required.');
+      failSave('At least one file with a filename is required.');
       return;
     }
     // Duplicate filenames: the raw-file route looks files up by exact name,
@@ -567,7 +589,7 @@ export default function StashEditor({ stash, template, onSave, onCancel, onDirty
     for (const f of validFiles) {
       const trimmedName = f.filename.trim();
       if (seenFilenames.has(trimmedName)) {
-        setError(`Duplicate filename "${trimmedName}" — filenames must be unique within a stash.`);
+        failSave(`Duplicate filename "${trimmedName}" — filenames must be unique within a stash.`);
         return;
       }
       seenFilenames.add(trimmedName);
@@ -576,7 +598,7 @@ export default function StashEditor({ stash, template, onSave, onCancel, onDirty
     // come back as a raw Zod path string. Name the file and its size instead.
     const oversized = validFiles.find((f) => f.content.length > MAX_FILE_CONTENT_LENGTH);
     if (oversized) {
-      setError(
+      failSave(
         `File "${oversized.filename.trim()}" is ${formatBytes(oversized.content.length)} — over the ` +
           `${formatBytes(MAX_FILE_CONTENT_LENGTH)} per-file limit. Split it into several files.`,
       );
@@ -623,7 +645,7 @@ export default function StashEditor({ stash, template, onSave, onCancel, onDirty
         onSave(created.id);
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to save stash');
+      failSave(err instanceof Error ? err.message : 'Failed to save stash');
     } finally {
       savingRef.current = false;
       setSaving(false);
@@ -792,7 +814,7 @@ export default function StashEditor({ stash, template, onSave, onCancel, onDirty
       )}
 
       {error && (
-        <div className="error-banner" role="alert">
+        <div ref={errorBannerRef} className="error-banner" role="alert">
           {error}
         </div>
       )}
