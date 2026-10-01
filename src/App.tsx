@@ -785,8 +785,9 @@ export default function App() {
 
   // Settings → Storage → Import replaces every stash and tag on the server,
   // but both lists live here and are only refetched on search / filter
-  // changes — so after an import the sidebar (and the dashboard behind it)
-  // kept listing the replaced stashes, none of which could be opened any more.
+  // changes — so on leaving Settings after an import, the sidebar and the
+  // dashboard still listed the replaced stashes, none of which could be
+  // opened any more.
   // `loadStashes` is read through a ref because the import is awaited inside
   // Settings: a search typed in the meantime must win, not be overwritten by
   // the closure's older query.

@@ -252,9 +252,14 @@ export default function SearchOverlay({ open, onClose, onSelectStash, onSearchAl
       e.preventDefault();
       setActiveIndex((i) => (i > 0 ? i - 1 : 0));
     } else if (e.key === 'Enter') {
+      // A focused button inside the overlay (Retry, Show all, Clear search)
+      // owns its Enter. Taking it here cancelled the button's own activation
+      // and opened the highlighted result — or, after a failed search,
+      // retried where the user had asked to clear the field.
+      if (e.target instanceof HTMLButtonElement) return;
       e.preventDefault();
-      // After a failed search there is nothing to open — Enter retries
-      // instead, so the keyboard path does not need the Retry button.
+      // After a failed search there is nothing to open — Enter in the field
+      // retries instead, so the keyboard path does not need the Retry button.
       if (failed && !loading && query.trim()) {
         handleRetry();
         return;

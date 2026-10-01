@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { cleanup, createEvent, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import SearchOverlay from '../SearchOverlay';
 import type { StashListItem } from '../../types';
 
@@ -36,15 +36,21 @@ function stash(n: number): StashListItem {
 async function renderCapped(total: number, query = '  config  ') {
   const onSearchAll = vi.fn();
   const onClose = vi.fn();
+  const onSelectStash = vi.fn();
   const results = Array.from({ length: 12 }, (_, i) => stash(i));
   listStashes.mockResolvedValue({ stashes: results, total });
 
   render(
-    <SearchOverlay open onClose={onClose} onSelectStash={vi.fn()} onSearchAll={onSearchAll} />,
+    <SearchOverlay
+      open
+      onClose={onClose}
+      onSelectStash={onSelectStash}
+      onSearchAll={onSearchAll}
+    />,
   );
   fireEvent.change(screen.getByLabelText('Search stashes'), { target: { value: query } });
   await waitFor(() => expect(screen.getAllByRole('option').length).toBe(12));
-  return { onSearchAll, onClose };
+  return { onSearchAll, onClose, onSelectStash };
 }
 
 describe('SearchOverlay "Show all" escape hatch', () => {
@@ -59,6 +65,20 @@ describe('SearchOverlay "Show all" escape hatch', () => {
     fireEvent.click(screen.getByRole('button', { name: /show all 84/i }));
     expect(onSearchAll).toHaveBeenCalledWith('config');
     expect(onClose).toHaveBeenCalled();
+  });
+
+  it('leaves Enter on the focused button to the button', async () => {
+    const { onSelectStash, onClose } = await renderCapped(84);
+    const button = screen.getByRole('button', { name: /show all 84/i });
+
+    const enter = createEvent.keyDown(button, { key: 'Enter' });
+    fireEvent(button, enter);
+
+    // The overlay's key handler used to cancel it and open the highlighted
+    // result; the browser's own activation is what should click the button.
+    expect(enter.defaultPrevented).toBe(false);
+    expect(onSelectStash).not.toHaveBeenCalled();
+    expect(onClose).not.toHaveBeenCalled();
   });
 
   it('stays hidden when every match is already on screen', async () => {

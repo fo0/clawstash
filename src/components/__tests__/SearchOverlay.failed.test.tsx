@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { cleanup, createEvent, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import SearchOverlay from '../SearchOverlay';
 import type { StashListItem } from '../../types';
 
@@ -80,6 +80,20 @@ describe('SearchOverlay failed search', () => {
 
     await waitFor(() => expect(screen.getAllByRole('option')).toHaveLength(1));
     expect(listStashes).toHaveBeenCalledTimes(2);
+  });
+
+  it('leaves Enter on a focused button to that button', async () => {
+    await renderFailed();
+
+    for (const name of ['Retry', 'Clear search']) {
+      const button = screen.getByRole('button', { name });
+      const enter = createEvent.keyDown(button, { key: 'Enter' });
+      fireEvent(button, enter);
+      // Not cancelled, so the browser's own Enter activation still clicks the
+      // button — the overlay's key handler neither retries nor opens a result.
+      expect(enter.defaultPrevented).toBe(false);
+    }
+    expect(listStashes).toHaveBeenCalledTimes(1);
   });
 
   it('drops the failure when the field is cleared', async () => {
