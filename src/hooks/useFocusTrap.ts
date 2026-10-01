@@ -1,4 +1,5 @@
 import { useEffect, type RefObject } from 'react';
+import { containsAppModal } from '../utils/nested-modal';
 
 /**
  * Elements that can receive keyboard focus by default. `[tabindex]` is matched
@@ -54,8 +55,9 @@ export function getFocusableElements(container: HTMLElement): HTMLElement[] {
  * page behind the backdrop, where the content is still focusable and still
  * wired to the app's single-key hotkeys.
  *
- * Nested modals: while a descendant of the container is itself
- * `aria-modal="true"`, this trap stands aside and the inner one owns Tab.
+ * Nested modals: while a descendant of the container is itself an app-owned
+ * `aria-modal="true"` element, this trap stands aside and the inner one owns
+ * Tab (`containsAppModal`).
  *
  * @param containerRef Element that owns the dialog's focusable content.
  * @param active       Whether the modal is currently open.
@@ -82,8 +84,9 @@ export function useFocusTrap(
       // A modal open inside this one (MermaidDiagram fullscreen inside a
       // maximized viewer file) runs its own trap. Tab belongs to the
       // innermost modal, so the outer trap must not wrap focus back out to
-      // controls hidden behind it.
-      if (container.querySelector('[aria-modal="true"]')) return;
+      // controls hidden behind it. An `aria-modal` in rendered Markdown is
+      // content, not a modal, and must not switch the trap off.
+      if (containsAppModal(container, '[aria-modal="true"]')) return;
 
       const focusable = getFocusableElements(container);
       if (focusable.length === 0) {

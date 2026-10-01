@@ -2768,7 +2768,8 @@ body {
    toggle. Works because no ancestor of `.viewer-file` sets transform /
    filter / contain — any of those would turn `position: fixed` into
    "fixed to that ancestor". The content (whichever child follows the
-   header) takes the remaining height and scrolls on its own. */
+   header) takes the remaining height and scrolls on its own — except for
+   raw code and rendered Markdown, see `.viewer-file-maximized-scroll`. */
 .viewer-file-maximized {
   position: fixed;
   inset: 24px;
@@ -2812,6 +2813,34 @@ body {
   flex: 1;
   min-height: 0;
   max-height: none;
+}
+
+/* Raw code and rendered Markdown: the box itself is the scroller. It holds
+   focus on open (PageDown, arrows and Space scroll it at once) and contains
+   the header buttons, so PageDown and arrows keep working from those too —
+   a non-focusable inner scroller would ignore every one of these keys. The
+   header stays pinned; its own background is opaque, so content scrolls
+   under it. */
+.viewer-file-maximized-scroll {
+  overflow: auto;
+  overscroll-behavior: contain;
+}
+
+.viewer-file-maximized-scroll > .file-header {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+
+/* Content-sized, so it never scrolls vertically itself (next to
+   `overflow-x: auto` the `visible` computes to auto, but nothing overflows).
+   Long lines in the <pre> and wide Markdown tables still scroll sideways. */
+.viewer-file-maximized-scroll > .file-rendered,
+.viewer-file-maximized-scroll > .file-content {
+  flex: 1 0 auto;
+  min-height: auto;
+  overflow-x: auto;
+  overflow-y: visible;
 }
 
 .viewer-file-backdrop {

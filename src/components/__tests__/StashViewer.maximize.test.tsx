@@ -2,6 +2,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi, type Mock } from 'vitest';
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import StashViewer from '../StashViewer';
+import { getFocusableElements } from '../../hooks/useFocusTrap';
+import { canToggleQuickSearch } from '../../utils/quick-search-gate';
 import type { Stash, StashFile } from '../../types';
 
 // Stand-in for MermaidDiagram (the real one lazy-loads mermaid, which jsdom
@@ -75,6 +77,11 @@ function file(n: number, filename = `file-${n}.txt`, language = 'text'): StashFi
     language,
     sort_order: n,
   };
+}
+
+/** A Markdown file whose content carries user-authored raw HTML. */
+function markdownFile(n: number, content: string): StashFile {
+  return { ...file(n, `notes-${n}.md`, 'markdown'), content };
 }
 
 function stashWith(files: StashFile[], id = 'abc'): Stash {
@@ -246,10 +253,13 @@ describe('StashViewer per-file maximize', () => {
     maximize('file-1.txt');
 
     fireEvent.click(header);
+    // A maximized file shows its content either way, so the click's effect
+    // only surfaces once the file is restored: it must still be expanded.
+    fireEvent.click(screen.getByRole('button', { name: 'Restore file-1.txt' }));
     expect(container.querySelector('#stash-file-1 .file-content')).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Collapse file-1.txt' })).toBeTruthy();
 
     // Control: restored, the same surface collapses the file again.
-    fireEvent.click(screen.getByRole('button', { name: 'Restore file-1.txt' }));
     fireEvent.click(header);
     expect(container.querySelector('#stash-file-1 .file-content')).toBeNull();
   });
@@ -276,11 +286,109 @@ describe('StashViewer per-file maximize', () => {
     expect(screen.getByTestId('mermaid-stub')).toBe(stub);
   });
 
+  it('ignores a role="dialog" written into a maximized Markdown file', () => {
+    const { container } = renderViewer([markdownFile(0, '<div role="dialog">x</div>')]);
+    const onWindowKeydown = spyOnWindowKeydown();
+    maximize('notes-0.md');
+    // Fixture check: the sanitiser keeps the attribute, so the spoof is live.
+    expect(container.querySelector('#stash-file-0 .markdown-body [role="dialog"]')).toBeTruthy();
+
+    expect(pressEscape()).toBe(false);
+
+    expect(fileBox(container, 0).getAttribute('role')).toBeNull();
+    expect(onWindowKeydown).not.toHaveBeenCalled();
+  });
+
+  it('keeps trapping Tab when a maximized Markdown file contains aria-modal', () => {
+    const { container } = renderViewer([
+      markdownFile(0, '<div aria-modal="true">x</div>'),
+      file(1),
+    ]);
+    maximize('notes-0.md');
+    expect(
+      container.querySelector('#stash-file-0 .markdown-body [aria-modal="true"]'),
+    ).toBeTruthy();
+    const focusable = getFocusableElements(fileBox(container, 0));
+    focusable[focusable.length - 1]!.focus();
+
+    expect(fireEvent.keyDown(document.activeElement!, { key: 'Tab' })).toBe(false);
+    expect(document.activeElement).toBe(focusable[0]);
+  });
+
+  it('pulls focus that leaves the box back in, unless another modal takes it', () => {
+    const { container } = renderViewer();
+    maximize('file-1.txt');
+    const box = fileBox(container, 1);
+
+    // What Tab out of the HTML preview iframe does: focus lands behind the
+    // backdrop without a keydown the trap could see.
+    screen.getByRole('button', { name: 'Maximize file-0.txt' }).focus();
+    expect(document.activeElement).toBe(box);
+
+    // A modal of the app's own outside the box keeps the focus it took.
+    const other = document.createElement('div');
+    other.setAttribute('aria-modal', 'true');
+    const inOther = other.appendChild(document.createElement('button'));
+    document.body.appendChild(other);
+    try {
+      inOther.focus();
+      expect(document.activeElement).toBe(inOther);
+    } finally {
+      other.remove();
+    }
+  });
+
+  it('lets the box itself scroll for raw code and rendered Markdown only', () => {
+    const { container } = renderViewer([
+      file(0),
+      markdownFile(1, '# Title'),
+      file(2, 'page.html', 'html'),
+      file(3, 'diagram.mmd', 'mermaid'),
+    ]);
+    const scrolls = (index: number) =>
+      fileBox(container, index).classList.contains('viewer-file-maximized-scroll');
+    const restore = (filename: string) =>
+      fireEvent.click(screen.getByRole('button', { name: `Restore ${filename}` }));
+
+    // Nothing maximized, nothing carries it.
+    expect(container.querySelector('.viewer-file-maximized-scroll')).toBeNull();
+
+    maximize('file-0.txt');
+    expect(scrolls(0)).toBe(true);
+    // The scroller holds focus, so keyboard scrolling works right away.
+    expect(document.activeElement).toBe(fileBox(container, 0));
+    restore('file-0.txt');
+    expect(scrolls(0)).toBe(false);
+
+    maximize('notes-1.md');
+    expect(container.querySelector('#stash-file-1 .markdown-body')).toBeTruthy();
+    expect(scrolls(1)).toBe(true);
+    expect(document.activeElement).toBe(fileBox(container, 1));
+    restore('notes-1.md');
+
+    maximize('page.html');
+    expect(scrolls(2)).toBe(false);
+    restore('page.html');
+
+    maximize('diagram.mmd');
+    expect(scrolls(3)).toBe(false);
+  });
+
   it('blocks the 1-4 tab hotkeys while maximized', () => {
     renderViewer();
     maximize('file-1.txt');
     fireEvent.keyDown(document.activeElement!, { key: '2' });
     expect(screen.getByRole('tab', { selected: true }).id).toBe('viewer-tab-content');
+  });
+
+  it("blocks App's quick-search accelerator while maximized", () => {
+    renderViewer();
+    const closed = { search: false, help: false };
+    expect(canToggleQuickSearch(closed)).toBe(true);
+
+    maximize('file-1.txt');
+    // Opening search on top would stack two modals with fighting traps.
+    expect(canToggleQuickSearch(closed)).toBe(false);
   });
 
   it('is cleared when the Content tab is left', () => {

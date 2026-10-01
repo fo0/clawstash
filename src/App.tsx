@@ -17,6 +17,7 @@ import { recordRecentView } from './utils/recent-views';
 import { SEARCH_DEBOUNCE_MS, STASH_PAGE_SIZE } from './utils/constants';
 import { decidePopState } from './utils/nav-guard';
 import { resolveGraphBack } from './utils/graph-nav';
+import { canToggleQuickSearch } from './utils/quick-search-gate';
 import { SIDEBAR_DEFAULT_WIDTH, loadSidebarWidth, saveSidebarWidth } from './utils/sidebar-width';
 import { useScrollMemory } from './hooks/useScrollMemory';
 import Sidebar from './components/Sidebar';
@@ -262,9 +263,10 @@ export default function App() {
         // Ctrl+K focuses the browser's search bar in Firefox/Chrome, so this
         // has to be claimed explicitly.
         e.preventDefault();
-        // No-op while the shortcuts help dialog is open — toggling search on
-        // top would stack both modals (double-Escape needed to get out).
-        if (modalOpenRef.current.help) return;
+        // No-op while any other dialog is open (shortcuts help, a maximized
+        // viewer file, Mermaid fullscreen, graph popups) — toggling search on
+        // top would stack two modals. An open search still closes.
+        if (!canToggleQuickSearch(modalOpenRef.current)) return;
         setSearchOpen((prev) => !prev);
       }
     };
@@ -359,9 +361,10 @@ export default function App() {
       }
 
       // A fullscreen dialog App doesn't track is open (Mermaid fullscreen
-      // viewer, graph popups — all render role="dialog"): swallow navigation
-      // hotkeys so they don't act underneath it. Escape stays untouched —
-      // those dialogs consume it themselves (overlay contract).
+      // viewer, a maximized viewer file, graph popups — all render
+      // role="dialog"): swallow navigation hotkeys so they don't act
+      // underneath it. Escape stays untouched — those dialogs consume it
+      // themselves (overlay contract).
       if (e.key !== 'Escape' && document.querySelector('[role="dialog"]')) return;
 
       if (e.key === '?') {

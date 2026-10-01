@@ -675,8 +675,9 @@ export default function StashViewer({
     };
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.metaKey || e.ctrlKey || e.altKey) return;
-      // Modal overlays (search, shortcuts help, mermaid fullscreen) all
-      // render role="dialog" — don't switch tabs behind an open modal.
+      // Modal overlays (search, shortcuts help, mermaid fullscreen, a
+      // maximized file) all render role="dialog" — don't switch tabs behind
+      // an open modal.
       if (document.querySelector('[role="dialog"]')) return;
       const tag = (e.target as HTMLElement)?.tagName?.toLowerCase();
       const isEditing =
@@ -1441,13 +1442,19 @@ export default function StashViewer({
             // losing its collapsed state.
             const maximized = file.id === maximizedFileId;
             const showContent = !collapsed || maximized;
+            // Raw code and rendered Markdown scroll as one with the maximized
+            // box, which holds focus on open — so PageDown / arrows / Space
+            // work without a click. The HTML preview and the Mermaid viewer
+            // keep filling the box instead.
+            const maximizedScroll =
+              maximized && !(showRendered && (lang === 'mermaid' || lang === 'markup'));
 
             return (
               <div
                 key={file.id}
                 id={`stash-file-${fileIndex}`}
                 ref={maximized ? maximizedRef : undefined}
-                className={`viewer-file${showContent ? '' : ' viewer-file-collapsed'}${maximized ? ' viewer-file-maximized' : ''}`}
+                className={`viewer-file${showContent ? '' : ' viewer-file-collapsed'}${maximized ? ' viewer-file-maximized' : ''}${maximizedScroll ? ' viewer-file-maximized-scroll' : ''}`}
                 role={maximized ? 'dialog' : undefined}
                 aria-modal={maximized ? true : undefined}
                 aria-label={maximized ? `${file.filename} (maximized)` : undefined}

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState, type RefObject } from 'react';
 import { useBodyScrollLock } from './useBodyScrollLock';
 import { useFocusTrap } from './useFocusTrap';
+import { containsAppModal, isInsideAppModal } from '../utils/nested-modal';
 
 interface MaximizedEntry {
   stashId: string;
@@ -39,8 +40,9 @@ export interface MaximizedFile {
  *   own fullscreen) owns that Escape instead: both listeners sit on
  *   `document`, and this one registers first, so it steps aside rather than
  *   closing both layers with one key press.
- * - Body scroll lock, a focus trap, focus moved into the dialog on open and
- *   handed back to the triggering button on every close path.
+ * - Body scroll lock, a focus trap (plus a `focusin` guard for focus that
+ *   leaves through the HTML preview iframe), focus moved into the dialog on
+ *   open and handed back to the triggering button on every close path.
  */
 export function useMaximizedFile(
   stashId: string,
@@ -82,15 +84,33 @@ export function useMaximizedFile(
     if (!active) return;
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.key !== 'Escape' || e.defaultPrevented) return;
-      // `querySelector` only searches descendants, so the maximized box's own
-      // role="dialog" never matches here.
-      if (maximizedRef.current?.querySelector('[role="dialog"]')) return;
+      // Descendants only, so the maximized box's own role="dialog" never
+      // matches; a role="dialog" in rendered Markdown does not count either.
+      const box = maximizedRef.current;
+      if (box && containsAppModal(box, '[role="dialog"]')) return;
       e.preventDefault();
       e.stopPropagation();
       setEntry(null);
     };
     document.addEventListener('keydown', onKeyDown);
     return () => document.removeEventListener('keydown', onKeyDown);
+  }, [active]);
+
+  // The Tab trap only sees keys pressed in this document. Tab out of the
+  // sandboxed HTML preview iframe never reaches it, and focus would land on a
+  // control behind the backdrop — so pull any focus that leaves the box back
+  // in, unless another app-owned modal took it.
+  useEffect(() => {
+    if (!active) return;
+    const onFocusIn = (e: FocusEvent) => {
+      const box = maximizedRef.current;
+      const target = e.target;
+      if (!box || !(target instanceof Element) || box.contains(target)) return;
+      if (isInsideAppModal(target)) return;
+      box.focus({ preventScroll: true });
+    };
+    document.addEventListener('focusin', onFocusIn);
+    return () => document.removeEventListener('focusin', onFocusIn);
   }, [active]);
 
   // Keyed on the id, not `active`: switching straight from one maximized file
