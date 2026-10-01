@@ -2824,6 +2824,9 @@ body {
 .viewer-file-maximized-scroll {
   overflow: auto;
   overscroll-behavior: contain;
+  /* Keeps anchor-link targets and controls scrolled into view out from
+     under the pinned header (~45px tall). */
+  scroll-padding-top: 52px;
 }
 
 .viewer-file-maximized-scroll > .file-header {
@@ -2857,6 +2860,11 @@ body {
 @media (max-width: 640px) {
   .viewer-file-maximized {
     inset: 8px;
+  }
+
+  /* The header's actions wrap here, to ~115px. */
+  .viewer-file-maximized-scroll {
+    scroll-padding-top: 124px;
   }
 }
 

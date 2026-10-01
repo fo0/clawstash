@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi, type Mock } from 'vitest';
-import { cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, within } from '@testing-library/react';
 import StashViewer from '../StashViewer';
 import { getFocusableElements } from '../../hooks/useFocusTrap';
 import { canToggleQuickSearch } from '../../utils/quick-search-gate';
@@ -127,6 +127,11 @@ function fileBox(container: HTMLElement, index: number): HTMLElement {
 
 function maximize(filename: string) {
   fireEvent.click(screen.getByRole('button', { name: `Maximize ${filename}` }));
+}
+
+/** Waits out the focus guard, which decides one task after a `focusin`. */
+async function flushFocusGuard() {
+  await act(() => new Promise((resolve) => setTimeout(resolve, 0)));
 }
 
 function pressEscape() {
@@ -315,7 +320,7 @@ describe('StashViewer per-file maximize', () => {
     expect(document.activeElement).toBe(focusable[0]);
   });
 
-  it('pulls focus that leaves the box back in, unless another modal takes it', () => {
+  it('pulls focus that leaves the box back in, unless another modal takes it', async () => {
     const { container } = renderViewer();
     maximize('file-1.txt');
     const box = fileBox(container, 1);
@@ -323,6 +328,7 @@ describe('StashViewer per-file maximize', () => {
     // What Tab out of the HTML preview iframe does: focus lands behind the
     // backdrop without a keydown the trap could see.
     screen.getByRole('button', { name: 'Maximize file-0.txt' }).focus();
+    await flushFocusGuard();
     expect(document.activeElement).toBe(box);
 
     // A modal of the app's own outside the box keeps the focus it took.
@@ -332,9 +338,53 @@ describe('StashViewer per-file maximize', () => {
     document.body.appendChild(other);
     try {
       inOther.focus();
+      await flushFocusGuard();
       expect(document.activeElement).toBe(inOther);
     } finally {
       other.remove();
+    }
+  });
+
+  it('reaches the Restore button with Shift+Tab right after opening', () => {
+    const { container } = renderViewer();
+    maximize('file-1.txt');
+    expect(document.activeElement).toBe(fileBox(container, 1));
+
+    expect(fireEvent.keyDown(document.activeElement!, { key: 'Tab', shiftKey: true })).toBe(false);
+    expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Restore file-1.txt' }));
+  });
+
+  it('leaves focus to the clipboard fallback while it copies (plain HTTP)', async () => {
+    // No Clipboard API: `copyToClipboard` focuses and selects a hidden
+    // textarea on <body> — outside the box — then copies and restores focus.
+    vi.stubGlobal('navigator', { ...navigator, clipboard: undefined });
+    const focusedAtCopy: (Element | null)[] = [];
+    Object.defineProperty(document, 'execCommand', {
+      value: vi.fn(() => {
+        focusedAtCopy.push(document.activeElement);
+        return true;
+      }),
+      configurable: true,
+    });
+    try {
+      const { container } = renderViewer();
+      maximize('file-1.txt');
+      const box = fileBox(container, 1);
+
+      const copyButton = within(box).getByTitle('Copy file content to clipboard');
+      // A real click focuses the button; the fallback hands focus back to it.
+      copyButton.focus();
+      fireEvent.click(copyButton);
+
+      // Refocusing the box on that focusin would drop the selection.
+      expect(focusedAtCopy.map((el) => el?.tagName)).toEqual(['TEXTAREA']);
+      expect(await within(box).findByTitle('Copied!')).toBe(copyButton);
+      // The guard decides from where focus ended up, not from the focusin
+      // that took it outside: the restored button keeps it.
+      await flushFocusGuard();
+      expect(document.activeElement).toBe(copyButton);
+    } finally {
+      delete (document as { execCommand?: unknown }).execCommand;
     }
   });
 

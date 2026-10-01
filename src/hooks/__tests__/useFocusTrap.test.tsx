@@ -125,6 +125,23 @@ describe('useFocusTrap', () => {
     expect(document.activeElement).toBe(getByTestId('first'));
   });
 
+  it('moves focus off the container itself to the first or last control', () => {
+    const { getByTestId, getByRole } = render(<Modal />);
+    act(() => getByTestId('trigger').click());
+    // A `tabIndex={-1}` dialog focused on open (the maximized viewer file).
+    const dialog = getByRole('dialog');
+    dialog.tabIndex = -1;
+
+    act(() => dialog.focus());
+    // Left to the browser, Shift+Tab would walk out to the page behind.
+    expect(tab(true)).toBe(false);
+    expect(document.activeElement).toBe(getByTestId('last'));
+
+    act(() => dialog.focus());
+    expect(tab()).toBe(false);
+    expect(document.activeElement).toBe(getByTestId('first'));
+  });
+
   it('does nothing while the modal is closed', () => {
     const { getByTestId } = render(<Modal />);
     act(() => getByTestId('outside').focus());

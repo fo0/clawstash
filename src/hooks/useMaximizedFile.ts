@@ -100,17 +100,37 @@ export function useMaximizedFile(
   // sandboxed HTML preview iframe never reaches it, and focus would land on a
   // control behind the backdrop — so pull any focus that leaves the box back
   // in, unless another app-owned modal took it.
+  //
+  // Decided one task later, from where focus ended up rather than where it
+  // went: code that borrows focus and hands it back in the same task must be
+  // left alone. The clipboard fallback (`copyToClipboard` without
+  // `navigator.clipboard`, i.e. plain HTTP) focuses a hidden textarea on
+  // <body>, selects it, copies and restores focus; refocusing the box on that
+  // focusin dropped the selection and the copy failed. A microtask would
+  // also run after that synchronous restore; `setTimeout` additionally runs
+  // after every microtask the task queued, so a restore that follows an
+  // `await` on an already-settled promise is left alone as well.
   useEffect(() => {
     if (!active) return;
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    const pullBack = () => {
+      timer = null;
+      const box = maximizedRef.current;
+      const current = document.activeElement;
+      if (!box || (current && (box.contains(current) || isInsideAppModal(current)))) return;
+      box.focus({ preventScroll: true });
+    };
     const onFocusIn = (e: FocusEvent) => {
       const box = maximizedRef.current;
       const target = e.target;
       if (!box || !(target instanceof Element) || box.contains(target)) return;
-      if (isInsideAppModal(target)) return;
-      box.focus({ preventScroll: true });
+      if (timer === null) timer = setTimeout(pullBack, 0);
     };
     document.addEventListener('focusin', onFocusIn);
-    return () => document.removeEventListener('focusin', onFocusIn);
+    return () => {
+      document.removeEventListener('focusin', onFocusIn);
+      if (timer !== null) clearTimeout(timer);
+    };
   }, [active]);
 
   // Keyed on the id, not `active`: switching straight from one maximized file

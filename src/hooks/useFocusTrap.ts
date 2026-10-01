@@ -101,7 +101,10 @@ export function useFocusTrap(
 
       // Focus sitting outside the dialog (e.g. on <body> after a click on the
       // backdrop) must be pulled back in rather than continue through the page.
-      if (!current || !container.contains(current)) {
+      // So must focus on the container itself (a `tabIndex={-1}` dialog that
+      // takes focus on open): it is neither `first` nor `last`, and the
+      // browser's Shift+Tab from there walks out to the page behind.
+      if (!current || current === container || !container.contains(current)) {
         e.preventDefault();
         (e.shiftKey ? last : first).focus();
         return;
