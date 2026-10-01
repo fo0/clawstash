@@ -1058,6 +1058,14 @@ body {
   font-size: 13px;
 }
 
+/* A failed search — text plus its Retry, wrapping on a narrow overlay. */
+.search-overlay-status-failed {
+  flex-wrap: wrap;
+  gap: 8px;
+  color: var(--accent-red-text);
+  text-align: center;
+}
+
 .search-overlay-results {
   max-height: 360px;
   overflow-y: auto;
