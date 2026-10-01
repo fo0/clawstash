@@ -32,6 +32,29 @@ function Modal({ restoreFocus = true }: { restoreFocus?: boolean }) {
   );
 }
 
+/**
+ * Outer modal whose content holds a second modal (MermaidDiagram's fullscreen
+ * inside a maximized viewer file). Both traps are live while the inner is open.
+ */
+function NestedModals() {
+  const [innerOpen, setInnerOpen] = useState(false);
+  const outerRef = useRef<HTMLDivElement>(null);
+  const innerRef = useRef<HTMLDivElement>(null);
+  useFocusTrap(outerRef, true, false);
+  useFocusTrap(innerRef, innerOpen, false);
+  return (
+    <div ref={outerRef} role="dialog" aria-modal="true">
+      <button data-testid="outer-first">Outer</button>
+      <div ref={innerRef} aria-modal={innerOpen ? true : undefined}>
+        <button data-testid="inner-first" onClick={() => setInnerOpen(true)}>
+          Open inner
+        </button>
+        <button data-testid="inner-last">Inner last</button>
+      </div>
+    </div>
+  );
+}
+
 function tab(shiftKey = false) {
   return fireEvent.keyDown(document.activeElement ?? document, { key: 'Tab', shiftKey });
 }
@@ -102,6 +125,23 @@ describe('useFocusTrap', () => {
     expect(document.activeElement).toBe(getByTestId('first'));
   });
 
+  it('moves focus off the container itself to the first or last control', () => {
+    const { getByTestId, getByRole } = render(<Modal />);
+    act(() => getByTestId('trigger').click());
+    // A `tabIndex={-1}` dialog focused on open (the maximized viewer file).
+    const dialog = getByRole('dialog');
+    dialog.tabIndex = -1;
+
+    act(() => dialog.focus());
+    // Left to the browser, Shift+Tab would walk out to the page behind.
+    expect(tab(true)).toBe(false);
+    expect(document.activeElement).toBe(getByTestId('last'));
+
+    act(() => dialog.focus());
+    expect(tab()).toBe(false);
+    expect(document.activeElement).toBe(getByTestId('first'));
+  });
+
   it('does nothing while the modal is closed', () => {
     const { getByTestId } = render(<Modal />);
     act(() => getByTestId('outside').focus());
@@ -118,6 +158,17 @@ describe('useFocusTrap', () => {
     act(() => getByTestId('first').focus());
     act(() => getByTestId('last').click()); // closes the dialog
     expect(document.activeElement).toBe(trigger);
+  });
+
+  it('lets the innermost of two nested modals own Tab', () => {
+    const { getByTestId } = render(<NestedModals />);
+    act(() => getByTestId('inner-first').click());
+
+    // inner-last is the last control of BOTH containers. The outer trap would
+    // wrap to outer-first — a control hidden behind the inner modal.
+    act(() => getByTestId('inner-last').focus());
+    expect(tab()).toBe(false);
+    expect(document.activeElement).toBe(getByTestId('inner-first'));
   });
 
   it('leaves focus alone when restoreFocus is false', () => {

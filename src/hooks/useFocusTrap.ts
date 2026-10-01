@@ -1,4 +1,5 @@
 import { useEffect, type RefObject } from 'react';
+import { containsAppModal } from '../utils/nested-modal';
 
 /**
  * Elements that can receive keyboard focus by default. `[tabindex]` is matched
@@ -54,6 +55,10 @@ export function getFocusableElements(container: HTMLElement): HTMLElement[] {
  * page behind the backdrop, where the content is still focusable and still
  * wired to the app's single-key hotkeys.
  *
+ * Nested modals: while a descendant of the container is itself an app-owned
+ * `aria-modal="true"` element, this trap stands aside and the inner one owns
+ * Tab (`containsAppModal`).
+ *
  * @param containerRef Element that owns the dialog's focusable content.
  * @param active       Whether the modal is currently open.
  * @param restoreFocus Return focus to the pre-open element on close. Pass
@@ -76,6 +81,12 @@ export function useFocusTrap(
       if (e.key !== 'Tab' || e.defaultPrevented) return;
       const container = containerRef.current;
       if (!container) return;
+      // A modal open inside this one (MermaidDiagram fullscreen inside a
+      // maximized viewer file) runs its own trap. Tab belongs to the
+      // innermost modal, so the outer trap must not wrap focus back out to
+      // controls hidden behind it. An `aria-modal` in rendered Markdown is
+      // content, not a modal, and must not switch the trap off.
+      if (containsAppModal(container, '[aria-modal="true"]')) return;
 
       const focusable = getFocusableElements(container);
       if (focusable.length === 0) {
@@ -90,7 +101,10 @@ export function useFocusTrap(
 
       // Focus sitting outside the dialog (e.g. on <body> after a click on the
       // backdrop) must be pulled back in rather than continue through the page.
-      if (!current || !container.contains(current)) {
+      // So must focus on the container itself (a `tabIndex={-1}` dialog that
+      // takes focus on open): it is neither `first` nor `last`, and the
+      // browser's Shift+Tab from there walks out to the page behind.
+      if (!current || current === container || !container.contains(current)) {
         e.preventDefault();
         (e.shiftKey ? last : first).focus();
         return;

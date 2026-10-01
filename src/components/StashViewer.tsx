@@ -10,13 +10,22 @@ import {
 } from '../languages';
 import RelativeTime from './shared/RelativeTime';
 import { useClipboard, useClipboardWithKey } from '../hooks/useClipboard';
-import { CopyIcon, CheckIcon, XIcon, StarIcon, DownloadIcon } from './shared/icons';
+import {
+  CopyIcon,
+  CheckIcon,
+  XIcon,
+  StarIcon,
+  DownloadIcon,
+  ScreenFullIcon,
+  ScreenNormalIcon,
+} from './shared/icons';
 import VersionHistory from './VersionHistory';
 import { Marked } from 'marked';
 import { renderDescriptionMarkdown, isUnsafeUrl, sanitizeHtml } from '../utils/markdown';
 import { hydrateMermaidPlaceholders, encodeMermaidSource } from '../utils/mermaid-hydrate';
 import { wrapCodeBlockWithCopy } from '../utils/code-copy';
 import { useCodeBlockCopy } from '../hooks/useCodeBlockCopy';
+import { useMaximizedFile } from '../hooks/useMaximizedFile';
 import { DELETE_CONFIRM_TIMEOUT_MS } from '../utils/constants';
 import { downloadTextFile } from '../utils/download';
 import {
@@ -503,6 +512,12 @@ export default function StashViewer({
   const [wrapLines, setWrapLines] = useState(getWrapPreference);
   const [tocExpanded, setTocExpanded] = useState(getTocPreference);
   const [collapsedFiles, setCollapsedFiles] = useState<Set<string>>(new Set());
+  // One file at a time can be blown up to fill the viewport (Content tab only).
+  const { maximizedFileId, maximizedRef, toggleMaximized, closeMaximized } = useMaximizedFile(
+    stash.id,
+    stash.files,
+    activeTab === 'content',
+  );
   const deleteTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   // Timestamp of when the delete confirm was armed. A genuine double-click
   // lands both clicks on the same button, which would arm AND confirm in
@@ -660,8 +675,9 @@ export default function StashViewer({
     };
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.metaKey || e.ctrlKey || e.altKey) return;
-      // Modal overlays (search, shortcuts help, mermaid fullscreen) all
-      // render role="dialog" — don't switch tabs behind an open modal.
+      // Modal overlays (search, shortcuts help, mermaid fullscreen, a
+      // maximized file) all render role="dialog" — don't switch tabs behind
+      // an open modal.
       if (document.querySelector('[role="dialog"]')) return;
       const tag = (e.target as HTMLElement)?.tagName?.toLowerCase();
       const isEditing =
@@ -707,10 +723,12 @@ export default function StashViewer({
    */
   const handleFileHeaderClick = useCallback(
     (e: React.MouseEvent<HTMLDivElement>, fileId: string) => {
+      // A maximized file's header is the dialog's title bar, not a toggle.
+      if (fileId === maximizedFileId) return;
       if ((e.target as Element).closest('button, .file-name, .file-actions')) return;
       toggleFileCollapsed(fileId);
     },
-    [toggleFileCollapsed],
+    [toggleFileCollapsed, maximizedFileId],
   );
 
   // Collapse state is per stash; the component instance is reused across
@@ -862,8 +880,9 @@ export default function StashViewer({
     hydrateMermaidPlaceholders(root);
     // `collapsedFiles` is a dep because re-expanding a collapsed markdown file
     // mounts pristine placeholders that need a hydration pass; `renderOverrides`
-    // because switching a single file to preview mounts them too.
-  }, [renderedContent, renderOverrides, activeTab, collapsedFiles]);
+    // because switching a single file to preview mounts them too;
+    // `maximizedFileId` because maximizing a collapsed file mounts its content.
+  }, [renderedContent, renderOverrides, activeTab, collapsedFiles, maximizedFileId]);
 
   const copyAllFiles = () => {
     copyAllClipboard.copy(buildAllFilesText(stash.files));
@@ -1418,38 +1437,56 @@ export default function StashViewer({
               file.language || (lang !== 'text' ? `auto:${getLanguageDisplayName(lang)}` : '');
 
             const collapsed = collapsedFiles.has(file.id);
+            // Maximizing is a view over the same box (no remount, no portal),
+            // so a collapsed file shows its content while maximized without
+            // losing its collapsed state.
+            const maximized = file.id === maximizedFileId;
+            const showContent = !collapsed || maximized;
+            // Raw code and rendered Markdown scroll as one with the maximized
+            // box, which holds focus on open — so PageDown / arrows / Space
+            // work without a click. The HTML preview and the Mermaid viewer
+            // keep filling the box instead.
+            const maximizedScroll =
+              maximized && !(showRendered && (lang === 'mermaid' || lang === 'markup'));
 
             return (
               <div
                 key={file.id}
                 id={`stash-file-${fileIndex}`}
-                className={`viewer-file ${collapsed ? 'viewer-file-collapsed' : ''}`}
+                ref={maximized ? maximizedRef : undefined}
+                className={`viewer-file${showContent ? '' : ' viewer-file-collapsed'}${maximized ? ' viewer-file-maximized' : ''}${maximizedScroll ? ' viewer-file-maximized-scroll' : ''}`}
+                role={maximized ? 'dialog' : undefined}
+                aria-modal={maximized ? true : undefined}
+                aria-label={maximized ? `${file.filename} (maximized)` : undefined}
+                tabIndex={maximized ? -1 : undefined}
               >
                 <div
-                  className="file-header file-header-collapsible"
+                  className={`file-header${maximized ? '' : ' file-header-collapsible'}`}
                   onClick={(e) => handleFileHeaderClick(e, file.id)}
                 >
                   <div className="file-title">
-                    <button
-                      className="btn btn-sm btn-ghost file-collapse-toggle"
-                      onClick={() => toggleFileCollapsed(file.id)}
-                      aria-expanded={!collapsed}
-                      title={collapsed ? `Expand ${file.filename}` : `Collapse ${file.filename}`}
-                      aria-label={
-                        collapsed ? `Expand ${file.filename}` : `Collapse ${file.filename}`
-                      }
-                    >
-                      <svg
-                        width="12"
-                        height="12"
-                        viewBox="0 0 16 16"
-                        fill="currentColor"
-                        className={`file-collapse-chevron ${collapsed ? '' : 'expanded'}`}
-                        aria-hidden="true"
+                    {!maximized && (
+                      <button
+                        className="btn btn-sm btn-ghost file-collapse-toggle"
+                        onClick={() => toggleFileCollapsed(file.id)}
+                        aria-expanded={!collapsed}
+                        title={collapsed ? `Expand ${file.filename}` : `Collapse ${file.filename}`}
+                        aria-label={
+                          collapsed ? `Expand ${file.filename}` : `Collapse ${file.filename}`
+                        }
                       >
-                        <path d="M6.22 3.22a.75.75 0 0 1 1.06 0l4.25 4.25a.75.75 0 0 1 0 1.06l-4.25 4.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042L9.94 8 6.22 4.28a.75.75 0 0 1 0-1.06Z" />
-                      </svg>
-                    </button>
+                        <svg
+                          width="12"
+                          height="12"
+                          viewBox="0 0 16 16"
+                          fill="currentColor"
+                          className={`file-collapse-chevron ${collapsed ? '' : 'expanded'}`}
+                          aria-hidden="true"
+                        >
+                          <path d="M6.22 3.22a.75.75 0 0 1 1.06 0l4.25 4.25a.75.75 0 0 1 0 1.06l-4.25 4.25a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042L9.94 8 6.22 4.28a.75.75 0 0 1 0-1.06Z" />
+                        </svg>
+                      </button>
+                    )}
                     <span className="file-name" title={file.filename}>
                       {file.filename}
                     </span>
@@ -1529,12 +1566,25 @@ export default function StashViewer({
                       <DownloadIcon />
                       Download
                     </button>
+                    <button
+                      className={`btn btn-sm btn-ghost file-maximize-toggle${maximized ? ' maximize-active' : ''}`}
+                      onClick={(e) => toggleMaximized(file.id, e.currentTarget)}
+                      title={
+                        maximized ? `Restore ${file.filename} (Esc)` : `Maximize ${file.filename}`
+                      }
+                      aria-label={
+                        maximized ? `Restore ${file.filename}` : `Maximize ${file.filename}`
+                      }
+                    >
+                      {maximized ? <ScreenNormalIcon /> : <ScreenFullIcon />}
+                      {maximized ? 'Restore' : 'Maximize'}
+                    </button>
                   </div>
                 </div>
                 {/* Collapsed files skip content rendering entirely — that is
                     the point: large files drop out of the DOM so the page
-                    stays fast to scroll. */}
-                {!collapsed &&
+                    stays fast to scroll. A maximized file always renders. */}
+                {showContent &&
                   (showRendered && lang === 'mermaid' ? (
                     <div className="file-rendered file-mermaid">
                       <MermaidDiagram
@@ -1563,6 +1613,11 @@ export default function StashViewer({
               </div>
             );
           })}
+          {/* Behind the maximized file; a click on it restores the file. Its
+              keyboard path is Escape and the Restore button. */}
+          {maximizedFileId !== null && (
+            <div className="viewer-file-backdrop" onClick={closeMaximized} aria-hidden="true" />
+          )}
         </div>
       )}
 

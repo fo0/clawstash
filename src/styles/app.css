@@ -2762,6 +2762,112 @@ body {
   background: var(--bg-primary);
 }
 
+/* === Maximized viewer file ===
+   The file's own box is switched to a fixed overlay (same element, no
+   portal), so the Mermaid zoom state and the HTML preview iframe survive the
+   toggle. Works because no ancestor of `.viewer-file` sets transform /
+   filter / contain — any of those would turn `position: fixed` into
+   "fixed to that ancestor". The content (whichever child follows the
+   header) takes the remaining height and scrolls on its own — except for
+   raw code and rendered Markdown, see `.viewer-file-maximized-scroll`. */
+.viewer-file-maximized {
+  position: fixed;
+  inset: 24px;
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-primary);
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.5);
+}
+
+/* Programmatic focus target on open — the ring would only frame the dialog. */
+.viewer-file-maximized:focus {
+  outline: none;
+}
+
+.viewer-file-maximized > .file-header {
+  flex-shrink: 0;
+}
+
+.viewer-file-maximized > .file-rendered,
+.viewer-file-maximized > .file-content {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+}
+
+/* The 300px floor was the reason to maximize in the first place. */
+.viewer-file-maximized > .html-preview {
+  height: auto;
+  min-height: 0;
+}
+
+/* The Mermaid viewer (its shell is `display: contents`) becomes a flex item
+   of the file box and fills it instead of stopping at 70vh. */
+.viewer-file-maximized > .file-mermaid {
+  display: flex;
+  flex-direction: column;
+}
+
+.viewer-file-maximized .mermaid-viewer {
+  flex: 1;
+  min-height: 0;
+  max-height: none;
+}
+
+/* Raw code and rendered Markdown: the box itself is the scroller. It holds
+   focus on open (PageDown, arrows and Space scroll it at once) and contains
+   the header buttons, so PageDown and arrows keep working from those too —
+   a non-focusable inner scroller would ignore every one of these keys. The
+   header stays pinned; its own background is opaque, so content scrolls
+   under it. */
+.viewer-file-maximized-scroll {
+  overflow: auto;
+  overscroll-behavior: contain;
+  /* Keeps anchor-link targets and controls scrolled into view out from
+     under the pinned header (~45px tall). */
+  scroll-padding-top: 52px;
+}
+
+.viewer-file-maximized-scroll > .file-header {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+
+/* Content-sized, so it never scrolls vertically itself (next to
+   `overflow-x: auto` the `visible` computes to auto, but nothing overflows).
+   Long lines in the <pre> and wide Markdown tables still scroll sideways. */
+.viewer-file-maximized-scroll > .file-rendered,
+.viewer-file-maximized-scroll > .file-content {
+  flex: 1 0 auto;
+  min-height: auto;
+  overflow-x: auto;
+  overflow-y: visible;
+}
+
+.viewer-file-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 999;
+  background: rgba(0, 0, 0, 0.85);
+}
+
+.file-maximize-toggle.maximize-active {
+  color: var(--accent-blue);
+}
+
+@media (max-width: 640px) {
+  .viewer-file-maximized {
+    inset: 8px;
+  }
+
+  /* The header's actions wrap here, to ~115px. */
+  .viewer-file-maximized-scroll {
+    scroll-padding-top: 124px;
+  }
+}
+
 /* === Metadata === */
 .viewer-metadata {
   display: flex;
@@ -6095,6 +6201,12 @@ textarea.code-editor-plain.code-editor-wrap {
     flex-wrap: wrap;
     gap: 6px;
     padding: 8px 12px;
+  }
+
+  /* The per-file controls (up to six with Maximize) overflow a phone-width
+     row; `.viewer-file` clips overflow, so the last ones would be lost. */
+  .file-actions {
+    flex-wrap: wrap;
   }
 
   .file-content {
