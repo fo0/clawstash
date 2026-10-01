@@ -54,6 +54,9 @@ export function getFocusableElements(container: HTMLElement): HTMLElement[] {
  * page behind the backdrop, where the content is still focusable and still
  * wired to the app's single-key hotkeys.
  *
+ * Nested modals: while a descendant of the container is itself
+ * `aria-modal="true"`, this trap stands aside and the inner one owns Tab.
+ *
  * @param containerRef Element that owns the dialog's focusable content.
  * @param active       Whether the modal is currently open.
  * @param restoreFocus Return focus to the pre-open element on close. Pass
@@ -76,6 +79,11 @@ export function useFocusTrap(
       if (e.key !== 'Tab' || e.defaultPrevented) return;
       const container = containerRef.current;
       if (!container) return;
+      // A modal open inside this one (MermaidDiagram fullscreen inside a
+      // maximized viewer file) runs its own trap. Tab belongs to the
+      // innermost modal, so the outer trap must not wrap focus back out to
+      // controls hidden behind it.
+      if (container.querySelector('[aria-modal="true"]')) return;
 
       const focusable = getFocusableElements(container);
       if (focusable.length === 0) {
