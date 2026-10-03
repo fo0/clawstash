@@ -5,6 +5,17 @@ next-env.d.ts
 data/
 *.db
 *.sqlite
+# SQLite sidecars. The database runs in WAL mode (src/server/db.ts), so recent
+# writes — stash content, token and session hashes, the encrypted backup token —
+# sit in `<db>-wal` until a checkpoint. `*.db` / `*.sqlite` above do not match
+# them, so a DATABASE_PATH outside `data/` (e.g. `./clawstash.db`) would offer
+# `clawstash.db-wal` and `clawstash.db-shm` to `git add`.
+*.db-wal
+*.db-shm
+*.db-journal
+*.sqlite-wal
+*.sqlite-shm
+*.sqlite-journal
 .env
 # Next.js also loads `.env.local`, `.env.production`, `.env.*.local`. Only the
 # bare `.env` was ignored, so any of those would have been offered by `git add`
