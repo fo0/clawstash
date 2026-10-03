@@ -7,8 +7,27 @@ data
 .env
 .env.*
 # Keep the auto-generated at-rest encryption key out of the build context, so a
-# non-default DATABASE_PATH cannot bake one host's secret into the image.
-.clawstash-key
+# non-default DATABASE_PATH cannot bake one host's secret into the image. The
+# same goes for the SQLite database itself and its WAL/SHM sidecars, which sit
+# next to that key wherever DATABASE_PATH points (`data` above only covers the
+# default), and for stray TLS keys — the set `.gitignore` already ignores.
+# `**/` is required: unlike `.gitignore`, a bare pattern here matches the
+# context root only, so `.clawstash-key` alone missed `db/.clawstash-key`.
+# The final stage copies only the build output (standalone server, static
+# assets, `public/`), so this is the backstop for a stray file under `public/`
+# and for file tracing pulling the working tree into `.next/standalone` (see
+# the `turbopackIgnore` note in src/server/db-access-check.ts).
+**/.clawstash-key
+**/*.db
+**/*.db-wal
+**/*.db-shm
+**/*.db-journal
+**/*.sqlite
+**/*.sqlite-wal
+**/*.sqlite-shm
+**/*.sqlite-journal
+**/*.pem
+**/*.key
 *.md
 .dockerignore
 .gitnexus
