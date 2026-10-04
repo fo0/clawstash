@@ -110,10 +110,11 @@ Always print the detected phase before acting: `Detected: no PR exists → creat
    git log "origin/$BASE..HEAD" --oneline
    ```
 
-   Format:
+   Format — the `Closes` line carries the work's issue (*Rules → Issue linking*):
    ```markdown
    ## Summary
    - <1-3 bullet points from commit subjects, deduplicated>
+   - Closes #<n>
 
    ## Test plan
    - [ ] <what the user/reviewer needs to verify>
@@ -127,7 +128,7 @@ Always print the detected phase before acting: `Detected: no PR exists → creat
 
 1. `gh pr view --json number,url,body,state,baseRefName` — load existing PR.
 2. **Push first** if local is ahead: `git push` (no force unless user explicitly requested).
-3. Re-derive Summary from commits since base:
+3. Re-derive Summary from commits since base — the `Closes #n` / `Refs #n` lines stay (*Rules → Issue linking*):
    ```bash
    git log "origin/$BASE..HEAD" --oneline
    ```
@@ -174,6 +175,8 @@ Pre-flight:
 gh pr merge <number> --squash --delete-branch  # adjust strategy + branch flag per project
 ```
 
+5. **Base is not the default branch** (`gh pr view --json baseRefName` against `gh repo view --json defaultBranchRef`): GitHub ignores `Closes #n` there, so comment on the work's issue in **English** (what was merged into which base) and close it (`agent_docs/autonomy.md → Issue-based work`).
+
 Report: `Merged PR #N (<strategy>). Branch deleted.`
 
 ## Rules
@@ -183,7 +186,7 @@ Report: `Merged PR #N (<strategy>). Branch deleted.`
 - **Print detected phase before acting** so user can interrupt if wrong.
 - **Never force-push** to update PR — use `gh pr edit` for body, `git push` (no force) for code unless user explicitly requests force-with-lease.
 - **Never merge automatically.** Explicit `/pr merge` required (its Routine exception included).
-- **Issue linking:** if commit messages contain `#<n>` references → include `Closes #<n>` in PR body Summary section.
+- **Issue linking:** the work's issue (`CLAUDE.md → Git Conventions → Issues`) → `Closes #<n>` in the PR body Summary section; any other `#<n>` the commit messages reference → `Refs #<n>`. No issue yet → create it before `gh pr create`; none possible → its would-be title there instead (`agent_docs/autonomy.md → Issue-based work`).
 - **Draft PRs:** if user says "draft PR" → use `gh pr create --draft`.
 - **Branch-name → title heuristics:**
   - `feat/X` or `feature/X` → `feat: X`

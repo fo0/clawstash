@@ -94,7 +94,7 @@ If revert produces a conflict → stop, ask user to resolve manually.
 
 ## Phase E — Revert merged PR
 
-The `gh` CLI has no `pr revert` subcommand — build the revert PR manually (CLI equivalent of GitHub's web "Revert" button). A revert **PR** is preferred over a direct push to main: it survives branch protection and keeps the change reviewable. Unattended, the branch is `claude/revert-pr-$PR` instead (`agent_docs/autonomy.md → Branch rule`).
+The `gh` CLI has no `pr revert` subcommand — build the revert PR manually (CLI equivalent of GitHub's web "Revert" button). A revert **PR** is preferred over a direct push to main: it survives branch protection and keeps the change reviewable. It needs no issue of its own — the reverted PR is its tracking item (`agent_docs/autonomy.md → Issue-based work`). Unattended, the branch is `claude/revert-pr-$PR` instead (`agent_docs/autonomy.md → Branch rule`).
 
 ```bash
 PR=<number>
