@@ -2,23 +2,27 @@
 
 ## Session Start -- Read Order
 
-`MEMORY.md` -> `SCRATCHPAD.md`; `BACKLOG.md` only when prior findings come up; skip what is missing. `agent_docs/*` and skills load on demand, never up front -- the Tier-1 SessionStart hook prints a reminder.
+`MEMORY.md` -> `SCRATCHPAD.md`; `BACKLOG.md` only when prior findings come up; skip what is missing. `agent_docs/*` and skills load on demand, never up front.
 
 ## Workflow Triggers
 
-Skills: `.claude/skills/<name>/SKILL.md`, trigger in each frontmatter `description` -- `done` ("done" / "fertig"; never auto-runs a review, and **does not push unless asked**) · `pr` · `basic-review` · `basic-sec-review` · `rollback` · `ci` (which workflows actually run: `agent_docs/development-notes.md -> CI/CD`) · `stuck` · `beacon` · `verify` (browser UI check) · `scheduler` (Routines, `/loop` + `Cron*`, Desktop tasks; bare `/loop`: `.claude/loop.md`) · `orca` (`/orca <objective>`). Diagram -> `agent_docs/diagram_prompt.md`. Findings -> `BACKLOG.md`, knowledge -> `MEMORY.md` / `SCRATCHPAD.md` (`agent_docs/backlog_process.md`, `memory_process.md`).
+Skills (`.claude/skills/<name>/SKILL.md`): `done` ("done" / "fertig"; never auto-runs a review, and **does not push unless asked**) · `pr` · `basic-review` · `basic-sec-review` · `rollback` · `ci` (which workflows actually run: `agent_docs/development-notes.md -> CI/CD`) · `stuck` · `beacon` · `verify` (browser UI check) · `scheduler` (bare `/loop`: `.claude/loop.md`) · `orca` (`/orca <objective>`). Diagram -> `agent_docs/diagram_prompt.md`. Findings -> `BACKLOG.md`, knowledge -> `MEMORY.md` / `SCRATCHPAD.md` (`agent_docs/backlog_process.md`, `memory_process.md`).
 
 ## Output Languages
 
-Chat to the user: the user's language (default German) -- skill report shapes fix the structure, not the language -- technical terms English and never translated ("2 Bugs gefixt", never "Programmfehler"), paths / commands / errors verbatim. **Everything else English** -- code, comments, log output, UI strings, commits (Conventional Commits), PRs, issues, every generated file. Term list: `agent_docs/autonomy.md -> Never-translate term list`.
+Chat to the user: the user's language (default German) -- skill report shapes fix the structure, not the language -- technical terms English and never translated ("2 Bugs gefixt"). **Everything else English** -- code, comments, log output, UI strings, commits (Conventional Commits), PRs, issues, every generated file. Term list: `agent_docs/autonomy.md -> Never-translate term list`.
 
 ## Performance / Modes
 
-Model: the session's, never pinned here or in `.claude/settings.json`. Plan mode for non-trivial strategy only -- a plan put up for approval ends the turn on the user and carries the _Handoff Prompt_. Reference: `agent_docs/autonomy.md -> Mode reference`.
+Model: the session's, never pinned. Plan mode for non-trivial strategy only. Reference: `agent_docs/autonomy.md -> Mode reference`.
 
 ## Caveman Mode -- chat compression (default `full`)
 
-Chat, status and confirmations only -- **never** files, code, commits, PR bodies, issue comments. At `full`: drop filler, pleasantries, hedging and articles; fragments are fine for status lines. Shorten by selection, not compression: cut what would not change the reader's next move; no abbreviations, arrow chains or invented shorthand in any mode; code and error strings verbatim. Never compressed: the closing summary, security warnings, irreversible-action confirmations, the _Handoff Prompt_. `caveman lite|full|ultra` switches (`lite` keeps full sentences, `ultra` goes telegraphic), `stop caveman` turns it off for the session. Full wording: `agent_docs/autonomy.md -> Caveman Mode`.
+Chat, status and confirmations only -- **never** files, code, commits, PR bodies, issue comments. At `full`: drop filler, pleasantries, hedging and articles; fragments are fine for status lines. Shorten by selection, not compression: cut what would not change the reader's next move; no abbreviations, arrow chains or invented shorthand in any mode; code and error strings verbatim. Never compressed: the closing summary, security warnings, irreversible-action confirmations, the _Handoff Prompt_. `caveman lite|full|ultra` switches, `stop caveman` turns it off for the session. Full wording: `agent_docs/autonomy.md -> Caveman Mode`.
+
+## Chat Layout -- lists to scan, links to click
+
+Status and summaries: one fact per line, `**Label:** value` (state, branch, target, PR, run, next step); a table once several items share those fields; prose only for reasoning -- the closing summary still opens with its outcome sentence. Anything with a URL is a link named by what it is -- `[#42 Fix login](url)`, the run, the deploy -- never a bare URL or bare `#42`, never a URL no tool returned. Before a multi-step stretch, list the steps ahead; promise to report back only with a wake armed (background task, PR subscription). Full wording: `agent_docs/autonomy.md -> Chat Layout`.
 
 ## Autonomy
 
@@ -49,7 +53,7 @@ A turn that hands a decision back or names a next step / recommendation ends wit
 
 ## Subagents -- orchestrator mode is the default
 
-**Every session starts in orchestrator mode, width 5:** the main agent decomposes, verifies returned diffs, runs the gates and reports; subagents do the task work. `/orca <N>` sets the width, `/orca off` drops to plain behavior for this session; `/orca <objective>` / `/orca <N> <objective>` runs an objective -- steps with an observable result each, a `reviewer` per step, one overall review by an agent that wrote none of it, `/done` to close. Seat only what the change calls for:
+**Every session starts in orchestrator mode, width 5:** the main agent decomposes, does units of about five tool calls and one file, verifies returned diffs, runs the gates and reports; long, context-heavy or parallel work goes to subagents. Code-judging seats inherit the session's model and effort; search, git status, CI, log reads keep the model at lower effort -- `sonnet` only for a trivial lookup, effort `low`/`medium`, `high` at most. `/orca <N>` sets the width, `/orca off` drops to plain behavior for this session; `/orca <objective>` / `/orca <N> <objective>` runs an objective. Seat only what the change calls for:
 
 | Role          | Earns a seat when                                    |
 | ------------- | ---------------------------------------------------- |
@@ -65,18 +69,18 @@ Contract: `.claude/skills/orca/SKILL.md`; type table: `agent_docs/review_process
 
 ## Tech Stack
 
-TypeScript 6 (strict, ESM) · Next.js 16 App Router + React 19 · Node >= 22 in practice (`engines` still says 20.9 -- `agent_docs/development-notes.md`) · SQLite via better-sqlite3 13 · Zod 3 · `@modelcontextprotocol/sdk` 1.30 · vitest 4 · ESLint 9 flat · Prettier 3.9 · Docker -> GHCR · npm. Versions: `package.json`.
+TypeScript 6 · Next.js 16 + React 19 · SQLite (better-sqlite3) · Zod · MCP SDK · vitest · npm -- versions: `agent_docs/development-notes.md`.
 
 ## Project Overview
 
-**ClawStash** is AI-optimized stash storage for AI agents: text and multi-file stashes with tags, metadata, full-text search and version history. One process exposes it three ways -- REST API (Bearer token), MCP server (Streamable HTTP + stdio) and a dark-theme web GUI. Persistence is local SQLite; an optional GitHub backup mirrors stashes into a repo. Features: `README.md`; backup: `docs/backup.md`.
+**ClawStash** -- AI-optimized stash storage for AI agents: REST, MCP and a web GUI over one SQLite store. Detail: `agent_docs/project-overview.md`.
 
 ## Project Structure
 
 ```
 src/app/         # App Router: pages, /api handlers, /mcp endpoint
-src/components/  # React UI (editor/ settings/ api/ shared/)
-src/server/      # DB, auth, validation, MCP, OpenAPI (stores/ backup/)
+src/components/  # React UI
+src/server/      # DB, auth, validation, MCP, OpenAPI
 src/{hooks,utils,styles}/ · docs/ (+ adr/) · agent_docs/ · .claude/ · scripts/ · public/
 ```
 
@@ -104,44 +108,27 @@ ESLint is a correctness gate, not a style one: `agent_docs/development-notes.md 
 
 ## Key Patterns
 
-- **Database Layer** -- SQLite + WAL, FTS5 search, version history, access log; delegates to `src/server/stores/`. `src/server/db.ts`
-- **Spec Architecture (SoT)** -- `tool-defs.ts` + `shared-text.ts` + `agent-guide.ts` feed OpenAPI, MCP spec and the API tabs; every number in them is an import. `src/server/`
-- **Error handling** -- try/catch in async route handlers, error state in components, validation through `formatZodError()`.
-
-More patterns: `agent_docs/key-patterns.md`.
+Database layer, spec single source of truth, error handling and the rest: `agent_docs/key-patterns.md`.
 
 ## Coding Conventions
 
-Beyond what Prettier and ESLint enforce:
-
-- Single-process Next.js app -- no separate backend/frontend processes.
-- Permissive CORS by design -- ClawStash must be reachable from any agent's origin.
-- The server validates everything with Zod at the trust boundary; clients are untrusted.
-- Route handlers gate with `checkScope()` / `checkAdmin()` -- no Express-style middleware.
-- Named imports; `@/*` aliases for server-side imports in route handlers.
-- `.claude/` stays in `.prettierignore` -- the optimizer writes those files from its templates, not Prettier-formatted.
-- Max file length: ~300 lines (split), ~500 strongly recommended.
-
-Full conventions: `agent_docs/coding-conventions.md`.
+Zod at every trust boundary, `checkScope()` / `checkAdmin()` gates in route handlers; the full repo-wide set (single process, permissive CORS, imports, `.prettierignore` scope, ~300-line split): `agent_docs/coding-conventions.md`.
 
 ## Git Conventions
 
 - **Branches:** `claude/<description>-<shortId>` agent, `feature/<name>` manual · **Commits:** Conventional Commits `type(scope): description #issue` · **Merge:** squash merge for PRs
 - **Cloud / routine runs** start on `claude/<topic>` unless the task names a branch (`agent_docs/autonomy.md -> Branch rule`).
+- **Issues:** work off the default branch starts from an issue -- an open one with the same goal, else a new one; routine runs and a task naming its issue keep their own. Commits, PR (`Closes #n`), a branch you name and chat reference it (`agent_docs/autonomy.md -> Issue-based work`).
 - **Dependencies:** new runtime ones only after user approval with reasoning, dev / tooling without; always commit `package-lock.json`.
 - **Formatting guard:** not installed -- `npm run format` before commit is it (`agent_docs/ci_formatting_guard.md`); never `--no-verify`.
 
 ## Environment Variables
 
-`DATABASE_PATH` (SQLite file, default `./data/clawstash.db`) · `ADMIN_PASSWORD` (unset = open access) · `CLAWSTASH_ENCRYPTION_KEY` (secrets at rest, 64 hex, auto-generated). Full list: `.env.example` / `agent_docs/env-vars.md`.
-
-### Secrets Locations
-
-Never committed -- `.env` (template `.env.example`), CI secret store, container host env, fixtures synthetic; per-class table: `agent_docs/env-vars.md -> Secrets Locations`. New secret: placeholder in `.env.example`, ask the user; never `gh secret set` unprompted. Scan: `basic-sec-review` skill.
+`DATABASE_PATH`, `ADMIN_PASSWORD`, `CLAWSTASH_ENCRYPTION_KEY` and the full list with secret locations: `.env.example` / `agent_docs/env-vars.md` -- secrets never committed, never `gh secret set` unprompted.
 
 ## Deployment
 
-**Trigger:** manual `workflow_dispatch` on `docker-publish.yml` -> one Docker image to GHCR, any container host. Agent scope: branches and PRs, **no production deploy** without an explicit user command -- merge gate: `.claude/skills/pr/SKILL.md -> /pr merge`; rollback (prefer a revert-PR): `.claude/skills/rollback/SKILL.md`. Detail: `docs/deployment.md`.
+Manual `docker-publish.yml` dispatch only, never without an explicit user command (gates: `/pr merge`, `rollback`). Detail: `agent_docs/deployment.md`.
 
 ## API / Interfaces
 
@@ -149,22 +136,22 @@ REST (Bearer token) + MCP (Streamable HTTP + stdio); OpenAPI at `/api/openapi`, 
 
 ## Testing
 
-**vitest 4** · run `npm test` · colocated `__tests__/` (`src/**/*.{test,spec}.{ts,tsx}`) · mocked DB / `fetch`, jsdom for components. Constraints (agent-runnable, zero-cost, deterministic): `agent_docs/review_process.md -> Test execution constraints`. Detail: `agent_docs/testing.md`.
+**vitest 4** · run `npm test` · colocated `__tests__/` (`src/**/*.{test,spec}.{ts,tsx}`). Constraints: `agent_docs/review_process.md -> Test execution constraints`. Detail: `agent_docs/testing.md`.
 
 ## External Integrations / MCPs
 
-Catalog: `agent_docs/mcp_catalog.md` (intended: `github`, ClawStash's own) -- never auto-detected, never hard-required (fall back to `Read` / `Bash`); an unattended run reaches only a committed `.mcp.json` entry or a claude.ai connector. **Trigger tools** (`permissions.allow`) are prompt-free only in a trusted local workspace. **Self-heal, local only:** append the missing `mcp__<that server>__*` glob and commit it -- additive, never `deny`/`ask`; web/cloud appends nothing and names the user-scope fix: `agent_docs/mcp_catalog.md -> Prompt-free triggers everywhere`.
+Catalog, unattended reach, trigger allowlist and its local-only self-heal: `agent_docs/mcp_catalog.md`.
 
 ## Architecture Decisions
 
-ADRs in `docs/adr/` (format: `agent_docs/adr_template.md`). Grep `docs/adr/` before contradicting one; reverse with a new ADR that supersedes it -- the old one changes only its status (`Superseded by ADR-NNNN`), never its body.
+ADRs in `docs/adr/`: grep them before contradicting one; reverse one only by superseding it (`agent_docs/adr_template.md -> Lifecycle`).
 
 ## Documentation Rules
 
-After a code change, update only what it changed: `README.md` (user-facing) · `BACKLOG.md` (findings, refactoring candidates) · `MEMORY.md` / `SCRATCHPAD.md` (stable knowledge / working context) · `docs/*.md` (API, MCP, backup, auth) · `docs/ARCHITECTURE.mmd` · `docs/adr/` · `agent_docs/key-patterns.md` · `.env.example`. **`CLAUDE.md` gets a line only when how-to-work changes** -- a command, a top-level directory, a repo-wide convention; everything else lives under `agent_docs/`.
+After a code change, update only what it changed: `README.md` · `BACKLOG.md` · `MEMORY.md` / `SCRATCHPAD.md` · `docs/*.md` (API, MCP, backup, auth) · `docs/ARCHITECTURE.mmd` · `docs/adr/` · `agent_docs/key-patterns.md` · `.env.example`. **`CLAUDE.md` gets a line only when how-to-work changes** -- a command, a top-level directory, a repo-wide convention; everything else lives under `agent_docs/`.
 
 ### Context budget
 
-`CLAUDE.md` loads every turn: **12k** target, offload at **14k**, hard 16k. `MEMORY.md` / `SCRATCHPAD.md` load at session start: 8k / 4k target, offload at 16k / 8k. On-demand files (`agent_docs/`, `.claude/skills/`, `docs/`) are unbudgeted. Over -> **move** content out and leave a one-line pointer, never delete to fit -- ladder: `agent_docs/context_budget.md`. The Tier-1 guard flags it after any Edit/Write; act in the same session.
+`CLAUDE.md` loads every turn: **12k** target, offload at **14k**, hard 16k. `MEMORY.md` / `SCRATCHPAD.md` load at session start: 8k / 4k target, offload at 16k / 8k. Over -> **move** content out and leave a one-line pointer, never delete to fit -- ladder: `agent_docs/context_budget.md`. The Tier-1 guard flags it after any Edit/Write; act in the same session.
 
-<!-- Generated by claude-code-optimizer v1.51.1 -->
+<!-- Generated by claude-code-optimizer v1.56.0 -->

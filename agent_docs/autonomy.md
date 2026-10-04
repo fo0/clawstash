@@ -1,6 +1,6 @@
-# CLAUDE.md -- full wording (languages, modes, autonomy, handoff)
+# CLAUDE.md -- full wording (languages, modes, layout, autonomy, issues, handoff)
 
-> Canonical elaboration of the compact sections in `CLAUDE.md` -- _Output Languages_ (term list), _Performance / Modes_ (mode reference), _Caveman Mode_, _Autonomy_, _Git Conventions -> Cloud / routine runs_ (branch rule), _Handoff Prompt_. CLAUDE.md states each rule; this file carries the reasoning and the edge cases. A rule lives once -- stated there, elaborated here, paraphrased nowhere.
+> Canonical elaboration of the compact sections in `CLAUDE.md` -- _Output Languages_ (term list), _Performance / Modes_ (mode reference), _Caveman Mode_, _Chat Layout_, _Autonomy_, _Git Conventions -> Cloud / routine runs_ (branch rule), _Git Conventions -> Issues_ (issue rule), _Handoff Prompt_. CLAUDE.md states each rule; this file carries the reasoning and the edge cases. A rule lives once -- stated there, elaborated here, paraphrased nowhere.
 
 ## Never-translate term list
 
@@ -12,13 +12,11 @@ Test: English in code, a commit or a PR -> English in chat.
 
 ## Mode reference
 
-Session-level switches. None of them changes what the code does; they change how the agent works this session.
-
-- **Default model:** whatever the session resolves to -- never pinned in `CLAUDE.md` or `.claude/settings.json`; `/model` switches mid-session, and a pinned value silently overrides the user's choice on every future run.
-- **Fast mode** (`/fast`): the session's model at faster output -- not a smaller model and not a downgrade, offered only on the model families that support it. Use it when latency beats reasoning depth; switch back for anything where a wrong answer costs more than a slow one.
-- **Caveman mode:** chat compression; every session starts at `full` (_Caveman Mode_ below). `caveman lite|full|ultra` switches mode, `stop caveman` turns it off for the rest of the session; neither carries forward. Technical terms stay English and verbatim in every mode -- compression never reaches them.
-- **Orchestrator mode** (`orca`): the default, width 5 -- declared in `CLAUDE.md -> Subagents`. The agent itself does no task work; every unit goes to a role-framed subagent at the session's model and effort. `/orca <N>` sets the parallel width, `/orca off` drops to plain behavior for the rest of that session and carries nowhere, `/orca status` reports state without changing it; anything else after the name is an **objective run** -- `/orca <objective>` at the current width, `/orca <N> <objective>` at a stated one. Full contract (what the orchestrator keeps, quality parity, disjoint write scopes, the argument grammar, the wave report): `.claude/skills/orca/SKILL.md`.
-- **Plan mode:** non-trivial implementation strategy only -- the `Plan` subagent or `EnterPlanMode`, not for single-step tasks; a plan for a one-file edit costs a round trip and buys nothing. A plan put up for approval ends the turn on the user, so it carries the _Handoff Prompt_ block. Delegation thresholds: `agent_docs/review_process.md -> Subagent Delegation`.
+- **Default model:** the session's -- never pinned in `CLAUDE.md` or `.claude/settings.json` unless the project requires it; `/model` switches mid-session.
+- **Fast mode** (`/fast`): the session's model at faster output -- not a downgrade, offered only on the model families that support it. Use when latency beats reasoning depth.
+- **Caveman mode:** chat compression; every session starts at `full` (_Caveman Mode_ below). `caveman lite|full|ultra` switches mode, `stop caveman` turns it off for the rest of the session.
+- **Orchestrator mode** (`orca`): the default, width 5 -- the agent does short units itself and delegates long, context-heavy and parallel work; judging subagents run at the session's model and effort, mechanical ones keep the model at a lower effort, `sonnet` only for a trivial lookup at effort `low`/`medium`, `high` at most. `/orca <N>` changes width, `/orca off` drops to plain behavior for this session only, `/orca <objective>` / `/orca <N> <objective>` runs an objective through the mode (`CLAUDE.md -> Subagents`, `.claude/skills/orca/SKILL.md`).
+- **Plan mode:** non-trivial implementation strategy only -- `Plan` subagent or `EnterPlanMode`, not for single-step tasks. A plan put up for approval ends the turn on the user, so it carries the _Handoff Prompt_ block. Delegation thresholds: `agent_docs/review_process.md -> Subagent Delegation`.
 
 ## Caveman Mode
 
@@ -33,6 +31,28 @@ In force from the first reply of every session in this repo; no activation step,
 
 `caveman lite|full|ultra` switches mode mid-session; **`stop caveman` turns it off** for the rest of the session. Neither carries forward -- the next session starts at `full` again, because the default lives in CLAUDE.md and nothing writes the off state anywhere.
 
+## Chat Layout
+
+The rule is in `CLAUDE.md -> Chat Layout`; this is the reasoning and the edges. **Chat only** -- files, commits, PR bodies and issue comments keep the shapes their own templates fix, and GitHub autolinks a bare `#42`, so the link rule is a chat rule.
+
+- **Scan first, read second.** A status reply is opened to find one fact -- merged or not, which branch, CI green or red -- so every fact gets its own `**Label:** value` line, labels in the chat language. Several items with the same fields (three PRs, five repos) are a table, one row each. Prose carries what a line cannot: why, what was weighed, what is still uncertain.
+- **One fact per line is not an arrow chain.** Source and target branch are two lines, never `a -> b` -- the _Caveman Mode_ ban on arrow chains holds here as well.
+- **The closing summary keeps its prose lead** (_Caveman Mode_): the outcome sentence and what it rests on come first, in sentences; the fact lines follow, one per artifact, which is what gives every identifier its own clause.
+- **Linked, named, and taken from a tool.** Issue, PR, commit, workflow run, deployment, preview: a markdown link whose text says what it is -- number and title for an issue or PR, workflow name and run for CI -- because the reader clicks a name, not a URL they first have to decode. The URL comes from a tool result of this session or is built from ids one returned; a guessed run URL is a dead link that reads like evidence. No URL known: name the thing plainly and say the link is missing.
+- **Not inside code.** Code blocks -- the _Handoff Prompt_ line included -- are pasted, not clicked, so they carry no markdown links.
+- **Announce the stretch.** Before work the user waits through -- push, PR, merge, pipeline, live check -- one list of the steps ahead and what each is checked against, cleanup included: a dev server this session started only for the check is stopped after it, one that was already running stays.
+- **"I'll report back" is a promise the harness has to keep.** A turn that ends without an armed wake -- a background task, a monitor, a PR-activity subscription, a scheduled check-in -- produces nothing until the user writes again. So the promise is made only with one armed, and the line names it; without one, wait inside the turn, or end on what is still open and how to check it.
+
+```text
+**Freigabe:** angekommen
+**Branch:** `claude/login-fix`
+**Ziel:** `main` (squash)
+**PR:** [#42 Fix login redirect](https://github.com/acme/shop/pull/42)
+**Pipeline:** [CI · run 318](https://github.com/acme/shop/actions/runs/318) läuft
+**Danach:** Deploy verfolgen, Live-Check `/login`, Dev-Server stoppen (nur für den Test gestartet)
+**Meldung:** sobald der Deploy durch ist -- PR-Subscription aktiv
+```
+
 ## Autonomy
 
 Which session you are in is resolvable, so it is a rule and not a guess: `$CLAUDE_CODE_REMOTE` is `"true"` in Claude Code web/cloud sessions -- routine runs included -- and unset in the local CLI.
@@ -46,6 +66,17 @@ Which session you are in is resolvable, so it is a rule and not a guess: `$CLAUD
 ## Branch rule
 
 Cloud and routine runs: a `claude/`-prefixed branch is always accepted. A push to any other branch is rejected when the branch is protected, carries someone else's open PR, or holds commits authored by someone else. Unattended work therefore starts on `claude/<topic>` unless the task names a branch.
+
+## Issue-based work
+
+The rule is in `CLAUDE.md -> Git Conventions -> Issues`; these are the edges.
+
+- **The trigger is the branch, not the size.** Work off the default branch gets its issue before the first commit there; an answer, a read-only investigation or a commit the user ordered straight onto the default branch does not. "Non-trivial" is a judgement two sessions make differently, and whether a PR will follow is often unknown at the first commit -- which branch the work is on never is. A PR about to open without an issue gets one first (`pr` -> Issue linking).
+- **Search before creating.** An open issue fits when it has the same goal, no assignee other than you and no open PR already referencing it; it is reused and named in chat. A new one is written in English (_Output Languages_): the title states the goal, the body the request and the observable done condition the PR is later checked against.
+- **The task's own handling wins.** An issue the user names, a dependency-bot PR (it is its own tracking item), a revert PR from `rollback` (the reverted PR is its tracking item), and a routine run -- the session's initial instructions are a routine (_Autonomy_), and its prompt files issues under its own title scheme or files none -- keep theirs; this rule never adds a second one.
+- **Linked wherever it is read.** Commits carry `#n` (`done` step 6); the PR body `Closes #n` for the work's issue and `Refs #n` for one a commit only mentions (`pr` -> Issue linking); a branch the session names itself carries the number within the repo's branch pattern (`claude/42-login-fix`); chat links it (_Chat Layout_).
+- **Who closes it.** A PR into the default branch closes it on merge through `Closes #n` -- GitHub acts on the keyword only there. Into another base GitHub ignores it, so `/pr merge` closes the issue itself. `done` closes an issue itself only when the work landed on the default branch without a PR.
+- **No issue possible** -- no GitHub remote, issues disabled, no tool that can create one: say so once in chat, carry on, and put the would-be title in the PR body when there is one. The work never waits on it.
 
 ## Handoff Prompt
 
@@ -71,4 +102,4 @@ The block itself is in `CLAUDE.md -> Handoff Prompt`. The rules behind it:
 
 **Not on:** a turn with nothing left to do -- an answer, a closing summary or a status report that names no next step and no recommendation (a summary that _does_ name one carries the block, which is the v1.39.0 widening: the trigger is the recommendation, not the shape of the turn); a yes/no confirmation of something the user just ordered (`/pr merge`, a `rollback` phase), where the reply is one word and a prompt block is noise; and never in an unattended run, where nobody is there to paste it and _Autonomy_ rules out the question in the first place.
 
-<!-- Generated by claude-code-optimizer v1.49.0 -->
+<!-- Generated by claude-code-optimizer v1.56.0 -->
