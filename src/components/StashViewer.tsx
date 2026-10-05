@@ -37,6 +37,7 @@ import {
 } from '../utils/access-log-filter';
 import { formatBytes } from '../utils/format';
 import { escapeHtml } from '../utils/html';
+import { containsAppModal } from '../utils/nested-modal';
 import { buildStashUrl } from '../utils/stash-url';
 import { buildAllFilesText, bundleFilename } from '../utils/stash-bundle';
 import MermaidDiagram from './MermaidDiagram';
@@ -682,8 +683,8 @@ export default function StashViewer({
       if (e.defaultPrevented) return;
       // Modal overlays (search, shortcuts help, mermaid fullscreen, a
       // maximized file) all render role="dialog" — don't switch tabs behind
-      // an open modal.
-      if (document.querySelector('[role="dialog"]')) return;
+      // an open modal. A role="dialog" in rendered Markdown does not count.
+      if (containsAppModal(document, '[role="dialog"]')) return;
       const tag = (e.target as HTMLElement)?.tagName?.toLowerCase();
       const isEditing =
         tag === 'input' || tag === 'textarea' || (e.target as HTMLElement)?.isContentEditable;

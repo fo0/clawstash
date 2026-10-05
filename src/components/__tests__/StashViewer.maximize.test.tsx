@@ -345,6 +345,21 @@ describe('StashViewer per-file maximize', () => {
     }
   });
 
+  it('undoes the scroll behind the backdrop when it pulls focus back', async () => {
+    const { container } = renderViewer([file(0), file(1), file(2)]);
+    container.scrollTop = 0;
+    maximize('file-1.txt');
+
+    // Tab out of an HTML preview iframe: the browser focuses the next control
+    // behind the backdrop and scrolls the page to it before the guard runs.
+    screen.getByRole('button', { name: 'Maximize file-2.txt' }).focus();
+    container.scrollTop = 552;
+    await flushFocusGuard();
+
+    expect(document.activeElement).toBe(fileBox(container, 1));
+    expect(container.scrollTop).toBe(0);
+  });
+
   it('reaches the Restore button with Shift+Tab right after opening', () => {
     const { container } = renderViewer();
     maximize('file-1.txt');
@@ -429,6 +444,16 @@ describe('StashViewer per-file maximize', () => {
     maximize('file-1.txt');
     fireEvent.keyDown(document.activeElement!, { key: '2' });
     expect(screen.getByRole('tab', { selected: true }).id).toBe('viewer-tab-content');
+  });
+
+  it('keeps the 1-4 tab hotkeys for a role="dialog" in rendered Markdown', () => {
+    const { container } = renderViewer([markdownFile(0, '<div role="dialog">x</div>')]);
+    // Fixture check: the sanitiser keeps the attribute, so the spoof is live.
+    expect(container.querySelector('.markdown-body [role="dialog"]')).toBeTruthy();
+
+    fireEvent.keyDown(document.body, { key: '2' });
+
+    expect(screen.getByRole('tab', { selected: true }).id).toBe('viewer-tab-metadata');
   });
 
   it("blocks App's quick-search accelerator while maximized", () => {

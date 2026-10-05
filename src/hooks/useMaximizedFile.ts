@@ -110,15 +110,27 @@ export function useMaximizedFile(
   // also run after that synchronous restore; `setTimeout` additionally runs
   // after every microtask the task queued, so a restore that follows an
   // `await` on an already-settled promise is left alone as well.
+  //
+  // By then the browser has already scrolled the page behind the backdrop to
+  // the control that briefly took focus, and that scroll would outlive the
+  // Restore. So the scroll position of every ancestor is captured on open
+  // and put back whenever focus is pulled back.
   useEffect(() => {
     if (!active) return;
     let timer: ReturnType<typeof setTimeout> | null = null;
+    const scrollTops: [Element, number][] = [];
+    for (let el = maximizedRef.current?.parentElement ?? null; el; el = el.parentElement) {
+      scrollTops.push([el, el.scrollTop]);
+    }
     const pullBack = () => {
       timer = null;
       const box = maximizedRef.current;
       const current = document.activeElement;
       if (!box || (current && (box.contains(current) || isInsideAppModal(current)))) return;
       box.focus({ preventScroll: true });
+      for (const [el, top] of scrollTops) {
+        if (el.scrollTop !== top) el.scrollTop = top;
+      }
     };
     const onFocusIn = (e: FocusEvent) => {
       const box = maximizedRef.current;
