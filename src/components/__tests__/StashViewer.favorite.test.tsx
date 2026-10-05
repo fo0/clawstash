@@ -74,3 +74,36 @@ describe('StashViewer favorite toggle', () => {
     expect(onToggleFavorite).toHaveBeenCalledWith('abc');
   });
 });
+
+describe('StashViewer favorite hotkey', () => {
+  it('pins / unpins the open stash on `f`', () => {
+    const { onToggleFavorite } = renderViewer(false);
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'f', cancelable: true }));
+    expect(onToggleFavorite).toHaveBeenCalledTimes(1);
+    expect(onToggleFavorite).toHaveBeenCalledWith('abc');
+  });
+
+  it('leaves `f` alone while typing, with a modifier, or behind a dialog', () => {
+    const { onToggleFavorite } = renderViewer(false);
+    const input = document.createElement('input');
+    document.body.appendChild(input);
+    input.dispatchEvent(new KeyboardEvent('keydown', { key: 'f', bubbles: true }));
+    input.remove();
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'f', ctrlKey: true }));
+    const dialog = document.createElement('div');
+    dialog.setAttribute('role', 'dialog');
+    document.body.appendChild(dialog);
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'f' }));
+    dialog.remove();
+    expect(onToggleFavorite).not.toHaveBeenCalled();
+  });
+
+  it('does not pin when a focused widget already consumed `f`', () => {
+    // A focused Mermaid diagram claims `f` for its own fullscreen toggle.
+    const { onToggleFavorite } = renderViewer(false);
+    const event = new KeyboardEvent('keydown', { key: 'f', cancelable: true });
+    event.preventDefault();
+    window.dispatchEvent(event);
+    expect(onToggleFavorite).not.toHaveBeenCalled();
+  });
+});

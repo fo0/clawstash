@@ -664,8 +664,10 @@ export default function StashViewer({
     [activeTab, switchTab],
   );
 
-  // Hotkeys 1-4 to switch viewer tabs. Skipped when focus is inside an
-  // editable element so the keys are not stolen from inline text inputs.
+  // Hotkeys 1-4 to switch viewer tabs, `f` to pin / unpin the open stash.
+  // Skipped when focus is inside an editable element so the keys are not
+  // stolen from inline text inputs.
+  const stashId = stash.id;
   useEffect(() => {
     const TAB_MAP: Record<string, ViewerTab> = {
       '1': 'content',
@@ -675,6 +677,9 @@ export default function StashViewer({
     };
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.metaKey || e.ctrlKey || e.altKey) return;
+      // A focused widget already claimed the key — a focused Mermaid diagram
+      // uses `f` for its own fullscreen toggle and must not pin the stash too.
+      if (e.defaultPrevented) return;
       // Modal overlays (search, shortcuts help, mermaid fullscreen, a
       // maximized file) all render role="dialog" — don't switch tabs behind
       // an open modal.
@@ -683,6 +688,13 @@ export default function StashViewer({
       const isEditing =
         tag === 'input' || tag === 'textarea' || (e.target as HTMLElement)?.isContentEditable;
       if (isEditing) return;
+      // Same state as the star next to the title — so a stash can be pinned
+      // while reading it without reaching for the mouse.
+      if (e.key === 'f') {
+        e.preventDefault();
+        onToggleFavorite(stashId);
+        return;
+      }
       const tab = TAB_MAP[e.key];
       if (tab) {
         e.preventDefault();
@@ -691,7 +703,7 @@ export default function StashViewer({
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [switchTab]);
+  }, [switchTab, onToggleFavorite, stashId]);
 
   /** Toggle a file's collapsed state in the content tab. */
   const toggleFileCollapsed = useCallback((fileId: string) => {
@@ -1010,7 +1022,7 @@ export default function StashViewer({
             onClick={() => onToggleFavorite(stash.id)}
             aria-pressed={isFavorite}
             aria-label={isFavorite ? `Unpin "${title}" from top` : `Pin "${title}" to top`}
-            title={isFavorite ? 'Unpin from top' : 'Pin to top'}
+            title={isFavorite ? 'Unpin from top (key: f)' : 'Pin to top (key: f)'}
             data-testid="viewer-favorite-toggle"
           >
             <StarIcon filled={isFavorite} />
