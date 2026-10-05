@@ -4,6 +4,11 @@ import {
   saveRecentViews,
   addRecentView,
   recordRecentView,
+  removeRecentView,
+  renameRecentView,
+  forgetRecentView,
+  syncRecentViewTitle,
+  recentViewOf,
   MAX_RECENT_VIEWS,
   type RecentView,
 } from '../recent-views';
@@ -85,5 +90,75 @@ describe('load/save/record (localStorage)', () => {
     const result = recordRecentView(view('b'));
     expect(result).toEqual([view('b'), view('a')]);
     expect(loadRecentViews()).toEqual([view('b'), view('a')]);
+  });
+});
+
+describe('recentViewOf', () => {
+  it('uses the name, then the first filename, then "Untitled"', () => {
+    expect(recentViewOf({ id: 'a', name: 'Notes', files: [{ filename: 'x.md' }] })).toEqual(
+      view('a', 'Notes'),
+    );
+    expect(recentViewOf({ id: 'a', name: '', files: [{ filename: 'x.md' }] })).toEqual(
+      view('a', 'x.md'),
+    );
+    expect(recentViewOf({ id: 'a', name: '', files: [] })).toEqual(view('a', 'Untitled'));
+  });
+});
+
+describe('removeRecentView / renameRecentView (pure)', () => {
+  it('removes the entry and keeps the order of the rest', () => {
+    expect(removeRecentView([view('a'), view('b'), view('c')], 'b')).toEqual([
+      view('a'),
+      view('c'),
+    ]);
+  });
+
+  it('returns the same list when the id is not listed', () => {
+    const list = [view('a')];
+    expect(removeRecentView(list, 'z')).toBe(list);
+  });
+
+  it('renames in place without moving the entry to the front', () => {
+    expect(renameRecentView([view('a'), view('b')], 'b', 'New name')).toEqual([
+      view('a'),
+      view('b', 'New name'),
+    ]);
+  });
+
+  it('returns the same list for an unknown id or an unchanged title', () => {
+    const list = [view('a', 'Same')];
+    expect(renameRecentView(list, 'z', 'x')).toBe(list);
+    expect(renameRecentView(list, 'a', 'Same')).toBe(list);
+  });
+});
+
+describe('forgetRecentView / syncRecentViewTitle (localStorage)', () => {
+  let store: Map<string, string>;
+  beforeEach(() => {
+    store = installLocalStorageStub();
+  });
+  afterEach(() => vi.unstubAllGlobals());
+
+  it('forgets a deleted stash', () => {
+    saveRecentViews([view('a'), view('b')]);
+    forgetRecentView('a');
+    expect(loadRecentViews()).toEqual([view('b')]);
+  });
+
+  it('refreshes the title of a listed stash in place', () => {
+    saveRecentViews([view('a'), view('b', 'Old')]);
+    syncRecentViewTitle(view('b', 'Renamed'));
+    expect(loadRecentViews()).toEqual([view('a'), view('b', 'Renamed')]);
+  });
+
+  it('never adds an unlisted stash and skips the write when nothing changed', () => {
+    saveRecentViews([view('a')]);
+    const before = store.get(STORAGE_KEY);
+    const setItem = vi.spyOn(localStorage, 'setItem');
+    syncRecentViewTitle(view('z', 'Other'));
+    syncRecentViewTitle(view('a'));
+    forgetRecentView('z');
+    expect(setItem).not.toHaveBeenCalled();
+    expect(store.get(STORAGE_KEY)).toBe(before);
   });
 });
