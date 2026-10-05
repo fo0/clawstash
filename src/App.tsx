@@ -13,7 +13,12 @@ import { api, setAuthToken } from './api';
 import { loadFavoriteIds, saveFavoriteIds, toggleFavorite } from './utils/favorites';
 import { loadSortMode, saveSortMode } from './utils/sort';
 import { loadShowArchived, saveShowArchived } from './utils/archived';
-import { recordRecentView } from './utils/recent-views';
+import {
+  forgetRecentView,
+  recentViewOf,
+  recordRecentView,
+  syncRecentViewTitle,
+} from './utils/recent-views';
 import { SEARCH_DEBOUNCE_MS, STASH_PAGE_SIZE } from './utils/constants';
 import { decidePopState } from './utils/nav-guard';
 import { resolveGraphBack } from './utils/graph-nav';
@@ -292,6 +297,13 @@ export default function App() {
   const selectedStashRef = useRef<Stash | null>(null);
   useEffect(() => {
     selectedStashRef.current = selectedStash;
+  }, [selectedStash]);
+
+  // Every fresh copy of the open stash (save, version restore, deep link)
+  // passes through here — keep its "Recently viewed" title current without
+  // moving it in that list. A stash not listed there is left alone.
+  useEffect(() => {
+    if (selectedStash) syncRecentViewTitle(recentViewOf(selectedStash));
   }, [selectedStash]);
 
   // Same mirroring for the hotkey handler's graph case: Escape in a graph that
@@ -841,10 +853,7 @@ export default function App() {
       // Remember this stash for the quick-search "Recently viewed" shortcut.
       // Captured here (not on URL/popstate loads) so the list reflects
       // deliberate user navigation. Title mirrors the viewer/card fallback.
-      recordRecentView({
-        id: stash.id,
-        title: stash.name || stash.files[0]?.filename || 'Untitled',
-      });
+      recordRecentView(recentViewOf(stash));
     } catch (err) {
       // Stale rejection: a newer selection is already in flight / resolved.
       if (gen !== selectGenRef.current) return;
@@ -934,6 +943,9 @@ export default function App() {
     try {
       await api.deleteStash(id);
       removeFavoriteId(id);
+      // A deleted stash would otherwise linger in quick search's "Recently
+      // viewed" and answer a click with "Failed to load stash".
+      forgetRecentView(id);
       setSelectedStash(null);
       setView('home');
       pushUrl('/');

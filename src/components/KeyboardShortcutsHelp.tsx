@@ -33,12 +33,13 @@ const STATIC_SHORTCUT_GROUPS: ShortcutGroup[] = [
     ],
   },
   {
-    label: 'Stash Viewer tabs',
+    label: 'Stash Viewer',
     shortcuts: [
       { keys: ['1'], description: 'Content tab' },
       { keys: ['2'], description: 'Details & API tab' },
       { keys: ['3'], description: 'Access Log tab' },
       { keys: ['4'], description: 'History tab' },
+      { keys: ['f'], description: 'Pin / unpin the open stash' },
     ],
   },
   {
