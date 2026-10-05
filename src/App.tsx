@@ -23,6 +23,7 @@ import { SEARCH_DEBOUNCE_MS, STASH_PAGE_SIZE } from './utils/constants';
 import { decidePopState } from './utils/nav-guard';
 import { resolveGraphBack } from './utils/graph-nav';
 import { canToggleQuickSearch } from './utils/quick-search-gate';
+import { containsAppModal } from './utils/nested-modal';
 import { SIDEBAR_DEFAULT_WIDTH, loadSidebarWidth, saveSidebarWidth } from './utils/sidebar-width';
 import { useScrollMemory } from './hooks/useScrollMemory';
 import Sidebar from './components/Sidebar';
@@ -376,8 +377,9 @@ export default function App() {
       // viewer, a maximized viewer file, graph popups — all render
       // role="dialog"): swallow navigation hotkeys so they don't act
       // underneath it. Escape stays untouched — those dialogs consume it
-      // themselves (overlay contract).
-      if (e.key !== 'Escape' && document.querySelector('[role="dialog"]')) return;
+      // themselves (overlay contract). A role="dialog" in rendered Markdown
+      // is content, not a modal, and does not count.
+      if (e.key !== 'Escape' && containsAppModal(document, '[role="dialog"]')) return;
 
       if (e.key === '?') {
         e.preventDefault();

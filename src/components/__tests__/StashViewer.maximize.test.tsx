@@ -431,6 +431,16 @@ describe('StashViewer per-file maximize', () => {
     expect(screen.getByRole('tab', { selected: true }).id).toBe('viewer-tab-content');
   });
 
+  it('keeps the 1-4 tab hotkeys for a role="dialog" in rendered Markdown', () => {
+    const { container } = renderViewer([markdownFile(0, '<div role="dialog">x</div>')]);
+    // Fixture check: the sanitiser keeps the attribute, so the spoof is live.
+    expect(container.querySelector('.markdown-body [role="dialog"]')).toBeTruthy();
+
+    fireEvent.keyDown(document.body, { key: '2' });
+
+    expect(screen.getByRole('tab', { selected: true }).id).toBe('viewer-tab-metadata');
+  });
+
   it("blocks App's quick-search accelerator while maximized", () => {
     renderViewer();
     const closed = { search: false, help: false };
