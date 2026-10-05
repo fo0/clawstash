@@ -68,6 +68,11 @@ describe('load/save/record (localStorage)', () => {
     expect(loadRecentSearches()).toEqual([]);
   });
 
+  it('folds case-insensitive duplicates from a hand-edited value', () => {
+    store.set(STORAGE_KEY, JSON.stringify(['Docker', 'docker', 'b', 'DOCKER']));
+    expect(loadRecentSearches()).toEqual(['Docker', 'b']);
+  });
+
   it('records newest first and persists it', () => {
     recordRecentSearch('first');
     expect(recordRecentSearch('second')).toEqual(['second', 'first']);

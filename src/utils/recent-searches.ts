@@ -18,7 +18,8 @@ export const MAX_RECENT_SEARCH_LENGTH = 100;
 
 /**
  * Read the recent queries from localStorage, newest first. Safe during SSR
- * and on a corrupted / hand-edited value (drops non-string and blank entries).
+ * and on a corrupted / hand-edited value: drops non-string and blank entries
+ * and folds case-insensitive duplicates (the chips are keyed by the query).
  */
 export function loadRecentSearches(): string[] {
   if (typeof window === 'undefined' || typeof localStorage === 'undefined') return [];
@@ -27,8 +28,15 @@ export function loadRecentSearches(): string[] {
     if (!raw) return [];
     const parsed = JSON.parse(raw);
     if (!Array.isArray(parsed)) return [];
+    const seen = new Set<string>();
     return parsed
-      .filter((q): q is string => typeof q === 'string' && q.trim() !== '')
+      .filter((q): q is string => {
+        if (typeof q !== 'string' || q.trim() === '') return false;
+        const key = q.toLowerCase();
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      })
       .slice(0, MAX_RECENT_SEARCHES);
   } catch {
     return [];
