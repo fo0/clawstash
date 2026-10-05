@@ -5,6 +5,11 @@ import { formatRelativeTime } from '../utils/format';
 import { splitHighlight } from '../utils/highlight';
 import { SEARCH_DEBOUNCE_MS } from '../utils/constants';
 import { loadRecentViews, type RecentView } from '../utils/recent-views';
+import {
+  loadRecentSearches,
+  recordRecentSearch,
+  saveRecentSearches,
+} from '../utils/recent-searches';
 import { buildStashUrl } from '../utils/stash-url';
 import { isModifiedClick } from '../utils/link-click';
 import { useFocusTrap } from '../hooks/useFocusTrap';
@@ -32,6 +37,9 @@ export default function SearchOverlay({ open, onClose, onSelectStash, onSearchAl
   // the user, mirroring the dashboard/sidebar "showing N" honesty pattern.
   const [total, setTotal] = useState(0);
   const [recent, setRecent] = useState<RecentView[]>([]);
+  // Queries that led somewhere (a result opened, "Show all" used), offered as
+  // one-click chips while the field is empty.
+  const [recentSearches, setRecentSearches] = useState<readonly string[]>([]);
   const [loading, setLoading] = useState(false);
   // True when the latest search request failed (offline, timeout, server
   // error). Without it a failure rendered as "No stashes found" — a claim
@@ -67,6 +75,7 @@ export default function SearchOverlay({ open, onClose, onSelectStash, onSearchAl
       // Refresh the "Recently viewed" shortcut list each time the overlay
       // opens so it reflects stashes opened since the last open.
       setRecent(loadRecentViews());
+      setRecentSearches(loadRecentSearches());
       // Small delay to ensure the DOM is rendered
       requestAnimationFrame(() => inputRef.current?.focus());
     }
@@ -202,9 +211,38 @@ export default function SearchOverlay({ open, onClose, onSelectStash, onSearchAl
     }
   }, [activeIndex]);
 
+  // Remember the current query once it led somewhere. A pick from "Recently
+  // viewed" (empty field) records nothing.
+  const rememberQuery = () => {
+    if (query.trim()) setRecentSearches(recordRecentSearch(query));
+  };
+
   const handleSelect = (id: string) => {
+    rememberQuery();
     onSelectStash(id);
     onClose();
+  };
+
+  // Re-run a remembered query: fill the field and search at once — the
+  // debounce only exists to spare the server while the user is typing.
+  const handleRecentSearch = (q: string) => {
+    if (debounceRef.current) {
+      clearTimeout(debounceRef.current);
+      debounceRef.current = undefined;
+    }
+    setQuery(q);
+    setActiveIndex(0);
+    // The chip unmounts as soon as the field holds a query; keep focus inside
+    // the dialog, where typing refines the search.
+    inputRef.current?.focus();
+    void doSearch(q);
+  };
+
+  const handleClearRecentSearches = () => {
+    saveRecentSearches([]);
+    setRecentSearches([]);
+    // The Clear button unmounts with the row — hand focus back to the field.
+    inputRef.current?.focus();
   };
 
   /**
@@ -217,6 +255,7 @@ export default function SearchOverlay({ open, onClose, onSelectStash, onSearchAl
    * opened tab must not reach back through `window.opener`.
    */
   const openInNewTab = (id: string) => {
+    rememberQuery();
     window.open(buildStashUrl(window.location.origin, id), '_blank', 'noopener,noreferrer');
   };
 
@@ -225,6 +264,7 @@ export default function SearchOverlay({ open, onClose, onSelectStash, onSearchAl
   const handleShowAll = () => {
     const q = query.trim();
     if (!q) return;
+    rememberQuery();
     onSearchAll(q);
     onClose();
   };
@@ -452,7 +492,10 @@ export default function SearchOverlay({ open, onClose, onSelectStash, onSearchAl
                   onClick={(e) => {
                     // A modified click asked the browser for a new tab — step
                     // aside and let it happen instead of navigating in place.
-                    if (isModifiedClick(e)) return;
+                    if (isModifiedClick(e)) {
+                      rememberQuery();
+                      return;
+                    }
                     e.preventDefault();
                     handleSelect(stash.id);
                   }}
@@ -494,6 +537,41 @@ export default function SearchOverlay({ open, onClose, onSelectStash, onSearchAl
                     </span>
                   </div>
                 </a>
+              ))}
+            </div>
+          </>
+        )}
+
+        {!query.trim() && recentSearches.length > 0 && (
+          <>
+            <div className="search-overlay-results-count">
+              <span id="search-overlay-recent-searches-label">Recent searches</span>
+              <button
+                type="button"
+                className="search-overlay-show-all"
+                onClick={handleClearRecentSearches}
+                title="Forget the recent searches stored in this browser"
+              >
+                Clear
+              </button>
+            </div>
+            {/* Plain buttons in a labelled group, outside any listbox: the
+                arrow keys keep driving the "Recently viewed" list below. */}
+            <div
+              className="search-overlay-recent-searches"
+              role="group"
+              aria-labelledby="search-overlay-recent-searches-label"
+            >
+              {recentSearches.map((q) => (
+                <button
+                  key={q}
+                  type="button"
+                  className="search-overlay-recent-search"
+                  onClick={() => handleRecentSearch(q)}
+                  title={`Search for "${q}" again`}
+                >
+                  {q}
+                </button>
               ))}
             </div>
           </>

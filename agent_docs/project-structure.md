@@ -205,6 +205,7 @@ clawstash/
 │   │   ├── mermaid-zoom.ts     # Per-diagram zoom persistence in localStorage (LRU-capped)
 │   │   ├── nav-guard.ts        # Pure popstate decision for the dirty-editor back-navigation guard
 │   │   ├── platform.ts         # SSR-safe platform detection for keyboard-shortcut labels
+│   │   ├── recent-searches.ts  # Recent quick-search queries MRU list (localStorage) for the search overlay
 │   │   ├── recent-views.ts     # Recently-viewed stashes MRU list (localStorage) for the search overlay
 │   │   ├── sidebar-width.ts    # Persisted sidebar width (localStorage) + clamp/bounds helpers
 │   │   ├── sort.ts             # Dashboard sort-order state + pure sort helper

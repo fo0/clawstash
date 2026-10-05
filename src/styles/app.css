@@ -1223,6 +1223,46 @@ body {
   white-space: nowrap;
 }
 
+/* Recent searches — one-click chips above "Recently viewed" while the field
+   is empty. They wrap instead of scrolling so every remembered query stays
+   visible on a phone. */
+.search-overlay-recent-searches {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 6px 16px 10px;
+}
+
+.search-overlay-recent-search {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  padding: 3px 10px;
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-family: inherit;
+  cursor: pointer;
+  transition:
+    color 0.12s,
+    border-color 0.12s,
+    background 0.12s;
+}
+
+.search-overlay-recent-search:hover {
+  color: var(--text-primary);
+  border-color: var(--accent-blue);
+  background: rgba(88, 166, 255, 0.08);
+}
+
+.search-overlay-recent-search:focus-visible {
+  outline: 2px solid var(--accent-blue);
+  outline-offset: 1px;
+}
+
 .search-overlay-hint {
   padding: 24px 16px;
   text-align: center;
