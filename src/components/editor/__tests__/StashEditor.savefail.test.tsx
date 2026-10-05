@@ -26,10 +26,12 @@ beforeEach(() => {
   );
 });
 
+// `cleanup()` first: unmounting flushes a still-pending passive effect (the
+// banner scroll), which must land before the reset, not in the next case.
 afterEach(() => {
+  cleanup();
   vi.unstubAllGlobals();
   scrollIntoView.mockReset();
-  cleanup();
 });
 
 const STASH: Stash = {
@@ -102,7 +104,8 @@ describe('StashEditor failed save', () => {
     pressSave();
 
     await waitFor(() => expect(screen.getByRole('alert').textContent).toBe('Database is locked'));
-    expect(bannerScrolls()).toBe(1);
+    // The scroll runs in a passive effect after the banner commits.
+    await waitFor(() => expect(bannerScrolls()).toBe(1));
     expect(onSave).not.toHaveBeenCalled();
   });
 
