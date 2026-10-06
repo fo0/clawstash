@@ -19,6 +19,14 @@ const KEY_ENV_VAR = 'CLAWSTASH_ENCRYPTION_KEY';
 const KEY_FILENAME = '.clawstash-key';
 const HEX_KEY_PATTERN = /^[0-9a-fA-F]{64}$/;
 
+// GCM tag length, pinned on both sides. Without `authTagLength`, Node's
+// decipher also accepts truncated tags (as short as 4 bytes), so a stored
+// value whose tag was cut to 4 bytes still authenticated — a 2^-32 forgery
+// bar instead of 2^-128
+// (and Node deprecates the implicit short tag, DEP0182). Every value
+// `encryptSecret` ever wrote carries the 16-byte default tag.
+const AUTH_TAG_LENGTH = 16;
+
 let cachedKey: Buffer | null = null;
 
 function keyFilePath(): string {
@@ -66,7 +74,7 @@ export function getEncryptionKey(): Buffer {
 export function encryptSecret(plaintext: string, key?: Buffer): string {
   const k = key ?? getEncryptionKey();
   const iv = crypto.randomBytes(12);
-  const cipher = crypto.createCipheriv('aes-256-gcm', k, iv);
+  const cipher = crypto.createCipheriv('aes-256-gcm', k, iv, { authTagLength: AUTH_TAG_LENGTH });
   const ciphertext = Buffer.concat([cipher.update(plaintext, 'utf8'), cipher.final()]);
   const tag = cipher.getAuthTag();
   return `v1:${iv.toString('base64')}:${tag.toString('base64')}:${ciphertext.toString('base64')}`;
@@ -79,7 +87,9 @@ export function decryptSecret(encrypted: string, key?: Buffer): string {
   }
   const k = key ?? getEncryptionKey();
   const [, ivB64, tagB64, ctB64] = parts;
-  const decipher = crypto.createDecipheriv('aes-256-gcm', k, Buffer.from(ivB64, 'base64'));
+  const decipher = crypto.createDecipheriv('aes-256-gcm', k, Buffer.from(ivB64, 'base64'), {
+    authTagLength: AUTH_TAG_LENGTH,
+  });
   decipher.setAuthTag(Buffer.from(tagB64, 'base64'));
   return Buffer.concat([decipher.update(Buffer.from(ctB64, 'base64')), decipher.final()]).toString(
     'utf8',

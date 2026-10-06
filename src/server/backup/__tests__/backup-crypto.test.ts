@@ -36,6 +36,12 @@ describe('encryptSecret / decryptSecret', () => {
     expect(() => decryptSecret(parts.join(':'), key)).toThrow();
   });
 
+  it('rejects a value whose auth tag was truncated', () => {
+    const parts = encryptSecret('secret', key).split(':');
+    parts[2] = Buffer.from(parts[2], 'base64').subarray(0, 4).toString('base64');
+    expect(() => decryptSecret(parts.join(':'), key)).toThrow();
+  });
+
   it('fails on a wrong key', () => {
     const encrypted = encryptSecret('secret', key);
     const otherKey = crypto.randomBytes(32);
