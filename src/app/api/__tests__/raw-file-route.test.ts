@@ -38,4 +38,14 @@ describe('GET /api/stashes/:id/files/:filename/raw', () => {
     expect(literal.status).toBe(200);
     expect(await literal.text()).toBe('literal');
   });
+
+  it('serves files whose name is not ASCII', async () => {
+    const stash = getDb().createStash({ files: [{ filename: '日本.md', content: 'hi' }] });
+    const res = await get(stash.id, '日本.md');
+    expect(res.status).toBe(200);
+    expect(await res.text()).toBe('hi');
+    expect(res.headers.get('Content-Disposition')).toBe(
+      `inline; filename="__.md"; filename*=UTF-8''${encodeURIComponent('日本.md')}`,
+    );
+  });
 });
