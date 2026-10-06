@@ -36,3 +36,14 @@ describe('middleware Cache-Control', () => {
     expect(res.headers.get('Access-Control-Allow-Origin')).toBeNull();
   });
 });
+
+describe('middleware CORS preflight', () => {
+  it('lets a browser MCP client send Mcp-Protocol-Version on /mcp', () => {
+    const res = middleware(new NextRequest('http://localhost:3000/mcp', { method: 'OPTIONS' }));
+    expect(res.status).toBe(204);
+    const allowed = (res.headers.get('Access-Control-Allow-Headers') ?? '')
+      .split(',')
+      .map((h) => h.trim().toLowerCase());
+    expect(allowed).toContain('mcp-protocol-version');
+  });
+});

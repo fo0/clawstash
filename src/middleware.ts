@@ -30,10 +30,17 @@ import { NextRequest, NextResponse } from 'next/server';
 // rate limiter returns and `Allow` the supported methods for the 405 /mcp
 // returns, so without this a cross-origin caller sees the status but not the
 // one piece of information the status exists to deliver.
+//
+// `Mcp-Protocol-Version` is the header every Streamable HTTP MCP client sends
+// on each request after `initialize` (MCP spec 2025-06-18; the SDK client sets
+// it). Without it in `Access-Control-Allow-Headers`, a browser-based MCP
+// client got through `initialize` and then had every follow-up call
+// (`tools/list`, `tools/call`) refused at the preflight.
 const CORS_HEADERS: Record<string, string> = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Methods': 'GET, POST, PUT, PATCH, DELETE, OPTIONS',
-  'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Access-Source, X-Requested-With',
+  'Access-Control-Allow-Headers':
+    'Content-Type, Authorization, X-Access-Source, X-Requested-With, Mcp-Protocol-Version',
   'Access-Control-Expose-Headers': 'Retry-After, Allow',
   'Access-Control-Max-Age': '86400',
 };

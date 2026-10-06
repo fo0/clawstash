@@ -35,8 +35,12 @@ export async function GET(req: NextRequest, { params }: Params) {
   db.logAccess(id, getAccessSource(req), `read_file:${file.filename}`, ip, userAgent);
   // Always declare UTF-8 charset so non-ASCII bytes render correctly across
   // browsers / proxies (otherwise some default to Latin-1). Force inline
-  // disposition + escape the filename for safe use in the header.
-  const safeFilename = file.filename.replace(/["\\]/g, '_');
+  // disposition + escape the filename for safe use in the header. The quoted
+  // `filename=` fallback must be printable ASCII: a header value is a
+  // ByteString, so a name like `日本.md` threw while building the response
+  // (500). The real name travels in `filename*` (RFC 6266 §4.3), which every
+  // current browser prefers.
+  const safeFilename = file.filename.replace(/[^\x20-\x7e]|["\\]/g, '_');
   return new NextResponse(file.content, {
     headers: {
       'Content-Type': 'text/plain; charset=utf-8',

@@ -58,7 +58,9 @@ export { ADMIN_PASSWORD, ADMIN_SESSION_HOURS };
 let warnedAboutQueryTokenAuth = false;
 export function extractToken(req: NextRequest): string | null {
   const auth = req.headers.get('authorization');
-  if (auth && auth.startsWith('Bearer ')) {
+  // The auth-scheme name is case-insensitive (RFC 9110 §11.1), so
+  // `bearer …` and `BEARER …` are the same credentials as `Bearer …`.
+  if (auth && /^bearer /i.test(auth)) {
     const token = auth.substring(7).trim();
     return token.length > 0 ? token : null;
   }
