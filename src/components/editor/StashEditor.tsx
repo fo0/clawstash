@@ -1187,7 +1187,8 @@ export default function StashEditor({ stash, template, onSave, onCancel, onDirty
                         className="btn btn-sm btn-danger btn-remove"
                         onClick={() => removeFile(index)}
                         title="This file has content — click again to remove it"
-                        aria-label="Confirm removing this file and its content"
+                        // Starts with the visible "Remove" (WCAG 2.5.3 Label in Name).
+                        aria-label="Remove: confirm removing this file and its content"
                       >
                         Remove?
                       </button>

@@ -53,7 +53,7 @@ async function renderBar(stash: Stash = STASH) {
   });
   render(<StashBackupControls stash={stash} onStashUpdated={vi.fn()} />);
   return screen.findByRole('button', {
-    name: /(exclude|include) this stash/i,
+    name: /exclude this stash|include in backup/i,
   });
 }
 
@@ -66,7 +66,7 @@ describe('StashBackupControls exclude confirm', () => {
 
     expect(mockedApi.setStashBackupEnabled).not.toHaveBeenCalled();
     const armed = await screen.findByRole('button', {
-      name: /confirm excluding this stash/i,
+      name: /^confirm exclude: remove this stash/i,
     });
     expect(armed.textContent).toContain('Confirm exclude?');
   });
@@ -77,7 +77,7 @@ describe('StashBackupControls exclude confirm', () => {
 
     fireEvent.click(button);
     const armed = await screen.findByRole('button', {
-      name: /confirm excluding this stash/i,
+      name: /^confirm exclude: remove this stash/i,
     });
     fireEvent.click(armed);
 

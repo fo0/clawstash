@@ -168,11 +168,13 @@ export default function StashBackupControls({ stash, onStashUpdated }: Props) {
               ? 'Click again to exclude this stash — its mirrored copy is removed on the next sync'
               : 'Exclude this stash from the GitHub backup (removes its mirrored copy on the next sync)'
         }
+        // Each name starts with the visible text, so voice control ("click
+        // Include in backup") reaches the button (WCAG 2.5.3 Label in Name).
         aria-label={
           !stash.backup_enabled
-            ? 'Include this stash in the GitHub backup'
+            ? 'Include in backup: add this stash to the GitHub backup again'
             : confirmExclude
-              ? 'Confirm excluding this stash from the GitHub backup'
+              ? 'Confirm exclude: remove this stash from the GitHub backup'
               : 'Exclude this stash from the GitHub backup'
         }
       >
