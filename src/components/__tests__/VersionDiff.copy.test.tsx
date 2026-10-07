@@ -44,7 +44,7 @@ function version(n: number, files: Record<string, string>): StashVersion {
   };
 }
 
-const COPY = { name: 'Copy this comparison as a unified diff' };
+const COPY = { name: 'Copy diff of this comparison in unified format' };
 
 describe('VersionDiff copy', () => {
   it('copies the comparison as a unified diff', async () => {

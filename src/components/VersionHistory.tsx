@@ -284,6 +284,15 @@ export default function VersionHistory({ stashId, currentVersion, onRestore }: P
     return (
       <div className="version-detail">
         {errorAlert}
+        {/* The copy buttons' fixed aria-labels never carry their "Copied!" /
+            "Failed" text, so the result is announced here, as StashViewer
+            does for its own copy buttons (WCAG 4.1.3). */}
+        <div className="sr-only" role="status" aria-live="polite">
+          {bundleClipboard.status === 'copied' && 'All files copied to clipboard'}
+          {bundleClipboard.status === 'failed' && 'Copy failed'}
+          {fileClipboard.copiedKey && 'File copied to clipboard'}
+          {fileClipboard.failedKey && 'Copy failed'}
+        </div>
         <div className="version-detail-header">
           <button className="btn btn-ghost btn-sm" onClick={handleBack}>
             <svg aria-hidden="true" width="14" height="14" viewBox="0 0 16 16" fill="currentColor">

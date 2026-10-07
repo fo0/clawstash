@@ -132,6 +132,12 @@ export default function VersionDiff({ v1, v2 }: Props) {
 
   return (
     <div className="version-diff">
+      {/* The copy button's fixed aria-label never carries its "Copied!" /
+          "Failed" text, so the result is announced here (WCAG 4.1.3). */}
+      <div className="sr-only" role="status" aria-live="polite">
+        {copied && 'Diff copied to clipboard'}
+        {copyStatus === 'failed' && 'Copy failed'}
+      </div>
       {/* "+12 / -3 / A / D / M" carry their whole meaning in a sign or a single
           letter — read aloud they are just characters. The visible chrome stays
           exactly as it was; the words are added for assistive tech and as
@@ -160,7 +166,8 @@ export default function VersionDiff({ v1, v2 }: Props) {
                   ? 'Copy failed'
                   : 'Copy this comparison as a unified diff (the format git and diff viewers read)'
             }
-            aria-label="Copy this comparison as a unified diff"
+            // Starts with the visible "Copy diff" (WCAG 2.5.3 Label in Name).
+            aria-label="Copy diff of this comparison in unified format"
           >
             {copied ? (
               <>
