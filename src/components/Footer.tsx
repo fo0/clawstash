@@ -144,7 +144,10 @@ export default function Footer({ onShowShortcuts, authToken }: FooterProps) {
               className={`footer-info-btn${showDetails ? ' active' : ''}`}
               onClick={() => setShowDetails((prev) => !prev)}
               title="Toggle build details"
-              aria-label="Toggle build details"
+              // Matches the visible "Build Info" (WCAG 2.5.3 Label in Name);
+              // aria-expanded already says it toggles. The label is hidden on
+              // a phone-width footer, so the name cannot come from it alone.
+              aria-label="Build info"
               aria-expanded={showDetails}
             >
               <svg

@@ -52,7 +52,13 @@ export default function LoginScreen({ onLogin }: Props) {
   };
 
   return (
-    <div className="login-screen">
+    // <main> + a visually hidden <h1>: the login screen renders outside App's
+    // shell, so without them it had no landmark and no heading at all — the
+    // same gap the sr-only <h1> already closes in StashViewer, Settings and
+    // the editor. `.login-screen` is class-styled, so the tag swap is
+    // invisible.
+    <main className="login-screen">
+      <h1 className="sr-only">Sign in to ClawStash</h1>
       <form className="login-card" onSubmit={handleSubmit}>
         <div className="login-logo">
           <span className="logo-icon">CS</span>
@@ -141,6 +147,6 @@ export default function LoginScreen({ onLogin }: Props) {
           {loading ? 'Signing in...' : 'Sign in'}
         </button>
       </form>
-    </div>
+    </main>
   );
 }

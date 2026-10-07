@@ -400,9 +400,14 @@ export default function Sidebar({
           className="sidebar-logo"
           onClick={onGoHome}
           title="Go to dashboard"
-          aria-label="Go to dashboard"
+          // The name starts with the visible "ClawStash" so voice control
+          // ("click ClawStash") reaches it (WCAG 2.5.3 Label in Name); the
+          // "CS" monogram is decoration.
+          aria-label="ClawStash, go to dashboard"
         >
-          <span className="logo-icon">CS</span>
+          <span className="logo-icon" aria-hidden="true">
+            CS
+          </span>
           <span className="logo-text">ClawStash</span>
         </button>
         <button

@@ -1268,7 +1268,9 @@ export default function App() {
                 handleGoHome();
               }
             }}
-            aria-label="Go to dashboard"
+            // Starts with the visible text, as the sidebar logo does (WCAG
+            // 2.5.3 Label in Name).
+            aria-label="ClawStash, go to dashboard"
           >
             ClawStash
           </span>
