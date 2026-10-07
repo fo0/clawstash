@@ -104,7 +104,13 @@ export default function TokensTab({
       await loadTokens();
     } catch (err) {
       if (mountedRef.current) {
-        setTokensError('Failed to create token');
+        // Keep the server's reason (e.g. a label over 200 characters, a
+        // missing admin session) — a bare "failed" leaves nothing to fix.
+        setTokensError(
+          err instanceof Error && err.message
+            ? `Failed to create token: ${err.message}`
+            : 'Failed to create token',
+        );
         console.error('Failed to create token:', err);
       }
     } finally {
@@ -135,7 +141,11 @@ export default function TokensTab({
         await loadTokens();
       } catch (err) {
         if (mountedRef.current) {
-          setTokensError('Failed to delete token');
+          setTokensError(
+            err instanceof Error && err.message
+              ? `Failed to delete token: ${err.message}`
+              : 'Failed to delete token',
+          );
           console.error('Failed to delete token:', err);
         }
       }
