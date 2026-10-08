@@ -52,6 +52,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/), and this
 
 ### Changed
 
+- Footer → Build Info: the commit SHA links to that commit on GitHub. It was dead text, so finding out what a build contains meant copying the SHA into a search. The link opens in a new tab, only a real SHA is linked (a build without git info stays plain text), and it points under the GitHub URL `/api/version` reports, never anywhere else
+
 - Settings → API & Tokens: the token label field stops at 200 characters, the length the server accepts. It took any length before, so a longer label was only discovered once Create Token came back refused — the way the stash name and filename fields already mirror their own limits
 
 - Stash viewer: each file's Copy button says which file it copies. Every file row carries a button that reads just "Copy", so a screen reader listed a column of identical "Copy" buttons — next to Download, Maximize and Collapse buttons that already name their file — and the status that followed a click said only "File copied to clipboard". The button's accessible name is now "Copy" followed by the filename (the visible text stays first, so voice control still reaches it by saying "Copy"), and the announcement names the file that was copied, or the one that failed to copy

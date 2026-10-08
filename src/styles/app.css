@@ -5795,6 +5795,18 @@ textarea.code-editor-plain.code-editor-wrap {
   white-space: nowrap;
 }
 
+/* The build's commit SHA, linked to GitHub: reads as the detail it was, the
+   underline says it can be followed. */
+.footer-commit-link {
+  color: inherit;
+  text-decoration: underline dotted;
+  text-underline-offset: 2px;
+}
+
+.footer-commit-link:hover {
+  color: var(--text-primary);
+}
+
 .footer-right {
   display: flex;
   align-items: center;

@@ -6,6 +6,19 @@ interface BuildInfo {
   buildDate: string;
   commitHash: string;
   branch: string;
+  /** GitHub page of the running commit; null when the SHA is not one. */
+  commitUrl: string | null;
+}
+
+/**
+ * Link to the running commit on GitHub, or null. Only a hex SHA is linked —
+ * a dev build without git reports an empty or placeholder hash — and only
+ * under the server's own GitHub URL.
+ */
+function buildCommitUrl(githubUrl: string | undefined, sha: string): string | null {
+  if (!githubUrl || !/^https:\/\/github\.com\//.test(githubUrl)) return null;
+  if (!/^[0-9a-f]{7,40}$/i.test(sha)) return null;
+  return `${githubUrl.replace(/\/+$/, '')}/commit/${sha}`;
 }
 
 /**
@@ -87,10 +100,12 @@ export default function Footer({ onShowShortcuts, authToken }: FooterProps) {
           }
           return;
         }
+        const commitHash = data.current.commit_sha || '';
         setBuildInfo({
           buildDate,
-          commitHash: data.current.commit_sha || '',
+          commitHash,
           branch: data.current.branch || '',
+          commitUrl: buildCommitUrl(data.github_url, commitHash),
         });
       })
       .catch((err) => {
@@ -236,7 +251,7 @@ export default function Footer({ onShowShortcuts, authToken }: FooterProps) {
                     <line x1="3" x2="9" y1="12" y2="12" />
                     <line x1="15" x2="21" y1="12" y2="12" />
                   </svg>
-                  {buildInfo.commitHash}
+                  <CommitHash hash={buildInfo.commitHash} url={buildInfo.commitUrl} />
                 </span>
               )}
               {formattedDate && formattedTime && (
@@ -313,7 +328,9 @@ export default function Footer({ onShowShortcuts, authToken }: FooterProps) {
           {buildInfo.commitHash && (
             <div className="footer-mobile-row">
               <span className="footer-mobile-label">Commit:</span>
-              <span>{buildInfo.commitHash}</span>
+              <span>
+                <CommitHash hash={buildInfo.commitHash} url={buildInfo.commitUrl} />
+              </span>
             </div>
           )}
           {formattedDate && formattedTime && (
@@ -327,5 +344,25 @@ export default function Footer({ onShowShortcuts, authToken }: FooterProps) {
         </div>
       )}
     </footer>
+  );
+}
+
+/**
+ * The build's commit SHA, linked to that commit on GitHub when it can be, so
+ * "which build is this?" ends on the commit and its message instead of a
+ * SHA to copy into a search box.
+ */
+function CommitHash({ hash, url }: { hash: string; url: string | null }) {
+  if (!url) return <>{hash}</>;
+  return (
+    <a
+      className="footer-commit-link"
+      href={url}
+      target="_blank"
+      rel="noopener noreferrer"
+      title="Open this commit on GitHub"
+    >
+      {hash}
+    </a>
   );
 }
