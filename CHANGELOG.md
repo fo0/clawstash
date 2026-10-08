@@ -52,6 +52,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/), and this
 
 ### Changed
 
+- Footer → Build Info: the commit SHA links to that commit on GitHub. It was dead text, so finding out what a build contains meant copying the SHA into a search. The link opens in a new tab, only a real SHA is linked (a build without git info stays plain text), and it points under the GitHub URL `/api/version` reports, never anywhere else
+
+- Settings → API & Tokens: the token label field stops at 200 characters, the length the server accepts. It took any length before, so a longer label was only discovered once Create Token came back refused — the way the stash name and filename fields already mirror their own limits
+
+- Stash viewer: each file's Copy button says which file it copies. Every file row carries a button that reads just "Copy", so a screen reader listed a column of identical "Copy" buttons — next to Download, Maximize and Collapse buttons that already name their file — and the status that followed a click said only "File copied to clipboard". The button's accessible name is now "Copy" followed by the filename (the visible text stays first, so voice control still reaches it by saying "Copy"), and the announcement names the file that was copied, or the one that failed to copy
+
 - Settings → Storage → Import Data: the app's own stash list and tag list are reloaded once an import has replaced the data. The section refreshed its own statistics and tag cloud, but the lists the sidebar and the dashboard show are held at app level and only refetched on a search or filter change — so after an import the sidebar kept listing the replaced stashes, none of which could be opened any more, and the tag filter offered tags that no longer existed, until a full page reload. The reload also runs when the section was left while the import was still in progress
 
 - Stash editor: a save that fails is seen where it happened. The error banner sits above the form, while a save is often started far below it — Ctrl/Cmd+S works from anywhere in the editor, typically from inside the file being edited. A refused save (a file without a filename, a duplicate filename, an oversized file) or a server-side failure then changed nothing on screen and read as a keypress that did nothing. Every failed attempt now scrolls the banner into view, a repeat of the same message included; focus stays in the field being edited, and the banner's alert still announces the message
