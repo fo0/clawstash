@@ -23,6 +23,12 @@ import {
 import { useCopyToast, useExpandableSpecs } from './useCopyToast';
 import { DELETE_CONFIRM_TIMEOUT_MS } from '../../utils/constants';
 
+/**
+ * Mirror of the server's token label cap (`CreateTokenSchema.label`,
+ * `z.string().max(200)` in server/validation.ts).
+ */
+const MAX_TOKEN_LABEL_LENGTH = 200;
+
 interface Props {
   baseUrl: string;
   openApiJson: string;
@@ -257,6 +263,10 @@ export default function TokensTab({
               }}
               placeholder="e.g. Monitoring, Claude Desktop, etc."
               className="form-input"
+              // Mirrors the 200-character cap on `label` in
+              // server/validation.ts (CreateTokenSchema). Without it an
+              // over-long label was only discovered as a rejected create.
+              maxLength={MAX_TOKEN_LABEL_LENGTH}
             />
           </div>
           <div className="form-group">
