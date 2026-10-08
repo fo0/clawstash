@@ -531,6 +531,8 @@ export default function StashViewer({
   const linkClipboard = useClipboard();
   const fileClipboard = useClipboardWithKey();
   const apiClipboard = useClipboardWithKey();
+  /** Filename behind a per-file copy key, for the copy announcement. */
+  const fileLabel = (fileId: string) => stash.files.find((f) => f.id === fileId)?.filename;
   // Copy buttons on fenced code blocks inside the (Markdown) description.
   // File Markdown carries its own handler inside `MarkdownBody`.
   const descriptionCodeCopy = useCodeBlockCopy();
@@ -976,8 +978,16 @@ export default function StashViewer({
         {titleClipboard.status === 'failed' && 'Copy failed'}
         {linkClipboard.status === 'copied' && 'Stash link copied to clipboard'}
         {linkClipboard.status === 'failed' && 'Copy failed'}
-        {fileClipboard.copiedKey && 'File copied to clipboard'}
-        {fileClipboard.failedKey && 'Copy failed'}
+        {/* Name the file: with several rows of identical "Copy" buttons, a
+            bare "File copied" does not say which one landed. */}
+        {fileClipboard.copiedKey &&
+          (fileLabel(fileClipboard.copiedKey)
+            ? `${fileLabel(fileClipboard.copiedKey)} copied to clipboard`
+            : 'File copied to clipboard')}
+        {fileClipboard.failedKey &&
+          (fileLabel(fileClipboard.failedKey)
+            ? `Copying ${fileLabel(fileClipboard.failedKey)} failed`
+            : 'Copy failed')}
         {apiClipboard.copiedKey && 'API endpoint copied to clipboard'}
         {apiClipboard.failedKey && 'Copy failed'}
         {descriptionCodeCopy.announcement}
@@ -1569,6 +1579,12 @@ export default function StashViewer({
                         copied={fileClipboard.isCopied(file.id)}
                         failed={fileClipboard.isFailed(file.id)}
                       />
+                      {/* Every row's button reads just "Copy", so the name
+                          alone did not say which file it copies (its
+                          Download neighbour names the file). A hidden suffix
+                          rather than an aria-label keeps the visible text at
+                          the start of the name in every state (WCAG 2.5.3). */}{' '}
+                      <span className="sr-only">{file.filename || 'untitled file'}</span>
                     </button>
                     <button
                       className="btn btn-sm btn-ghost"
