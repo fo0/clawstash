@@ -7,11 +7,11 @@ on:
   workflow_dispatch:
     inputs:
       branches:
-        description: "Branches to delete, separated by spaces or newlines. Empty: every merged branch that passes the rules."
+        description: 'Branches to delete, separated by spaces or newlines. Empty: every merged branch that passes the rules.'
         required: false
-        default: ""
+        default: ''
       dry_run:
-        description: "Report only, delete nothing"
+        description: 'Report only, delete nothing'
         type: boolean
         default: true
 
@@ -33,8 +33,8 @@ jobs:
       DRY_RUN: ${{ inputs.dry_run }}
       BRANCHES: ${{ inputs.branches }}
       # The rules live here, not in the inputs: a caller can narrow the list, never loosen them.
-      MIN_AGE_DAYS: "7"
-      NEVER_DELETE: "main master develop release/* hotfix/* gh-pages"
+      MIN_AGE_DAYS: '7'
+      NEVER_DELETE: 'main master develop release/* hotfix/* gh-pages'
     steps:
       - name: Delete merged branches
         shell: bash
