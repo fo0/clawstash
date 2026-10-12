@@ -101,6 +101,27 @@ export class ApiTimeoutError extends Error {
 }
 
 /**
+ * Thrown when the server answered with a non-2xx status, so callers can act on
+ * the status instead of parsing the message — a 404 means the item is gone and
+ * retrying cannot help. The message is unchanged (the server's `error` body, or
+ * {@link httpErrorMessage}), so existing toasts and banners read the same.
+ */
+export class ApiHttpError extends Error {
+  readonly status: number;
+
+  constructor(message: string, status: number) {
+    super(message);
+    this.name = 'ApiHttpError';
+    this.status = status;
+  }
+}
+
+/** True when `err` is the server saying the requested item does not exist (HTTP 404). */
+export function isNotFoundError(err: unknown): boolean {
+  return err instanceof ApiHttpError && err.status === 404;
+}
+
+/**
  * `fetch` with a deadline. `AbortSignal.timeout` rejects the request with a
  * `TimeoutError` DOMException, which is translated into `ApiTimeoutError`;
  * every other rejection (offline, DNS, a caller-supplied abort) passes
@@ -180,7 +201,7 @@ async function request(url: string, init?: RequestInit, timeoutMs?: number): Pro
   const res = await fetchWithTimeout(url, init, timeoutMs);
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
-    throw new Error(body.error || httpErrorMessage(res.status));
+    throw new ApiHttpError(body.error || httpErrorMessage(res.status), res.status);
   }
   if (res.status === 204) return undefined;
   return res.json();

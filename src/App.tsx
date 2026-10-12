@@ -9,7 +9,7 @@ import type {
   AdminSessionInfo,
   TagInfo,
 } from './types';
-import { api, setAuthToken } from './api';
+import { api, isNotFoundError, setAuthToken } from './api';
 import { loadFavoriteIds, saveFavoriteIds, toggleFavorite } from './utils/favorites';
 import { loadSortMode, saveSortMode } from './utils/sort';
 import { loadShowArchived, saveShowArchived } from './utils/archived';
@@ -860,6 +860,18 @@ export default function App() {
       // Stale rejection: a newer selection is already in flight / resolved.
       if (gen !== selectGenRef.current) return;
       console.error('Failed to load stash:', err);
+      if (isNotFoundError(err)) {
+        // Deleted elsewhere (an agent over REST / MCP, another tab): retrying
+        // cannot help. Treat it like a delete seen here — drop it from
+        // "Recently viewed" and the pins, and reload the list it was clicked in.
+        forgetRecentView(id);
+        removeFavoriteId(id);
+        void loadStashes();
+        showError(
+          'This stash no longer exists — it may have been deleted elsewhere. The list was refreshed.',
+        );
+        return;
+      }
       showError('Failed to load stash. Please try again.');
     }
   };
