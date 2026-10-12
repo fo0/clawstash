@@ -183,6 +183,7 @@ clawstash/
 │   │   ├── useScrollMemory.ts  # Per-view scroll offset of the shared <main> (dashboard keeps its place, keyed on the list)
 │   │   └── __tests__/          # Hook unit tests (vitest + @testing-library/react)
 │   ├── utils/
+│   │   ├── access-log-csv.ts  # CSV export (formula-guarded cells) of the Access Log entries on screen
 │   │   ├── access-log-filter.ts  # Client-side source filtering (api / mcp / ui chips) for the Access Log tab
 │   │   ├── archived.ts         # localStorage persistence for the "show archived" dashboard toggle
 │   │   ├── clipboard.ts        # Copy-to-clipboard with fallback for non-HTTPS
@@ -211,6 +212,7 @@ clawstash/
 │   │   ├── sort.ts             # Dashboard sort-order state + pure sort helper
 │   │   ├── stash-url.ts        # Build a shareable deep-link URL for a stash
 │   │   ├── svg-sanitize.ts     # Defense-in-depth sanitizer for rendered Mermaid SVG before innerHTML
+│   │   ├── user-agent.ts       # Short client label (browser + major version, or first product token) for Access Log rows
 │   │   └── __tests__/          # Util unit tests (vitest)
 │   ├── components/
 │   │   ├── ErrorBoundary.tsx   # Top-level crash guard around the SPA: retry / reload / back-to-dashboard fallback
