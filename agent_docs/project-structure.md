@@ -212,6 +212,7 @@ clawstash/
 │   │   ├── sort.ts             # Dashboard sort-order state + pure sort helper
 │   │   ├── stash-url.ts        # Build a shareable deep-link URL for a stash
 │   │   ├── svg-sanitize.ts     # Defense-in-depth sanitizer for rendered Mermaid SVG before innerHTML
+│   │   ├── user-agent.ts       # Short client label (browser + major version, or first product token) for Access Log rows
 │   │   └── __tests__/          # Util unit tests (vitest)
 │   ├── components/
 │   │   ├── ErrorBoundary.tsx   # Top-level crash guard around the SPA: retry / reload / back-to-dashboard fallback

@@ -41,6 +41,7 @@ import { containsAppModal } from '../utils/nested-modal';
 import { buildStashUrl } from '../utils/stash-url';
 import { buildAllFilesText, bundleFilename } from '../utils/stash-bundle';
 import { accessLogCsvFilename, buildAccessLogCsv } from '../utils/access-log-csv';
+import { userAgentLabel } from '../utils/user-agent';
 import MermaidDiagram from './MermaidDiagram';
 import MarkdownBody from './MarkdownBody';
 import Spinner from './shared/Spinner';
@@ -461,6 +462,24 @@ function ApiOpenLink({ path, label }: { path: string; label: string }) {
         <path d="M9.75 2a.75.75 0 0 0 0 1.5h1.69L6.22 8.72a.75.75 0 1 0 1.06 1.06l5.22-5.22v1.69a.75.75 0 0 0 1.5 0v-3.5a.75.75 0 0 0-.75-.75Z" />
       </svg>
     </a>
+  );
+}
+
+/**
+ * Who made an access, as far as the server recorded it: REST and UI hits carry
+ * the caller's IP and `User-Agent`, MCP hits carry neither (renders nothing).
+ * The row shows a short client label — the IP when there is no user agent —
+ * and the tooltip both raw values, so "which agent read this?" has an answer
+ * beyond the API / MCP / UI badge.
+ */
+function AccessLogClient({ ip, userAgent }: { ip?: string | null; userAgent?: string | null }) {
+  const label = userAgentLabel(userAgent) ?? ip;
+  if (!label) return null;
+  const details = [ip && `IP: ${ip}`, userAgent && `User agent: ${userAgent}`].filter(Boolean);
+  return (
+    <span className="access-log-client" title={details.join('\n')}>
+      {label}
+    </span>
   );
 }
 
@@ -2019,6 +2038,7 @@ export default function StashViewer({
                   <div key={entry.id} className="access-log-entry">
                     <SourceBadge source={entry.source} />
                     <span className="access-log-action">{entry.action}</span>
+                    <AccessLogClient ip={entry.ip} userAgent={entry.user_agent} />
                     <RelativeTime dateStr={entry.timestamp} className="access-log-time" />
                   </div>
                 ))}
