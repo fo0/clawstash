@@ -56,7 +56,13 @@ function button(name: string): HTMLButtonElement {
   return screen.getByRole('button', { name }) as HTMLButtonElement;
 }
 
-describe('StashEditor file-count limit', () => {
+// Every case renders 99 or 100 file rows in one `render()`. That is green in
+// isolation but ran past vitest's default 5 s `testTimeout` under full-suite
+// worker contention (6.8 s / 6.1 s, BACKLOG #157), so the suite gets the same
+// 15 s per-case budget `VersionHistory.listfooter.test.tsx` uses.
+const HEAVY_RENDER_TIMEOUT_MS = 15_000;
+
+describe('StashEditor file-count limit', { timeout: HEAVY_RENDER_TIMEOUT_MS }, () => {
   it('leaves both ways of adding a file open below the cap', () => {
     const { container } = render(
       <StashEditor stash={stashWith(MAX_FILES - 1)} onSave={vi.fn()} onCancel={vi.fn()} />,
