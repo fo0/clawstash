@@ -20,9 +20,9 @@ This starts the Next.js development server on port 3000 with both the frontend a
 
 1. Fork the repository and create a feature branch from `main`
 2. Make your changes
-3. Run the automated checks before pushing — **no workflow runs them on your PR**, so this chain is
-   the real gate (`docker-publish.yml` runs the same steps but is `workflow_dispatch`-only; only
-   `docs-format.yml` and CodeQL are triggered automatically):
+3. Run the automated checks before pushing — `ci.yml` runs the same chain on every PR (via the
+   reusable `quality.yml`, which also gates `docker-publish.yml`), so a red step locally is the
+   same red step on your PR:
    - `npm run format:check` — Prettier formatting
    - `npx tsc --noEmit` — TypeScript type check
    - `npm run lint` — ESLint (correctness rules only)

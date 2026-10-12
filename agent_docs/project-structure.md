@@ -68,8 +68,11 @@ clawstash/
 │   ├── ISSUE_TEMPLATE/         # Bug report + feature request templates
 │   ├── pull_request_template.md
 │   └── workflows/
-│       ├── docker-publish.yml  # CI (manual dispatch): format:check, tsc, lint, tests, build, push to GHCR
-│       └── docs-format.yml     # Prettier-Markdown check on `**.md` (PRs + pushes to main)
+│       ├── quality.yml         # Reusable (workflow_call) chain: format:check, tsc, lint, tests, build
+│       ├── ci.yml              # CI on PRs + pushes to main: calls quality.yml
+│       ├── docker-publish.yml  # Manual dispatch: calls quality.yml, then pushes the image to GHCR
+│       ├── docs-format.yml     # Prettier-Markdown check on `**.md` (PRs + pushes to main)
+│       └── branch-cleanup.yml  # Manual dispatch: deletes merged branches (repo-housekeeping)
 ├── scripts/
 │   └── generate-build-info.js  # Prebuild script: generates build metadata (git branch, commit, date)
 ├── public/                     # Next.js static assets

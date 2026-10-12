@@ -1,15 +1,13 @@
 name: Docs Format
 
-# The only automatic Markdown gate in this repository.
+# The Markdown gate for docs-only changes.
 #
-# `npm run format:check` is `prettier --check .`, which covers Markdown — but
-# `docker-publish.yml` is `workflow_dispatch`-only and the two GitHub-managed
-# workflows (CodeQL, Dependabot) do not run Prettier. Nothing verifies Markdown
-# formatting unless a human remembers to, so a docs-only PR could merge a red
-# `format:check` onto main and stay red indefinitely.
+# `npm run format:check` is `prettier --check .`, which covers Markdown, and
+# `ci.yml` runs it on every PR and push to main (via `quality.yml`). This
+# workflow stays as the fast, path-filtered Markdown check: it reports on a
+# docs-only PR within seconds, without `npm ci` or a build.
 #
-# Deliberately narrow: Markdown only, no `npm ci`, no build. It does not change
-# `docker-publish.yml`, which stays dispatch-only.
+# Deliberately narrow: Markdown only, no `npm ci`, no build.
 
 on:
   pull_request:
@@ -22,9 +20,12 @@ on:
     paths:
       - '**.md'
 
+# Cancel only a superseded PR run. A push to main gets a group of its own (its
+# sha), like in ci.yml: a shared group keeps one pending run at most, so a third
+# push would cancel the queued second.
 concurrency:
-  group: docs-format-${{ github.event.pull_request.number || github.ref }}
-  cancel-in-progress: true
+  group: docs-format-${{ github.event.pull_request.number || github.sha }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 # Least privilege: this job only checks out the repository and runs Prettier.
 permissions:

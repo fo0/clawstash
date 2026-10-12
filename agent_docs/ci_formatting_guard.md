@@ -7,8 +7,9 @@ the guard does not rediscover them. The CLAUDE.md pointer under _Git Conventions
 
 Hand-edited files -- long Markdown tables especially (`BACKLOG.md`, the env-var table in `agent_docs/env-vars.md`) -- drift from
 Prettier's normalization and get committed unformatted. Two workflows then catch it, both only after the push:
-`docker-publish.yml` runs `npm run format:check` over the whole repo, and `docs-format.yml` runs a pinned Prettier over
-`**/*.md` on every push and PR touching Markdown. Running `npm run format` by hand before each commit is the current
+`ci.yml` runs `npm run format:check` over the whole repo on every PR and push to `main` (via the reusable `quality.yml`,
+which `docker-publish.yml` calls too), and `docs-format.yml` runs a pinned Prettier over `**/*.md` on every push and PR
+touching Markdown. Running `npm run format` by hand before each commit is the current
 guard, and it depends on memory.
 
 ## Contract the guard has to satisfy
