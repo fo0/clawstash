@@ -1,0 +1,44 @@
+name: CI
+
+# The code gate for pull requests and main. `docker-publish.yml` runs the same
+# chain, but only on a manual dispatch, so before this workflow a PR merged
+# without any automatic format/typecheck/lint/test/build run. Order follows
+# CLAUDE.md -> Commands: typecheck before lint, test before build.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+# A PR run is superseded by the PR's next push, so it may be cancelled. A push
+# run on main is not: each push gets a group of its own (its sha), so a newer
+# push can neither cancel nor replace a pending one.
+concurrency:
+  group: ci-${{ github.event.pull_request.number || github.sha }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+# Least privilege: verification only needs to read the checkout.
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    # The same chain in `docker-publish.yml`'s check-code job takes ~2 minutes.
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          # `npm ci` runs dependency lifecycle scripts: keep the job token out
+          # of the git config.
+          persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        with:
+          node-version: '26'
+          cache: 'npm'
+      - run: npm ci
+      - run: npm run format:check
+      - run: npx tsc --noEmit
+      - run: npm run lint
+      - run: npm test
+      - run: npm run build
