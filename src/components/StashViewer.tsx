@@ -1902,11 +1902,6 @@ export default function StashViewer({
               >
                 Shows recent access from all channels
               </span>
-              {/* The log is fetched once when the tab is opened and never again,
-                  so new agent/API hits only appeared after navigating away and
-                  back. This is the missing manual refresh — the error state has
-                  had its own Retry since it shipped, but the success path had
-                  no way to re-read at all. */}
               {/* Exports exactly the rows on screen — the loaded page after
                   the source chips — so the file never claims more history
                   than the tab showed. */}
@@ -1925,6 +1920,11 @@ export default function StashViewer({
               >
                 Export CSV
               </button>
+              {/* The log is fetched once when the tab is opened and never again,
+                  so new agent/API hits only appeared after navigating away and
+                  back. This is the missing manual refresh — the error state has
+                  had its own Retry since it shipped, but the success path had
+                  no way to re-read at all. */}
               <button
                 className="btn btn-sm btn-ghost access-log-refresh"
                 onClick={() => setLogReloadKey((k) => k + 1)}
