@@ -160,11 +160,11 @@ npm start              # serve the production build
 npm run mcp            # MCP server (stdio transport, for local MCP client testing)
 ```
 
-`docker-publish.yml` runs that same chain (`format:check` → `tsc --noEmit` → `lint` → `test` → `build`, in
-that order) before it builds the image — but it is `workflow_dispatch`-only, so it does **not** run
-on a push or a pull request. The only checks that run automatically on a PR are `docs-format.yml`
-(Prettier on `**.md`) and GitHub's CodeQL analysis. The local chain above is therefore the real gate
-for correctness: run it before every push.
+CI runs that same chain (`format:check` → `tsc --noEmit` → `lint` → `test` → `build`, in that order)
+from one reusable workflow, `quality.yml`: `ci.yml` calls it on every pull request and push to `main`,
+and `docker-publish.yml` (manual `workflow_dispatch`) calls it before it builds the image. Alongside
+it, `docs-format.yml` (Prettier on `**.md`) and GitHub's CodeQL analysis run on PRs. Run the local
+chain before every push, so a red step locally is caught before it is a red check.
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for code-style rules and the PR workflow.
 

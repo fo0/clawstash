@@ -213,10 +213,10 @@ docker build \
 
 The repository includes `.github/workflows/docker-publish.yml` which, when triggered:
 
-1. **Check code** — Prettier `format:check`, TypeScript type-check, ESLint, the vitest suite, Next.js build (all mandatory; the job fails on the first red step)
+1. **Check code** — the reusable `quality.yml` chain that `ci.yml` also runs on every pull request and push to `main`: Prettier `format:check`, TypeScript type-check, ESLint, the vitest suite, Next.js build (all mandatory; the job fails on the first red step)
 2. **Build & push** — Multi-stage Docker image pushed to GitHub Container Registry (GHCR)
 
-Triggered manually via `workflow_dispatch` (GitHub → **Actions** tab); there is no automatic push trigger.
+Triggered manually via `workflow_dispatch` (GitHub → **Actions** tab); there is no automatic push trigger. Two dispatches never push in parallel: the second waits for the first (concurrency group `docker-publish`).
 
 ## Architecture Notes
 

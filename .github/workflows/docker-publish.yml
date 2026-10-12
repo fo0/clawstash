@@ -10,55 +10,22 @@ on:
 permissions:
   contents: read
 
+# Two dispatches must not push the image in parallel: the second one waits for
+# the first instead of racing it for the `latest` tag (GitHub keeps at most one
+# pending run per group). Never cancel a run in progress -- a half-pushed image
+# is worse than a late one.
+concurrency:
+  group: docker-publish
+  cancel-in-progress: false
+
 env:
   REGISTRY: ghcr.io
   IMAGE_NAME: ${{ github.repository }}
 
 jobs:
-  # 1. Code Quality Check
+  # 1. Code Quality Check -- the same reusable chain `ci.yml` runs on PRs.
   check-code:
-    runs-on: ubuntu-latest
-    # GitHub's default job timeout is 6 hours. A hung install/build (network
-    # stall, a test waiting on stdin) would sit there burning runner minutes
-    # and holding the dispatch open. `docs-format.yml` already caps itself;
-    # these two jobs were the drift.
-    timeout-minutes: 20
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
-
-      - name: Setup Node.js
-        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
-        with:
-          node-version: '26'
-          cache: 'npm'
-
-      - name: Install Dependencies
-        run: npm ci
-
-      - name: Run Format Check
-        run: npm run format:check
-
-      - name: Run Type Check
-        run: npx tsc --noEmit
-
-      # `npm run` prints script names UNQUOTED, so the previous
-      # `grep -q '"lint"'` / `grep -q '"test"'` guards never matched and both
-      # steps silently no-op'd — the image was published without ever running
-      # the test suite. Probe package.json directly instead.
-      - name: Run Linter
-        run: |
-          if node -e "process.exit(require('./package.json').scripts?.lint ? 0 : 1)"; then
-            npm run lint
-          else
-            echo "No lint script defined - skipping."
-          fi
-
-      - name: Run Tests
-        run: npm run test:run
-
-      - name: Build Frontend
-        run: npm run build
+    uses: ./.github/workflows/quality.yml
 
   # 2. Build and Push Docker Image
   build-and-push:

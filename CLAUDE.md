@@ -88,7 +88,7 @@ Full tree: `agent_docs/project-structure.md`.
 
 ## Commands
 
-**CI's order (`docker-publish.yml`) deviates twice and wins here:** typecheck **before** lint, test **before** build -- so a red step locally is the same red step in CI.
+**CI's order (`quality.yml`) deviates twice and wins here:** typecheck **before** lint, test **before** build -- so a red step locally is the same red step in CI.
 
 ```bash
 npm install                # install

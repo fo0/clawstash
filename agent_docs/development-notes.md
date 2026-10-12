@@ -31,20 +31,22 @@ TypeScript 6 (strict, ESM) · Next.js 16 App Router + React 19 · Node >= 22 in 
 
 ## CI/CD
 
-- Pipeline (`check-code` job, Node 26): `npm ci` -> `format:check` -> `tsc --noEmit` -> lint (skipped only without a `lint` script) -> `test:run` -> build; then `build-and-push` pushes the image to GHCR.
-- Workflow: `.github/workflows/docker-publish.yml`, triggered by manual `workflow_dispatch`.
+- Chain (reusable `.github/workflows/quality.yml`, `workflow_call`, Node 26): `npm ci` -> `format:check` -> `tsc --noEmit` -> `lint` -> `test` -> build. One definition, two callers:
+  - `.github/workflows/ci.yml` (job `verify`) on every pull request and push to `main`.
+  - `.github/workflows/docker-publish.yml` (job `check-code`, manual `workflow_dispatch`); `build-and-push` needs it, then pushes the image to GHCR. Concurrency group `docker-publish`, never cancelled.
 - Deployment detail: `docs/deployment.md`.
 
 ### Which workflows actually run (canonical -- CLAUDE.md -> _Workflow Triggers_ -> `ci` points here)
 
+- **`ci.yml`** runs the full chain (via `quality.yml`) on every pull request and push to `main` -- its check reads `verify / Format, typecheck, lint, test and build`. A superseded PR run is cancelled; push runs on `main` are not.
 - **`docker-publish.yml` is `workflow_dispatch`-only**, so a pushed branch legitimately has zero runs of it. `/ci` reporting "no runs" for it is configuration, not breakage.
-- **`docs-format.yml`** is the one workflow that runs automatically: PRs and pushes to `main` touching `**.md`, Prettier-Markdown only (no `npm ci`, no build). Without it nothing would verify Markdown, even though `format:check` is `prettier --check .` and includes it. `.prettierignore` still applies, so the `.claude/` exclusion holds.
+- **`docs-format.yml`** runs on PRs and pushes to `main` touching `**.md`, Prettier-Markdown only (no `npm ci`, no build) -- the fast docs-only signal; `ci.yml`'s `format:check` covers Markdown as well. `.prettierignore` still applies, so the `.claude/` exclusion holds.
 - **Two GitHub-managed workflows run without a file in the repo:** CodeQL (default setup -- `Analyze (actions)` / `Analyze (javascript-typescript)`, runs on every PR and gates merge) and Dependabot Updates.
-- The local Automated Checks in CLAUDE.md -> _Commands_ remain the real gate for correctness.
+- The local Automated Checks in CLAUDE.md -> _Commands_ mirror `quality.yml` step for step: a red step locally is the same red step in CI.
 
 ### Toolchain quirk: `localStorage` in jsdom tests depends on the Node version
 
-`docker-publish.yml` pins `node-version: '26'`, while `engines` says `>=20.9` and most machines run 22. That gap is not cosmetic for the test suite:
+`quality.yml` pins `node-version: '26'`, while `engines` says `>=20.9` and most machines run 22. That gap is not cosmetic for the test suite:
 
 - Node 24+ defines `localStorage` / `sessionStorage` on `globalThis` itself. Without `--localstorage-file` the accessor yields `undefined` or throws.
 - Vitest's jsdom environment only copies the window keys the Node global does not already carry, and its `window` **is** `globalThis` -- so jsdom's own Storage is unreachable and a bare `localStorage.setItem(...)` in a component test fails with `Cannot read properties of undefined`.
