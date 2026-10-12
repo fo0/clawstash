@@ -183,6 +183,7 @@ clawstash/
 │   │   ├── useScrollMemory.ts  # Per-view scroll offset of the shared <main> (dashboard keeps its place, keyed on the list)
 │   │   └── __tests__/          # Hook unit tests (vitest + @testing-library/react)
 │   ├── utils/
+│   │   ├── access-log-csv.ts  # CSV export (formula-guarded cells) of the Access Log entries on screen
 │   │   ├── access-log-filter.ts  # Client-side source filtering (api / mcp / ui chips) for the Access Log tab
 │   │   ├── archived.ts         # localStorage persistence for the "show archived" dashboard toggle
 │   │   ├── clipboard.ts        # Copy-to-clipboard with fallback for non-HTTPS

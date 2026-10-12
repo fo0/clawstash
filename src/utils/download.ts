@@ -9,15 +9,20 @@
 // version, which has no raw endpoint of its own).
 
 /**
- * Trigger a browser download of `content` under `filename`.
+ * Trigger a browser download of `content` under `filename`, typed as
+ * `mimeType` (plain UTF-8 text unless the caller says otherwise).
  *
  * The anchor is appended to the document because Firefox ignores a click on a
  * detached one, and the object URL is revoked on a delay so the download has
  * started before the blob goes away. No-op outside a browser (SSR).
  */
-export function downloadTextFile(filename: string, content: string): void {
+export function downloadTextFile(
+  filename: string,
+  content: string,
+  mimeType = 'text/plain;charset=utf-8',
+): void {
   if (typeof document === 'undefined' || typeof URL.createObjectURL !== 'function') return;
-  const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
+  const blob = new Blob([content], { type: mimeType });
   const url = URL.createObjectURL(blob);
   const anchor = document.createElement('a');
   anchor.href = url;

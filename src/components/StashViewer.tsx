@@ -40,6 +40,7 @@ import { escapeHtml } from '../utils/html';
 import { containsAppModal } from '../utils/nested-modal';
 import { buildStashUrl } from '../utils/stash-url';
 import { buildAllFilesText, bundleFilename } from '../utils/stash-bundle';
+import { accessLogCsvFilename, buildAccessLogCsv } from '../utils/access-log-csv';
 import MermaidDiagram from './MermaidDiagram';
 import MarkdownBody from './MarkdownBody';
 import Spinner from './shared/Spinner';
@@ -1887,6 +1888,24 @@ export default function StashViewer({
                   back. This is the missing manual refresh — the error state has
                   had its own Retry since it shipped, but the success path had
                   no way to re-read at all. */}
+              {/* Exports exactly the rows on screen — the loaded page after
+                  the source chips — so the file never claims more history
+                  than the tab showed. */}
+              <button
+                type="button"
+                className="btn btn-sm btn-ghost"
+                onClick={() =>
+                  downloadTextFile(
+                    accessLogCsvFilename(stash.id),
+                    buildAccessLogCsv(visibleLog),
+                    'text/csv;charset=utf-8',
+                  )
+                }
+                disabled={visibleLog.length === 0}
+                title="Download the entries shown below as a CSV file"
+              >
+                Export CSV
+              </button>
               <button
                 className="btn btn-sm btn-ghost access-log-refresh"
                 onClick={() => setLogReloadKey((k) => k + 1)}
