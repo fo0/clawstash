@@ -23,6 +23,8 @@ const CACHE_TTL_MS = 60 * 60 * 1000; // 1 hour
 const GITHUB_FETCH_TIMEOUT_MS = 5000;
 /** Retry sooner than the full TTL when the previous fetch failed. */
 const FAILED_FETCH_RETRY_MS = 60 * 1000;
+/** Upper bound for each local `git` call that derives dev build info. */
+const GIT_TIMEOUT_MS = 5000;
 
 // ---------------------------------------------------------------------------
 // Build info (current version)
@@ -56,6 +58,12 @@ function git(...args: string[]): string {
     return execFileSync('git', args, {
       encoding: 'utf-8',
       stdio: ['pipe', 'pipe', 'pipe'],
+      // The call is synchronous and runs on a request path (first
+      // `/api/version` without build-info.json), so a stalled git (lock
+      // contention, slow network filesystem) would block the whole event
+      // loop. Give up after a bounded wait and return '', the same result as
+      // a missing git binary, which every caller already handles.
+      timeout: GIT_TIMEOUT_MS,
     }).trim();
   } catch {
     return '';
