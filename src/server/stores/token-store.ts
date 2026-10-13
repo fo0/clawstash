@@ -64,7 +64,13 @@ export class TokenStore {
   }
 
   listApiTokens(): ApiTokenListItem[] {
-    const rows = this.db.prepare('SELECT * FROM api_tokens ORDER BY created_at DESC').all() as {
+    // Explicit column list: the listing never returns `token_hash`, so it is
+    // not read out of the table either (no `SELECT *` on the credentials table).
+    const rows = this.db
+      .prepare(
+        'SELECT id, label, token_prefix, scopes, created_at FROM api_tokens ORDER BY created_at DESC',
+      )
+      .all() as {
       id: string;
       label: string;
       token_prefix: string;
