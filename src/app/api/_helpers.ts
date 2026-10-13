@@ -92,11 +92,20 @@ export function getBaseUrl(req: NextRequest): string {
 }
 
 /**
+ * A query/path value that is a plain decimal integer: digits only, no sign,
+ * no fraction, no exponent, no surrounding text. `Number.parseInt` alone stops
+ * at the first non-digit, so `'1.5'`, `'2abc'` and `'1e3'` came back as `1`,
+ * `2` and `1` — a non-integer value was silently truncated instead of being
+ * rejected as the parsers below document.
+ */
+const DECIMAL_INT_PATTERN = /^\d+$/;
+
+/**
  * Parse a positive integer from a query parameter string.
  * Returns undefined for null, empty, NaN, negative, zero, or non-integer values.
  */
 export function parsePositiveInt(value: string | null): number | undefined {
-  if (!value) return undefined;
+  if (!value || !DECIMAL_INT_PATTERN.test(value)) return undefined;
   const num = Number.parseInt(value, 10);
   return Number.isInteger(num) && num > 0 ? num : undefined;
 }
@@ -113,7 +122,7 @@ export function parsePositiveInt(value: string | null): number | undefined {
  * Returns undefined for null, empty, NaN, negative, or non-integer values.
  */
 export function parseNonNegativeInt(value: string | null): number | undefined {
-  if (value === null || value === '') return undefined;
+  if (value === null || !DECIMAL_INT_PATTERN.test(value)) return undefined;
   const num = Number.parseInt(value, 10);
   return Number.isInteger(num) && num >= 0 ? num : undefined;
 }

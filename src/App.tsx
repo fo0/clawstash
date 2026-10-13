@@ -38,14 +38,27 @@ import SearchOverlay from './components/SearchOverlay';
 import KeyboardShortcutsHelp from './components/KeyboardShortcutsHelp';
 import Footer from './components/Footer';
 
-function getStoredPreference<T extends string>(key: string, fallback: T): T {
+/**
+ * Read a persisted string preference, accepting only one of `allowed`.
+ *
+ * A stale, hand-edited or foreign value (`clawstash_layout = "table"`) used to
+ * be cast straight to the union type, so the dashboard rendered with an
+ * unknown layout class and neither layout toggle pressed. Mirrors
+ * `loadSortMode()` (utils/sort.ts), which already validates its value.
+ */
+function getStoredPreference<T extends string>(key: string, allowed: readonly T[], fallback: T): T {
   if (typeof window === 'undefined') return fallback;
   try {
-    return (localStorage.getItem(key) as T) || fallback;
+    const stored = localStorage.getItem(key);
+    return stored !== null && (allowed as readonly string[]).includes(stored)
+      ? (stored as T)
+      : fallback;
   } catch {
     return fallback;
   }
 }
+
+const LAYOUT_MODES: readonly LayoutMode[] = ['grid', 'list'];
 
 function getStoredAdminToken(): string {
   if (typeof window === 'undefined') return '';
@@ -158,7 +171,7 @@ export default function App() {
   const [total, setTotal] = useState(0);
   const [view, setView] = useState<ViewMode>('home');
   const [layout, setLayout] = useState<LayoutMode>(() =>
-    getStoredPreference('clawstash_layout', 'grid'),
+    getStoredPreference('clawstash_layout', LAYOUT_MODES, 'grid'),
   );
   const [sortMode, setSortMode] = useState<SortMode>(loadSortMode);
   const [selectedStash, setSelectedStash] = useState<Stash | null>(null);
