@@ -55,5 +55,12 @@ jobs:
 
       # Markdown only: the wider docs tree holds files Prettier has no parser
       # for (`.mmd` and friends), which would fail the run outright.
+      #
+      # The resolved version reaches the shell through `env`, never through an
+      # inline `${{ }}` in `run`: an inline expression is substituted into the
+      # script before the shell parses it, and on a PR `package.json` is the
+      # PR's content. As an env var the shell only ever treats it as data.
       - name: Check Markdown formatting
-        run: npx --yes prettier@${{ steps.prettier.outputs.version }} --check "**/*.md"
+        run: npx --yes "prettier@${PRETTIER_VERSION}" --check "**/*.md"
+        env:
+          PRETTIER_VERSION: ${{ steps.prettier.outputs.version }}
