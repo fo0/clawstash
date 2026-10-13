@@ -40,6 +40,10 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          # Nothing here talks to the git remote, and `npx --yes` runs a
+          # downloaded package: keep the job token out of the git config.
+          persist-credentials: false
 
       - name: Setup Node.js
         uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
@@ -49,9 +53,19 @@ jobs:
       # Read the pinned version out of package.json rather than hardcoding it,
       # so this job can never drift from the Prettier `npm run format` applies.
       # `.prettierignore` still applies, so the `.claude/` exclusion holds.
+      # The value is narrowed to a semver: on a PR `package.json` is the PR's
+      # content, and an unconstrained string would let it pick any package
+      # spec for `npx`. An empty match fails the job instead of running an
+      # unpinned Prettier.
       - name: Resolve pinned Prettier version
         id: prettier
-        run: echo "version=$(node -p "require('./package.json').devDependencies.prettier.replace(/^[^0-9]*/,'')")" >> "$GITHUB_OUTPUT"
+        run: |
+          version=$(node -p "(/[0-9][0-9A-Za-z.+-]*/.exec(require('./package.json').devDependencies.prettier)||[''])[0]")
+          if [ -z "${version}" ]; then
+            echo "::error::No semver Prettier version in package.json devDependencies"
+            exit 1
+          fi
+          echo "version=${version}" >> "$GITHUB_OUTPUT"
 
       # Markdown only: the wider docs tree holds files Prettier has no parser
       # for (`.mmd` and friends), which would fail the run outright.
