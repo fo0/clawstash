@@ -66,8 +66,16 @@ export default function FileCodeEditor({ file, index, updateFile, wrap = false }
         className={`code-editor code-editor-textarea code-editor-plain${
           wrap ? ' code-editor-wrap' : ''
         }`}
+        // Same text-entry switches react-simple-code-editor puts on its own
+        // textarea. Without them a phone keyboard auto-capitalised and
+        // auto-corrected code in exactly the files that fell back to here.
         spellCheck={false}
-        aria-label="File content (plain editor — syntax highlighting disabled for large file)"
+        autoCapitalize="off"
+        autoComplete="off"
+        autoCorrect="off"
+        // Numbered like the highlighted editor's label ("File 2 content"):
+        // with two large files every plain field carried the same name.
+        aria-label={`File ${index + 1} content (plain editor — syntax highlighting disabled for large file)`}
       />
     );
   }

@@ -81,6 +81,9 @@ export default function McpTab({
               className="btn btn-ghost btn-sm api-spec-preview-toggle"
               onClick={() => toggleSpecPreview('mcp-onboarding-prompt')}
               title={expandedSpecs.has('mcp-onboarding-prompt') ? 'Hide preview' : 'Show preview'}
+              // The chevron and the title only show the open state visually;
+              // aria-expanded makes it a disclosure for assistive tech (WCAG 4.1.2).
+              aria-expanded={expandedSpecs.has('mcp-onboarding-prompt')}
             >
               <ChevronIcon expanded={expandedSpecs.has('mcp-onboarding-prompt')} /> Preview
             </button>
@@ -116,6 +119,7 @@ export default function McpTab({
               className="btn btn-ghost btn-sm api-spec-preview-toggle"
               onClick={() => toggleSpecPreview('mcp-tab')}
               title={expandedSpecs.has('mcp-tab') ? 'Hide preview' : 'Show preview'}
+              aria-expanded={expandedSpecs.has('mcp-tab')}
             >
               <ChevronIcon expanded={expandedSpecs.has('mcp-tab')} /> Preview
             </button>

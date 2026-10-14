@@ -166,6 +166,12 @@ export default function BackupTargetCard({ response, onSaved }: Props) {
           className="form-input"
           placeholder="owner/repository"
           list="backup-repo-list"
+          // Repository, branch and path are identifiers (branch and path are
+          // case-sensitive) — a phone keyboard must not capitalise or
+          // "correct" them.
+          autoCapitalize="none"
+          autoCorrect="off"
+          spellCheck={false}
           value={repoInput}
           onChange={(e) => handleRepoInput(e.target.value)}
           // The format complaint below used to be a loose paragraph next to
@@ -198,6 +204,9 @@ export default function BackupTargetCard({ response, onSaved }: Props) {
           className="form-input"
           placeholder="main"
           list="backup-branch-list"
+          autoCapitalize="none"
+          autoCorrect="off"
+          spellCheck={false}
           value={form.branch}
           onFocus={() => {
             if (branches.length === 0) loadBranches(form.repoOwner, form.repoName);
@@ -219,6 +228,9 @@ export default function BackupTargetCard({ response, onSaved }: Props) {
           id="backup-prefix"
           className="form-input"
           placeholder="stashes"
+          autoCapitalize="none"
+          autoCorrect="off"
+          spellCheck={false}
           value={form.pathPrefix}
           onChange={(e) => setForm({ ...form, pathPrefix: e.target.value })}
         />
@@ -269,6 +281,9 @@ export default function BackupTargetCard({ response, onSaved }: Props) {
           className="form-input"
           placeholder="Name"
           aria-label="Commit author name"
+          // Input-purpose tokens (WCAG 1.3.5): the commit author is the
+          // user's own name and email, which the browser can fill in.
+          autoComplete="name"
           value={form.commitAuthorName}
           onChange={(e) => setForm({ ...form, commitAuthorName: e.target.value })}
         />
@@ -276,6 +291,14 @@ export default function BackupTargetCard({ response, onSaved }: Props) {
           className="form-input"
           placeholder="email@example.com"
           aria-label="Commit author email"
+          autoComplete="email"
+          // Email keyboard without a capitalised first letter. inputMode, not
+          // type="email": the field is not in a form, so there is nothing to
+          // validate, and the value must reach state exactly as typed.
+          inputMode="email"
+          autoCapitalize="none"
+          autoCorrect="off"
+          spellCheck={false}
           value={form.commitAuthorEmail}
           onChange={(e) => setForm({ ...form, commitAuthorEmail: e.target.value })}
         />

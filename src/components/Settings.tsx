@@ -684,7 +684,10 @@ function StorageSection({ onFilterTag, onDataImported }: StorageSectionProps) {
                       className="settings-tag settings-tag-action"
                       onClick={() => onFilterTag(t.tag)}
                       title={`Show the ${pluralize(t.count, 'stash', 'stashes')} tagged "${t.tag}"`}
-                      aria-label={`Filter stashes by tag ${t.tag}`}
+                      // Starts with the visible "tag count" (WCAG 2.5.3) and
+                      // says what the count is — the old "Filter stashes by tag
+                      // X" replaced the count for screen readers (WCAG 1.3.1).
+                      aria-label={`${t.tag} ${pluralize(t.count, 'stash', 'stashes')}: filter stashes by this tag`}
                     >
                       {t.tag} <span className="settings-tag-count">{t.count}</span>
                     </button>

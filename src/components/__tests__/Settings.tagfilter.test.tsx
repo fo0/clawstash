@@ -67,13 +67,19 @@ describe('Settings storage tag filter', () => {
     await renderStorage(MANY_TAGS);
     const field = screen.getByRole('textbox', { name: /search tags/i });
 
-    expect(screen.getByRole('button', { name: /filter stashes by tag alpha/i })).toBeTruthy();
+    expect(
+      screen.getByRole('button', { name: /^alpha \d+ stash(es)?: filter stashes by this tag$/i }),
+    ).toBeTruthy();
 
     fireEvent.change(field, { target: { value: 'ta' } });
 
     // beta, delta, zeta, eta, theta, iota — every tag containing "ta".
-    expect(screen.getByRole('button', { name: /filter stashes by tag beta/i })).toBeTruthy();
-    expect(screen.queryByRole('button', { name: /filter stashes by tag alpha/i })).toBeNull();
+    expect(
+      screen.getByRole('button', { name: /^beta \d+ stash(es)?: filter stashes by this tag$/i }),
+    ).toBeTruthy();
+    expect(
+      screen.queryByRole('button', { name: /^alpha \d+ stash(es)?: filter stashes by this tag$/i }),
+    ).toBeNull();
     expect(screen.getByText('6 of 12 tags')).toBeTruthy();
   });
 
@@ -87,6 +93,8 @@ describe('Settings storage tag filter', () => {
     fireEvent.click(screen.getByRole('button', { name: /clear filter/i }));
 
     expect(screen.queryByText(/No tags match/)).toBeNull();
-    expect(screen.getByRole('button', { name: /filter stashes by tag alpha/i })).toBeTruthy();
+    expect(
+      screen.getByRole('button', { name: /^alpha \d+ stash(es)?: filter stashes by this tag$/i }),
+    ).toBeTruthy();
   });
 });
