@@ -193,6 +193,9 @@ export default function TokensTab({
                 className="btn btn-ghost btn-sm api-spec-preview-toggle"
                 onClick={() => toggleSpecPreview('rest-quick')}
                 title={expandedSpecs.has('rest-quick') ? 'Hide preview' : 'Show preview'}
+                // The chevron and the title only show the open state visually;
+                // aria-expanded makes it a disclosure for assistive tech (WCAG 4.1.2).
+                aria-expanded={expandedSpecs.has('rest-quick')}
               >
                 <ChevronIcon expanded={expandedSpecs.has('rest-quick')} /> Preview
               </button>
@@ -219,6 +222,7 @@ export default function TokensTab({
                 className="btn btn-ghost btn-sm api-spec-preview-toggle"
                 onClick={() => toggleSpecPreview('mcp-quick')}
                 title={expandedSpecs.has('mcp-quick') ? 'Hide preview' : 'Show preview'}
+                aria-expanded={expandedSpecs.has('mcp-quick')}
               >
                 <ChevronIcon expanded={expandedSpecs.has('mcp-quick')} /> Preview
               </button>

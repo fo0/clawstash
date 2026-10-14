@@ -45,6 +45,9 @@ export default function RestTab({ baseUrl, openApiJson, specLoadFailed }: Props)
               className="btn btn-ghost btn-sm api-spec-preview-toggle"
               onClick={() => toggleSpecPreview('rest-tab')}
               title={expandedSpecs.has('rest-tab') ? 'Hide preview' : 'Show preview'}
+              // The chevron and the title only show the open state visually;
+              // aria-expanded makes it a disclosure for assistive tech (WCAG 4.1.2).
+              aria-expanded={expandedSpecs.has('rest-tab')}
             >
               <ChevronIcon expanded={expandedSpecs.has('rest-tab')} /> Preview
             </button>
