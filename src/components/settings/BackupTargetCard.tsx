@@ -269,6 +269,9 @@ export default function BackupTargetCard({ response, onSaved }: Props) {
           className="form-input"
           placeholder="Name"
           aria-label="Commit author name"
+          // Input-purpose tokens (WCAG 1.3.5): the commit author is the
+          // user's own name and email, which the browser can fill in.
+          autoComplete="name"
           value={form.commitAuthorName}
           onChange={(e) => setForm({ ...form, commitAuthorName: e.target.value })}
         />
@@ -276,6 +279,13 @@ export default function BackupTargetCard({ response, onSaved }: Props) {
           className="form-input"
           placeholder="email@example.com"
           aria-label="Commit author email"
+          autoComplete="email"
+          // Email keyboard without a capitalised first letter. inputMode, not
+          // type="email": the field is not in a form, so there is nothing to
+          // validate, and the value must reach state exactly as typed.
+          inputMode="email"
+          autoCapitalize="none"
+          spellCheck={false}
           value={form.commitAuthorEmail}
           onChange={(e) => setForm({ ...form, commitAuthorEmail: e.target.value })}
         />
