@@ -1111,6 +1111,12 @@ export default function StashEditor({ stash, template, onSave, onCancel, onDirty
                     onChange={(e) => updateFile(index, 'filename', e.target.value)}
                     placeholder="filename.ext"
                     className="form-input file-name-input"
+                    // Filenames are case-sensitive and language ids are short
+                    // codes ("yml", "ts") — a phone keyboard capitalised or
+                    // "corrected" both ("readme.md" became "Readme.md").
+                    autoCapitalize="none"
+                    autoCorrect="off"
+                    spellCheck={false}
                     // Mirrors MAX_FILENAME_LENGTH in server/validation.ts.
                     maxLength={MAX_FILENAME_LENGTH}
                     aria-label={`File ${index + 1} filename`}
@@ -1122,6 +1128,9 @@ export default function StashEditor({ stash, template, onSave, onCancel, onDirty
                     onChange={(e) => updateFile(index, 'language', e.target.value)}
                     placeholder="language (auto)"
                     className="form-input file-lang-input"
+                    autoCapitalize="none"
+                    autoCorrect="off"
+                    spellCheck={false}
                     aria-label={`File ${index + 1} language`}
                     title="Programming language. Leave blank to auto-detect from the file extension."
                   />

@@ -166,6 +166,11 @@ export default function BackupTargetCard({ response, onSaved }: Props) {
           className="form-input"
           placeholder="owner/repository"
           list="backup-repo-list"
+          // Repository, branch and path are case-sensitive identifiers — a
+          // phone keyboard must not capitalise or "correct" them.
+          autoCapitalize="none"
+          autoCorrect="off"
+          spellCheck={false}
           value={repoInput}
           onChange={(e) => handleRepoInput(e.target.value)}
           // The format complaint below used to be a loose paragraph next to
@@ -198,6 +203,9 @@ export default function BackupTargetCard({ response, onSaved }: Props) {
           className="form-input"
           placeholder="main"
           list="backup-branch-list"
+          autoCapitalize="none"
+          autoCorrect="off"
+          spellCheck={false}
           value={form.branch}
           onFocus={() => {
             if (branches.length === 0) loadBranches(form.repoOwner, form.repoName);
@@ -219,6 +227,9 @@ export default function BackupTargetCard({ response, onSaved }: Props) {
           id="backup-prefix"
           className="form-input"
           placeholder="stashes"
+          autoCapitalize="none"
+          autoCorrect="off"
+          spellCheck={false}
           value={form.pathPrefix}
           onChange={(e) => setForm({ ...form, pathPrefix: e.target.value })}
         />
