@@ -166,8 +166,9 @@ export default function BackupTargetCard({ response, onSaved }: Props) {
           className="form-input"
           placeholder="owner/repository"
           list="backup-repo-list"
-          // Repository, branch and path are case-sensitive identifiers — a
-          // phone keyboard must not capitalise or "correct" them.
+          // Repository, branch and path are identifiers (branch and path are
+          // case-sensitive) — a phone keyboard must not capitalise or
+          // "correct" them.
           autoCapitalize="none"
           autoCorrect="off"
           spellCheck={false}
@@ -296,6 +297,7 @@ export default function BackupTargetCard({ response, onSaved }: Props) {
           // validate, and the value must reach state exactly as typed.
           inputMode="email"
           autoCapitalize="none"
+          autoCorrect="off"
           spellCheck={false}
           value={form.commitAuthorEmail}
           onChange={(e) => setForm({ ...form, commitAuthorEmail: e.target.value })}
