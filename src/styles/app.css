@@ -4106,6 +4106,12 @@ textarea.code-editor-plain.code-editor-wrap {
   z-index: 1000;
 }
 
+/* A refused clipboard write must not look like the green success toast. */
+.api-copy-notice-toast-failed {
+  border-color: rgba(218, 54, 51, 0.3);
+  color: #f85149;
+}
+
 /* MCP Info */
 .api-mcp-info {
   background: var(--bg-primary);

@@ -58,7 +58,7 @@ export default function TokensTab({
   const [selectedScopes, setSelectedScopes] = useState<TokenScope[]>(['read']);
   const [creating, setCreating] = useState(false);
   const [newlyCreated, setNewlyCreated] = useState<NewlyCreatedToken | null>(null);
-  const { copyNotice, handleCopy } = useCopyToast();
+  const { copyNotice, copyFailed, handleCopy } = useCopyToast();
   const { expandedSpecs, toggleSpecPreview } = useExpandableSpecs();
   const mountedRef = useRef(true);
   // Two-click delete confirm: first click arms a per-token confirm window,
@@ -485,8 +485,12 @@ export default function TokensTab({
       </section>
 
       {copyNotice && (
-        <div className="api-copy-notice-toast" role="status" aria-live="polite">
-          <CheckIcon /> {copyNotice}
+        <div
+          className={`api-copy-notice-toast${copyFailed ? ' api-copy-notice-toast-failed' : ''}`}
+          role="status"
+          aria-live="polite"
+        >
+          {copyFailed ? <WarningIcon /> : <CheckIcon />} {copyNotice}
         </div>
       )}
     </div>

@@ -3,7 +3,15 @@ import {
   buildMcpStreamableConfig,
   buildMcpStdioConfig,
 } from './api-data';
-import { ServerIcon, WifiIcon, KeyIcon, CopyIcon, ChevronIcon, CheckIcon } from './icons';
+import {
+  ServerIcon,
+  WifiIcon,
+  KeyIcon,
+  CopyIcon,
+  ChevronIcon,
+  CheckIcon,
+  WarningIcon,
+} from './icons';
 import { useCopyToast, useExpandableSpecs } from './useCopyToast';
 import CodeExample from './CodeExample';
 import SpecPreview from './SpecPreview';
@@ -27,7 +35,7 @@ export default function McpTab({
   mcpSpecFailed,
   mcpToolsFailed,
 }: Props) {
-  const { copyNotice, handleCopy } = useCopyToast();
+  const { copyNotice, copyFailed, handleCopy } = useCopyToast();
   const { expandedSpecs, toggleSpecPreview } = useExpandableSpecs();
 
   const mcpEndpoint = `${baseUrl}/mcp`;
@@ -307,8 +315,12 @@ Parameters: {
       </section>
 
       {copyNotice && (
-        <div className="api-copy-notice-toast" role="status" aria-live="polite">
-          <CheckIcon /> {copyNotice}
+        <div
+          className={`api-copy-notice-toast${copyFailed ? ' api-copy-notice-toast-failed' : ''}`}
+          role="status"
+          aria-live="polite"
+        >
+          {copyFailed ? <WarningIcon /> : <CheckIcon />} {copyNotice}
         </div>
       )}
     </div>
