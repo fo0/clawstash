@@ -55,6 +55,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/), and this
 
 ### Changed
 
+- Settings → API & Tokens: a token list that failed to load says so and can be loaded again. The tab put "Could not load tokens" in its error banner and, directly below, "No tokens created yet." — a claim nothing had checked, since the list never arrived — and the only way to try again was leaving the tab. The list area now reads "The token list could not be loaded." with a Retry button; an empty list that did load still reads "No tokens created yet."
+
+- Settings → API & Tokens / REST API / MCP: a copy that the browser refused looks like a failure. The three tabs share one copy toast, which was the same green box with a check mark for both outcomes, so a failed copy read as done at a glance, and its text, a bare "Copy failed", did not say which of the many copy buttons it was about. A failed copy now shows in red with a warning icon and names the item (`Copying "MCP Endpoint" failed`)
+
+- Sidebar → Filter by tag: a tag search that matches nothing names the query and offers "Clear search", which empties the field and puts focus back into it. The bare "No matching tags" was silent for screen readers and could only be undone by erasing the query by hand; a polite status now announces how many tags a query leaves ("2 of 14 tags") or that none match. The query is trimmed before matching, as in Settings → Storage, so a trailing space no longer empties the list
+
 - Footer → Build Info: the commit SHA links to that commit on GitHub. It was dead text, so finding out what a build contains meant copying the SHA into a search. The link opens in a new tab, only a real SHA is linked (a build without git info stays plain text), and it points under the GitHub URL `/api/version` reports, never anywhere else
 
 - Settings → API & Tokens: the token label field stops at 200 characters, the length the server accepts. It took any length before, so a longer label was only discovered once Create Token came back refused — the way the stash name and filename fields already mirror their own limits
