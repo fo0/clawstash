@@ -8,6 +8,10 @@ import { COPY_TOAST_DURATION_MS } from '../../utils/constants';
  */
 export function useCopyToast() {
   const [copyNotice, setCopyNotice] = useState<string | null>(null);
+  // The toast used to be one green, check-marked box for both outcomes, so a
+  // refused clipboard write looked like a success at a glance — and "Copy
+  // failed" did not say which of the tab's many copy buttons it was about.
+  const [copyFailed, setCopyFailed] = useState(false);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Cleanup timer on unmount
@@ -19,12 +23,13 @@ export function useCopyToast() {
 
   const handleCopy = useCallback(async (value: string, label: string) => {
     const success = await copyToClipboard(value);
-    setCopyNotice(success ? `"${label}" copied` : 'Copy failed');
+    setCopyNotice(success ? `"${label}" copied` : `Copying "${label}" failed`);
+    setCopyFailed(!success);
     if (timerRef.current) clearTimeout(timerRef.current);
     timerRef.current = setTimeout(() => setCopyNotice(null), COPY_TOAST_DURATION_MS);
   }, []);
 
-  return { copyNotice, handleCopy };
+  return { copyNotice, copyFailed, handleCopy };
 }
 
 /**

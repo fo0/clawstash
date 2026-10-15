@@ -3,7 +3,7 @@ import SpecPreview from './SpecPreview';
 import SwaggerViewer from './SwaggerViewer';
 import CodeExample from './CodeExample';
 import { getRestConfigText } from './api-data';
-import { BookIcon, KeyIcon, CopyIcon, ChevronIcon, CheckIcon } from './icons';
+import { BookIcon, KeyIcon, CopyIcon, ChevronIcon, CheckIcon, WarningIcon } from './icons';
 import { useCopyToast, useExpandableSpecs } from './useCopyToast';
 
 interface Props {
@@ -14,7 +14,7 @@ interface Props {
 }
 
 export default function RestTab({ baseUrl, openApiJson, specLoadFailed }: Props) {
-  const { copyNotice, handleCopy } = useCopyToast();
+  const { copyNotice, copyFailed, handleCopy } = useCopyToast();
   const { expandedSpecs, toggleSpecPreview } = useExpandableSpecs();
 
   return (
@@ -214,8 +214,12 @@ print(f"Found {data['total']} stashes")`}
       </section>
 
       {copyNotice && (
-        <div className="api-copy-notice-toast" role="status" aria-live="polite">
-          <CheckIcon /> {copyNotice}
+        <div
+          className={`api-copy-notice-toast${copyFailed ? ' api-copy-notice-toast-failed' : ''}`}
+          role="status"
+          aria-live="polite"
+        >
+          {copyFailed ? <WarningIcon /> : <CheckIcon />} {copyNotice}
         </div>
       )}
     </div>

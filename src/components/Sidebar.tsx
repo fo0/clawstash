@@ -220,6 +220,7 @@ export default function Sidebar({
   const [tagHighlight, setTagHighlight] = useState(0);
   const tagFilterRef = useRef<HTMLDivElement>(null);
   const tagOptionsRef = useRef<HTMLDivElement>(null);
+  const tagSearchInputRef = useRef<HTMLInputElement>(null);
   // Clearing the active tag unmounts the clear button and only renders the
   // "Filter by tag" button that replaces it after the parent's state update —
   // so focus is handed over from an effect, not from the click handler.
@@ -252,8 +253,11 @@ export default function Sidebar({
     setTagHighlight(0);
   }, []);
 
-  const filteredTags = tagSearch
-    ? tags.filter((t) => t.tag.toLowerCase().includes(tagSearch.toLowerCase()))
+  // Trimmed, like the Settings tag filter: a stray trailing space (common
+  // after pasting) used to empty the list although the tag exists.
+  const tagNeedle = tagSearch.trim().toLowerCase();
+  const filteredTags = tagNeedle
+    ? tags.filter((t) => t.tag.toLowerCase().includes(tagNeedle))
     : tags;
 
   /** Apply a tag filter from the dropdown and close it (shared by click + Enter). */
@@ -614,6 +618,7 @@ export default function Sidebar({
                   {tags.length > 5 && (
                     <div className="sidebar-tag-search">
                       <input
+                        ref={tagSearchInputRef}
                         type="text"
                         placeholder="Search tags..."
                         value={tagSearch}
@@ -649,6 +654,17 @@ export default function Sidebar({
                         // eslint-disable-next-line jsx-a11y/no-autofocus -- revealed by a user action
                         autoFocus
                       />
+                      {/* The combobox only announces a highlighted option, so a
+                          query that matched nothing was silent. Always mounted,
+                          so the change is announced — same count wording as
+                          the Settings tag filter. */}
+                      <span className="sr-only" role="status" aria-live="polite">
+                        {tagNeedle
+                          ? filteredTags.length > 0
+                            ? `${filteredTags.length} of ${tags.length} tags`
+                            : `No tags match "${tagSearch.trim()}"`
+                          : ''}
+                      </span>
                     </div>
                   )}
                   <div
@@ -678,10 +694,26 @@ export default function Sidebar({
                         <span className="sidebar-tag-option-count">{t.count}</span>
                       </button>
                     ))}
-                    {filteredTags.length === 0 && (
-                      <div className="sidebar-tag-empty">No matching tags</div>
-                    )}
                   </div>
+                  {/* Outside the listbox (a listbox may only hold options).
+                      Names the query and offers the way back without
+                      erasing it by hand — the Settings tag filter's pattern. */}
+                  {filteredTags.length === 0 && (
+                    <div className="sidebar-tag-empty">
+                      <span>No tags match &ldquo;{tagSearch.trim()}&rdquo;.</span>
+                      <button
+                        type="button"
+                        className="btn btn-sm btn-ghost"
+                        onClick={() => {
+                          setTagSearch('');
+                          setTagHighlight(0);
+                          tagSearchInputRef.current?.focus();
+                        }}
+                      >
+                        Clear search
+                      </button>
+                    </div>
+                  )}
                 </div>
               )}
             </div>

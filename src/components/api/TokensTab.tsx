@@ -49,11 +49,16 @@ export default function TokensTab({
   const [tokens, setTokens] = useState<TokenListItem[]>([]);
   const [tokensLoading, setTokensLoading] = useState(true);
   const [tokensError, setTokensError] = useState<string | null>(null);
+  // True while the last list load failed. With no tokens in state the list
+  // area used to read "No tokens created yet." right under the "Could not
+  // load tokens" banner — a claim nothing had checked — and offered no way to
+  // try again short of leaving the tab.
+  const [loadFailed, setLoadFailed] = useState(false);
   const [label, setLabel] = useState('');
   const [selectedScopes, setSelectedScopes] = useState<TokenScope[]>(['read']);
   const [creating, setCreating] = useState(false);
   const [newlyCreated, setNewlyCreated] = useState<NewlyCreatedToken | null>(null);
-  const { copyNotice, handleCopy } = useCopyToast();
+  const { copyNotice, copyFailed, handleCopy } = useCopyToast();
   const { expandedSpecs, toggleSpecPreview } = useExpandableSpecs();
   const mountedRef = useRef(true);
   // Two-click delete confirm: first click arms a per-token confirm window,
@@ -79,9 +84,13 @@ export default function TokensTab({
     setTokensError(null);
     try {
       const result = await api.listTokens();
-      if (mountedRef.current) setTokens(result.tokens || []);
+      if (mountedRef.current) {
+        setTokens(result.tokens || []);
+        setLoadFailed(false);
+      }
     } catch (err) {
       if (mountedRef.current) {
+        setLoadFailed(true);
         setTokensError('Could not load tokens. Login as admin to manage tokens.');
         console.error('Failed to load tokens:', err);
       }
@@ -394,6 +403,18 @@ export default function TokensTab({
             <div className="api-token-empty" role="status" aria-live="polite">
               <Spinner /> Loading tokens...
             </div>
+          ) : loadFailed && tokens.length === 0 ? (
+            <div className="api-token-empty">
+              <span>The token list could not be loaded.</span>
+              <button
+                type="button"
+                className="btn btn-secondary btn-sm"
+                onClick={loadTokens}
+                title="Load the token list again"
+              >
+                Retry
+              </button>
+            </div>
           ) : tokens.length === 0 ? (
             <div className="api-token-empty">No tokens created yet.</div>
           ) : (
@@ -464,8 +485,12 @@ export default function TokensTab({
       </section>
 
       {copyNotice && (
-        <div className="api-copy-notice-toast" role="status" aria-live="polite">
-          <CheckIcon /> {copyNotice}
+        <div
+          className={`api-copy-notice-toast${copyFailed ? ' api-copy-notice-toast-failed' : ''}`}
+          role="status"
+          aria-live="polite"
+        >
+          {copyFailed ? <WarningIcon /> : <CheckIcon />} {copyNotice}
         </div>
       )}
     </div>
