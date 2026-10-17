@@ -5,6 +5,7 @@ import { BackupDeviceStartSchema, formatZodError } from '@/server/validation';
 import { readBackupSettings, writeBackupSettings } from '@/server/backup/backup-service';
 import { GitHubApiError, GitHubClient } from '@/server/backup/github-client';
 import { createDeviceSession } from '@/server/backup/device-sessions';
+import { redactSecrets } from '@/server/backup/backup-crypto';
 
 // POST /api/backup/device/start — begin the GitHub OAuth device flow
 // (admin). Returns the user code + verification URI; the device code stays
@@ -56,9 +57,9 @@ export async function POST(req: NextRequest) {
     });
   } catch (err) {
     const status = err instanceof GitHubApiError && err.status < 500 ? 400 : 502;
-    return NextResponse.json(
-      { error: err instanceof Error ? err.message : 'GitHub device flow failed' },
-      { status },
-    );
+    // Upstream / network-layer error text goes through redactSecrets before it
+    // reaches the response body, matching the sibling backup routes.
+    const message = err instanceof Error ? redactSecrets(err.message) : 'GitHub device flow failed';
+    return NextResponse.json({ error: message }, { status });
   }
 }
