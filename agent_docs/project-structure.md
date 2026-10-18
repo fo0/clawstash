@@ -47,6 +47,7 @@ clawstash/
 │   ├── autonomy.md             # Full wording behind the compact CLAUDE.md sections (languages, modes, autonomy, handoff)
 │   ├── testing.md              # Test setup, patterns and the constraints pointer
 │   ├── memory_archive/         # MEMORY.md entries archived by relevance or budget (context_budget.md)
+│   ├── project-overview.md     # Product overview offloaded from CLAUDE.md -> Project Overview
 │   └── project-structure.md    # This file
 ├── docs/                       # User-facing documentation (split from README)
 │   ├── api-reference.md        # REST API endpoints, examples, query parameters
@@ -86,6 +87,8 @@ clawstash/
 │   │   │   └── page.tsx        # Catch-all route for client-side routing
 │   │   ├── mcp/
 │   │   │   └── route.ts        # MCP Streamable HTTP endpoint (POST/GET/DELETE)
+│   │   ├── llms.txt/
+│   │   │   └── route.ts        # GET /llms.txt discovery index (unauthenticated, no stash data)
 │   │   └── api/                # API Route Handlers
 │   │       ├── _helpers.ts     # Shared utilities (checkScope, checkAdmin, getBaseUrl)
 │   │       ├── __tests__/      # API helper unit tests (vitest: get-base-url)
@@ -134,6 +137,7 @@ clawstash/
 │   │       ├── version/route.ts        # GET version info
 │   │       ├── mcp-spec/route.ts       # GET MCP specification
 │   │       ├── mcp-onboarding/route.ts # GET MCP onboarding guide
+│   │       ├── agent-skill/route.ts    # GET SKILL.md for AI agents (text from agent-guide.ts)
 │   │       └── mcp-tools/route.ts      # GET MCP tool summaries
 │   ├── server/                 # Server-side logic (used by API route handlers)
 │   │   ├── db.ts               # SQLite database layer (ClawStashDB class)
@@ -147,6 +151,8 @@ clawstash/
 │   │   ├── log-sanitize.ts     # Strip control/bidi chars from request-derived values (IP, UA) before logging
 │   │   ├── detect-language.ts  # Filename → language tag (server persistence)
 │   │   ├── shared-text.ts      # Shared text constants (PURPOSE, TOKEN_EFFICIENT_GUIDE)
+│   │   ├── agent-guide.ts      # Single source of the agent-facing text (MCP instructions, SKILL.md, onboarding guide, /llms.txt)
+│   │   ├── server-info.ts      # Pure `get_server_info` payload builder (MCP)
 │   │   ├── tool-defs.ts        # MCP tool definitions (Zod schemas + descriptions)
 │   │   ├── mcp-server.ts       # MCP server factory (imports tool-defs.ts, defines handlers)
 │   │   ├── mcp-spec.ts         # MCP spec generator (zodToJsonSchema + OpenAPI data types)
@@ -182,12 +188,15 @@ clawstash/
 │   │   ├── useBodyScrollLock.ts # Lock background scrolling while a modal/overlay is open
 │   │   ├── useCodeBlockCopy.ts # Delegated click handler + copy state for Markdown code-block copy buttons
 │   │   ├── useFocusTrap.ts     # Keep Tab focus inside an open dialog and restore it on close
+│   │   ├── useMaximizedFile.ts # Viewer file maximized to the viewport, focus restored to the trigger on restore
+│   │   ├── usePngExport.ts     # "Save canvas as PNG" button state, shared by the two graph views
 │   │   ├── useQuickSearchHint.ts # Platform-aware quick-search shortcut label (Ctrl+K / ⌘K), resolved after mount
 │   │   ├── useScrollMemory.ts  # Per-view scroll offset of the shared <main> (dashboard keeps its place, keyed on the list)
 │   │   └── __tests__/          # Hook unit tests (vitest + @testing-library/react)
 │   ├── utils/
 │   │   ├── access-log-csv.ts  # CSV export (formula-guarded cells) of the Access Log entries on screen
 │   │   ├── access-log-filter.ts  # Client-side source filtering (api / mcp / ui chips) for the Access Log tab
+│   │   ├── array-move.ts       # Move one array item; keeps the editor's files and row ids in step
 │   │   ├── archived.ts         # localStorage persistence for the "show archived" dashboard toggle
 │   │   ├── clipboard.ts        # Copy-to-clipboard with fallback for non-HTTPS
 │   │   ├── code-copy.ts        # Copy-button markup emitted into the Markdown blob + shared click-target resolver
@@ -208,11 +217,14 @@ clawstash/
 │   │   ├── mermaid-hydrate.ts  # Hydrate inline ```mermaid placeholders inside rendered Markdown HTML
 │   │   ├── mermaid-zoom.ts     # Per-diagram zoom persistence in localStorage (LRU-capped)
 │   │   ├── nav-guard.ts        # Pure popstate decision for the dirty-editor back-navigation guard
+│   │   ├── nested-modal.ts     # Tell an app-opened modal apart from user-authored dialog markup in content
 │   │   ├── platform.ts         # SSR-safe platform detection for keyboard-shortcut labels
+│   │   ├── quick-search-gate.ts # Whether Ctrl/Cmd/Alt+K may toggle the quick-search overlay right now
 │   │   ├── recent-searches.ts  # Recent quick-search queries MRU list (localStorage) for the search overlay
 │   │   ├── recent-views.ts     # Recently-viewed stashes MRU list (localStorage) for the search overlay
 │   │   ├── sidebar-width.ts    # Persisted sidebar width (localStorage) + clamp/bounds helpers
 │   │   ├── sort.ts             # Dashboard sort-order state + pure sort helper
+│   │   ├── stash-bundle.ts     # One stash as one text blob: "Copy All" text + bundle download filename
 │   │   ├── stash-url.ts        # Build a shareable deep-link URL for a stash
 │   │   ├── svg-sanitize.ts     # Defense-in-depth sanitizer for rendered Mermaid SVG before innerHTML
 │   │   ├── user-agent.ts       # Short client label (browser + major version, or first product token) for Access Log rows
