@@ -6,7 +6,7 @@ Setup hints, runtime quirks and operational details for ClawStash. CLAUDE.md has
 
 Moved from `CLAUDE.md -> Tech Stack` (context budget, v1.56.0).
 
-TypeScript 6 (strict, ESM) · Next.js 16 App Router + React 19 · Node >= 22 in practice (`engines` still says 20.9 -- _Runtime & process model_ below) · SQLite via better-sqlite3 13 · Zod 3 · `@modelcontextprotocol/sdk` 1.30 · vitest 4 · ESLint 9 flat · Prettier 3.9 · Docker -> GHCR · npm. Versions: `package.json`.
+TypeScript 6 (strict, ESM) · Next.js 16 App Router + React 19 · Node >= 22 in practice (`engines` still says 20.9 -- _Runtime & process model_ below) · SQLite via better-sqlite3 13 · Zod 3 · `@modelcontextprotocol/sdk` 1.31 · vitest 4 · ESLint 9 flat · Prettier 3.9 · Docker -> GHCR · npm. Versions: `package.json`.
 
 ## Runtime & process model
 
