@@ -18,6 +18,13 @@ describe('sanitizeImportedFilename', () => {
     expect(sanitizeImportedFilename('/')).toBe('untitled.txt');
     expect(sanitizeImportedFilename('a'.repeat(300))).toHaveLength(255);
   });
+
+  it('does not split a surrogate pair at the length cap', () => {
+    // 254 ASCII chars + an emoji (2 UTF-16 units) straddles the 255 cap.
+    const name = sanitizeImportedFilename(`${'a'.repeat(254)}\u{1F600}.txt`);
+    expect(name).toBe('a'.repeat(254));
+    expect(name).not.toMatch(/[\uD800-\uDFFF]/);
+  });
 });
 
 describe('isProbablyBinary', () => {
