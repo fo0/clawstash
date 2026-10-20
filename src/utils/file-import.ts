@@ -33,7 +33,13 @@ export function sanitizeImportedFilename(raw: string, maxLength = 255): string {
     })
     .join('')
     .replace(/\.{2,}/g, '.');
-  const capped = cleaned.slice(0, maxLength).trim();
+  // The cap counts UTF-16 units (as the server does), so a cut can land between
+  // the two halves of a surrogate pair (an emoji, a rare CJK character) and
+  // leave a lone high surrogate that renders as U+FFFD — drop it instead.
+  const capped = cleaned
+    .slice(0, maxLength)
+    .replace(/[\uD800-\uDBFF]$/, '')
+    .trim();
   return capped.length > 0 ? capped : 'untitled.txt';
 }
 

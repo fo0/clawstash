@@ -901,14 +901,19 @@ export class ClawStashDB {
       // otherwise over-match unrelated rows and pull spurious stashes into the
       // focus-tag BFS. Same helper as every other tag-LIKE in this file
       // (listStashes / getStashGraph) and search-store.ts.
-      const placeholders = Array.from(frontier)
-        .map(() => `tags LIKE ? ESCAPE '\\'`)
-        .join(' OR ');
-      const params: string[] = Array.from(frontier).map(tagLikePattern);
+      //
+      // The patterns travel as ONE JSON-array parameter, unpacked by
+      // `json_each`. One `tags LIKE ? OR …` term per frontier tag hit SQLite's
+      // expression-depth cap (1000) — a frontier of 1000+ tags threw
+      // `Expression tree is too large` — and would also hit the bound-parameter
+      // cap past 32766. Same predicate, same full scan, same row order.
+      const patterns = JSON.stringify(Array.from(frontier, tagLikePattern));
 
       const rows = this.db
-        .prepare(`SELECT id, tags FROM stashes WHERE ${placeholders}`)
-        .all(...params) as { id: string; tags: string }[];
+        .prepare(
+          `SELECT id, tags FROM stashes WHERE EXISTS (SELECT 1 FROM json_each(?) p WHERE stashes.tags LIKE p.value ESCAPE '\\')`,
+        )
+        .all(patterns) as { id: string; tags: string }[];
 
       const newFrontier = new Set<string>();
       for (const row of rows) {
