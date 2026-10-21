@@ -947,6 +947,14 @@ const SETTINGS_SECTION_TITLES: Record<SettingsSection, string> = {
   about: 'About',
 };
 
+// Sections that hold input the user has not submitted yet (token form and the
+// one-time token reveal, backup target form and a running device-flow poll).
+// Once opened they stay mounted and are only hidden while another section is
+// active, so switching sections no longer discards that input — the same
+// hidden-not-unmounted pattern BackupSection uses for its own sub-tabs. The
+// rest still remount, so Storage refetches its stats on every visit.
+const KEEP_MOUNTED_SECTIONS: ReadonlySet<SettingsSection> = new Set(['api', 'backup']);
+
 export default function Settings({
   activeSection,
   layout,
@@ -955,6 +963,17 @@ export default function Settings({
   onFilterTag,
   onDataImported,
 }: Props) {
+  const [openedSections, setOpenedSections] = useState<ReadonlySet<SettingsSection>>(
+    () => new Set([activeSection]),
+  );
+  // Render-phase update (React's "adjust state when a prop changes" pattern):
+  // the panel mounts in the same render that first shows it.
+  if (KEEP_MOUNTED_SECTIONS.has(activeSection) && !openedSections.has(activeSection)) {
+    setOpenedSections(new Set([...openedSections, activeSection]));
+  }
+  const keepMounted = (section: SettingsSection) =>
+    activeSection === section || openedSections.has(section);
+
   return (
     <div className="settings">
       {/*
@@ -971,8 +990,16 @@ export default function Settings({
       {activeSection === 'general' && (
         <GeneralSection layout={layout} onLayoutChange={onLayoutChange} />
       )}
-      {activeSection === 'api' && <ApiManager embedded />}
-      {activeSection === 'backup' && <BackupSection />}
+      {keepMounted('api') && (
+        <div hidden={activeSection !== 'api'}>
+          <ApiManager embedded />
+        </div>
+      )}
+      {keepMounted('backup') && (
+        <div hidden={activeSection !== 'backup'}>
+          <BackupSection />
+        </div>
+      )}
       {activeSection === 'storage' && (
         <StorageSection onFilterTag={onFilterTag} onDataImported={onDataImported} />
       )}
