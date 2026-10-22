@@ -34,5 +34,9 @@ data/
 .clawstash-key
 .vscode/
 .idea/
+# Claude Code per-user files: local permission rules and project notes.
+# The committed agent config lives in .claude/settings.json and CLAUDE.md.
+.claude/settings.local.json
+CLAUDE.local.md
 *.tsbuildinfo
 build-info.json
