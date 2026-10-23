@@ -5,6 +5,11 @@ updates:
     schedule:
       interval: 'weekly'
     open-pull-requests-limit: 10
+    groups:
+      security-updates:
+        applies-to: security-updates
+        patterns: ['*']
+        update-types: ['minor', 'patch']
     ignore:
       # eslint major: peer-dep conflicts (eslint-config-next still pins ^9)
       - dependency-name: 'eslint'
