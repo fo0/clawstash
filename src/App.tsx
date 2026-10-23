@@ -22,6 +22,7 @@ import {
 import { SEARCH_DEBOUNCE_MS, STASH_PAGE_SIZE } from './utils/constants';
 import { decidePopState } from './utils/nav-guard';
 import { resolveGraphBack } from './utils/graph-nav';
+import { parseSettingsPath, settingsPath } from './utils/settings-route';
 import { canToggleQuickSearch } from './utils/quick-search-gate';
 import { containsAppModal } from './utils/nested-modal';
 import { SIDEBAR_DEFAULT_WIDTH, loadSidebarWidth, saveSidebarWidth } from './utils/sidebar-width';
@@ -122,7 +123,7 @@ function getInitialRoute(): {
   const match = path.match(/^\/stash\/([a-f0-9-]+)/i);
   if (match) return { view: 'view', stashId: match[1], analyzeStashId: null };
   if (path === '/new') return { view: 'new', stashId: null, analyzeStashId: null };
-  if (path === '/settings') return { view: 'settings', stashId: null, analyzeStashId: null };
+  if (parseSettingsPath(path)) return { view: 'settings', stashId: null, analyzeStashId: null };
   if (path === '/graph') return { view: 'graph', stashId: null, analyzeStashId: null };
   return { view: 'home', stashId: null, analyzeStashId: null };
 }
@@ -531,6 +532,9 @@ export default function App() {
         });
     } else {
       setView(route.view);
+      if (route.view === 'settings') {
+        setSettingsSection(parseSettingsPath(window.location.pathname) ?? 'welcome');
+      }
       if (route.analyzeStashId) setAnalyzeStashId(route.analyzeStashId);
       // A /stash/:id/graph deep link has an origin too: its back button leads
       // to that stash, not to the dashboard.
@@ -602,6 +606,9 @@ export default function App() {
       } else {
         setView(route.view);
         if (route.view === 'home') setSelectedStash(null);
+        if (route.view === 'settings') {
+          setSettingsSection(parseSettingsPath(window.location.pathname) ?? 'welcome');
+        }
         setAnalyzeStashId(route.analyzeStashId);
         setGraphOriginStashId(route.analyzeStashId);
       }
@@ -1146,8 +1153,15 @@ export default function App() {
     setSelectedStash(null);
     setSettingsSection('welcome');
     setView('settings');
-    pushUrl('/settings');
+    pushUrl(settingsPath('welcome'));
     setSidebarOpen(false);
+  };
+
+  // Every section switch gets its own URL and history entry, so a reload
+  // restores the section and browser-Back steps to the previous one.
+  const handleSettingsSection = (section: SettingsSection) => {
+    setSettingsSection(section);
+    pushUrl(settingsPath(section));
   };
 
   const handleLayoutChange = (mode: LayoutMode) => {
@@ -1244,7 +1258,7 @@ export default function App() {
         onSettingsView={handleSettingsView}
         isSettingsView={view === 'settings'}
         settingsSection={settingsSection}
-        onSettingsSection={setSettingsSection}
+        onSettingsSection={handleSettingsSection}
         onLogout={adminSession.authRequired ? handleLogout : undefined}
         isOpen={sidebarOpen}
         onClose={() => setSidebarOpen(false)}
@@ -1409,7 +1423,7 @@ export default function App() {
               activeSection={settingsSection}
               layout={layout}
               onLayoutChange={handleLayoutChange}
-              onSettingsSection={setSettingsSection}
+              onSettingsSection={handleSettingsSection}
               onFilterTag={handleNavigateToTag}
               onDataImported={handleDataImported}
             />
