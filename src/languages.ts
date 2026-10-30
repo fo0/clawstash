@@ -180,10 +180,12 @@ const languageNameToPrism: Record<string, string> = {
 };
 
 /**
- * Every language name the editor's free-text language field resolves to a
- * grammar, sorted — offered as suggestions so a user need not guess whether
- * "yml", "yaml" or "YAML" is the spelling that works. Extension shorthands
- * ("py", "yml") still resolve but are left out to keep the list short.
+ * Every name in `languageNameToPrism`, sorted — the editor offers them as
+ * suggestions for its free-text language field, so a user need not guess
+ * whether "yml", "yaml" or "YAML" is the spelling that works. All of them
+ * resolve to a grammar except `text` / `plain`, the explicit "no
+ * highlighting" choice. Shorthands that only the extension map knows ("py",
+ * "yml") still resolve but are left out to keep the list short.
  */
 export const LANGUAGE_NAME_SUGGESTIONS: readonly string[] = Object.keys(languageNameToPrism).sort();
 
