@@ -40,6 +40,17 @@ describe('buildCurlCommand', () => {
     );
   });
 
+  it('percent-encodes "!" so bash / zsh history expansion cannot break the pasted call', () => {
+    expect(
+      buildCurlCommand(
+        'http://localhost:3000',
+        `/api/stashes/abc/files/${encodeURIComponent('todo!.md')}/raw`,
+      ),
+    ).toBe(
+      'curl -H "Authorization: Bearer YOUR_TOKEN" "http://localhost:3000/api/stashes/abc/files/todo%21.md/raw"',
+    );
+  });
+
   it('keeps an encoded path as given and falls back to it without an origin', () => {
     expect(buildCurlCommand('', '/api/stashes/abc/files/my%20file.txt/raw')).toBe(
       'curl -H "Authorization: Bearer YOUR_TOKEN" "/api/stashes/abc/files/my%20file.txt/raw"',
