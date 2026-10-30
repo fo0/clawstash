@@ -6734,7 +6734,7 @@ textarea.code-editor-plain.code-editor-wrap {
 
 .tag-combobox-option:hover,
 .tag-combobox-option.active {
-  background: var(--bg-hover, #1c2128);
+  background: var(--bg-tertiary);
 }
 
 .tag-combobox-count {
@@ -6905,7 +6905,7 @@ textarea.code-editor-plain.code-editor-wrap {
   margin: 0.4em 0;
 }
 .markdown-description a {
-  color: var(--accent, #58a6ff);
+  color: var(--accent-blue);
   text-decoration: none;
 }
 .markdown-description a:hover {
@@ -6934,7 +6934,7 @@ textarea.code-editor-plain.code-editor-wrap {
   margin: 0.4em 0;
 }
 .markdown-description blockquote {
-  border-left: 3px solid var(--border, #30363d);
+  border-left: 3px solid var(--border-color);
   margin: 0.4em 0;
   padding-left: 12px;
   color: var(--text-muted, #484f58);

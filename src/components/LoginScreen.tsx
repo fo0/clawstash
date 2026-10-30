@@ -97,6 +97,10 @@ export default function LoginScreen({ onLogin }: Props) {
             // Leaving the field ends our only source of truth for the
             // modifier — drop the warning rather than let it go stale.
             onBlur={() => setCapsLockOn(false)}
+            // A rejected password is announced once via role="alert", but the
+            // field itself still read as valid when focus came back to it
+            // (WCAG 3.3.1 / ARIA21) — same marking as the editor's fields.
+            aria-invalid={error ? true : undefined}
             aria-describedby={
               [error ? 'login-error-msg' : null, capsLockOn ? 'login-capslock-msg' : null]
                 .filter(Boolean)
