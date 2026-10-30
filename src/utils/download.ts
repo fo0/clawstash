@@ -9,20 +9,13 @@
 // version, which has no raw endpoint of its own).
 
 /**
- * Trigger a browser download of `content` under `filename`, typed as
- * `mimeType` (plain UTF-8 text unless the caller says otherwise).
- *
- * The anchor is appended to the document because Firefox ignores a click on a
- * detached one, and the object URL is revoked on a delay so the download has
- * started before the blob goes away. No-op outside a browser (SSR).
+ * Save `blob` under `filename` through a temporary object URL and a hidden
+ * anchor. The anchor is appended to the document because Firefox ignores a
+ * click on a detached one, and the object URL is revoked on a delay so the
+ * download has started before the blob goes away. Callers check for a browser
+ * (`document`, `URL.createObjectURL`) first.
  */
-export function downloadTextFile(
-  filename: string,
-  content: string,
-  mimeType = 'text/plain;charset=utf-8',
-): void {
-  if (typeof document === 'undefined' || typeof URL.createObjectURL !== 'function') return;
-  const blob = new Blob([content], { type: mimeType });
+function saveBlob(blob: Blob, filename: string): void {
   const url = URL.createObjectURL(blob);
   const anchor = document.createElement('a');
   anchor.href = url;
@@ -33,6 +26,20 @@ export function downloadTextFile(
   document.body.removeChild(anchor);
   // Release the object URL after a short delay so the download initiates.
   setTimeout(() => URL.revokeObjectURL(url), 10000);
+}
+
+/**
+ * Trigger a browser download of `content` under `filename`, typed as
+ * `mimeType` (plain UTF-8 text unless the caller says otherwise). No-op
+ * outside a browser (SSR).
+ */
+export function downloadTextFile(
+  filename: string,
+  content: string,
+  mimeType = 'text/plain;charset=utf-8',
+): void {
+  if (typeof document === 'undefined' || typeof URL.createObjectURL !== 'function') return;
+  saveBlob(new Blob([content], { type: mimeType }), filename);
 }
 
 /**
@@ -91,16 +98,7 @@ export function downloadCanvasPng(canvas: HTMLCanvasElement, filename: string): 
   ctx.fillRect(0, 0, target.width, target.height);
   ctx.drawImage(canvas, 0, 0);
   target.toBlob((blob) => {
-    if (!blob) return;
-    const url = URL.createObjectURL(blob);
-    const anchor = document.createElement('a');
-    anchor.href = url;
-    anchor.download = filename;
-    anchor.style.display = 'none';
-    document.body.appendChild(anchor);
-    anchor.click();
-    document.body.removeChild(anchor);
-    setTimeout(() => URL.revokeObjectURL(url), 10000);
+    if (blob) saveBlob(blob, filename);
   }, 'image/png');
   return true;
 }
