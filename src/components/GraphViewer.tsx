@@ -1684,6 +1684,17 @@ export default function GraphViewer({
                   }
                 }}
               />
+              {/* The dropdown is not a live region, so typing gave a screen
+                  reader no hint whether anything matched — "No tags found"
+                  was silent (WCAG 4.1.3). Always mounted so the change is
+                  announced; same pattern as the sidebar tag filter. */}
+              <span className="sr-only" role="status" aria-live="polite">
+                {searchOpen && searchQuery
+                  ? searchResults.length > 0
+                    ? pluralize(searchResults.length, 'result')
+                    : 'No tags found'
+                  : ''}
+              </span>
               {searchQuery && (
                 <button
                   className="graph-search-clear"
