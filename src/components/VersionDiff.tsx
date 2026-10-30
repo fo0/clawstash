@@ -291,6 +291,19 @@ export default function VersionDiff({ v1, v2 }: Props) {
                 aria-label={`Diff for ${fd.filename}`}
               >
                 <table className="diff-table">
+                  {/* Visually hidden: the four columns are self-evident on
+                      screen, but without headers a screen reader reads two
+                      bare numbers per row with no way to tell the old line
+                      number from the new one (WCAG 1.3.1). Same pattern as
+                      the keyboard-shortcuts tables. */}
+                  <thead className="sr-only">
+                    <tr>
+                      <th scope="col">Old line</th>
+                      <th scope="col">New line</th>
+                      <th scope="col">Change</th>
+                      <th scope="col">Content</th>
+                    </tr>
+                  </thead>
                   <tbody>
                     {fd.hunks.map((hunk, hi) =>
                       hunk.lines.map((line, li) => (
