@@ -2191,6 +2191,16 @@ body {
   flex-wrap: wrap;
 }
 
+/* Previous / Next stash: two icon buttons between Back and the title. */
+.viewer-stash-nav {
+  display: inline-flex;
+  gap: 2px;
+}
+
+.viewer-stash-nav-btn {
+  padding: 4px 6px;
+}
+
 .viewer-title {
   font-size: 20px;
   font-weight: 600;

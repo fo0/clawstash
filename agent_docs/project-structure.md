@@ -225,6 +225,7 @@ clawstash/
 │   │   ├── sidebar-width.ts    # Persisted sidebar width (localStorage) + clamp/bounds helpers
 │   │   ├── sort.ts             # Dashboard sort-order state + pure sort helper
 │   │   ├── stash-bundle.ts     # One stash as one text blob: "Copy All" text + bundle download filename
+│   │   ├── stash-neighbors.ts  # Previous / next stash in the list order, for the viewer's step buttons and `k` / `j`
 │   │   ├── stash-url.ts        # Build a shareable deep-link URL for a stash
 │   │   ├── svg-sanitize.ts     # Defense-in-depth sanitizer for rendered Mermaid SVG before innerHTML
 │   │   ├── user-agent.ts       # Short client label (browser + major version, or first product token) for Access Log rows
