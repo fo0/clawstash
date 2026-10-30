@@ -6,6 +6,11 @@ import { formatBytes, formatRelativeTime } from '../../utils/format';
 import { clearDraft, loadDraft, saveDraft, type EditorDraft } from '../../utils/editor-draft';
 import { MAX_IMPORT_FILES, readImportedFiles } from '../../utils/file-import';
 import { moveItem } from '../../utils/array-move';
+import {
+  LANGUAGE_NAME_SUGGESTIONS,
+  detectLanguageFromFilename,
+  getLanguageDisplayName,
+} from '../../languages';
 import FileCodeEditor from './FileCodeEditor';
 import TagCombobox from './TagCombobox';
 import type { TagComboboxHandle } from './TagCombobox';
@@ -96,6 +101,19 @@ function describeFileContent(content: string): string {
   if (!content) return 'empty';
   const lines = content.split('\n').length;
   return `${formatBytes(content.length)} · ${lines} line${lines !== 1 ? 's' : ''}`;
+}
+
+/** One `<datalist>` per editor, shared by every file row's language field. */
+const LANGUAGE_DATALIST_ID = 'stash-language-suggestions';
+
+/**
+ * Placeholder of a blank language field: the language the filename's
+ * extension resolves to ("auto: Python"), or the plain "language (auto)" when
+ * the extension says nothing.
+ */
+function autoLanguagePlaceholder(filename: string): string {
+  const detected = detectLanguageFromFilename(filename.trim());
+  return detected === 'text' ? 'language (auto)' : `auto: ${getLanguageDisplayName(detected)}`;
 }
 
 function InfoIcon({ tooltip }: { tooltip: string }) {
@@ -1126,7 +1144,10 @@ export default function StashEditor({ stash, template, onSave, onCancel, onDirty
                     type="text"
                     value={file.language}
                     onChange={(e) => updateFile(index, 'language', e.target.value)}
-                    placeholder="language (auto)"
+                    // Say what "auto" will pick for this filename, so leaving
+                    // the field blank is a choice made knowingly.
+                    placeholder={autoLanguagePlaceholder(file.filename)}
+                    list={LANGUAGE_DATALIST_ID}
                     className="form-input file-lang-input"
                     autoCapitalize="none"
                     autoCorrect="off"
@@ -1247,6 +1268,11 @@ export default function StashEditor({ stash, template, onSave, onCancel, onDirty
               </div>
             );
           })}
+          <datalist id={LANGUAGE_DATALIST_ID}>
+            {LANGUAGE_NAME_SUGGESTIONS.map((name) => (
+              <option key={name} value={name} />
+            ))}
+          </datalist>
         </div>
       </div>
     </div>

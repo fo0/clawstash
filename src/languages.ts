@@ -180,6 +180,14 @@ const languageNameToPrism: Record<string, string> = {
 };
 
 /**
+ * Every language name the editor's free-text language field resolves to a
+ * grammar, sorted — offered as suggestions so a user need not guess whether
+ * "yml", "yaml" or "YAML" is the spelling that works. Extension shorthands
+ * ("py", "yml") still resolve but are left out to keep the list short.
+ */
+export const LANGUAGE_NAME_SUGGESTIONS: readonly string[] = Object.keys(languageNameToPrism).sort();
+
+/**
  * Own-property lookup on a plain string map.
  *
  * `language` and `filename` are user-controlled (stored per file, free text
