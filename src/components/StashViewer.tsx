@@ -38,10 +38,11 @@ import {
 import { formatBytes } from '../utils/format';
 import { escapeHtml } from '../utils/html';
 import { containsAppModal } from '../utils/nested-modal';
-import { buildStashUrl } from '../utils/stash-url';
+import { buildCurlCommand, buildStashUrl } from '../utils/stash-url';
 import { buildAllFilesText, bundleFilename } from '../utils/stash-bundle';
 import { accessLogCsvFilename, buildAccessLogCsv } from '../utils/access-log-csv';
 import { userAgentLabel } from '../utils/user-agent';
+import type { StashNeighbors } from '../utils/stash-neighbors';
 import MermaidDiagram from './MermaidDiagram';
 import MarkdownBody from './MarkdownBody';
 import Spinner from './shared/Spinner';
@@ -74,6 +75,15 @@ interface Props {
    */
   isFavorite: boolean;
   onToggleFavorite: (id: string) => void;
+  /**
+   * The stashes either side of this one in the dashboard / sidebar order, or
+   * `null` when this stash is not in that list. Drives the Previous / Next
+   * buttons and the `k` / `j` hotkeys, so a run of stashes can be read without
+   * going back to the list between each one.
+   */
+  neighbors?: StashNeighbors | null;
+  /** Open another stash in the viewer (the shell's regular select path). */
+  onOpenStash?: (id: string) => void;
   onStashUpdated?: (stash: Stash) => void;
   // Fired specifically when a previous version is restored from the history
   // tab, so the shell can surface a success toast. Restoring previously gave
@@ -494,6 +504,8 @@ export default function StashViewer({
   onFilterTag,
   isFavorite,
   onToggleFavorite,
+  neighbors = null,
+  onOpenStash,
   onStashUpdated,
   onVersionRestored,
 }: Props) {
@@ -687,10 +699,13 @@ export default function StashViewer({
     [activeTab, switchTab],
   );
 
-  // Hotkeys 1-4 to switch viewer tabs, `f` to pin / unpin the open stash.
+  // Hotkeys 1-4 to switch viewer tabs, `f` to pin / unpin the open stash,
+  // `k` / `j` to step to the previous / next stash in the list.
   // Skipped when focus is inside an editable element so the keys are not
   // stolen from inline text inputs.
   const stashId = stash.id;
+  const previousId = onOpenStash ? (neighbors?.previous?.id ?? null) : null;
+  const nextId = onOpenStash ? (neighbors?.next?.id ?? null) : null;
   useEffect(() => {
     const TAB_MAP: Record<string, ViewerTab> = {
       '1': 'content',
@@ -718,6 +733,14 @@ export default function StashViewer({
         onToggleFavorite(stashId);
         return;
       }
+      // Same keys as the list-reading convention elsewhere (j = down/next,
+      // k = up/previous). At either end of the list the key does nothing.
+      const stepTo = e.key === 'j' ? nextId : e.key === 'k' ? previousId : null;
+      if (stepTo && onOpenStash) {
+        e.preventDefault();
+        onOpenStash(stepTo);
+        return;
+      }
       const tab = TAB_MAP[e.key];
       if (tab) {
         e.preventDefault();
@@ -726,7 +749,7 @@ export default function StashViewer({
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [switchTab, onToggleFavorite, stashId]);
+  }, [switchTab, onToggleFavorite, stashId, previousId, nextId, onOpenStash]);
 
   /** Toggle a file's collapsed state in the content tab. */
   const toggleFileCollapsed = useCallback((fileId: string) => {
@@ -979,6 +1002,32 @@ export default function StashViewer({
     [stash.files],
   );
 
+  /**
+   * "curl" button for one REST endpoint: copies a ready-to-run call (absolute
+   * URL + token header) instead of the bare relative path next to it, which
+   * still needed the origin and the auth header typed around it.
+   */
+  const renderCurlButton = (key: string, path: string, target: string) => (
+    <button
+      type="button"
+      className="btn btn-sm btn-ghost"
+      onClick={() => apiClipboard.copy(key, buildCurlCommand(window.location.origin, path))}
+      title={
+        apiClipboard.isCopied(key)
+          ? 'Copied!'
+          : apiClipboard.isFailed(key)
+            ? 'Copy failed'
+            : `Copy a curl command for ${target} — replace YOUR_TOKEN with an API token that has the read scope`
+      }
+    >
+      {apiClipboard.isCopied(key) ? 'Copied' : apiClipboard.isFailed(key) ? 'Failed' : 'curl'}
+      {/* Every row's button reads "curl"; the hidden suffix names the row
+          while the visible text stays at the start of the name (WCAG 2.5.3),
+          as on the file Copy buttons. */}{' '}
+      <span className="sr-only">command for {target}</span>
+    </button>
+  );
+
   return (
     <div className="stash-viewer">
       {/*
@@ -1008,7 +1057,10 @@ export default function StashViewer({
           (fileLabel(fileClipboard.failedKey)
             ? `Copying ${fileLabel(fileClipboard.failedKey)} failed`
             : 'Copy failed')}
-        {apiClipboard.copiedKey && 'API endpoint copied to clipboard'}
+        {apiClipboard.copiedKey &&
+          (apiClipboard.copiedKey.startsWith('curl-')
+            ? 'curl command copied to clipboard'
+            : 'API endpoint copied to clipboard')}
         {apiClipboard.failedKey && 'Copy failed'}
         {descriptionCodeCopy.announcement}
       </div>
@@ -1020,6 +1072,61 @@ export default function StashViewer({
           </svg>
           Back
         </button>
+        {/* Step through the list without going back to it. Hidden when the
+            stash is not in the loaded list (deep link, quick search, filtered
+            out) — there is no position to step from. */}
+        {onOpenStash && neighbors && (neighbors.previous || neighbors.next) && (
+          <div className="viewer-stash-nav" role="group" aria-label="Step through the stash list">
+            <button
+              type="button"
+              className="btn btn-ghost btn-sm viewer-stash-nav-btn"
+              onClick={() => neighbors.previous && onOpenStash(neighbors.previous.id)}
+              disabled={!neighbors.previous}
+              title={
+                neighbors.previous
+                  ? `Previous stash: ${neighbors.previous.title} (key: k)`
+                  : 'Already the first stash in the list'
+              }
+              aria-label={
+                neighbors.previous
+                  ? `Previous stash: ${neighbors.previous.title}`
+                  : 'Previous stash'
+              }
+            >
+              <svg
+                aria-hidden="true"
+                width="14"
+                height="14"
+                viewBox="0 0 16 16"
+                fill="currentColor"
+              >
+                <path d="M3.22 10.53a.75.75 0 0 1 0-1.06l4.25-4.25a.75.75 0 0 1 1.06 0l4.25 4.25a.75.75 0 1 1-1.06 1.06L8 6.81l-3.72 3.72a.75.75 0 0 1-1.06 0Z" />
+              </svg>
+            </button>
+            <button
+              type="button"
+              className="btn btn-ghost btn-sm viewer-stash-nav-btn"
+              onClick={() => neighbors.next && onOpenStash(neighbors.next.id)}
+              disabled={!neighbors.next}
+              title={
+                neighbors.next
+                  ? `Next stash: ${neighbors.next.title} (key: j)`
+                  : 'Already the last stash in the list'
+              }
+              aria-label={neighbors.next ? `Next stash: ${neighbors.next.title}` : 'Next stash'}
+            >
+              <svg
+                aria-hidden="true"
+                width="14"
+                height="14"
+                viewBox="0 0 16 16"
+                fill="currentColor"
+              >
+                <path d="M12.78 5.47a.75.75 0 0 1 0 1.06l-4.25 4.25a.75.75 0 0 1-1.06 0L3.22 6.53a.75.75 0 0 1 1.06-1.06L8 9.19l3.72-3.72a.75.75 0 0 1 1.06 0Z" />
+              </svg>
+            </button>
+          </div>
+        )}
         <h2 className="viewer-title">
           {title}
           {stash.archived && <span className="viewer-archived-badge">Archived</span>}
@@ -1825,6 +1932,7 @@ export default function StashViewer({
                     failed={apiClipboard.isFailed(`get-${stash.id}`)}
                   />
                 </button>
+                {renderCurlButton(`curl-get-${stash.id}`, `/api/stashes/${stash.id}`, 'this stash')}
                 <ApiOpenLink
                   path={`/api/stashes/${stash.id}`}
                   label="Open API endpoint in a new tab"
@@ -1862,6 +1970,11 @@ export default function StashViewer({
                       failed={apiClipboard.isFailed(`raw-${f.id}`)}
                     />
                   </button>
+                  {renderCurlButton(
+                    `curl-raw-${f.id}`,
+                    `/api/stashes/${stash.id}/files/${encodeURIComponent(f.filename)}/raw`,
+                    `raw ${f.filename}`,
+                  )}
                   <ApiOpenLink
                     path={`/api/stashes/${stash.id}/files/${encodeURIComponent(f.filename)}/raw`}
                     label={`Open raw ${f.filename} in a new tab`}

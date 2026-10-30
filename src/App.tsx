@@ -10,8 +10,13 @@ import type {
   TagInfo,
 } from './types';
 import { api, isNotFoundError, setAuthToken } from './api';
-import { loadFavoriteIds, saveFavoriteIds, toggleFavorite } from './utils/favorites';
-import { loadSortMode, saveSortMode } from './utils/sort';
+import {
+  loadFavoriteIds,
+  saveFavoriteIds,
+  sortStashesWithFavorites,
+  toggleFavorite,
+} from './utils/favorites';
+import { loadSortMode, saveSortMode, sortStashes } from './utils/sort';
 import { loadShowArchived, saveShowArchived } from './utils/archived';
 import {
   forgetRecentView,
@@ -26,6 +31,7 @@ import { parseSettingsPath, settingsPath } from './utils/settings-route';
 import { canToggleQuickSearch } from './utils/quick-search-gate';
 import { containsAppModal } from './utils/nested-modal';
 import { SIDEBAR_DEFAULT_WIDTH, loadSidebarWidth, saveSidebarWidth } from './utils/sidebar-width';
+import { findStashNeighbors } from './utils/stash-neighbors';
 import { useScrollMemory } from './hooks/useScrollMemory';
 import Sidebar from './components/Sidebar';
 import SidebarResizer from './components/SidebarResizer';
@@ -1213,6 +1219,17 @@ export default function App() {
     setLoadedPages((prev) => prev + 1);
   };
 
+  // The open stash's neighbours in the list the dashboard and the sidebar show
+  // (same sort, pins on top), for the viewer's Previous / Next step. Computed
+  // only while a stash is open; `null` when it is not in the loaded list.
+  const stashNeighbors =
+    view === 'view' && selectedStash
+      ? findStashNeighbors(
+          sortStashesWithFavorites(sortStashes(stashes, sortMode), favoriteIds),
+          selectedStash.id,
+        )
+      : null;
+
   // Show login screen if auth is required and user is not authenticated
   if (adminSession === null) {
     // Still loading session info
@@ -1374,6 +1391,8 @@ export default function App() {
               onFilterTag={handleNavigateToTag}
               isFavorite={favoriteIds.has(selectedStash.id)}
               onToggleFavorite={handleToggleFavorite}
+              neighbors={stashNeighbors}
+              onOpenStash={handleSelectStash}
               onStashUpdated={(stash) => {
                 setSelectedStash(stash);
                 loadStashes();

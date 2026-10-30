@@ -40,6 +40,8 @@ const STATIC_SHORTCUT_GROUPS: ShortcutGroup[] = [
       { keys: ['3'], description: 'Access Log tab' },
       { keys: ['4'], description: 'History tab' },
       { keys: ['f'], description: 'Pin / unpin the open stash' },
+      { keys: ['k'], description: 'Previous stash in the list' },
+      { keys: ['j'], description: 'Next stash in the list' },
     ],
   },
   {

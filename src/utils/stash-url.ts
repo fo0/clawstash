@@ -11,3 +11,16 @@ export function buildStashUrl(origin: string, id: string): string {
   const base = origin.replace(/\/+$/, '');
   return `${base}/stash/${id}`;
 }
+
+/**
+ * A ready-to-run `curl` call for one of the stash's REST endpoints: absolute
+ * URL plus the `Authorization` header with the same `YOUR_TOKEN` placeholder
+ * the API settings' examples use. `path` must already be URL-encoded (the
+ * viewer encodes filenames), so it carries no `"`, `$` or backtick and the
+ * double quotes are safe in POSIX shells, PowerShell and cmd alike. An empty
+ * `origin` degrades to the relative path, like `buildStashUrl`.
+ */
+export function buildCurlCommand(origin: string, path: string): string {
+  const base = origin.replace(/\/+$/, '');
+  return `curl -H "Authorization: Bearer YOUR_TOKEN" "${base}${path}"`;
+}
