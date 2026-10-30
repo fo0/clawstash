@@ -19,8 +19,13 @@ export function buildStashUrl(origin: string, id: string): string {
  * viewer encodes filenames), so it carries no `"`, `$` or backtick and the
  * double quotes are safe in POSIX shells, PowerShell and cmd alike. An empty
  * `origin` degrades to the relative path, like `buildStashUrl`.
+ *
+ * `encodeURIComponent` leaves `!` as-is, and interactive bash and zsh run
+ * history expansion inside double quotes: a pasted call for `todo!.md` failed
+ * with `event not found` before curl ever ran. `!` is therefore sent as its
+ * percent-encoding `%21`, which the server decodes back to the same name.
  */
 export function buildCurlCommand(origin: string, path: string): string {
   const base = origin.replace(/\/+$/, '');
-  return `curl -H "Authorization: Bearer YOUR_TOKEN" "${base}${path}"`;
+  return `curl -H "Authorization: Bearer YOUR_TOKEN" "${base}${path.replace(/!/g, '%21')}"`;
 }

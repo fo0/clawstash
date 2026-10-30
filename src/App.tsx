@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import type {
   Stash,
   StashListItem,
@@ -1222,13 +1222,21 @@ export default function App() {
   // The open stash's neighbours in the list the dashboard and the sidebar show
   // (same sort, pins on top), for the viewer's Previous / Next step. Computed
   // only while a stash is open; `null` when it is not in the loaded list.
-  const stashNeighbors =
-    view === 'view' && selectedStash
-      ? findStashNeighbors(
-          sortStashesWithFavorites(sortStashes(stashes, sortMode), favoriteIds),
-          selectedStash.id,
-        )
-      : null;
+  // Memoized like the same sort in Dashboard / Sidebar: App re-renders on every
+  // toast, search keystroke and sidebar-resize drag step, and re-sorting the
+  // whole list each time bought nothing — the result depends only on these
+  // inputs.
+  const selectedStashId = view === 'view' ? (selectedStash?.id ?? null) : null;
+  const stashNeighbors = useMemo(
+    () =>
+      selectedStashId !== null
+        ? findStashNeighbors(
+            sortStashesWithFavorites(sortStashes(stashes, sortMode), favoriteIds),
+            selectedStashId,
+          )
+        : null,
+    [selectedStashId, stashes, sortMode, favoriteIds],
+  );
 
   // Show login screen if auth is required and user is not authenticated
   if (adminSession === null) {
