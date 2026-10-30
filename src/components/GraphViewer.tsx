@@ -66,6 +66,9 @@ interface PopupState {
   connections: { tag: string; weight: number }[];
   stashes: StashListItem[];
   loadingStashes: boolean;
+  // The fetch failed — distinct from a tag with no stashes, which the header
+  // ("Used in N stashes") would contradict.
+  stashesFailed: boolean;
 }
 
 // 8 distinct cluster colors for dark backgrounds
@@ -898,6 +901,7 @@ export default function GraphViewer({
         connections,
         stashes: [],
         loadingStashes: true,
+        stashesFailed: false,
       });
 
       // Fetch stashes with this tag
@@ -912,7 +916,9 @@ export default function GraphViewer({
         })
         .catch(() => {
           setPopup((prev) =>
-            prev && prev.tag === node.id ? { ...prev, loadingStashes: false } : prev,
+            prev && prev.tag === node.id
+              ? { ...prev, loadingStashes: false, stashesFailed: true }
+              : prev,
           );
         });
     },
@@ -1963,6 +1969,12 @@ export default function GraphViewer({
                       </span>
                     </button>
                   ))}
+                </div>
+              ) : popup.stashesFailed ? (
+                // Was "No stashes found" — a failed request read as an empty
+                // tag right under "Used in N stashes".
+                <div className="graph-popup-loading" role="alert">
+                  Could not load stashes. Close and reopen the tag to try again.
                 </div>
               ) : (
                 <div className="graph-popup-loading">No stashes found</div>
