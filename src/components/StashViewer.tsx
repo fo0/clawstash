@@ -38,7 +38,7 @@ import {
 import { formatBytes } from '../utils/format';
 import { escapeHtml } from '../utils/html';
 import { containsAppModal } from '../utils/nested-modal';
-import { buildStashUrl } from '../utils/stash-url';
+import { buildCurlCommand, buildStashUrl } from '../utils/stash-url';
 import { buildAllFilesText, bundleFilename } from '../utils/stash-bundle';
 import { accessLogCsvFilename, buildAccessLogCsv } from '../utils/access-log-csv';
 import { userAgentLabel } from '../utils/user-agent';
@@ -1002,6 +1002,32 @@ export default function StashViewer({
     [stash.files],
   );
 
+  /**
+   * "curl" button for one REST endpoint: copies a ready-to-run call (absolute
+   * URL + token header) instead of the bare relative path next to it, which
+   * still needed the origin and the auth header typed around it.
+   */
+  const renderCurlButton = (key: string, path: string, target: string) => (
+    <button
+      type="button"
+      className="btn btn-sm btn-ghost"
+      onClick={() => apiClipboard.copy(key, buildCurlCommand(window.location.origin, path))}
+      title={
+        apiClipboard.isCopied(key)
+          ? 'Copied!'
+          : apiClipboard.isFailed(key)
+            ? 'Copy failed'
+            : `Copy a curl command for ${target} — replace YOUR_TOKEN with an API token that has the read scope`
+      }
+    >
+      {apiClipboard.isCopied(key) ? 'Copied' : apiClipboard.isFailed(key) ? 'Failed' : 'curl'}
+      {/* Every row's button reads "curl"; the hidden suffix names the row
+          while the visible text stays at the start of the name (WCAG 2.5.3),
+          as on the file Copy buttons. */}{' '}
+      <span className="sr-only">command for {target}</span>
+    </button>
+  );
+
   return (
     <div className="stash-viewer">
       {/*
@@ -1031,7 +1057,10 @@ export default function StashViewer({
           (fileLabel(fileClipboard.failedKey)
             ? `Copying ${fileLabel(fileClipboard.failedKey)} failed`
             : 'Copy failed')}
-        {apiClipboard.copiedKey && 'API endpoint copied to clipboard'}
+        {apiClipboard.copiedKey &&
+          (apiClipboard.copiedKey.startsWith('curl-')
+            ? 'curl command copied to clipboard'
+            : 'API endpoint copied to clipboard')}
         {apiClipboard.failedKey && 'Copy failed'}
         {descriptionCodeCopy.announcement}
       </div>
@@ -1903,6 +1932,7 @@ export default function StashViewer({
                     failed={apiClipboard.isFailed(`get-${stash.id}`)}
                   />
                 </button>
+                {renderCurlButton(`curl-get-${stash.id}`, `/api/stashes/${stash.id}`, 'this stash')}
                 <ApiOpenLink
                   path={`/api/stashes/${stash.id}`}
                   label="Open API endpoint in a new tab"
@@ -1940,6 +1970,11 @@ export default function StashViewer({
                       failed={apiClipboard.isFailed(`raw-${f.id}`)}
                     />
                   </button>
+                  {renderCurlButton(
+                    `curl-raw-${f.id}`,
+                    `/api/stashes/${stash.id}/files/${encodeURIComponent(f.filename)}/raw`,
+                    `raw ${f.filename}`,
+                  )}
                   <ApiOpenLink
                     path={`/api/stashes/${stash.id}/files/${encodeURIComponent(f.filename)}/raw`}
                     label={`Open raw ${f.filename} in a new tab`}
