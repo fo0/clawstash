@@ -160,3 +160,72 @@ export function computeFileDiffs(v1: StashVersion, v2: StashVersion): FileDiff[]
   diffs.sort((a, b) => STATUS_ORDER[a.status] - STATUS_ORDER[b.status]);
   return diffs;
 }
+
+/** Unchanged lines kept on each side of a change when a long run is folded. */
+export const DIFF_CONTEXT_LINES = 3;
+/**
+ * Smallest run of hidden lines worth a fold row. Folding one or two lines
+ * would replace them with a "Show 2 unchanged lines" row of the same height.
+ */
+export const DIFF_MIN_FOLD = 4;
+
+/** A stretch of `DiffLine`s to render as-is, or a folded run of context lines. */
+export interface DiffSegment {
+  kind: 'lines' | 'fold';
+  /** Index into the source `lines` of the segment's first line — a stable key. */
+  start: number;
+  lines: DiffLine[];
+}
+
+/**
+ * Splits a diff's lines into visible stretches and folds, the way `git diff`
+ * and every code-review tool trim a comparison: `computeFileDiffs` keeps every
+ * line of a file, so a one-line change in a 500-line file rendered all 500.
+ * Each maximal run of context lines keeps `context` lines next to a change on
+ * either side; the rest becomes a fold when it is at least `minFold` lines
+ * long. A run at the start or end of the file only borders a change on one
+ * side, so it keeps context on that side only. Lines with no change at all
+ * (or only changes) come back as one `lines` segment.
+ */
+export function foldDiffLines(
+  lines: DiffLine[],
+  context = DIFF_CONTEXT_LINES,
+  minFold = DIFF_MIN_FOLD,
+): DiffSegment[] {
+  const segments: DiffSegment[] = [];
+  let visible: DiffLine[] = [];
+  let visibleStart = 0;
+  const flush = (nextStart: number) => {
+    if (visible.length > 0) segments.push({ kind: 'lines', start: visibleStart, lines: visible });
+    visible = [];
+    visibleStart = nextStart;
+  };
+
+  let i = 0;
+  while (i < lines.length) {
+    if (lines[i]!.type !== 'context') {
+      visible.push(lines[i]!);
+      i++;
+      continue;
+    }
+    let end = i;
+    while (end < lines.length && lines[end]!.type === 'context') end++;
+    const keepBefore = i === 0 ? 0 : context;
+    const keepAfter = end === lines.length ? 0 : context;
+    const hideFrom = i + keepBefore;
+    const hideTo = end - keepAfter;
+    // A file without a single change has nothing to anchor context to.
+    const hasChange = !(i === 0 && end === lines.length);
+    if (hasChange && hideTo - hideFrom >= minFold) {
+      visible.push(...lines.slice(i, hideFrom));
+      flush(hideTo);
+      segments.push({ kind: 'fold', start: hideFrom, lines: lines.slice(hideFrom, hideTo) });
+      visible.push(...lines.slice(hideTo, end));
+    } else {
+      visible.push(...lines.slice(i, end));
+    }
+    i = end;
+  }
+  flush(lines.length);
+  return segments;
+}

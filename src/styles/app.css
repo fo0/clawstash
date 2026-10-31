@@ -7546,6 +7546,35 @@ textarea.code-editor-plain.code-editor-wrap {
   background: transparent;
 }
 
+/* Folded run of unchanged lines — a full-width row that opens it. */
+.diff-fold td {
+  padding: 0;
+  background: var(--bg-tertiary);
+  border-top: 1px solid var(--border-color);
+  border-bottom: 1px solid var(--border-color);
+}
+
+.diff-fold-btn {
+  display: block;
+  width: 100%;
+  padding: 2px 12px;
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.diff-fold-btn:hover {
+  color: var(--accent-blue);
+}
+
+.diff-fold-btn:focus-visible {
+  outline: 2px solid var(--accent-blue);
+  outline-offset: -2px;
+}
+
 .diff-no-changes {
   text-align: center;
   padding: 24px;

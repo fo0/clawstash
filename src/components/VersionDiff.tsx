@@ -1,7 +1,7 @@
 import { useCallback, useMemo, useState } from 'react';
 import type { StashVersion } from '../types';
-import type { FileDiff } from './version-diff-utils';
-import { buildUnifiedDiff, computeFileDiffs } from './version-diff-utils';
+import type { DiffLine, FileDiff } from './version-diff-utils';
+import { buildUnifiedDiff, computeFileDiffs, foldDiffLines } from './version-diff-utils';
 import { useClipboard } from '../hooks/useClipboard';
 import { CopyIcon, CheckIcon, XIcon } from './shared/icons';
 
@@ -54,6 +54,22 @@ function countLines(fd: FileDiff): { additions: number; deletions: number } {
   return { additions, deletions };
 }
 
+/** One rendered row of the diff table. */
+function DiffRow({ line }: { line: DiffLine }) {
+  return (
+    <tr className={`diff-line diff-line-${line.type}`}>
+      <td className="diff-line-num diff-line-num-old">{line.oldLineNo ?? ''}</td>
+      <td className="diff-line-num diff-line-num-new">{line.newLineNo ?? ''}</td>
+      <td className="diff-line-marker">
+        {line.type === 'add' ? '+' : line.type === 'remove' ? '-' : ' '}
+      </td>
+      <td className="diff-line-content">
+        <pre>{line.content}</pre>
+      </td>
+    </tr>
+  );
+}
+
 function MetaDiff({ label, oldVal, newVal }: { label: string; oldVal: string; newVal: string }) {
   if (oldVal === newVal) return null;
   return (
@@ -93,6 +109,24 @@ export default function VersionDiff({ v1, v2 }: Props) {
       else next.add(filename);
       return next;
     });
+  }, []);
+
+  // Long runs of unchanged lines are folded to a few lines of context around
+  // each change — a one-line edit in a 500-line file used to render all 500.
+  // Computed once per comparison; a fold opens for good on click (keyed by
+  // file, hunk and position). Only the rendering folds: "Copy diff" and the
+  // +/- counts still read the unfolded hunks.
+  const segmentsByFile = useMemo(
+    () =>
+      new Map(changedFiles.map((fd) => [fd.filename, fd.hunks.map((h) => foldDiffLines(h.lines))])),
+    [changedFiles],
+  );
+  const [openFolds, setOpenFolds] = useState<ReadonlySet<string>>(new Set());
+  const openFold = useCallback((key: string, button: HTMLButtonElement) => {
+    // The button unmounts with its row; keep keyboard focus in this file's
+    // scroll region instead of letting it fall back to <body>.
+    button.closest<HTMLElement>('.diff-table-wrapper')?.focus();
+    setOpenFolds((prev) => new Set(prev).add(key));
   }, []);
 
   const toggleAll = useCallback(() => {
@@ -305,23 +339,32 @@ export default function VersionDiff({ v1, v2 }: Props) {
                     </tr>
                   </thead>
                   <tbody>
-                    {fd.hunks.map((hunk, hi) =>
-                      hunk.lines.map((line, li) => (
-                        <tr key={`${hi}-${li}`} className={`diff-line diff-line-${line.type}`}>
-                          <td className="diff-line-num diff-line-num-old">
-                            {line.oldLineNo ?? ''}
-                          </td>
-                          <td className="diff-line-num diff-line-num-new">
-                            {line.newLineNo ?? ''}
-                          </td>
-                          <td className="diff-line-marker">
-                            {line.type === 'add' ? '+' : line.type === 'remove' ? '-' : ' '}
-                          </td>
-                          <td className="diff-line-content">
-                            <pre>{line.content}</pre>
-                          </td>
-                        </tr>
-                      )),
+                    {(segmentsByFile.get(fd.filename) ?? []).map((segments, hi) =>
+                      segments.map((seg) => {
+                        const foldKey = `${fd.filename}\u0000${hi}:${seg.start}`;
+                        if (seg.kind === 'lines' || openFolds.has(foldKey)) {
+                          return seg.lines.map((line, li) => (
+                            <DiffRow key={`${hi}-${seg.start + li}`} line={line} />
+                          ));
+                        }
+                        const n = seg.lines.length;
+                        return (
+                          <tr key={`${hi}-fold-${seg.start}`} className="diff-fold">
+                            <td colSpan={4}>
+                              <button
+                                type="button"
+                                className="diff-fold-btn"
+                                onClick={(e) => openFold(foldKey, e.currentTarget)}
+                                title={`Show unchanged lines ${seg.lines[0]?.newLineNo ?? ''}-${
+                                  seg.lines[n - 1]?.newLineNo ?? ''
+                                }`}
+                              >
+                                Show {n} unchanged lines
+                              </button>
+                            </td>
+                          </tr>
+                        );
+                      }),
                     )}
                   </tbody>
                 </table>
