@@ -3946,12 +3946,19 @@ textarea.code-editor-plain.code-editor-wrap {
 
 .api-new-token-header {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 8px;
   color: var(--accent-orange);
   font-size: 14px;
   font-weight: 600;
   margin-bottom: 6px;
+}
+
+.api-new-token-dismiss {
+  margin-left: auto;
+  color: var(--text-secondary);
+  font-weight: 500;
 }
 
 .api-new-token-value {

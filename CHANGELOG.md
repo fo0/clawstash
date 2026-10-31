@@ -58,6 +58,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/), and this
 
 ### Changed
 
+- Settings → API & Tokens: the one-time token banner has a "Done, hide token" button. The secret used to stay on screen until the tab was left, with no way to take it down once it was stored — on a page that may be shared or screen-recorded. Hiding it is final (stored tokens are hashed), which the button's tooltip says; focus moves to the Token Label field instead of falling back to the page.
 - Settings → API & Tokens: a token list that failed to load says so and can be loaded again. The tab put "Could not load tokens" in its error banner and, directly below, "No tokens created yet." — a claim nothing had checked, since the list never arrived — and the only way to try again was leaving the tab. The list area now reads "The token list could not be loaded." with a Retry button; an empty list that did load still reads "No tokens created yet."
 
 - Settings → API & Tokens / REST API / MCP: a copy that the browser refused looks like a failure. The three tabs share one copy toast, which was the same green box with a check mark for both outcomes, so a failed copy read as done at a glance, and its text, a bare "Copy failed", did not say which of the many copy buttons it was about. A failed copy now shows in red with a warning icon and names the item (`Copying "MCP Endpoint" failed`)

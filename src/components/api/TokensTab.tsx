@@ -168,6 +168,16 @@ export default function TokensTab({
     [loadTokens, newlyCreated, confirmDeleteId],
   );
 
+  const labelInputRef = useRef<HTMLInputElement>(null);
+
+  // Takes the one-time secret off screen. Focus sat on the button that is
+  // about to unmount, so hand it to the label field (the start of the next
+  // create) instead of letting it fall back to <body>.
+  const handleDismissNewToken = useCallback(() => {
+    setNewlyCreated(null);
+    labelInputRef.current?.focus();
+  }, []);
+
   const toggleScope = useCallback((scope: TokenScope) => {
     setSelectedScopes((current) =>
       current.includes(scope) ? current.filter((s) => s !== scope) : [...current, scope],
@@ -261,6 +271,7 @@ export default function TokensTab({
           <div className="form-group">
             <label htmlFor="token-label">Token Label</label>
             <input
+              ref={labelInputRef}
               id="token-label"
               value={label}
               onChange={(e) => setLabel(e.target.value)}
@@ -355,6 +366,18 @@ export default function TokensTab({
             <div className="api-new-token-header">
               <WarningIcon />
               <span>Token created - copy it now!</span>
+              {/* The secret used to stay on screen until the user left the
+                  tab — no way to take it down once it was stored, on a page
+                  that may be shared or screen-recorded. Hiding it is final:
+                  stored tokens are hashed, which the tooltip says. */}
+              <button
+                type="button"
+                className="btn btn-ghost btn-sm api-new-token-dismiss"
+                onClick={handleDismissNewToken}
+                title="Hide the token value. It cannot be shown again."
+              >
+                Done, hide token
+              </button>
             </div>
             <p className="api-hint">
               The token value is only shown this one time. Copy and store it securely.

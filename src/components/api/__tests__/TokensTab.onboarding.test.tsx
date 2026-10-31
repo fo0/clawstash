@@ -83,6 +83,18 @@ describe('TokensTab one-time token banner', () => {
     expect(mockedCopy.mock.calls[0]![0]).toBe(FRESH_TOKEN);
   });
 
+  it('hides the token on "Done" and returns focus to the label field', async () => {
+    renderTab();
+    await createToken();
+
+    fireEvent.click(screen.getByRole('button', { name: /done, hide token/i }));
+
+    expect(screen.queryByText(FRESH_TOKEN)).toBeNull();
+    expect(screen.queryByRole('button', { name: /copy token/i })).toBeNull();
+    // The dismissed button unmounts; focus must not fall back to <body>.
+    expect(document.activeElement).toBe(screen.getByLabelText(/token label/i));
+  });
+
   it('offers neither button before a token has been created', async () => {
     renderTab();
     // Wait for the initial token list to settle so the assertion cannot pass
