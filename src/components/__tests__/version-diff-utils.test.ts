@@ -5,8 +5,10 @@ import {
   diffAddedFile,
   diffRemovedFile,
   diffModifiedFile,
+  foldDiffLines,
   STATUS_ORDER,
 } from '../version-diff-utils';
+import type { DiffLine } from '../version-diff-utils';
 import type { StashVersion, StashVersionFile } from '../../types';
 
 // Minimal StashVersion fixture — only the fields `computeFileDiffs` reads.
@@ -219,5 +221,48 @@ describe('buildUnifiedDiff', () => {
     // `diffAddedFile` guards against ''.split('\n') producing [''] — nothing
     // may follow the hunk header for an empty file.
     expect(out.trimEnd().split('\n').at(-1)).toBe('@@ -0,0 +0,0 @@');
+  });
+});
+
+describe('foldDiffLines', () => {
+  const ctx = (n: number): DiffLine[] =>
+    Array.from({ length: n }, (_, i) => ({ type: 'context' as const, content: `c${i}` }));
+  const add: DiffLine = { type: 'add', content: '+' };
+
+  it('folds a long run between two changes, keeping 3 lines on each side', () => {
+    const lines = [add, ...ctx(20), add];
+    const segs = foldDiffLines(lines);
+    expect(segs.map((s) => [s.kind, s.lines.length])).toEqual([
+      ['lines', 4],
+      ['fold', 14],
+      ['lines', 4],
+    ]);
+    expect(segs.map((s) => s.start)).toEqual([0, 4, 18]);
+  });
+
+  it('keeps context only on the changed side of a leading or trailing run', () => {
+    const segs = foldDiffLines([...ctx(10), add, ...ctx(10)]);
+    expect(segs.map((s) => [s.kind, s.lines.length])).toEqual([
+      ['fold', 7],
+      ['lines', 7],
+      ['fold', 7],
+    ]);
+    expect(segs.map((s) => s.start)).toEqual([0, 7, 14]);
+  });
+
+  it('leaves a run alone when folding would hide fewer than 4 lines', () => {
+    const lines = [add, ...ctx(9), add];
+    expect(foldDiffLines(lines)).toEqual([{ kind: 'lines', start: 0, lines }]);
+  });
+
+  it('never folds a stretch that has no change to anchor to', () => {
+    const lines = ctx(50);
+    expect(foldDiffLines(lines)).toEqual([{ kind: 'lines', start: 0, lines }]);
+  });
+
+  it('keeps every line exactly once, in order', () => {
+    const lines = [...ctx(8), add, ...ctx(30), add, add, ...ctx(5)];
+    const flat = foldDiffLines(lines).flatMap((s) => s.lines);
+    expect(flat).toEqual(lines);
   });
 });
