@@ -24,6 +24,7 @@ import { Marked } from 'marked';
 import { renderDescriptionMarkdown, isUnsafeUrl, sanitizeHtml } from '../utils/markdown';
 import { hydrateMermaidPlaceholders, encodeMermaidSource } from '../utils/mermaid-hydrate';
 import { wrapCodeBlockWithCopy } from '../utils/code-copy';
+import { toNumberedLinesHtml } from '../utils/code-lines';
 import { useCodeBlockCopy } from '../hooks/useCodeBlockCopy';
 import { useMaximizedFile } from '../hooks/useMaximizedFile';
 import { DELETE_CONFIRM_TIMEOUT_MS } from '../utils/constants';
@@ -113,6 +114,7 @@ const RENDER_PREF_KEY = 'clawstash-render-preview';
 const ACTIVE_TAB_KEY = 'clawstash-viewer-tab';
 const TOC_PREF_KEY = 'clawstash-toc-expanded';
 const WRAP_PREF_KEY = 'clawstash-wrap-lines';
+const LINE_NUMBERS_PREF_KEY = 'clawstash-line-numbers';
 
 type ViewerTab = 'content' | 'metadata' | 'access-log' | 'history';
 const VALID_TABS: ViewerTab[] = ['content', 'metadata', 'access-log', 'history'];
@@ -159,6 +161,26 @@ function getWrapPreference(): boolean {
 function setWrapPreference(enabled: boolean): void {
   try {
     localStorage.setItem(WRAP_PREF_KEY, String(enabled));
+  } catch {
+    /* ignore */
+  }
+}
+
+/**
+ * Read the persisted "line numbers" preference for the raw code view.
+ * Defaults to false, keeping the plain layout; mirrors the wrap preference.
+ */
+function getLineNumbersPreference(): boolean {
+  try {
+    return localStorage.getItem(LINE_NUMBERS_PREF_KEY) === 'true';
+  } catch {
+    return false;
+  }
+}
+
+function setLineNumbersPreference(enabled: boolean): void {
+  try {
+    localStorage.setItem(LINE_NUMBERS_PREF_KEY, String(enabled));
   } catch {
     /* ignore */
   }
@@ -543,6 +565,7 @@ export default function StashViewer({
   const renderDefaultRef = useRef(getRenderPreference());
   const [renderOverrides, setRenderOverrides] = useState<Record<string, boolean>>({});
   const [wrapLines, setWrapLines] = useState(getWrapPreference);
+  const [lineNumbers, setLineNumbers] = useState(getLineNumbersPreference);
   const [tocExpanded, setTocExpanded] = useState(getTocPreference);
   const [collapsedFiles, setCollapsedFiles] = useState<Set<string>>(new Set());
   // One file at a time can be blown up to fill the viewport (Content tab only).
@@ -636,6 +659,18 @@ export default function StashViewer({
     [stash.files, resolvedLanguages],
   );
 
+  // The numbered variant of the same HTML, one `code-line` span per line —
+  // only built while line numbers are on. `digits` sizes the number gutter.
+  const numberedContent = useMemo(() => {
+    if (!lineNumbers) return null;
+    const map = new Map<string, { html: string; digits: number }>();
+    for (const [id, html] of highlightedContent) {
+      const numbered = toNumberedLinesHtml(html);
+      map.set(id, { html: numbered.html, digits: String(numbered.lineCount).length });
+    }
+    return map;
+  }, [highlightedContent, lineNumbers]);
+
   /**
    * Switch ONE file between rendered preview and raw source. The choice is
    * also persisted as the default for the next stash you open (the previous
@@ -659,6 +694,15 @@ export default function StashViewer({
     setWrapLines((prev) => {
       const next = !prev;
       setWrapPreference(next);
+      return next;
+    });
+  }, []);
+
+  /** Toggle raw-code line numbers and persist the choice (global preference). */
+  const toggleLineNumbers = useCallback(() => {
+    setLineNumbers((prev) => {
+      const next = !prev;
+      setLineNumbersPreference(next);
       return next;
     });
   }, []);
@@ -1691,6 +1735,26 @@ export default function StashViewer({
                         Wrap
                       </button>
                     )}
+                    {!showRendered && (
+                      <button
+                        className={`btn btn-sm btn-ghost line-numbers-toggle ${lineNumbers ? 'line-numbers-active' : ''}`}
+                        onClick={toggleLineNumbers}
+                        aria-pressed={lineNumbers}
+                        title={lineNumbers ? 'Hide line numbers' : 'Show line numbers'}
+                        aria-label={lineNumbers ? 'Hide line numbers' : 'Show line numbers'}
+                      >
+                        <svg
+                          width="12"
+                          height="12"
+                          viewBox="0 0 16 16"
+                          fill="currentColor"
+                          aria-hidden="true"
+                        >
+                          <path d="M1 2.5h2.5V4H1Zm0 4.75h2.5v1.5H1ZM1 12h2.5v1.5H1Zm4.75-9.5h9.5V4h-9.5Zm0 4.75h9.5v1.5h-9.5Zm0 4.75h9.5v1.5h-9.5Z" />
+                        </svg>
+                        Lines
+                      </button>
+                    )}
                     <button
                       className="btn btn-sm btn-ghost"
                       onClick={() => fileClipboard.copy(file.id, file.content)}
@@ -1758,10 +1822,24 @@ export default function StashViewer({
                       title={`Preview of ${file.filename}`}
                     />
                   ) : (
-                    <pre className={`file-content${wrapLines ? ' file-content-wrap' : ''}`}>
+                    <pre
+                      className={`file-content${wrapLines ? ' file-content-wrap' : ''}${
+                        numberedContent ? ' file-content-numbered' : ''
+                      }`}
+                      style={
+                        numberedContent
+                          ? ({
+                              '--line-gutter': `${numberedContent.get(file.id)?.digits ?? 1}ch`,
+                            } as React.CSSProperties)
+                          : undefined
+                      }
+                    >
                       <code
                         dangerouslySetInnerHTML={{
-                          __html: highlightedContent.get(file.id) || '',
+                          __html:
+                            numberedContent?.get(file.id)?.html ??
+                            highlightedContent.get(file.id) ??
+                            '',
                         }}
                       />
                     </pre>

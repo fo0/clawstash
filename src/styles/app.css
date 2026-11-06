@@ -2630,6 +2630,35 @@ body {
   word-break: break-word;
 }
 
+/* "Lines" toggle: one block per source line, numbered by a CSS counter.
+   The number lives in a `::before`, so a selection copies only the code. A
+   hanging indent keeps wrapped continuation lines clear of the gutter.
+   `--line-gutter` (set inline) is the digit width of the highest number. */
+.file-content-numbered code {
+  display: block;
+  counter-reset: code-line;
+}
+
+.file-content-numbered .code-line {
+  display: block;
+  padding-left: calc(var(--line-gutter, 1ch) + 16px);
+  text-indent: calc(-1 * (var(--line-gutter, 1ch) + 16px));
+}
+
+.file-content-numbered .code-line::before {
+  counter-increment: code-line;
+  content: counter(code-line);
+  /* Alt text "": screen readers skip the number where supported. */
+  content: counter(code-line) / '';
+  display: inline-block;
+  width: var(--line-gutter, 1ch);
+  margin-right: 16px;
+  text-align: right;
+  text-indent: 0;
+  color: var(--text-muted);
+  user-select: none;
+}
+
 /* === Render Toggle === */
 .render-toggle {
   gap: 4px;
@@ -2645,6 +2674,15 @@ body {
 }
 
 .wrap-toggle.wrap-active {
+  color: var(--accent-blue);
+}
+
+/* === Line Numbers Toggle === */
+.line-numbers-toggle {
+  gap: 4px;
+}
+
+.line-numbers-toggle.line-numbers-active {
   color: var(--accent-blue);
 }
 
@@ -3339,6 +3377,21 @@ body {
   background: var(--bg-secondary);
   border-bottom: 1px solid var(--border-color);
   align-items: center;
+}
+
+/* Two rows share a filename: the save would be refused, so say so on the
+   rows themselves while typing. Orange like the metadata duplicate-key note. */
+.file-name-input[aria-invalid='true'] {
+  border-color: var(--accent-orange);
+}
+
+.editor-file-name-warning {
+  margin: 0;
+  padding: 6px 16px;
+  font-size: 12px;
+  color: var(--accent-orange);
+  background: var(--bg-secondary);
+  border-bottom: 1px solid var(--border-color);
 }
 
 /* Reorder buttons: a tight pair so they read as one control, kept quiet next
