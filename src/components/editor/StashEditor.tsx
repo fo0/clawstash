@@ -575,6 +575,18 @@ export default function StashEditor({ stash, template, onSave, onCancel, onDirty
     errorBannerRef.current?.scrollIntoView({ block: 'nearest' });
   }, [failedSaves]);
 
+  // Live twin of the save-time duplicate check below (same rule: trimmed,
+  // exact match), so a clash is flagged on the rows while typing instead of
+  // surfacing only as a refused save. Cheap: a stash holds at most 100 files.
+  const namesSeen = new Set<string>();
+  const duplicateFilenames = new Set<string>();
+  for (const f of files) {
+    const n = f.filename.trim();
+    if (!n) continue;
+    if (namesSeen.has(n)) duplicateFilenames.add(n);
+    else namesSeen.add(n);
+  }
+
   const handleSave = async () => {
     // The Ctrl/Cmd+S listener bypasses the disabled button — bail while a
     // save is already in flight instead of firing a duplicate request.
@@ -1096,6 +1108,9 @@ export default function StashEditor({ stash, template, onSave, onCancel, onDirty
             const fileId = fileIds.current[index];
             const collapsed = collapsedFiles.has(fileId);
             const fileLabel = file.filename.trim() || `file ${index + 1}`;
+            const trimmedName = file.filename.trim();
+            const duplicateName = duplicateFilenames.has(trimmedName) ? trimmedName : null;
+            const nameWarningId = `stash-file-name-warning-${fileId}`;
             return (
               <div
                 key={fileId}
@@ -1138,6 +1153,8 @@ export default function StashEditor({ stash, template, onSave, onCancel, onDirty
                     // Mirrors MAX_FILENAME_LENGTH in server/validation.ts.
                     maxLength={MAX_FILENAME_LENGTH}
                     aria-label={`File ${index + 1} filename`}
+                    aria-invalid={duplicateName ? true : undefined}
+                    aria-describedby={duplicateName ? nameWarningId : undefined}
                     title="Filename with extension (e.g. config.yml, main.py). The language is auto-detected from the extension."
                   />
                   <input
@@ -1241,6 +1258,18 @@ export default function StashEditor({ stash, template, onSave, onCancel, onDirty
                       </button>
                     ))}
                 </div>
+                {duplicateName && (
+                  <p
+                    id={nameWarningId}
+                    // No live region: one mounted together with its text is
+                    // not reliably announced. The field's aria-invalid +
+                    // aria-describedby carry it, the save banner is the alert.
+                    className="editor-file-name-warning"
+                  >
+                    Another file in this stash is also named &ldquo;{duplicateName}&rdquo; — rename
+                    one of them, filenames must be unique.
+                  </p>
+                )}
                 {collapsed ? (
                   // Folded: name what is hidden, so a wall of headers still says
                   // which file is the big one. Length, not bytes on the wire —
