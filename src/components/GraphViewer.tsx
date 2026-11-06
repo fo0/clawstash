@@ -1963,7 +1963,9 @@ export default function GraphViewer({
                         onSelectStash(s.id);
                       }}
                     >
-                      <span className="graph-popup-stash-name">{s.name || 'Untitled'}</span>
+                      <span className="graph-popup-stash-name">
+                        {s.name || s.files[0]?.filename || 'Untitled'}
+                      </span>
                       <span className="graph-popup-stash-meta">
                         {s.files.length} {s.files.length === 1 ? 'file' : 'files'}
                       </span>
