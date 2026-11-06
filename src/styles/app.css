@@ -4920,16 +4920,14 @@ textarea.code-editor-plain.code-editor-wrap {
   background: var(--bg-card-hover);
 }
 
+/* No opacity: the chip stays a live button (it re-includes the tag), and
+   0.45 took its text to 2.06:1 (WCAG 1.4.3). Strike-through, dashed border,
+   muted colour and the darker fill carry the ignored state. */
 .graph-popup-conn-tag-ignored {
-  opacity: 0.45;
   text-decoration: line-through;
   background: var(--bg-primary);
   color: var(--text-muted);
   border-style: dashed;
-}
-
-.graph-popup-conn-tag-ignored:hover {
-  opacity: 0.7;
 }
 
 .graph-ignored-tags-info {
@@ -4957,11 +4955,11 @@ textarea.code-editor-plain.code-editor-wrap {
   border-color: var(--text-muted);
 }
 
+/* Set apart by the divider alone: dimming it to 0.75 measured 3.43:1. */
 .graph-ignored-tags-clear-hint {
   padding-left: 5px;
   margin-left: 2px;
   border-left: 1px solid var(--border-color);
-  opacity: 0.75;
 }
 
 .graph-popup-conn-weight {
