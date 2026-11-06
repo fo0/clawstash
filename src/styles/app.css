@@ -4298,6 +4298,9 @@ textarea.code-editor-plain.code-editor-wrap {
 .api-copy-mcp-btn {
   background: #a371f7;
   border-color: #a371f7;
+  /* Dark on the light purple: .btn-primary's white measured 3.35:1 here and
+     2.67:1 on the hover fill (WCAG 1.4.3 needs 4.5:1). */
+  color: var(--bg-primary);
 }
 
 .api-copy-mcp-btn:hover {
