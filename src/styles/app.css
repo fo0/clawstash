@@ -2355,13 +2355,13 @@ body {
   line-height: 1.5;
   vertical-align: 1px;
   pointer-events: none;
-  opacity: 0.8;
+  /* No extra opacity: at 0.8 the 10px hint measured 3.72:1 (WCAG 1.4.3). */
 }
 
 .tab.active .tab-kbd {
   border-color: var(--accent-green);
-  color: var(--accent-green);
-  opacity: 1;
+  /* --accent-green as 10px text on this fill is 3.74:1; the hover green is 5.13:1. */
+  color: var(--accent-green-hover);
 }
 
 /* === Table of Contents (multi-markdown stashes) === */
