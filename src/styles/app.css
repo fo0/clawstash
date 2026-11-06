@@ -3878,7 +3878,8 @@ textarea.code-editor-plain.code-editor-wrap {
 .api-tab.active {
   background: var(--accent-blue);
   border-color: var(--accent-blue);
-  color: #fff;
+  /* Dark on the light blue fill: white measured 2.53:1 (WCAG 1.4.3 needs 4.5:1). */
+  color: var(--bg-primary);
 }
 
 /* API Tab Content */
@@ -4558,7 +4559,8 @@ textarea.code-editor-plain.code-editor-wrap {
 .swagger-ui-wrapper .swagger-ui .btn.execute {
   background-color: var(--accent-blue);
   border-color: var(--accent-blue);
-  color: #fff;
+  /* Same as .api-tab.active: white on this blue is 2.53:1. */
+  color: var(--bg-primary);
 }
 
 .swagger-ui-wrapper .swagger-ui .btn.try-out__btn {
@@ -7664,7 +7666,8 @@ textarea.code-editor-plain.code-editor-wrap {
 
 .graph-tab-btn.active {
   background: var(--accent-blue);
-  color: #fff;
+  /* Same as .api-tab.active: white on this blue is 2.53:1. */
+  color: var(--bg-primary);
 }
 
 /* === Stash Graph Mode Tabs === */
