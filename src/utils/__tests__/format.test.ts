@@ -42,24 +42,21 @@ describe('formatBytes', () => {
 });
 
 describe('formatBuildVersion', () => {
-  it('formats a valid ISO date as vYYYYMMDD-HHMM in UTC', () => {
-    expect(formatBuildVersion('2026-05-10T07:48:59Z')).toBe('v20260510-0748');
-  });
-
-  it('zero-pads single-digit components', () => {
-    expect(formatBuildVersion('2026-01-02T03:04:00Z')).toBe('v20260102-0304');
+  // 'uses UTC, not local time': 23:30 UTC reads as a different local hour in
+  // most timezones — pin the canonical output here so a regression to
+  // local-time formatting is caught even when the test runs in
+  // TZ=America/Los_Angeles etc.
+  it.each([
+    ['formats a valid ISO date as vYYYYMMDD-HHMM in UTC', '2026-05-10T07:48:59Z', 'v20260510-0748'],
+    ['zero-pads single-digit components', '2026-01-02T03:04:00Z', 'v20260102-0304'],
+    ['uses UTC, not local time', '2026-12-31T23:30:00Z', 'v20261231-2330'],
+  ])('%s', (_name, iso, expected) => {
+    expect(formatBuildVersion(iso)).toBe(expected);
   });
 
   it('returns null for unparseable input', () => {
     expect(formatBuildVersion('not-a-date')).toBeNull();
     expect(formatBuildVersion('')).toBeNull();
-  });
-
-  it('uses UTC, not local time', () => {
-    // 23:30 UTC reads as a different local hour in most timezones — pin
-    // the canonical output here so a regression to local-time formatting
-    // is caught even when the test runs in TZ=America/Los_Angeles etc.
-    expect(formatBuildVersion('2026-12-31T23:30:00Z')).toBe('v20261231-2330');
   });
 });
 
