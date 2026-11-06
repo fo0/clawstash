@@ -432,6 +432,20 @@ describe('runBackupSync', () => {
     expect(index).not.toContain('| A|B');
   });
 
+  it('folds every line ending in an INDEX.md stash name, a lone CR included', async () => {
+    configureBackup();
+    db.createStash({
+      name: 'One\rTwo\r\nThree\nFour',
+      files: [{ filename: 'x.txt', content: 'x' }],
+    });
+    await runBackupSync(db, 'manual');
+    const index = fake.headPaths('main').get('stashes/INDEX.md')!;
+    // CommonMark ends a line at LF, CRLF and a lone CR — any of them left in
+    // the cell would cut the table row in two.
+    expect(index).toContain('| One Two Three Four |');
+    expect(index).not.toContain('\r');
+  });
+
   it('uses the configured path prefix and commit author', async () => {
     configureBackup({ pathPrefix: 'mirror/clawstash', commitAuthorName: 'Backup Bot' });
     db.createStash({ name: 'P', files: [{ filename: 'p.txt', content: 'p' }] });

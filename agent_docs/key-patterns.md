@@ -152,7 +152,7 @@ Moved from `CLAUDE.md -> Key Patterns` (context budget, v1.56.0).
 - Build details (branch, commit, date) shown on the right side when toggled, next to GitHub link
 - Mobile: build details shown in separate panel below footer row
 
-## Graph Viewer (src/components/GraphViewer.tsx)
+## Graph Viewer (src/components/GraphViewer.tsx + graph/graph-utils.ts)
 
 - Force-directed tag graph visualization using HTML Canvas (no external graph library)
 - Nodes represent tags, sized by usage count; edges represent tag co-occurrence across stashes

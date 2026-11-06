@@ -237,6 +237,7 @@ clawstash/
 │   │   ├── Footer.tsx          # App footer with version (fetched from /api/version), build info toggle
 │   │   ├── Dashboard.tsx       # Home view with grid/list of stash cards
 │   │   ├── GraphViewer.tsx     # Force-directed tag graph visualization (canvas-based)
+│   │   ├── graph/graph-utils.ts # GraphViewer's pure helpers: clusters, initial layout, physics step
 │   │   ├── KeyboardShortcutsHelp.tsx  # Modal overlay listing all keyboard shortcuts
 │   │   ├── MarkdownBody.tsx    # Memoised renderer for pre-sanitised Markdown HTML
 │   │   ├── StashCard.tsx       # Individual stash card component

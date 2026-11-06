@@ -277,10 +277,12 @@ function buildIndexMarkdown(stashes: { id: string; name: string }[], generatedAt
     // Escape backslashes BEFORE pipes: a name like `A|B\` must not turn
     // into `A\|B\` + table delimiter, where the trailing backslash would
     // re-arm the following pipe (CodeQL js/incomplete-sanitization).
+    // A lone `\r` is a CommonMark line ending as well, so it would split the
+    // row just like `\n`.
     const name = (s.name || '(unnamed)')
       .replace(/\\/g, '\\\\')
       .replace(/\|/g, '\\|')
-      .replace(/\r?\n/g, ' ');
+      .replace(/\r\n?|\n/g, ' ');
     lines.push(`| ${name} | [\`${s.id}\`](./${s.id}/stash.json) |`);
   }
   return `${lines.join('\n')}\n`;

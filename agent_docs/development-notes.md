@@ -61,7 +61,7 @@ When refactoring is allowed to happen at all, plus the principles: `agent_docs/r
 > Line counts below were last measured 2026-09-23 and are refreshed on each optimizer run. Regenerate with:
 > `find src -name '*.ts' -o -name '*.tsx' | xargs wc -l | sort -rn | head -15`
 
-- **`src/components/StashGraphCanvas.tsx` (~2053) / `src/components/GraphViewer.tsx` (~1994)** -- Pure layout/draw/physics helpers mixed with the React components; extract-module candidates (issues #486 / #485, ex-BACKLOG #103 / #102).
+- **`src/components/StashGraphCanvas.tsx` (~2060)** -- Pure layout/draw/physics helpers mixed with the React component; extract-module candidate (issue #486, ex-BACKLOG #103). Its sibling `GraphViewer.tsx` (~1758) already had its helpers moved to `src/components/graph/graph-utils.ts` (issue #485, 2026-11-06).
 - **`src/components/StashViewer.tsx` (~1967 lines)** -- Largest frontend component outside the two graph canvases. File display, TOC, access-log tab and metadata display could be extracted into sub-components (BACKLOG #106).
 - **`src/server/db.ts` (~1643 lines)** -- Largest server file. Token/session, version history and FTS logic have already been split into `src/server/stores/` (`TokenStore`, `SessionStore`, `VersionStore`, `SearchStore`, `BackupStore`); `ClawStashDB` now delegates to them. Further extraction (e.g. tag-graph / relations) is optional and low priority.
 - **`src/server/openapi.ts` (~1207 lines)** -- Large schema definition (one big function). Could adopt `@asteasolutions/zod-to-openapi` to generate from the Zod schemas in `tool-defs.ts` (issue #466, ex-BACKLOG #105).
