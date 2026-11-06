@@ -111,6 +111,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/), and this
 
 ### Fixed
 
+- GitHub backup: a carriage return in a stash name no longer splits its row in the backup repository's `INDEX.md`. Only `\n` and `\r\n` were folded into a space, but CommonMark ends a line at a lone `\r` as well.
 - Stash viewer → Details & API: the "curl" button no longer copies a call that interactive bash or zsh rejects. `encodeURIComponent` leaves `!` unencoded and both shells run history expansion inside double quotes, so the raw-file call for a filename such as `todo!.md` failed with `event not found` before curl started. `!` is now copied as `%21`, which the server decodes to the same filename.
 - Opening a stash that no longer exists says so and cleans up after it. A stash deleted elsewhere — by an agent over REST or MCP, or in another tab — stayed in quick search's "Recently viewed", in the sidebar and on the dashboard, and a click on it only produced "Failed to load stash. Please try again.", although no retry could ever succeed. A 404 now reads "This stash no longer exists — it may have been deleted elsewhere. The list was refreshed.", drops the stash from "Recently viewed" and the pinned stashes, and reloads the stash list. Other failures keep the retry message. API errors carry their HTTP status (`ApiHttpError` in `src/api.ts`); their messages are unchanged.
 
