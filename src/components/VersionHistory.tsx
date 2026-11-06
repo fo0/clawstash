@@ -60,6 +60,13 @@ export default function VersionHistory({ stashId, currentVersion, onRestore }: P
   // cursor) would vanish until the response landed.
   const [loadedLimit, setLoadedLimit] = useState(VERSION_PAGE_SIZE);
   const confirmTimerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  // View, Compare and Back each swap the sub-view they sit in, so the button
+  // that was activated unmounts and focus would fall to <body> (WCAG 2.4.3).
+  // Opening a sub-view focuses its Back button; going back focuses the list
+  // control that opened it, found by its `data-focus-key`.
+  const backButtonRef = useRef<HTMLButtonElement>(null);
+  const listRef = useRef<HTMLDivElement>(null);
+  const returnFocusKeyRef = useRef<string | null>(null);
 
   // Confluence-style inline comparison: "From" (older) and "To" (newer)
   const [compareFrom, setCompareFrom] = useState<number | null>(null);
@@ -112,6 +119,7 @@ export default function VersionHistory({ stashId, currentVersion, onRestore }: P
     try {
       const data = await api.getVersion(stashId, version);
       setSelectedVersion(data);
+      returnFocusKeyRef.current = `view-${version}`;
       setSubView('detail');
       setError(null);
     } catch {
@@ -131,6 +139,7 @@ export default function VersionHistory({ stashId, currentVersion, onRestore }: P
         Math.max(compareFrom, compareTo),
       );
       setDiffData(data);
+      returnFocusKeyRef.current = 'compare';
       setSubView('diff');
       setError(null);
     } catch {
@@ -139,6 +148,17 @@ export default function VersionHistory({ stashId, currentVersion, onRestore }: P
       setDiffLoading(false);
     }
   };
+
+  useEffect(() => {
+    if (subView !== 'list') {
+      backButtonRef.current?.focus();
+      return;
+    }
+    const key = returnFocusKeyRef.current;
+    if (key === null) return;
+    returnFocusKeyRef.current = null;
+    listRef.current?.querySelector<HTMLElement>(`[data-focus-key="${key}"]`)?.focus();
+  }, [subView]);
 
   // Cleanup confirm timer on unmount
   useEffect(() => {
@@ -294,7 +314,7 @@ export default function VersionHistory({ stashId, currentVersion, onRestore }: P
           {fileClipboard.failedKey && 'Copy failed'}
         </div>
         <div className="version-detail-header">
-          <button className="btn btn-ghost btn-sm" onClick={handleBack}>
+          <button ref={backButtonRef} className="btn btn-ghost btn-sm" onClick={handleBack}>
             <svg aria-hidden="true" width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
               <path d="M7.78 12.53a.75.75 0 0 1-1.06 0L2.47 8.28a.75.75 0 0 1 0-1.06l4.25-4.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042L4.81 7h7.44a.75.75 0 0 1 0 1.5H4.81l2.97 2.97a.75.75 0 0 1 0 1.06Z" />
             </svg>
@@ -460,7 +480,7 @@ export default function VersionHistory({ stashId, currentVersion, onRestore }: P
     return (
       <div className="version-diff-view">
         <div className="version-detail-header">
-          <button className="btn btn-ghost btn-sm" onClick={handleBack}>
+          <button ref={backButtonRef} className="btn btn-ghost btn-sm" onClick={handleBack}>
             <svg aria-hidden="true" width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
               <path d="M7.78 12.53a.75.75 0 0 1-1.06 0L2.47 8.28a.75.75 0 0 1 0-1.06l4.25-4.25a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042L4.81 7h7.44a.75.75 0 0 1 0 1.5H4.81l2.97 2.97a.75.75 0 0 1 0 1.06Z" />
             </svg>
@@ -480,7 +500,7 @@ export default function VersionHistory({ stashId, currentVersion, onRestore }: P
   const hasMultipleVersions = versions.length >= 2;
 
   return (
-    <div className="version-history">
+    <div className="version-history" ref={listRef}>
       {errorAlert}
       {/* Compare action bar */}
       {hasMultipleVersions && (
@@ -489,6 +509,7 @@ export default function VersionHistory({ stashId, currentVersion, onRestore }: P
             className="btn btn-sm btn-secondary"
             onClick={handleCompare}
             disabled={!canCompare || diffLoading}
+            data-focus-key="compare"
           >
             {diffLoading ? (
               <>
@@ -606,6 +627,7 @@ export default function VersionHistory({ stashId, currentVersion, onRestore }: P
                   className="btn btn-sm btn-ghost"
                   onClick={() => handleViewVersion(v.version)}
                   disabled={detailLoading}
+                  data-focus-key={`view-${v.version}`}
                   aria-busy={loadingVersion === v.version || undefined}
                   // Every row's button reads just "View" — a screen reader
                   // listing buttons heard the same word once per version.
