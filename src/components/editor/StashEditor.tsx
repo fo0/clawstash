@@ -575,9 +575,10 @@ export default function StashEditor({ stash, template, onSave, onCancel, onDirty
     errorBannerRef.current?.scrollIntoView({ block: 'nearest' });
   }, [failedSaves]);
 
-  // Live twin of the save-time duplicate check below (same rule: trimmed,
-  // exact match), so a clash is flagged on the rows while typing instead of
-  // surfacing only as a refused save. Cheap: a stash holds at most 100 files.
+  // Filenames that clash (trimmed, exact match). Flags the rows while typing
+  // instead of surfacing only as a refused save, and is also what handleSave
+  // blocks on, so the two cannot drift. Insertion order is the order of the
+  // second occurrences. Cheap: a stash holds at most 100 files.
   const namesSeen = new Set<string>();
   const duplicateFilenames = new Set<string>();
   for (const f of files) {
@@ -615,14 +616,10 @@ export default function StashEditor({ stash, template, onSave, onCancel, onDirty
     }
     // Duplicate filenames: the raw-file route looks files up by exact name,
     // so the second file would be stored but unreachable. Block the save.
-    const seenFilenames = new Set<string>();
-    for (const f of validFiles) {
-      const trimmedName = f.filename.trim();
-      if (seenFilenames.has(trimmedName)) {
-        failSave(`Duplicate filename "${trimmedName}" — filenames must be unique within a stash.`);
-        return;
-      }
-      seenFilenames.add(trimmedName);
+    const [firstDuplicate] = duplicateFilenames;
+    if (firstDuplicate !== undefined) {
+      failSave(`Duplicate filename "${firstDuplicate}" — filenames must be unique within a stash.`);
+      return;
     }
     // Oversize content: without this a multi-MB payload is uploaded only to
     // come back as a raw Zod path string. Name the file and its size instead.

@@ -67,6 +67,21 @@ describe('StashEditor duplicate filename warning', () => {
     expect(nameInput(2).getAttribute('aria-invalid')).toBeNull();
   });
 
+  it('refuses the save with the clashing name, without calling onSave', () => {
+    // jsdom has no layout engine; the refused save scrolls its banner into view.
+    Element.prototype.scrollIntoView = vi.fn();
+    const onSave = vi.fn();
+    render(<StashEditor stash={STASH} onSave={onSave} onCancel={vi.fn()} />);
+    fireEvent.change(nameInput(2), { target: { value: ' a.md ' } });
+
+    fireEvent.click(screen.getByRole('button', { name: /Save Stash/ }));
+
+    expect(screen.getByRole('alert').textContent).toBe(
+      'Duplicate filename "a.md" — filenames must be unique within a stash.',
+    );
+    expect(onSave).not.toHaveBeenCalled();
+  });
+
   it('treats names that differ only in case as distinct, like the save check', () => {
     const { container } = render(<StashEditor stash={STASH} onSave={vi.fn()} onCancel={vi.fn()} />);
     fireEvent.change(nameInput(2), { target: { value: 'A.md' } });
