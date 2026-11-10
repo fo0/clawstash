@@ -147,8 +147,6 @@ Latest CI run was for <stale-sha> (now HEAD is <head-sha>). Push to trigger a fr
 - **Never `gh run rerun` without explicit user confirmation.** Reruns burn CI minutes and can mask flakiness — unattended, the rerun is a report line (Phase D, step 6), never an action.
 - **Never propose a fix without reading the actual failed-step log.** Don't guess from job name.
 - **Always verify locally** before pushing a CI fix — the autonomy and zero-cost constraints in `agent_docs/review_process.md → Test execution constraints` apply.
-- **Infra failures are NOT code defects.** Don't apply code changes for runner timeouts, network blips, or OOM kills.
-- **Flaky tests go to BACKLOG.md, not silent retry.** Document the flake; don't paper over it.
 
 ## Other CI Providers
 

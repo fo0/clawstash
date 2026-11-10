@@ -28,21 +28,6 @@ The full review workflow lives in `agent_docs/review_process.md`. **Do not dupli
 4. Produce the standard `### Code Review Results` table.
 5. Write deferred findings to `BACKLOG.md` per `agent_docs/backlog_process.md`.
 
-## Workflow
-
-```
-1. git status + git diff                           → identify changed files
-2. Read agent_docs/review_process.md               → load rules
-3. Run automated checks per CLAUDE.md → Commands (canonical order)
-4. Re-read every changed file completely
-5. Evaluate against P0/P1/P2 categories, then run the Pre-Report Gate
-6. Fix P0/P1 inline; defer P2 only if non-trivial
-7. Regression & complexity QA pass
-8. UI review (only if UI changed)
-9. Output standard Code Review Results table
-10. Write deferred findings to BACKLOG.md
-```
-
 ## Rules
 
 - **Do not run automatically.** This skill is on-demand only. Done-skill must NOT trigger it.
@@ -53,19 +38,7 @@ The full review workflow lives in `agent_docs/review_process.md`. **Do not dupli
 
 ## Report
 
-Use the exact format from `review_process.md`:
-
-```
-### Code Review Results
-
-| # | Category | Sev | Status | Finding | Action |
-|---|----------|-----|--------|---------|--------|
-| ... |
-
-Summary: X categories checked | Y fixed | Z deferred → Backlog | N dropped at the Pre-Report Gate
-```
-
-Append a one-line skill footer:
+The exact format of `agent_docs/review_process.md → Review Execution` — table, status vocabulary and `Summary:` line; it is defined there, once. Append a one-line skill footer:
 ```
 🔍 review skill — full process: agent_docs/review_process.md
 ```

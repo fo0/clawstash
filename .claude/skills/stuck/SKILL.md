@@ -55,8 +55,6 @@ If you can't articulate the attempts as distinct approaches → that itself is t
 | Pattern                                                           | Likely cause                                  | Action                                |
 |-------------------------------------------------------------------|-----------------------------------------------|---------------------------------------|
 | Same fix re-applied because tests still fail                      | Test is wrong, not the code                   | Question the test                     |
-| Lint passes locally, fails in CI                                  | Tooling-version drift                         | Pin versions, check `.tool-versions` / lockfile |
-| Import / module-not-found that "should work"                      | Cache, build artifacts, stale lockfile        | Clean caches, re-install deps         |
 | Type error surviving every cast                                   | Wrong type model, not wrong cast              | Step back, redesign types             |
 | Test flake (passes/fails non-deterministically)                   | Async race / shared state / clock dependency  | Treat as flake → BACKLOG.md           |
 | Network / external-API error                                      | Unmocked external dep                         | Apply autonomy + zero-cost rule — mock |

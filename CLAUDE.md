@@ -2,11 +2,11 @@
 
 ## Session Start -- Read Order
 
-`MEMORY.md` -> `SCRATCHPAD.md`; `BACKLOG.md` only when prior findings come up; skip what is missing. `agent_docs/*` and skills load on demand, never up front. Never suggest `/clear` or `/compact` -- the user runs them; keep the state in `SCRATCHPAD.md`, `BACKLOG.md` or `MEMORY.md` as you go.
+`MEMORY.md` -> `SCRATCHPAD.md`; `BACKLOG.md` only when prior findings come up; skip what is missing. `agent_docs/*` loads on demand, never up front. Never suggest `/clear` or `/compact` -- the user runs them; keep the state in `SCRATCHPAD.md`, `BACKLOG.md` or `MEMORY.md` as you go.
 
 ## Workflow Triggers
 
-Skills (`.claude/skills/<name>/SKILL.md`): `done` ("done" / "fertig"; never auto-runs a review, and **does not push unless asked**) · `pr` · `basic-review` · `basic-sec-review` · `rollback` · `ci` (which workflows actually run: `agent_docs/development-notes.md -> CI/CD`) · `stuck` · `beacon` · `verify` (browser UI check) · `scheduler` (bare `/loop`: `.claude/loop.md`) · `orca` (`/orca <objective>`) · `ui-mockup` (views, mockups, UI rules). Diagram -> `agent_docs/diagram_prompt.md`. Findings -> `BACKLOG.md`, knowledge -> `MEMORY.md` / `SCRATCHPAD.md` (`agent_docs/backlog_process.md`, `memory_process.md`).
+Skills (`.claude/skills/<name>/SKILL.md`): `done` ("done" / "fertig"; never auto-runs a review, and **does not push unless asked**) · `pr` · `basic-review` · `basic-sec-review` · `rollback` · `ci` (which workflows actually run: `agent_docs/development-notes.md -> CI/CD`) · `stuck` · `beacon` · `verify` (browser UI check) · `scheduler` (bare `/loop`: `.claude/loop.md`) · `orca` · `ui-mockup` (views, mockups, UI rules). Diagram -> `agent_docs/diagram_prompt.md`. Findings -> `BACKLOG.md`, knowledge -> `MEMORY.md` / `SCRATCHPAD.md` (`agent_docs/backlog_process.md`, `memory_process.md`).
 
 ## Output Languages
 
@@ -37,7 +37,7 @@ Edge cases: `agent_docs/autonomy.md -> Autonomy`.
 
 ## Handoff Prompt -- when a turn ends on a decision or a next step
 
-A turn that hands a decision back or names a next step / recommendation ends with **exactly one** ready-to-send prompt: your recommendation, not a menu, complete enough that pasting it is the whole instruction, placed last. **Never two** -- no second command, no second block; alternatives go _above_ it as one-line prose (`A -- <label>`). **One single line, no line breaks, <= 4000 characters**: a slash command takes the rest of the message as its argument, so a line break or the cap loses the goal after the paste. Join the parts with `. ` and `·`; too long -> narrow _In scope_, never a second message.
+A turn that hands a decision back or names a next step / recommendation ends with **exactly one** ready-to-send prompt: your recommendation, not a menu, complete enough that pasting it is the whole instruction, placed last. **Never two** -- no second command, no second block; alternatives go _above_ it as one-line prose (`A -- <label>`). **One single line, no line breaks, <= 4000 characters.** Join the parts with `. ` and `·`; too long -> narrow _In scope_, never a second message.
 
 ```
 /goal <objective in one sentence> -- <the recommended path>. In scope: <...>. Out of scope: <...>. Steps: <1 ... n>. /basic-review after every step, one overall review over the combined diff at the end by an agent that wrote none of it, then /done. Done when: <observable condition>.
@@ -53,7 +53,7 @@ A turn that hands a decision back or names a next step / recommendation ends wit
 
 ## Subagents -- orchestrator mode is the default
 
-**Every session starts in orchestrator mode, width 5:** the main agent decomposes, does units of about five tool calls and one file, verifies returned diffs, runs the gates and relays results, never blocking the chat; only work that waits long, reads raw material in bulk or implements across files goes to subagents. Every subagent is an Opus seat from `.claude/agents/`: `opus-high` the default and floor, `opus-xhigh` / `opus-max` for heavy work, `opus-medium` only to watch a pipeline -- never `general-purpose`, `Explore`, `Plan`, a fork, or a `model` / `effort` on the call (no seat listed: skill item 4). `/orca <N>` (1-10) sets the width, `/orca off` drops to plain behavior for this session; `/orca <objective>` / `/orca <N> <objective>` runs an objective. Seat only what the change calls for:
+**Every session starts in orchestrator mode, width 5:** the main agent decomposes, does units of about five tool calls and one file, verifies returned diffs, runs the gates and relays results, never blocking the chat; only work that waits long, reads raw material in bulk or implements across files goes to subagents. Every subagent is a seat from `.claude/agents/`: `opus-high` the default and floor, `fable-medium` for heavy work, `fable-high` by exception, `opus-medium` only to watch a pipeline -- never `general-purpose`, `Explore`, `Plan`, a fork, or a `model` / `effort` on the call (no seat listed: skill item 4). `/orca <N>` (1-10) sets the width, `/orca off` drops to plain behavior for this session; `/orca <objective>` / `/orca <N> <objective>` runs an objective. Keep packages small, build only what the goal needs, seat only what the change calls for:
 
 | Role          | Earns a seat when                                    |
 | ------------- | ---------------------------------------------------- |
@@ -119,6 +119,7 @@ Zod at every trust boundary, `checkScope()` / `checkAdmin()` gates in route hand
 - **Branches:** `claude/<description>-<shortId>` agent, `feature/<name>` manual · **Commits:** Conventional Commits `type(scope): description #issue` · **Merge:** squash merge for PRs
 - **Cloud / routine runs** start on `claude/<topic>` unless the task names a branch (`agent_docs/autonomy.md -> Branch rule`).
 - **Issues:** work off the default branch starts from an issue -- an open one with the same goal, else a new one; routine runs and a task naming its issue keep their own. Commits, PR (`Closes #n`), a branch you name and chat reference it (`agent_docs/autonomy.md -> Issue-based work`).
+- **Pushes:** a push that runs CI (open PR, default branch) carries only finished work; each step runs the _Commands_ chain locally.
 - **Dependencies:** new runtime ones only after user approval with reasoning, dev / tooling without; always commit `package-lock.json`.
 - **Formatting guard:** not installed -- `npm run format` before commit is it (`agent_docs/ci_formatting_guard.md`); never `--no-verify`.
 
@@ -154,4 +155,4 @@ After a code change, update only what it changed: `README.md` · `BACKLOG.md` ·
 
 `CLAUDE.md` loads every turn: **12k** target, offload at **14k**, hard 16k. `MEMORY.md` / `SCRATCHPAD.md` load at session start: 8k / 4k target, offload at 16k / 8k. Over -> **move** content out and leave a one-line pointer, never delete to fit -- ladder: `agent_docs/context_budget.md`.
 
-<!-- Generated by claude-code-optimizer v1.74.1 -->
+<!-- Generated by claude-code-optimizer v1.77.0 -->
