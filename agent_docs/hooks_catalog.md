@@ -59,13 +59,13 @@ Trigger: `PreToolUse`. Agent-facing, **non-blocking** -- it names the right home
   "hooks": [
     {
       "type": "command",
-      "command": "printf '%s' '{\"systemMessage\":\"Session ending -- verify SCRATCHPAD.md is clean. Promote stable entries to MEMORY.md per memory_process.md.\"}'"
+      "command": "printf '%s' '{\"systemMessage\":\"Turn ended -- verify SCRATCHPAD.md is clean. Promote stable entries to MEMORY.md per memory_process.md.\"}'"
     }
   ]
 }
 ```
 
-Trigger: `Stop`. **User-facing** by design: `additionalContext` on `Stop` would resume the turn so the agent can act on it -- not what an end-of-session reminder should do.
+Trigger: `Stop` -- it fires when the agent finishes a turn, not once per session, and the message says so. **User-facing** by design: `additionalContext` on `Stop` would resume the turn so the agent can act on it -- not what a reminder should do.
 
 ### PreCompact -- dump scratchpad state
 
@@ -105,7 +105,7 @@ Trigger: `SessionStart`. Agent-facing via plain stdout -- one of the three event
   "hooks": [
     {
       "type": "command",
-      "command": "printf '%s' '{\"systemMessage\":\"Session ending -- if code changed this session, the review process per agent_docs/review_process.md must have run before commit.\"}'"
+      "command": "printf '%s' '{\"systemMessage\":\"Turn ended -- if code changed this session, the review process per agent_docs/review_process.md must have run before commit.\"}'"
     }
   ]
 }
@@ -129,7 +129,7 @@ Trigger: `Stop`. User-facing (same reasoning as the cleanup reminder above).
 
 Trigger: `PreToolUse`. Project commands inserted from CLAUDE.md: typecheck (`npx tsc --noEmit`) and tests (`npm test`) -- the two the snippet actually runs. Requires `jq` -- without it the guard never fires (see Notes). Heuristic and **err-safe**: a bare `git push` is resolved via the currently checked-out branch, and a false positive (e.g. a branch name containing `main`, or pushing a feature ref while `main` is checked out) merely runs the checks -- it only blocks when they are red.
 
-### Block force-push without confirmation
+### Block force-push
 
 ```json
 {
@@ -137,7 +137,7 @@ Trigger: `PreToolUse`. Project commands inserted from CLAUDE.md: typecheck (`npx
   "hooks": [
     {
       "type": "command",
-      "command": "cmd=$(jq -r '.tool_input.command // empty'); if echo \"$cmd\" | grep -qE 'git push.*(--force(-with-lease)?|-f)\\b'; then echo 'BLOCKED: force-push requires explicit user confirmation. Re-run after user approves.' >&2; exit 2; fi"
+      "command": "cmd=$(jq -r '.tool_input.command // empty'); if echo \"$cmd\" | grep -qE 'git push.*(--force(-with-lease)?|-f)\\b'; then echo 'BLOCKED by hook: force-push. The user runs it themselves or removes this hook; a retry is blocked the same way.' >&2; exit 2; fi"
     }
   ]
 }
@@ -220,13 +220,13 @@ Trigger: `UserPromptSubmit`. One of the three events where bare stdout _is_ adde
   "hooks": [
     {
       "type": "command",
-      "command": "cmd=$(jq -r '.tool_input.command // empty'); if echo \"$cmd\" | grep -qE '(npm|yarn|pnpm|bun) (install|i|add)( +-[^ ]+)* +[^- ]|pip install [a-zA-Z]|uv add |poetry add |cargo add |go get |gem install |composer require '; then printf '%s' '{\"hookSpecificOutput\":{\"hookEventName\":\"PreToolUse\",\"permissionDecision\":\"ask\",\"permissionDecisionReason\":\"New dependency -- confirm with the user per the dependencies line in CLAUDE.md -> Git Conventions.\"}}'; fi; exit 0"
+      "command": "cmd=$(jq -r '.tool_input.command // empty'); if echo \"$cmd\" | grep -qE '(npm|yarn|pnpm|bun) (install|i|add)( +-[^ ]+)* +[^- ]|pip install [a-zA-Z]|uv add |poetry add |cargo add |go get |gem install |composer require '; then if [ \"$CLAUDE_CODE_REMOTE\" = \"true\" ]; then printf '%s' '{\"hookSpecificOutput\":{\"hookEventName\":\"PreToolUse\",\"additionalContext\":\"New dependency in an unattended session -- a runtime one needs the user per the dependencies line in CLAUDE.md -> Git Conventions; nobody answers here, so CLAUDE.md -> Autonomy decides.\"}}'; else printf '%s' '{\"hookSpecificOutput\":{\"hookEventName\":\"PreToolUse\",\"permissionDecision\":\"ask\",\"permissionDecisionReason\":\"New dependency -- a runtime one needs the user per the dependencies line in CLAUDE.md -> Git Conventions.\"}}'; fi; fi; exit 0"
     }
   ]
 }
 ```
 
-Trigger: `PreToolUse`. Forces the permission prompt instead of only mentioning the rule, so the install cannot slip through unconfirmed. A lockfile install that names no package (`npm install`, `pnpm install --frozen-lockfile`) does not match -- those are the check chain's own first stage.
+Trigger: `PreToolUse`. The pattern matches the commands that add a named package; a lockfile install that names no package (`npm install`, `pnpm install --frozen-lockfile`) does not match -- it is the check chain's own first stage. Interactive, the hook forces the permission prompt instead of only mentioning the rule; unattended (`$CLAUDE_CODE_REMOTE=true`) a prompt would stall the run, so the rule reaches the agent as context.
 
 ---
 
@@ -240,4 +240,4 @@ Trigger: `PreToolUse`. Forces the permission prompt instead of only mentioning t
 - Hooks run in the user's shell. Quote paths, escape `$` carefully when copying.
 - After modifying `.claude/settings.json`, restart the Claude Code session (or review via `/hooks`) for changes to take effect.
 
-<!-- Generated by claude-code-optimizer v1.49.0 -->
+<!-- Generated by claude-code-optimizer v1.77.0 -->
