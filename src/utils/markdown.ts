@@ -149,10 +149,25 @@ export function sanitizeHtml(html: string): string {
       // `expression()`. Markdown descriptions never need inline styles, so
       // stripping is the safe default.
       const isStyleAttr = lowerName === 'style';
+      // Drop `name` on <img>. `Document` is a `[LegacyOverrideBuiltIns]`
+      // interface: `document[name]` resolves to a named <img> BEFORE the
+      // built-in member, so `<img name="createElement">` in a stored
+      // description replaces `document.createElement` for as long as the node
+      // is mounted (DOM clobbering). React calls exactly that for every element
+      // it creates, so the next render throws and the page goes blank for
+      // every reader — the dashboard renders descriptions. Of the
+      // elements the document exposes by name, <embed>, <form>, <iframe> and
+      // <object> are already removed above; <img> is the one that survives.
+      // Its `id` is exposed only together with a non-empty `name`, so dropping
+      // `name` covers both. Nothing navigates to or styles an <img> by `name`;
+      // `<a name>` (the legacy fragment target) is not a document named
+      // property and is left alone.
+      const isClobberingName = lowerName === 'name' && el.tagName.toLowerCase() === 'img';
       if (
         isEventHandler ||
         isStyleAttr ||
         isPingAttr ||
+        isClobberingName ||
         isUnsafeSrcset ||
         (isUrlAttr && isUnsafeUrl(attr.value))
       ) {

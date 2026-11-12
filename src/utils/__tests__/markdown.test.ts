@@ -124,6 +124,40 @@ describe('sanitizeHtml — dangerous attributes', () => {
     expect(out).toContain('href="https://example.com"');
   });
 
+  it.each(['createElement', 'getElementById', 'addEventListener', 'cookie'])(
+    'strips name="%s" from <img> (document named-property clobbering)',
+    (name) => {
+      // `document[name]` resolves to a named <img> BEFORE the built-in member,
+      // so one stored tag would replace the DOM API the app itself calls.
+      const out = sanitizeHtml(`<img src="a.png" alt="pic" name="${name}">`);
+      expect(out).not.toContain('name=');
+      expect(out).toContain('src="a.png"');
+      expect(out).toContain('alt="pic"');
+    },
+  );
+
+  it('strips name from <img> in any casing, and from the legacy <image> alias', () => {
+    expect(sanitizeHtml('<IMG NaMe="createElement" src="a.png">')).not.toContain('name=');
+    // The HTML parser rewrites <image> to <img>, so it is the same element.
+    expect(sanitizeHtml('<image name="createElement" src="a.png">')).not.toContain('name=');
+  });
+
+  it('drops the name of an <img> that also carries an id', () => {
+    // With a non-empty `name`, the `id` of an <img> becomes a document
+    // property as well. Without the `name`, the `id` is an ordinary anchor.
+    const out = sanitizeHtml('<img id="getElementById" name="x" src="a.png">');
+    expect(out).not.toContain('name=');
+    expect(out).toContain('id="getElementById"');
+  });
+
+  it('keeps name on elements that are not document named properties', () => {
+    // `<a name>` is the legacy fragment target and never shadows a document
+    // member, so the rule must stay scoped to <img>.
+    const out = sanitizeHtml('<a name="top">top</a><input name="q">');
+    expect(out).toContain('<a name="top">');
+    expect(out).toContain('name="q"');
+  });
+
   it('strips srcset when any candidate carries an unsafe scheme', () => {
     // A comma-separated candidate list: checking only the first entry would
     // let the second one through.
